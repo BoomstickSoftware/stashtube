@@ -44,6 +44,8 @@ export interface AssetStats {
 
 type Upstream = (path: string, headers: Record<string, string>) => Promise<Response>
 
+const MISS_RETRIES = [1000, 2000] // ms; see fetchUpstream
+
 export class AssetCache {
   private index = new Map<string, IndexEntry>()
   private bytes = 0
@@ -145,6 +147,14 @@ export class AssetCache {
     let res: Response
     try {
       res = await this.upstream(path, headers)
+      // A first fetch that 404s may only mean Stash's database is locked by a scan
+      // (it answers 404 then); try twice more before believing it.
+      for (const wait of old ? [] : MISS_RETRIES) {
+        if (res.status !== 404) break
+        await res.body?.cancel()
+        await new Promise((r) => setTimeout(r, wait))
+        res = await this.upstream(path, headers)
+      }
     } catch (e) {
       if (old) {
         this.s.staleServed++
