@@ -1,9 +1,4 @@
 # One image: the BFF serves the API, the media proxy and the built web app.
-#
-# pnpm's store (pnpm 11 keeps its index in SQLite, WAL mode) lives on a tmpfs during
-# installs: on the CI runner's dind/BuildKit, installs with the store on the build layer
-# hung idle indefinitely (2026-10-26, task 8229, both stages). Packages are copied into
-# node_modules, so nothing in the image depends on the tmpfs.
 ARG NODE=node:26.12.1-alpine3.24
 
 FROM ${NODE} AS build
@@ -13,7 +8,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
-RUN --mount=type=tmpfs,target=/pnpm-store pnpm install --frozen-lockfile --store-dir /pnpm-store --package-import-method copy
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @flix/server typecheck && pnpm --filter @flix/web build
 
@@ -24,9 +19,10 @@ COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
 # Production deps only; then drop npm and pnpm, which the server never uses at runtime
 # (and whose bundled dependencies are most of a scanner's findings on node images).
-RUN --mount=type=tmpfs,target=/pnpm-store apk upgrade --no-cache \
+RUN apk upgrade --no-cache \
  && npm install -g pnpm@11.12.0 \
- && pnpm install --frozen-lockfile --prod --filter @flix/server --store-dir /pnpm-store --package-import-method copy \
+ && pnpm install --frozen-lockfile --prod --filter @flix/server \
+ && pnpm store prune \
  && npm rm -g pnpm \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /root/.cache /root/.npm
 COPY apps/server/src apps/server/src
