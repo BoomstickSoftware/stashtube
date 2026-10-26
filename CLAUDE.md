@@ -62,7 +62,7 @@ Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `docker build -t flix 
 | Layer | Where | What | Freshness |
 |---|---|---|---|
 | Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`) | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (30), then served stale for up to 24 h while one background refresh runs; concurrent identical reads share one request |
-| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`) | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | TTL `ASSET_CACHE_TTL_HOURS` (168), then revalidated by ETag; stale copy served if Stash is down; 404s remembered 10 min; LRU under `ASSET_CACHE_MAX_MB` (5120) |
+| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`) | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | TTL `ASSET_CACHE_TTL_HOURS` (168), then revalidated by ETag; stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120) |
 | Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
 
 Invalidation:

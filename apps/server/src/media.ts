@@ -13,7 +13,7 @@ export const media = new Hono()
 export const assetCache = new AssetCache({
   dir: `${config.cache.dir}/assets`,
   ttl: config.cache.assetTtl,
-  missTtl: 10 * 60_000,
+  missTtl: 60_000,
   maxBytes: config.cache.assetMaxBytes,
   upstream: (path, headers) => stashFetch(path, headers),
 })

@@ -162,9 +162,14 @@ export class AssetCache {
     }
     if (res.status === 404) {
       await res.body?.cancel()
+      // Stash also answers 404 while its database is locked by a scan, so a 404 never
+      // throws away a copy we already have; it is only remembered briefly.
+      if (old) {
+        this.s.staleServed++
+        return old
+      }
       this.missing.set(k, Date.now() + this.missTtl)
       this.s.notFound++
-      if (old) await this.remove(k)
       return null
     }
     if (!res.ok || !res.body) {

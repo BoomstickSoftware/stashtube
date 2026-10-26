@@ -36,17 +36,25 @@ async function gql<T>(
   variables: Record<string, unknown> = {},
   kind: 'queries' | 'mutations' | 'changeChecks' = query.trimStart().startsWith('mutation') ? 'mutations' : 'queries',
 ): Promise<T> {
-  upstream[kind]++
-  const res = await fetch(`${config.stashUrl}/graphql`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ApiKey: config.stashApiKey },
-    body: JSON.stringify({ query, variables }),
-  })
-  if (!res.ok) throw new StashError(`Stash HTTP ${res.status}`)
-  const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
-  if (body.errors?.length) throw new StashError(body.errors.map((e) => e.message).join('; '))
-  return body.data as T
+  // Stash's SQLite is locked while a scan or identify job writes; reads fail with
+  // "database is locked" until it lets go. Retry briefly rather than fail the page.
+  for (let attempt = 0; ; attempt++) {
+    upstream[kind]++
+    const res = await fetch(`${config.stashUrl}/graphql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ApiKey: config.stashApiKey },
+      body: JSON.stringify({ query, variables }),
+    })
+    if (!res.ok) throw new StashError(`Stash HTTP ${res.status}`)
+    const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
+    if (!body.errors?.length) return body.data as T
+    const message = body.errors.map((e) => e.message).join('; ')
+    if (!/database is locked/.test(message) || attempt >= LOCK_RETRIES.length) throw new StashError(message)
+    await new Promise((r) => setTimeout(r, LOCK_RETRIES[attempt]))
+  }
 }
+
+const LOCK_RETRIES = [250, 500, 1000, 2000] // ms between attempts
 
 // Cached read. Tags name what a write must drop: 'scene' for anything showing scene data,
 // 'scene:<id>' for one scene; same for performer, studio, tag.
