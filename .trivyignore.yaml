@@ -1,0 +1,4 @@
+# Trivy exceptions for the image scan that gates every deploy (.forgejo/workflows/deploy.yml).
+# A risk register, not a mute button: each entry must be a finding we cannot fix here, say
+# why it is not exploitable, and carry an `expired_at`.
+vulnerabilities: []

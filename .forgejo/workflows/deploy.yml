@@ -1,0 +1,76 @@
+# Build, scan, push, and pin the k8s deployment to the pushed digest (pattern: kataroom).
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: flix-deploy
+  cancel-in-progress: false
+jobs:
+  build-deploy:
+    runs-on: docker-build
+    steps:
+      - name: build image, scan, push to Forgejo registry, bump k8s
+        shell: sh
+        env:
+          IMAGE: git.lan:3000/zbmowrey/flix
+          SHA: ${{ github.sha }}
+          # Write token (write:repository, write:package): registry push + the k8s commit.
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
+          DOCKER_BUILDKIT: '1'
+        run: |
+          set -e
+          apk add --no-cache git
+          rm -rf src k8s
+          git clone "http://oauth2:${CI_TOKEN}@git.lan:3000/zbmowrey/flix.git" src
+          cd src && git checkout "$SHA"
+          echo "$CI_TOKEN" | docker login git.lan:3000 -u zbmowrey --password-stdin
+          docker build --pull -t "$IMAGE:$SHA" .
+          # Scan before pushing, so a failed scan publishes nothing.
+          docker run --rm -i \
+            --add-host=git.lan:192.168.1.151 \
+            -v /dind-sock/docker.sock:/var/run/docker.sock \
+            -e IMAGE_REF="$IMAGE:$SHA" \
+            --entrypoint sh \
+            aquasec/trivy:0.71.1 -c \
+              'cat > /tmp/trivyignore.yaml; exec trivy image \
+                 --image-src docker \
+                 --ignorefile /tmp/trivyignore.yaml \
+                 --exit-code 1 \
+                 --severity CRITICAL,HIGH \
+                 --ignore-unfixed \
+                 "$IMAGE_REF"' \
+            < .trivyignore.yaml
+          docker push "$IMAGE:$SHA"
+          # Pin to content: the cluster pulls tag@digest, so re-pushing a tag changes nothing.
+          DIGEST=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$IMAGE:$SHA" \
+            | awk -v p="${IMAGE}@" 'index($0, p) == 1 { print substr($0, length(p) + 1); exit }')
+          expr "$DIGEST" : 'sha256:[0-9a-f]\{64\}$' >/dev/null \
+            || { echo "no sha256 digest for the pushed image (got '$DIGEST'); refusing to bump k8s"; exit 1; }
+          echo "image: $IMAGE:$SHA@$DIGEST"
+          cd ..
+          git clone "http://oauth2:${CI_TOKEN}@git.lan:3000/zbmowrey/k8s.git" k8s
+          cd k8s
+          sed -i "s|^          image: git.lan:3000/zbmowrey/flix.*|          image: ${IMAGE}:${SHA}@${DIGEST}|" infra/flix/deployment.yaml
+          grep -q "image: ${IMAGE}:${SHA}@${DIGEST}" infra/flix/deployment.yaml \
+            || { echo "image line not found in infra/flix/deployment.yaml"; exit 1; }
+          if git diff --quiet; then
+            echo "flix image unchanged (${SHA}); nothing to commit"
+          else
+            git -c user.name="forgejo-actions" -c user.email="actions@git.lan" commit -a \
+              -m "deploy: update flix image to ${SHA}" -m "${IMAGE}@${DIGEST}"
+            git push
+          fi
+      - name: notify forge on failure
+        if: ${{ failure() }}
+        shell: sh
+        env:
+          FORGE_WEBHOOK: ${{ secrets.DISCORD_FORGE_WEBHOOK }}
+        run: |
+          [ -n "$FORGE_WEBHOOK" ] || { echo "DISCORD_FORGE_WEBHOOK unset; skipping"; exit 0; }
+          PAYLOAD="{\"content\":\"🚨 **flix** deploy pipeline FAILED on main (build/scan/tag-bump) — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_NUMBER} — not deployed\"}"
+          command -v curl >/dev/null 2>&1 || apk add --no-cache curl >/dev/null 2>&1 || true
+          curl -sf -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$FORGE_WEBHOOK" \
+            || wget -q -O /dev/null --header='Content-Type: application/json' --post-data="$PAYLOAD" "$FORGE_WEBHOOK" \
+            || true

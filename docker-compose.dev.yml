@@ -1,0 +1,14 @@
+# Local Postgres for development. Production uses a CNPG cluster on k8s.
+services:
+  db:
+    image: postgres:18.0-alpine
+    environment:
+      POSTGRES_USER: flix
+      POSTGRES_PASSWORD: flix
+      POSTGRES_DB: flix
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - flix-db:/var/lib/postgresql
+volumes:
+  flix-db:
