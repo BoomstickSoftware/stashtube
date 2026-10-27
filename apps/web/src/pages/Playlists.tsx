@@ -86,7 +86,7 @@ export function PlaylistPage(): JSX.Element {
     m.reorder.mutate({ id, sceneIds: next })
   }
   const total = p.items.reduce((a, s) => a + s.durationSec, 0)
-  const play = (sceneId?: string) => sceneId && navigate({ to: '/scene/$id', params: { id: sceneId }, search: { playlist: id } })
+  const play = (sceneId?: string) => sceneId && navigate({ to: '/scene/$id', params: { id: sceneId }, search: { playlist: id, play: true } })
 
   return (
     <div className="mx-auto grid max-w-[1600px] gap-8 lg:grid-cols-[360px_1fr]">

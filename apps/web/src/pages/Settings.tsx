@@ -3,6 +3,7 @@ import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Ban, Search, X } from 'lucide-react'
+import clsx from 'clsx'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { Button, Chip, useDebounced } from '../components/ui'
@@ -48,6 +49,8 @@ export function Settings(): JSX.Element {
           ))}
         </div>
       </section>
+
+      <PlaybackSetting />
 
       <PanicSetting />
 
@@ -131,6 +134,35 @@ function BlockSearch() {
         </div>
       )}
     </div>
+  )
+}
+
+function PlaybackSetting() {
+  const { data: settings } = useSettings()
+  const save = useUpdateSettings()
+  const on = !!settings?.playOnOpen
+  return (
+    <section>
+      <h2 className="text-lg font-bold">Playback</h2>
+      <label className="mt-3 flex max-w-xl cursor-pointer items-start justify-between gap-4">
+        <span>
+          <span className="block text-sm font-medium">Start playing when I open a video</span>
+          <span className="mt-0.5 block text-sm text-muted">
+            Off: a video’s page opens paused so you can read about it first. Play buttons, Play all and up next still start
+            playback.
+          </span>
+        </span>
+        <button
+          role="switch"
+          aria-checked={on}
+          disabled={!settings}
+          onClick={() => save.mutate({ playOnOpen: !on })}
+          className={clsx('relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors', on ? 'bg-accent' : 'bg-line')}
+        >
+          <span className={clsx('absolute top-0.5 size-5 rounded-full bg-white transition-all', on ? 'left-5.5' : 'left-0.5')} />
+        </button>
+      </label>
+    </section>
   )
 }
 

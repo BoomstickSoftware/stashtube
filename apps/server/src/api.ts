@@ -306,11 +306,14 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 
 api.put('/settings', async (c) => {
   const b = parse(
-    z.object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }) }).partial(),
+    z
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean() })
+      .partial(),
     await c.req.json(),
   )
   if (b.performerGender) await setSetting('performerGender', b.performerGender)
   if (b.panicUrl) await setSetting('panicUrl', b.panicUrl)
+  if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
   return c.json(await getSettings())
 })
 

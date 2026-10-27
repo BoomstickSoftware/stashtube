@@ -66,6 +66,8 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
        sideways fills the screen, and a swipe up there hides Safari's address bar.
      - Speed and Mark in the settings menu.
    - Resume: "Resumed at … · Start over" pill.
+   - Videos open paused unless Settings › Playback says otherwise; Play buttons, Play all and up
+     next pass `?play=1` and always start.
    - Page:
      - No iOS zoom on inputs.
      - Safe-area padding for landscape and the tab bar.

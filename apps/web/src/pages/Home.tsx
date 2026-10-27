@@ -119,6 +119,7 @@ function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onSte
             <Link
               to="/scene/$id"
               params={{ id: scene.id }}
+              search={{ play: true }}
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-black transition hover:bg-accent hover:text-white"
             >
               <Play size={18} className="fill-current" />

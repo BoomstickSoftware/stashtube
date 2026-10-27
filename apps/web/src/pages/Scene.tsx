@@ -8,7 +8,7 @@ import { Player } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
-import { useAddO, usePlaylist, useRateScene, useRelated, useScene } from '../lib/api'
+import { useAddO, usePlaylist, useRateScene, useRelated, useScene, useSettings } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 
 const route = getRouteApi('/scene/$id')
@@ -20,7 +20,8 @@ export function ScenePage(): JSX.Element {
 }
 
 function SceneView({ id }: { id: string }) {
-  const { playlist: playlistId, t } = route.useSearch()
+  const { playlist: playlistId, t, play } = route.useSearch()
+  const { data: settings, isLoading: settingsLoading } = useSettings()
   const navigate = useNavigate()
   const { data: scene, error, isLoading } = useScene(id)
   const related = useRelated(id)
@@ -43,7 +44,7 @@ function SceneView({ id }: { id: string }) {
 
   const goNext = useCallback(() => {
     setCountdown(null)
-    if (next) navigate({ to: '/scene/$id', params: { id: next.id }, search: playlistId ? { playlist: playlistId } : {} })
+    if (next) navigate({ to: '/scene/$id', params: { id: next.id }, search: { ...(playlistId ? { playlist: playlistId } : {}), play: true } })
   }, [next, navigate, playlistId])
 
   useEffect(() => {
@@ -61,7 +62,8 @@ function SceneView({ id }: { id: string }) {
   }, [id])
 
   if (error) return <ErrorBox error={error} />
-  if (isLoading || !scene) return <Spinner className="mx-auto mt-32" />
+  // settings first: whether the video starts by itself depends on them
+  if (isLoading || !scene || settingsLoading) return <Spinner className="mx-auto mt-32" />
 
   const toggleTheater = () => {
     setTheater((v) => {
@@ -78,6 +80,7 @@ function SceneView({ id }: { id: string }) {
         theater={theater}
         onTheater={toggleTheater}
         startAt={t}
+        autoStart={!!play || !!settings?.playOnOpen}
         onNext={next ? goNext : undefined}
         onEnded={() => autoplay && next && setCountdown(5)}
       />

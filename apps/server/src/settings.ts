@@ -2,7 +2,7 @@ import type { PerformerGender, Settings } from '@flix/shared'
 import { db } from './db/index.ts'
 import { settings } from './db/schema.ts'
 
-const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/' }
+const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/', playOnOpen: false }
 
 // Single replica, so an in-memory copy is authoritative after the first read.
 let cache: Settings | null = null

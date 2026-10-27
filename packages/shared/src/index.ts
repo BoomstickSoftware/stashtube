@@ -264,6 +264,7 @@ export interface Settings {
   performerGender: PerformerGender
   introSkip: Record<string, number> // studio id -> seconds to skip at the start
   panicUrl: string // where a double Esc goes
+  playOnOpen: boolean // opening a video starts it; off: it waits on the play button
 }
 
 export interface SavedRow {

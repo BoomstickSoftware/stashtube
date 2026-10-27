@@ -75,6 +75,7 @@ export function Player({
   theater,
   onTheater,
   startAt,
+  autoStart,
 }: {
   scene: SceneDetail
   onEnded?: () => void
@@ -82,6 +83,7 @@ export function Player({
   theater: boolean
   onTheater: () => void
   startAt?: number
+  autoStart: boolean // play as soon as it loads; otherwise wait on the play button
 }) {
   const wrap = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -104,6 +106,9 @@ export function Player({
     startAt ?? (scene.resumeTime > 5 && scene.resumeTime < scene.durationSec - 30 ? scene.resumeTime : null),
   )
   const firstLoad = useRef(true)
+  // Whether to play once the source loads: the open setting at first, then whatever it was
+  // doing when the source switched (quality, fallback).
+  const playAfterLoad = useRef(autoStart)
   const [resumedAt, setResumedAt] = useState<number | null>(null) // shows "Resumed at … · Start over" for a while
   const stalls = useRef<number[]>([])
   const [menu, setMenu] = useState(false)
@@ -169,6 +174,7 @@ export function Player({
   const switchSource = (apply: () => void) => {
     const v = video.current
     if (v && v.currentTime > 0) pendingSeek.current = v.currentTime
+    if (!firstLoad.current) playAfterLoad.current = playing
     apply()
   }
   const setQuality = (q: Quality) => {
@@ -270,7 +276,7 @@ export function Player({
     pendingSeek.current = null
     firstLoad.current = false
     v.playbackRate = rate
-    v.play().catch(() => {})
+    if (playAfterLoad.current) v.play().catch(() => {})
   }
 
 

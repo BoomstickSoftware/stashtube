@@ -23,9 +23,11 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/stats', component: Stats }),
   createRoute({
     getParentRoute: () => root, path: '/scene/$id',
-    validateSearch: (s: Record<string, unknown>): { playlist?: number; t?: number } => ({
+    // play=1: the link was a Play button (or up next), so start even if videos open paused
+    validateSearch: (s: Record<string, unknown>): { playlist?: number; t?: number; play?: boolean } => ({
       playlist: Number(s.playlist) > 0 ? Number(s.playlist) : undefined,
       t: Number(s.t) > 0 ? Number(s.t) : undefined,
+      play: s.play === true || s.play === 1 || s.play === '1' || undefined,
     }),
     component: ScenePage,
   }),
