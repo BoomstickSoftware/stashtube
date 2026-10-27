@@ -21,7 +21,7 @@ export function EditableTitle({ scene }: { scene: SceneDetail }) {
             setTitle(scene.title)
             setEditing(true)
           }}
-          className="ml-2 inline-flex align-middle text-muted opacity-0 group-hover/title:opacity-100 hover:text-fg"
+          className="ml-2 inline-flex align-middle text-muted hover:text-fg [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/title:opacity-100"
           aria-label="Edit title"
         >
           <Pencil size={16} />
@@ -150,7 +150,14 @@ export function IdentifyButton({ scene }: { scene: SceneDetail }) {
 // Markers as chapters: jump, rename, delete. Press "b" in the player to add one.
 export function Chapters({ scene, onSeek }: { scene: SceneDetail; onSeek: (t: number) => void }) {
   if (!scene.markers.length) {
-    return <div className="mt-4 text-xs text-muted">Press <kbd className="rounded bg-raised px-1">b</kbd> while watching to mark a moment.</div>
+    return (
+      <div className="mt-4 text-xs text-muted">
+        <span className="touch:hidden">
+          Press <kbd className="rounded bg-raised px-1">b</kbd> while watching
+        </span>
+        <span className="hidden touch:inline">Use Mark in the player’s settings menu</span> to mark a moment.
+      </div>
+    )
   }
   return (
     <div className="mt-5">
@@ -196,7 +203,7 @@ function ChapterChip({ scene, marker, onSeek }: { scene: SceneDetail; marker: Ma
           {marker.title || 'Untitled'}
         </button>
       )}
-      <button onClick={() => deleteMarker.mutate(marker.id)} className="rounded p-1 text-muted opacity-0 group-hover:opacity-100 hover:text-red-400" aria-label="Delete marker">
+      <button onClick={() => deleteMarker.mutate(marker.id)} className="rounded p-1 text-muted hover:text-red-400 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label="Delete marker">
         <Trash2 size={12} />
       </button>
     </div>

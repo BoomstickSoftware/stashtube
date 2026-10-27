@@ -27,8 +27,10 @@ export const upstream = { queries: 0, mutations: 0, assets: 0, streams: 0, chang
 
 export const dataCache = new MemoryCache({
   maxEntries: config.cache.dataMaxEntries,
-  staleFor: 24 * 3_600_000,
+  staleFor: config.cache.dataStaleFor,
 })
+
+const TIMEOUT = 60_000 // ms; a hung Stash request must not hold a page (or a shared in-flight read) forever
 
 // Uncached; use query() for reads and mutate() for writes.
 async function gql<T>(
@@ -44,6 +46,9 @@ async function gql<T>(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ApiKey: config.stashApiKey },
       body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(TIMEOUT),
+    }).catch((e: Error) => {
+      throw e.name === 'TimeoutError' ? new StashError(`no answer in ${TIMEOUT / 1000} s`) : e
     })
     if (!res.ok) throw new StashError(`Stash HTTP ${res.status}`)
     const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
@@ -57,15 +62,28 @@ async function gql<T>(
 const LOCK_RETRIES = [250, 500, 1000, 2000] // ms between attempts
 
 // Cached read. Tags name what a write must drop: 'scene' for anything showing scene data,
-// 'scene:<id>' for one scene; same for performer, studio, tag.
+// 'scene:<id>' for one scene; same for performer, studio, tag. 'activity:play' and
+// 'activity:resume' mark results that depend on play counts or resume points.
 function query<T>(q: string, variables: Record<string, unknown>, tags: string[], ttl = config.cache.dataTtl): Promise<T> {
   return dataCache.get(JSON.stringify([q, variables]), ttl, tags, () => gql<T>(q, variables))
 }
 
-async function mutate(q: string, variables: Record<string, unknown>, invalidates: string[]) {
+// Write, then drop the cached results it changes. `expires` names results that it changes
+// only slightly (a progress bar on a card): they stay, served once more while they refresh.
+async function mutate(q: string, variables: Record<string, unknown>, invalidates: string[], expires: string[] = []) {
   const d = await gql<Raw>(q, variables)
   dataCache.invalidate(...invalidates)
+  if (expires.length) dataCache.expire(...expires)
   return d
+}
+
+// Which activity tags a scene query needs, from the fields its filter or sort reads.
+function activityTags(...parts: unknown[]): string[] {
+  const s = JSON.stringify(parts)
+  const tags: string[] = []
+  if (/play_count|last_played|play_duration/.test(s)) tags.push('activity:play')
+  if (/resume_time/.test(s)) tags.push('activity:resume')
+  return tags
 }
 
 // Uncached health probe.
@@ -80,7 +98,8 @@ export function stashFetch(path: string, headers: Record<string, string>, signal
 
 // --- change detection ---------------------------------------------------------------
 // Scans, Identify and edits in Stash's own UI bump counts or updated_at. One small query
-// per poll, only while flix is in use, clears the query cache when anything moved.
+// per poll, only while flix is in use, marks the query cache stale when anything moved:
+// pages keep loading instantly from the old results while they refresh.
 // (Play activity does not bump updated_at; flix's own writes invalidate directly.)
 
 let lastFingerprint: string | null = null
@@ -103,10 +122,17 @@ async function checkForChanges() {
     d.t.count, d.t.tags[0]?.updated_at,
   ])
   if (lastFingerprint !== null && fp !== lastFingerprint) {
-    console.log('stash data changed; clearing query cache')
-    dataCache.clear()
+    console.log('stash data changed; refreshing cached queries')
+    dataCache.expire()
+    for (const fn of changeListeners) fn()
   }
   lastFingerprint = fp
+}
+
+const changeListeners: (() => void)[] = []
+// Runs after a change in Stash marked the cache stale (e.g. to re-warm the home feed).
+export function onStashChange(fn: () => void) {
+  changeListeners.push(fn)
 }
 
 // Call on every API request. After an idle spell, check before trusting cached data.
@@ -348,7 +374,7 @@ export async function findScenes(filter: Raw, sceneFilter: Raw = {}) {
       findScenes(filter: $f, scene_filter: $s) { count scenes { ${SCENE_CARD} } }
     }`,
     { f: filter, s: sceneFilter },
-    ['scene'],
+    ['scene', ...activityTags(filter, sceneFilter)],
   )
   return { total: d.findScenes.count as number, items: d.findScenes.scenes.map(toSceneCard) }
 }
@@ -423,8 +449,10 @@ export async function updateSceneRating(id: string, stars: number | null) {
   }, ['scene'])
 }
 
+// Plays and progress saves (every 15 s while watching) must not empty the cache: they drop
+// this scene and the lists that filter or sort by activity, and only mark the rest stale.
 export async function addScenePlay(id: string) {
-  await mutate(`mutation($id: ID!) { sceneAddPlay(id: $id) { count } }`, { id }, ['scene'])
+  await mutate(`mutation($id: ID!) { sceneAddPlay(id: $id) { count } }`, { id }, [`scene:${id}`, 'activity:play'], ['scene'])
 }
 
 export async function saveSceneActivity(id: string, resumeTime: number, playDuration: number) {
@@ -432,7 +460,7 @@ export async function saveSceneActivity(id: string, resumeTime: number, playDura
     id,
     r: resumeTime,
     d: playDuration,
-  }, ['scene'])
+  }, [`scene:${id}`, 'activity:resume'], ['scene'])
 }
 
 export async function addSceneO(id: string) {
@@ -660,7 +688,7 @@ async function activityScenes(): Promise<Raw[]> {
       }
     ) { scenes { ${SCENE_CARD} play_duration play_history performers { gender } tags { id name scene_count } } } }`,
     {},
-    ['scene'],
+    ['scene', 'activity:play'],
   )
   return d.findScenes.scenes
 }
@@ -765,7 +793,7 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
     query<Raw>(
       `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 60, sort: "random_11" }) { scenes { ${fields} } } }`,
       { s: withExclusions({ ...f, play_count: { value: 0, modifier: 'EQUALS' } }, { ...blocked }) },
-      ['scene'],
+      ['scene', 'activity:play'],
     )
   const results = await Promise.all([
     topPerf.length ? run({ performers: { value: topPerf, modifier: 'INCLUDES' } }) : null,

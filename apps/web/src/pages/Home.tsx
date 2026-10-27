@@ -13,10 +13,13 @@ import { duration } from '../lib/format'
 export function Home(): JSX.Element {
   const { data, error, isLoading } = useHome()
   // Hero: a random video from everything on the page, new on each visit (no extra request).
-  const hero = useMemo(() => {
-    const all = [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()]
-    return all.length ? all[Math.floor(Math.random() * all.length)] : undefined
-  }, [data])
+  // The pick holds while the feed refreshes in the background (it paints from the cache
+  // first), as long as the video is still on the page.
+  const all = useMemo(() => [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()], [data])
+  const [seed] = useState(Math.random)
+  const [heroId, setHeroId] = useState<string>()
+  const hero = all.find((s) => s.id === heroId)
+  if (all.length && !hero) setHeroId(all[Math.floor(seed * all.length)].id)
   if (error) return <ErrorBox error={error} />
   if (isLoading)
     return (

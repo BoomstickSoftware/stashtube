@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Star } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 
 export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: () => void, active = true) {
   useEffect(() => {
@@ -16,6 +16,18 @@ export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: (
       document.removeEventListener('keydown', k)
     }
   }, [ref, onOutside, active])
+}
+
+// Live result of a CSS media query, e.g. '(pointer: coarse)' for touch screens.
+export function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const m = matchMedia(query)
+      m.addEventListener('change', onChange)
+      return () => m.removeEventListener('change', onChange)
+    },
+    () => matchMedia(query).matches,
+  )
 }
 
 export function useDebounced<T>(value: T, ms = 200): T {

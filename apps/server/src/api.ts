@@ -75,7 +75,10 @@ api.get('/scenes', async (c) => {
   return c.json({ ...r, page, perPage } satisfies Page<unknown>)
 })
 
-api.get('/home', async (c) => {
+api.get('/home', async (c) => c.json(await homeRows()))
+
+// The home feed. Also run at startup and after Stash changes, so the first visit is warm.
+export async function homeRows(): Promise<HomeRow[]> {
   const blocked = await exclusions()
   const row = async (key: string, title: string, query: SceneQuery): Promise<HomeRow> => {
     const f = query.sort === 'random' && !query.seed ? { ...query, seed: daySeed() } : query
@@ -108,8 +111,8 @@ api.get('/home', async (c) => {
     row('most', 'Most watched', { sort: 'play_count' }),
   ])
   // A shelf of one or two looks broken; pinned rows always show (even empty) so they can be managed.
-  return c.json([...personal, ...pinnedRows, ...moreWith, ...rows].filter((r) => r.savedId || r.items.length >= 3))
-})
+  return [...personal, ...pinnedRows, ...moreWith, ...rows].filter((r) => r.savedId || r.items.length >= 3)
+}
 
 // --- pinned rows ---------------------------------------------------------------
 

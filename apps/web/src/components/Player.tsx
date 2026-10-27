@@ -3,12 +3,15 @@ import clsx from 'clsx'
 import type Hls from 'hls.js'
 import {
   Airplay,
+  Bookmark,
   Check,
   Maximize,
   Minimize,
   Pause,
   Play,
   RectangleHorizontal,
+  RotateCcw,
+  RotateCw,
   Settings2,
   SkipForward,
   Volume1,
@@ -19,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addPlay, saveActivity, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay, cueAt, loadSprites, type SpriteCue } from '../lib/media'
+import { useMediaQuery } from './ui'
 
 const SAVE_EVERY = 15 // seconds of playback between activity saves
 const COUNT_PLAY_AFTER = 20 // seconds watched before it counts as a play
@@ -38,6 +42,8 @@ type Quality = (typeof QUALITIES)[number][0]
 const STASH_RES: Record<string, string> = { '1080': 'FULL_HD', '720': 'STANDARD_HD', '480': 'STANDARD', '240': 'LOW' }
 const STALLS_TO_DROP = 3 // stalls within STALL_WINDOW in auto mode
 const STALL_WINDOW = 30_000
+const DOUBLE_TAP = 300 // ms between taps that count as a double tap
+const TAP_SEEK = 10 // seconds per double tap on either side of the video
 
 function useStored(key: string, initial: number) {
   const [v, setV] = useState(() => {
@@ -98,8 +104,10 @@ export function Player({
     startAt ?? (scene.resumeTime > 5 && scene.resumeTime < scene.durationSec - 30 ? scene.resumeTime : null),
   )
   const firstLoad = useRef(true)
+  const [resumedAt, setResumedAt] = useState<number | null>(null) // shows "Resumed at … · Start over" for a while
   const stalls = useRef<number[]>([])
   const [menu, setMenu] = useState(false)
+  const [menuMax, setMenuMax] = useState(0) // px; the menu scrolls inside a short player
   const { data: settings } = useSettings()
   const setIntro = useIntroSkip()
   const addMarker = useSceneEdits(scene.id).addMarker.mutate
@@ -115,7 +123,13 @@ export function Player({
   const [idle, setIdle] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [sprites, setSprites] = useState<SpriteCue[]>([])
-  const [hover, setHover] = useState<{ x: number; t: number; w: number } | null>(null)
+  const [hover, setHover] = useState<{ x: number; t: number; w: number } | null>(null) // mouse over the seek bar
+  const [scrub, setScrub] = useState<{ x: number; t: number; w: number } | null>(null) // dragging the seek bar
+  const touch = useMediaQuery('(pointer: coarse)')
+  // A phone turned sideways: the player fills the screen with its own controls (iPhone
+  // Safari cannot make anything but a bare <video> fullscreen).
+  const landscapePhone = useMediaQuery('(orientation: landscape) and (pointer: coarse) and (max-height: 520px)')
+  const immersive = fullscreen || landscapePhone
   const [flash, setFlash] = useState<string | null>(null)
   const [airplay, setAirplay] = useState(false) // a receiver is on the network (Safari only)
   const [casting, setCasting] = useState(false)
@@ -247,6 +261,8 @@ export function Player({
     setDur(v.duration || scene.durationSec)
     if (pendingSeek.current !== null) {
       v.currentTime = pendingSeek.current
+      // picked up from the saved resume point (not ?t= or a quality switch): offer a restart
+      if (firstLoad.current && startAt === undefined) setResumedAt(pendingSeek.current)
     } else if (firstLoad.current && introSkip && introSkip < (v.duration || scene.durationSec) - 30) {
       v.currentTime = introSkip
       setFlash(`Skipped intro (${fmt(introSkip)})`)
@@ -270,16 +286,65 @@ export function Player({
     setFlash(d > 0 ? `+${d}s` : `${d}s`)
   }, [])
 
+  // The player element where the Fullscreen API exists (desktop, Android, iPad); on iPhone
+  // only the <video> itself, which then plays with the system's own controls. On a phone a
+  // landscape video also locks the screen to landscape (Android; iOS has no lock).
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) document.exitFullscreen()
-    else wrap.current?.requestFullscreen()
+    const d = document as FsDocument
+    if (document.fullscreenElement ?? d.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {})
+      else d.webkitExitFullscreen?.()
+      return
+    }
+    const el = wrap.current as FsElement | null
+    const v = video.current as IosVideo | null
+    if (!el || !v) return
+    if (el.requestFullscreen) {
+      el.requestFullscreen({ navigationUI: 'hide' }).then(
+        () => {
+          if (matchMedia('(pointer: coarse)').matches && v.videoWidth > v.videoHeight) {
+            ;(screen.orientation as LockableOrientation | undefined)?.lock?.('landscape').catch(() => {})
+          }
+        },
+        () => v.webkitEnterFullscreen?.(),
+      )
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen()
+    } else {
+      v.webkitEnterFullscreen?.()
+    }
   }, [])
 
   useEffect(() => {
-    const h = () => setFullscreen(!!document.fullscreenElement)
+    const h = () => {
+      const on = !!(document.fullscreenElement ?? (document as FsDocument).webkitFullscreenElement)
+      setFullscreen(on)
+      if (!on) (screen.orientation as LockableOrientation | undefined)?.unlock?.()
+    }
     document.addEventListener('fullscreenchange', h)
-    return () => document.removeEventListener('fullscreenchange', h)
+    document.addEventListener('webkitfullscreenchange', h)
+    return () => {
+      document.removeEventListener('fullscreenchange', h)
+      document.removeEventListener('webkitfullscreenchange', h)
+    }
   }, [])
+
+  // While the sideways phone view covers the page, the page behind must not scroll.
+  useEffect(() => {
+    if (!landscapePhone) return
+    const root = document.documentElement
+    const prev = root.style.overflow
+    root.style.overflow = 'hidden'
+    return () => {
+      root.style.overflow = prev
+    }
+  }, [landscapePhone])
+
+  useEffect(() => {
+    if (resumedAt === null) return
+    const t = setTimeout(() => setResumedAt(null), 8000)
+    return () => clearTimeout(t)
+  }, [resumedAt])
 
   useEffect(() => {
     if (!flash) return
@@ -364,45 +429,99 @@ export function Player({
     return () => window.removeEventListener('keydown', h)
   }, [toggle, seekBy, toggleFullscreen, onTheater, onNext, volume, setVolume, rate, scene.markers, addMarker])
 
-  // Hide controls while playing and the mouse is still.
+  // Hide controls while playing and the mouse is still, or a while after a tap.
   const idleTimer = useRef<number>(undefined)
-  const poke = () => {
+  const poke = useCallback(() => {
     setIdle(false)
     clearTimeout(idleTimer.current)
-    idleTimer.current = window.setTimeout(() => setIdle(true), 2500)
+    idleTimer.current = window.setTimeout(() => setIdle(true), touch ? 3500 : 2500)
+  }, [touch])
+
+  // Taps on the picture. Mouse: click plays or pauses, double click is fullscreen. Touch: a
+  // tap shows or hides the controls; double taps on the left or right third seek, YouTube
+  // style (keep tapping to seek further).
+  const pointerType = useRef('mouse')
+  const lastTap = useRef<{ at: number; zone: number } | null>(null)
+  const tapTimer = useRef<number>(undefined)
+  const tapStart = useRef<{ x: number; y: number } | null>(null)
+  const onSurfaceTap = (e: React.PointerEvent) => {
+    const start = tapStart.current
+    tapStart.current = null
+    // a swipe that ends on the picture is not a tap
+    if (e.pointerType === 'mouse' || !start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const zone = e.clientX < r.left + r.width / 3 ? -1 : e.clientX > r.right - r.width / 3 ? 1 : 0
+    const now = performance.now()
+    const prev = lastTap.current
+    lastTap.current = { at: now, zone }
+    clearTimeout(tapTimer.current)
+    if (zone && prev?.zone === zone && now - prev.at < DOUBLE_TAP) {
+      seekBy(zone * TAP_SEEK)
+      return
+    }
+    const controlsShown = !playing || !idle
+    // a side tap waits to see whether a second tap follows
+    tapTimer.current = window.setTimeout(() => (controlsShown && playing ? setIdle(true) : poke()), zone ? DOUBLE_TAP : 0)
   }
 
+  // Seek bar. Mouse: seeks as it moves. Touch: the drag previews (thumbnail and time) and
+  // seeks once, on release, so a finger's jitter does not throw the video around.
   const bar = useRef<HTMLDivElement>(null)
   const timeAt = (clientX: number) => {
     const r = bar.current!.getBoundingClientRect()
     const x = Math.max(0, Math.min(r.width, clientX - r.left))
     return { x, t: (x / r.width) * (dur || 0), w: r.width }
   }
-  const scrubbing = useRef(false)
   const onBarDown = (e: React.PointerEvent) => {
-    scrubbing.current = true
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    video.current!.currentTime = timeAt(e.clientX).t
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const p = timeAt(e.clientX)
+    setScrub(p)
+    if (e.pointerType === 'mouse') video.current!.currentTime = p.t
+    poke()
   }
   const onBarMove = (e: React.PointerEvent) => {
     const p = timeAt(e.clientX)
-    setHover(p)
-    if (scrubbing.current) video.current!.currentTime = p.t
+    if (scrub) {
+      setScrub(p)
+      if (e.pointerType === 'mouse') video.current!.currentTime = p.t
+    } else if (e.pointerType === 'mouse') {
+      setHover(p)
+    }
+  }
+  const onBarUp = (e: React.PointerEvent) => {
+    if (scrub && e.pointerType !== 'mouse') {
+      const t = timeAt(e.clientX).t
+      video.current!.currentTime = t
+      setTime(t)
+    }
+    setScrub(null)
+    poke()
   }
 
-  const cue = hover ? cueAt(sprites, hover.t) : null
-  const showControls = !playing || !idle || hover !== null
+  const point = scrub ?? hover
+  const cue = point ? cueAt(sprites, point.t) : null
+  const shownTime = scrub ? scrub.t : time
+  const showControls = !playing || !idle || point !== null || menu
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
   const thumbW = 192
 
   return (
     <div
       ref={wrap}
-      onMouseMove={poke}
-      onMouseLeave={() => setIdle(true)}
+      onPointerDown={(e) => (pointerType.current = e.pointerType)}
+      onPointerMove={(e) => e.pointerType === 'mouse' && poke()}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && setIdle(true)}
       className={clsx(
-        'group/player relative overflow-hidden bg-black select-none',
-        fullscreen ? 'size-full' : theater ? 'aspect-video max-h-[calc(100dvh-8rem)] w-full' : 'aspect-video rounded-2xl',
+        'group/player overflow-hidden bg-black select-none [-webkit-touch-callout:none]',
+        // vertical swipes over the video still scroll the page; sideways ones do nothing
+        immersive ? 'touch-none' : 'touch-pan-y',
+        fullscreen
+          ? 'relative size-full'
+          : landscapePhone
+            ? 'fixed inset-0 z-[70] h-dvh w-full'
+            : theater
+              ? 'relative aspect-video max-h-[calc(100dvh-8rem)] w-full'
+              : 'relative aspect-video rounded-2xl',
         !showControls && 'cursor-none',
       )}
     >
@@ -413,11 +532,10 @@ export function Player({
         x-webkit-airplay="allow"
         poster={scene.screenshot}
         muted={muted}
-        onClick={toggle}
-        onDoubleClick={toggleFullscreen}
         onPlay={() => {
           setPlaying(true)
           lastTick.current = performance.now()
+          poke()
         }}
         onPause={() => {
           setPlaying(false)
@@ -444,11 +562,56 @@ export function Player({
           <div className="text-sm text-white/80">Playing on AirPlay</div>
         </div>
       )}
+      <div
+        className="absolute inset-0"
+        onPointerDown={(e) => (tapStart.current = { x: e.clientX, y: e.clientY })}
+        onPointerUp={onSurfaceTap}
+        onClick={() => pointerType.current === 'mouse' && toggle()}
+        onDoubleClick={() => pointerType.current === 'mouse' && toggleFullscreen()}
+      />
+
       {waiting && !casting && <div className="pointer-events-none absolute inset-0 m-auto size-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />}
-      {!playing && !waiting && (
-        <button onClick={toggle} className="absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:scale-105 hover:bg-accent">
-          <Play size={36} className="ml-1 fill-white" />
-        </button>
+      {touch ? (
+        // Touch: back / play-pause / forward in the middle while the controls show.
+        <div
+          className={clsx(
+            'pointer-events-none absolute inset-0 flex items-center justify-center gap-10 transition-opacity duration-300',
+            showControls && !waiting ? 'opacity-100' : 'opacity-0',
+          )}
+        >
+          <Round label={`Back ${TAP_SEEK} seconds`} active={showControls && !waiting} onClick={() => (seekBy(-TAP_SEEK), poke())}>
+            <RotateCcw size={26} />
+          </Round>
+          <Round label={playing ? 'Pause' : 'Play'} big active={showControls && !waiting} onClick={() => (toggle(), poke())}>
+            {playing ? <Pause size={34} className="fill-white" /> : <Play size={34} className="ml-1 fill-white" />}
+          </Round>
+          <Round label={`Forward ${TAP_SEEK} seconds`} active={showControls && !waiting} onClick={() => (seekBy(TAP_SEEK), poke())}>
+            <RotateCw size={26} />
+          </Round>
+        </div>
+      ) : (
+        !playing &&
+        !waiting && (
+          <button onClick={toggle} className="absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:scale-105 hover:bg-accent">
+            <Play size={36} className="ml-1 fill-white" />
+          </button>
+        )
+      )}
+      {resumedAt !== null && (
+        <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/75 py-1 pr-1 pl-3 text-[13px] ring-1 ring-white/10 backdrop-blur">
+          <span className="text-white/80 tabular-nums">Resumed at {fmt(resumedAt)}</span>
+          <button
+            onClick={() => {
+              // from the top, or from the studio's intro skip point when one is set
+              video.current!.currentTime = introSkip && introSkip < dur - 30 ? introSkip : 0
+              setResumedAt(null)
+              poke()
+            }}
+            className="rounded-full bg-white px-3 py-1 font-semibold text-black hover:bg-accent hover:text-white"
+          >
+            Start over
+          </button>
+        </div>
       )}
       {flash && (
         <div className="pointer-events-none absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/60 text-lg font-semibold">
@@ -459,21 +622,30 @@ export function Player({
       <div
         className={clsx(
           'absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pt-16 pb-2 transition-opacity duration-300 sm:px-4',
-          showControls ? 'opacity-100' : 'opacity-0',
+          // hidden controls must not catch taps (a tap meant to show them would seek)
+          showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+          immersive &&
+            'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',
         )}
       >
         {/* seek bar */}
         <div
           ref={bar}
-          className="group/bar relative flex h-5 cursor-pointer items-center"
+          className="group/bar relative flex h-5 cursor-pointer touch-none items-center touch:h-9"
           onPointerDown={onBarDown}
           onPointerMove={onBarMove}
-          onPointerUp={() => (scrubbing.current = false)}
-          onPointerLeave={() => !scrubbing.current && setHover(null)}
+          onPointerUp={onBarUp}
+          onPointerCancel={() => setScrub(null)}
+          onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}
         >
-          <div className="relative h-1 w-full rounded-full bg-white/25 transition-[height] group-hover/bar:h-1.5">
+          <div
+            className={clsx(
+              'relative h-1 w-full rounded-full bg-white/25 transition-[height] group-hover/bar:h-1.5 touch:h-1.5',
+              scrub && 'h-1.5 touch:h-2',
+            )}
+          >
             <div className="absolute inset-y-0 left-0 rounded-full bg-white/35" style={{ width: `${(buffered / (dur || 1)) * 100}%` }} />
-            <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${(time / (dur || 1)) * 100}%` }} />
+            <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${(shownTime / (dur || 1)) * 100}%` }} />
             {scene.markers.map((m) => (
               <div
                 key={m.id}
@@ -481,16 +653,19 @@ export function Player({
                 style={{ left: `${(m.seconds / (dur || 1)) * 100}%` }}
               />
             ))}
-            {hover && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: hover.x }} />}
+            {hover && !scrub && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: hover.x }} />}
             <div
-              className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-accent transition-transform group-hover/bar:scale-100"
-              style={{ left: `${(time / (dur || 1)) * 100}%` }}
+              className={clsx(
+                'absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-accent transition-transform group-hover/bar:scale-100 touch:scale-100',
+                scrub && 'scale-125 touch:scale-125',
+              )}
+              style={{ left: `${(shownTime / (dur || 1)) * 100}%` }}
             />
           </div>
-          {hover && (
+          {point && (
             <div
-              className="pointer-events-none absolute bottom-7 flex flex-col items-center"
-              style={{ left: Math.max(thumbW / 2, Math.min(hover.w - thumbW / 2, hover.x)), transform: 'translateX(-50%)' }}
+              className="pointer-events-none absolute bottom-7 flex flex-col items-center touch:bottom-10"
+              style={{ left: Math.max(thumbW / 2, Math.min(point.w - thumbW / 2, point.x)), transform: 'translateX(-50%)' }}
             >
               {cue && (
                 <div
@@ -506,10 +681,10 @@ export function Player({
                 />
               )}
               {(() => {
-                const near = scene.markers.find((m) => Math.abs(m.seconds - hover.t) < (dur || 1) * 0.01)
+                const near = scene.markers.find((m) => Math.abs(m.seconds - point.t) < (dur || 1) * 0.01)
                 return near ? <span className="mt-1 max-w-48 truncate rounded bg-star px-1.5 py-0.5 text-xs font-semibold text-black">{near.title || 'Marker'}</span> : null
               })()}
-              <span className="mt-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium tabular-nums">{fmt(hover.t)}</span>
+              <span className="mt-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium tabular-nums">{fmt(point.t)}</span>
             </div>
           )}
         </div>
@@ -537,11 +712,11 @@ export function Player({
                 setVolume(Number(e.target.value))
                 setMuted(false)
               }}
-              className="slim w-0 opacity-0 transition-all group-hover/vol:w-20 group-hover/vol:opacity-100"
+              className="slim w-0 opacity-0 transition-all group-hover/vol:w-20 group-hover/vol:opacity-100 touch:hidden"
             />
           </div>
           <span className="ml-1 text-[13px] text-white/90 tabular-nums">
-            {fmt(time)} <span className="text-white/50">/ {fmt(dur)}</span>
+            {fmt(shownTime)} <span className="text-white/50">/ {fmt(dur)}</span>
           </span>
           <span className="ml-auto" />
           {airplay && (
@@ -559,12 +734,47 @@ export function Player({
             </span>
           )}
           <div className="relative">
-            <Ctl onClick={() => setMenu((v) => !v)} label="Settings">
+            <Ctl
+              onClick={() => {
+                setMenuMax((wrap.current?.clientHeight ?? 400) - 64)
+                setMenu((v) => !v)
+              }}
+              label="Settings"
+            >
               <Settings2 size={20} className={menu ? 'rotate-45 transition-transform' : 'transition-transform'} />
             </Ctl>
             {menu && (
-              <div className="absolute right-0 bottom-11 w-60 overflow-hidden rounded-xl bg-black/90 py-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur">
-                <div className="px-3 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">Quality</div>
+              <div
+                style={{ maxHeight: menuMax }}
+                className="absolute right-0 bottom-11 w-60 overflow-y-auto overscroll-contain rounded-xl bg-black/90 py-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur"
+              >
+                <button
+                  onClick={() => {
+                    addMarker({ seconds: Math.round(time * 10) / 10, title: '' })
+                    setMenu(false)
+                    setFlash('Marked')
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+                >
+                  <Bookmark size={15} /> Mark this moment ({fmt(time)})
+                </button>
+                {/* speed lives here on narrow screens, where the bar has no room for it */}
+                <div className="flex items-center gap-1 px-3 py-1.5 sm:hidden">
+                  <span className="mr-auto text-[11px] font-semibold tracking-wider text-white/50 uppercase">Speed</span>
+                  {RATES.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setRate(r)
+                        video.current!.playbackRate = r
+                      }}
+                      className={clsx('rounded px-1.5 py-1 text-xs tabular-nums', rate === r ? 'bg-white text-black' : 'hover:bg-white/10')}
+                    >
+                      {r}×
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-white/10 px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">Quality</div>
                 {QUALITIES.map(([q, label]) => (
                   <button key={q} onClick={() => setQuality(q)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/10">
                     <span className="w-4">{quality === q && <Check size={15} />}</span>
@@ -612,7 +822,7 @@ export function Player({
               setRate(r)
               video.current!.playbackRate = r
             }}
-            className="rounded px-2 py-1 text-[13px] font-semibold text-white/90 hover:bg-white/10"
+            className="hidden rounded px-2 py-1 text-[13px] font-semibold text-white/90 hover:bg-white/10 sm:block"
             title="Speed (< >)"
           >
             {rate}×
@@ -631,6 +841,11 @@ export function Player({
   )
 }
 
+type FsDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void }
+type FsElement = HTMLElement & { webkitRequestFullscreen?: () => void }
+type IosVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
+type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Promise<void>; unlock?: () => void }
+
 type AirPlayVideo = HTMLVideoElement & {
   webkitShowPlaybackTargetPicker?: () => void
   webkitCurrentPlaybackTargetIsWireless?: boolean
@@ -646,6 +861,23 @@ function spriteSize(cues: SpriteCue[], scale: number) {
     h = Math.max(h, c.y + c.h)
   }
   return { backgroundSize: `${w * scale}px ${h * scale}px` }
+}
+
+// The touch buttons in the middle of the picture; `active` while they are visible.
+function Round({ children, onClick, label, big, active }: { children: React.ReactNode; onClick: () => void; label: string; big?: boolean; active: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={clsx(
+        'flex items-center justify-center rounded-full bg-black/50 backdrop-blur active:scale-95',
+        big ? 'size-18' : 'size-12',
+        active && 'pointer-events-auto',
+      )}
+    >
+      {children}
+    </button>
+  )
 }
 
 function Ctl({ children, onClick, label, className }: { children: React.ReactNode; onClick: () => void; label: string; className?: string }) {

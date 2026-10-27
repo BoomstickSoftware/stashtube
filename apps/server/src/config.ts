@@ -35,8 +35,10 @@ export const config = {
     dir: process.env.CACHE_DIR || `${process.cwd()}/.cache`,
     assetMaxBytes: num('ASSET_CACHE_MAX_MB', 5120) * 1024 * 1024,
     assetTtl: num('ASSET_CACHE_TTL_HOURS', 168) * 3_600_000,
-    // Query results. Change detection clears them sooner when Stash data changes.
-    dataTtl: num('DATA_CACHE_TTL_MINUTES', 30) * 60_000,
+    // Query results: fresh for the TTL, then served at once while they refresh, for up to
+    // the stale window. Change detection marks them stale sooner when Stash data changes.
+    dataTtl: num('DATA_CACHE_TTL_MINUTES', 360) * 60_000,
+    dataStaleFor: num('DATA_CACHE_STALE_HOURS', 168) * 3_600_000,
     dataMaxEntries: num('DATA_CACHE_MAX_ENTRIES', 5000),
     // How often to check Stash for changes while flix is in use; 0 disables.
     pollInterval: num('CHANGE_POLL_SECONDS', 60) * 1000,

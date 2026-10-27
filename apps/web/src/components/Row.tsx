@@ -16,7 +16,7 @@ export function Row({ title, browse, items, actions }: { title: ReactNode; brows
       <div className="mb-3 flex items-baseline gap-3">
         <h2 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h2>
         {browse && (
-          <Link to="/browse" search={browse} className="text-sm text-muted opacity-0 transition-opacity group-hover/row:opacity-100 hover:text-accent">
+          <Link to="/browse" search={browse} className="text-sm text-muted transition-opacity hover:text-accent [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100">
             See all
           </Link>
         )}

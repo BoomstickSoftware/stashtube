@@ -27,6 +27,7 @@ import type {
 } from '@flix/shared'
 import {
   keepPreviousData,
+  type Query,
   QueryClient,
   useInfiniteQuery,
   useMutation,
@@ -42,11 +43,14 @@ export class ApiError extends Error {
   }
 }
 
+const TIMEOUT = 45_000 // ms; a request that never answers is retried instead of spinning forever
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT),
   })
   if (res.status === 401 && !path.startsWith('/auth')) {
     window.dispatchEvent(new Event('flix:login-required'))
@@ -81,6 +85,14 @@ export const queryClient = new QueryClient({
     },
   },
 })
+
+// Queries kept in localStorage between visits (see main.tsx): small, and what the first
+// screen needs. They must outlive the default 5-minute gcTime, or leaving the page for a
+// while would drop them from storage too.
+const PERSISTED = ['home', 'settings', 'favorite-scenes', 'playlists', 'blocklist']
+export const PERSIST_MAX_AGE = 7 * 24 * 3_600_000
+for (const key of PERSISTED) queryClient.setQueryDefaults([key], { gcTime: PERSIST_MAX_AGE })
+export const persistQuery = (q: Query) => q.state.status === 'success' && PERSISTED.includes(q.queryKey[0] as string)
 
 // --- reads ----------------------------------------------------------------------
 

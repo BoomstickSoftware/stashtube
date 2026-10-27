@@ -12,7 +12,7 @@ type Hit =
   | { kind: 'tag'; id: string; label: string; sub: string; image: null }
   | { kind: 'query'; id: string; label: string; sub: string; image: null }
 
-export function SearchBox({ className, onDone }: { className?: string; onDone?: () => void }) {
+export function SearchBox({ className, onDone, autoFocus }: { className?: string; onDone?: () => void; autoFocus?: boolean }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -68,6 +68,8 @@ export function SearchBox({ className, onDone }: { className?: string; onDone?: 
         <Search size={17} className="shrink-0 text-muted" />
         <input
           ref={input}
+          autoFocus={autoFocus}
+          enterKeyHint="search"
           value={q}
           onChange={(e) => {
             setQ(e.target.value)

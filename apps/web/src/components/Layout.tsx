@@ -41,7 +41,9 @@ export function Layout(): JSX.Element {
   if (session.data?.required && !session.data.authenticated) return <Login onDone={() => session.refetch()} />
 
   return (
-    <div className="min-h-dvh pb-20 md:pb-0">
+    // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
+    // hidden, keeps the sticky header working)
+    <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className="sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
           <Link to="/" className="flex shrink-0 items-center gap-1.5 text-xl font-black tracking-tight">
@@ -78,7 +80,7 @@ export function Layout(): JSX.Element {
         </div>
         {mobileSearch && (
           <div className="border-b border-white/5 bg-bg px-4 py-2 sm:hidden">
-            <SearchBox onDone={() => setMobileSearch(false)} />
+            <SearchBox autoFocus onDone={() => setMobileSearch(false)} />
           </div>
         )}
       </header>

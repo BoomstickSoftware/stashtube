@@ -3,8 +3,12 @@
 // - TTL per entry; after it, the entry is stale: served at once while one background refresh
 //   runs (stale-while-revalidate), until `staleFor` runs out too.
 // - Concurrent callers of the same key share one upstream request.
-// - Entries carry tags so a write can drop everything it affects.
+// - Entries carry tags so a write can drop everything it affects, or only mark it stale.
 // - LRU: Map insertion order, re-inserted on every hit.
+// - save()/load() keep entries across restarts, so a new process does not start cold.
+
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
 
 interface Entry<T> {
   value: T
@@ -27,6 +31,7 @@ export class MemoryCache {
   private entries = new Map<string, Entry<unknown>>()
   private inflight = new Map<string, Promise<unknown>>()
   private generation = 0 // bumped on clear/invalidate so in-flight results from before are not stored
+  private dirty = false // changed since the last save
   private s = { hits: 0, staleHits: 0, misses: 0, coalesced: 0, evictions: 0, invalidations: 0 }
   private maxEntries: number
   private staleFor: number
@@ -75,6 +80,7 @@ export class MemoryCache {
     const now = Date.now()
     this.entries.delete(key)
     this.entries.set(key, { value, fresh: now + ttl, stale: now + ttl + this.staleFor, tags })
+    this.dirty = true
     while (this.entries.size > this.maxEntries) {
       this.entries.delete(this.entries.keys().next().value!)
       this.s.evictions++
@@ -90,12 +96,51 @@ export class MemoryCache {
         this.s.invalidations++
       }
     }
+    this.dirty = true
+  }
+
+  // Mark entries carrying any of these tags (no tags: every entry) stale without dropping
+  // them: the next read is answered at once and refreshed in the background.
+  expire(...tags: string[]) {
+    this.generation++
+    for (const e of this.entries.values()) {
+      if (!tags.length || e.tags.some((t) => tags.includes(t))) e.fresh = 0
+    }
+    this.dirty = true
   }
 
   clear() {
     this.generation++
     this.s.invalidations += this.entries.size
     this.entries.clear()
+    this.dirty = true
+  }
+
+  // Write all live entries to `file` (atomically) if anything changed since the last save.
+  async save(file: string) {
+    if (!this.dirty) return
+    this.dirty = false
+    const now = Date.now()
+    const live = [...this.entries].filter(([, e]) => e.stale > now)
+    await mkdir(dirname(file), { recursive: true })
+    await writeFile(`${file}.tmp`, JSON.stringify(live))
+    await rename(`${file}.tmp`, file)
+  }
+
+  // Restore entries saved by save(); expired ones are skipped. A missing or unreadable file
+  // just means a cold start.
+  async load(file: string): Promise<number> {
+    let saved: [string, Entry<unknown>][]
+    try {
+      saved = JSON.parse(await readFile(file, 'utf8'))
+    } catch {
+      return 0
+    }
+    const now = Date.now()
+    for (const [k, e] of saved) {
+      if (e.stale > now && !this.entries.has(k)) this.entries.set(k, e)
+    }
+    return this.entries.size
   }
 
   stats(): MemoryStats {

@@ -30,11 +30,19 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
       const top = below + 360 > window.innerHeight ? Math.max(8, r.top - 368) : below
       setPos({ top, left })
     }
+    // Follow the anchor while the page scrolls (on a phone, focusing the name field scrolls
+    // it); close once the anchor has left the screen. Scrolling inside the menu is ignored.
+    const onScroll = (e: Event) => {
+      if (menu.current?.contains(e.target as Node)) return
+      const r = anchor.current!.getBoundingClientRect()
+      if (r.bottom < 0 || r.top > window.innerHeight) close()
+      else place()
+    }
     place()
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', place)
     return () => {
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', place)
     }
   }, [open])

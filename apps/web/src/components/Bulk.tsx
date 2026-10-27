@@ -22,7 +22,7 @@ export function BulkBar({ ids, onClear }: { ids: string[]; onClear: () => void }
   }
   if (!ids.length) return null
   return (
-    <div className="fixed inset-x-0 bottom-16 z-50 flex justify-center px-4 md:bottom-6">
+    <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-6">
       <div className="flex items-center gap-1 rounded-full bg-surface py-1.5 pr-1.5 pl-5 shadow-2xl ring-1 ring-line">
         <span className="mr-2 text-sm font-semibold tabular-nums">{done ?? `${ids.length} selected`}</span>
         <button

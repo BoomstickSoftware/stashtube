@@ -85,7 +85,7 @@ function SceneView({ id }: { id: string }) {
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="w-80 max-w-[90%] text-center">
             <div className="text-sm text-muted">Up next in {countdown}</div>
-            <img src={next.screenshot} alt="" className="mt-3 aspect-video w-full rounded-xl object-cover" />
+            <img src={next.screenshot} alt="" className="mt-3 hidden aspect-video w-full rounded-xl object-cover sm:block" />
             <div className="mt-3 line-clamp-2 font-semibold">{next.title}</div>
             <div className="mt-4 flex justify-center gap-2">
               <button onClick={() => setCountdown(null)} className="rounded-full bg-raised px-5 py-2 text-sm hover:bg-line">

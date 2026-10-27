@@ -6,13 +6,13 @@ import { logger } from 'hono/logger'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { admin } from './admin.ts'
-import { api } from './api.ts'
+import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { config } from './config.ts'
 import { migrateDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
-import { noteActivity, startChangeDetection, stashVersion, StashError } from './stash.ts'
+import { dataCache, noteActivity, onStashChange, startChangeDetection, stashVersion, StashError } from './stash.ts'
 
 const app = new Hono()
 
@@ -79,6 +79,24 @@ if (config.webDist) {
 }
 
 await migrateDb()
+
+// Query results survive restarts (deploys, and every edit under `node --watch`): restored
+// here, saved every few minutes and on shutdown. Then the home feed is warmed in the
+// background, and again whenever Stash changes, so nobody waits for a cold build.
+const dataFile = join(config.cache.dir, 'data.json')
+const restored = await dataCache.load(dataFile)
+if (restored) console.log(`restored ${restored} cached queries`)
+const saveData = () => dataCache.save(dataFile).catch((e) => console.error('saving query cache:', e.message))
+setInterval(saveData, 2 * 60_000).unref()
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    void saveData().finally(() => process.exit(0))
+  })
+}
+const warm = () => void homeRows().catch((e) => console.error('warming home:', e.message))
+warm()
+onStashChange(warm)
+
 startChangeDetection()
 setInterval(() => assetCache.flushAccessTimes(), 10 * 60_000).unref()
 serve({ fetch: app.fetch, port: config.port }, (info) => console.log(`flix listening on :${info.port}`))

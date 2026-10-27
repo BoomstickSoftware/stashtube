@@ -51,6 +51,26 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    - Scene page: inline title and tag editing; Identify on StashDB for one scene.
    - Panic key (double Esc).
    - Login rate limiting, and secure cookies behind HTTPS.
+2d. **Mobile and speed round (done 2026-10-27)**, from use on an iPhone 17 Pro Max:
+   - Speed:
+     - Plays and progress saves no longer empty the query cache.
+     - The query cache survives restarts, and the home feed is warmed at boot and after
+       Stash changes.
+     - The browser keeps the home feed, settings and playlists for an instant cold open.
+     - Request timeouts on both sides.
+   - Player on touch:
+     - Tap toggles the controls; double tap seeks; centre −10 / play / +10.
+     - The seek bar seeks on release and takes no taps while hidden. No sideways panning.
+     - iPhone fullscreen via the native video; Android locks to landscape; turning a phone
+       sideways fills the screen.
+     - Speed and Mark in the settings menu.
+   - Resume: "Resumed at … · Start over" pill.
+   - Page:
+     - No iOS zoom on inputs.
+     - Safe-area padding for landscape and the tab bar.
+     - The page cannot pan sideways.
+     - Hover-only controls are visible on touch.
+     - The playlist menu survives the keyboard opening.
 3. **Deploy to k8s** (next):
    - Image: build in Forgejo CI and push to the cluster registry.
    - `infra/flix/` in `~/code/k8s`: namespace, CNPG cluster (1 instance, local-path), Deployment
@@ -63,7 +83,6 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
 5. **Backlog** (brainstormed 2026-10-26, not picked yet):
    - Scrub sprite frames on card hover.
    - Mini-player while browsing.
-   - Mobile gestures (double-tap seek).
    - "Not interested" on a single video.
    - Blur mode for thumbnails.
    - Private session (no history).
