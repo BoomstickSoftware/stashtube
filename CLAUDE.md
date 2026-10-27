@@ -50,6 +50,9 @@ packages/shared API contract types shared by both (types only at runtime on the 
    and `[@media(hover:hover)]:` for anything that may hide until hover. Never rely on hover
    to reveal a control. Inputs stay at 16px or larger on touch screens, or iOS zooms the page.
    Gestures that must not pan the page get `touch-action` (`touch-none`, `touch-pan-y`).
+   Scene card previews follow the tube-site convention: on a touch screen a slight drag (10 px) on a
+   thumbnail starts the preview and swallows the click that ends the drag; a tap still opens the video.
+   One card previews at a time, and a preview stops once its card is mostly scrolled away (`SceneCard.tsx`).
 
 ## Run locally
 
@@ -68,6 +71,7 @@ progress are blocked so Stash records nothing):
   horizontal overflow per page and saves screenshots (`W=932 H=430` for landscape, `DESKTOP=1`).
 - `node scripts/touch-check.mjs /tmp/t http://localhost:5173 /scene/<id>` drives the player with
   touch events (tap, seek-bar drag, double tap, sideways swipe) and prints its state.
+- `node scripts/card-check.mjs /tmp/c http://localhost:5173 /browse` checks the drag-to-preview on scene cards.
 
 After changing a dependency's version while `pnpm dev` runs, Vite's pre-bundled deps can hold
 two copies of a package. React Query is deduped in `vite.config.ts` because of this ("No

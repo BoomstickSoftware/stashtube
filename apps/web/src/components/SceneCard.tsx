@@ -2,11 +2,16 @@ import type { SceneCard as Scene } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Check, Star } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
 import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
 
 const HOVER_DELAY = 350
+// Touch screens have no hover: a slight drag on the thumbnail starts the preview instead, so a tap still opens the video.
+const DRAG_START_PX = 10
+
+// Only one card previews at a time; starting another stops the current one.
+let stopActive: (() => void) | undefined
 
 export function SceneCard({
   scene,
@@ -24,20 +29,44 @@ export function SceneCard({
   const [hovering, setHovering] = useState(false)
   const [previewReady, setPreviewReady] = useState(false)
   const timer = useRef<number>(undefined)
+  const touchStart = useRef<{ x: number; y: number }>(undefined)
+  const dragged = useRef(false) // this touch started a preview, so the click it ends with must not open the video
+  const root = useRef<HTMLDivElement>(null)
   const res = resolution(scene.height)
   const progress = scene.resumeTime && scene.durationSec ? Math.min(1, scene.resumeTime / scene.durationSec) : 0
 
-  const enter = () => {
-    timer.current = window.setTimeout(() => setHovering(true), HOVER_DELAY)
-  }
-  const leave = () => {
+  // Stable across renders, so it can identify this card in `stopActive`.
+  const leave = useCallback(function stop() {
     clearTimeout(timer.current)
     setHovering(false)
     setPreviewReady(false)
+    if (stopActive === stop) stopActive = undefined
+  }, [])
+  const start = () => {
+    if (stopActive && stopActive !== leave) stopActive()
+    stopActive = leave
+    setHovering(true)
   }
+  const enter = () => {
+    timer.current = window.setTimeout(start, HOVER_DELAY)
+  }
+
+  // Stop a preview once its card has mostly scrolled out of view.
+  useEffect(() => {
+    const el = root.current
+    if (!hovering || !el) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry && entry.intersectionRatio < 0.5) leave()
+    }, { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hovering, leave])
+
+  useEffect(() => leave, [leave])
 
   return (
     <div
+      ref={root}
       className={clsx('group min-w-0', className)}
       onMouseEnter={enter}
       onMouseLeave={leave}
@@ -59,6 +88,24 @@ export function SceneCard({
           'relative block aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5',
           select?.selected && 'ring-4 !ring-accent',
         )}
+        onTouchStart={(e) => {
+          const t = e.touches[0]
+          dragged.current = false
+          touchStart.current = t && e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : undefined
+        }}
+        onTouchMove={(e) => {
+          const from = touchStart.current
+          const t = e.touches[0]
+          if (!from || !t || hovering) return
+          if (Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX) {
+            touchStart.current = undefined
+            dragged.current = true
+            start()
+          }
+        }}
+        onClick={(e) => {
+          if (dragged.current) e.preventDefault()
+        }}
       >
         {select && (
           <span
