@@ -181,8 +181,10 @@ export const useBlocklist = () => useQuery({ queryKey: ['blocklist'], queryFn: (
 function patchScene(qc: QueryClient, id: string, patch: Partial<SceneCard>) {
   const fix = (s: SceneCard) => (s.id === id ? { ...s, ...patch } : s)
   qc.setQueryData<SceneDetail>(['scene', id], (d) => d && { ...d, ...patch })
+  // ['scenes', …] also holds the continue count, history and stats (so they refresh with
+  // the lists); only the paged lists are patched.
   qc.setQueriesData<{ pages: Page<SceneCard>[] }>({ queryKey: ['scenes'] }, (d) =>
-    d && { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map(fix) })) },
+    d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map(fix) })) } : d,
   )
   qc.setQueryData<HomeRow[]>(['home'], (d) => d?.map((r) => ({ ...r, items: r.items.map(fix) })))
 }
@@ -216,7 +218,7 @@ export function useFavoritePerformer() {
       qc.setQueryData<PerformerDetail>(['performer', id], (d) => d && { ...d, favorite })
       // flip the heart in performer grids at once, without a refetch
       qc.setQueriesData<{ pages: Page<PerformerCard>[] }>({ queryKey: ['performers'] }, (d) =>
-        d && { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map((x) => (x.id === id ? { ...x, favorite } : x)) })) },
+        d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map((x) => (x.id === id ? { ...x, favorite } : x)) })) } : d,
       )
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['home'] }),
