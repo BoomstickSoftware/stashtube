@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { config } from './config.ts'
 import { assetCache } from './media.ts'
 import { dataCache, upstream } from './stash.ts'
+import { startWarm, warmStatus } from './warm.ts'
 
 export const admin = new Hono()
 
@@ -15,6 +16,7 @@ admin.get('/cache', (c) =>
     assets: { ...assetCache.stats(), ttlHours: config.cache.assetTtl / 3_600_000 },
     upstream: { ...upstream },
     changePollSeconds: config.cache.pollInterval / 1000,
+    warm: warmStatus(),
   } satisfies CacheStats),
 )
 
@@ -25,4 +27,10 @@ admin.post('/cache/clear', async (c) => {
   if (scope !== 'data') await assetCache.clear()
   console.log(`cache cleared: ${scope}`)
   return c.body(null, 204)
+})
+
+// Pre-fetch all artwork now (the same job that runs nightly).
+admin.post('/cache/warm', (c) => {
+  startWarm()
+  return c.json(warmStatus(), 202)
 })

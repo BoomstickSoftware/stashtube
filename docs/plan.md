@@ -40,7 +40,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      - Transparent studio tiles.
    - Home:
      - Continue moved to its own nav item, with History and Stats tabs.
-     - Random hero.
+     - Hero carousel: shuffled per visit, advances every 12 s, arrows and swipe.
      - Saved filters pinned as home rows (rename, reorder, unpin).
      - "For you" and "More with…" rows from watch, rating and O affinity, tags weighted by rarity.
    - Browse: category tiles, and multi-select with bulk Favorite and Add to playlist.
@@ -58,11 +58,12 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
        Stash changes.
      - The browser keeps the home feed, settings and playlists for an instant cold open.
      - Request timeouts on both sides.
+     - All artwork pre-fetched nightly (06:00 UTC) and from a Settings button.
    - Player on touch:
      - Tap toggles the controls; double tap seeks; centre −10 / play / +10.
      - The seek bar seeks on release and takes no taps while hidden. No sideways panning.
      - iPhone fullscreen via the native video; Android locks to landscape; turning a phone
-       sideways fills the screen.
+       sideways fills the screen, and a swipe up there hides Safari's address bar.
      - Speed and Mark in the settings menu.
    - Resume: "Resumed at … · Start over" pill.
    - Page:

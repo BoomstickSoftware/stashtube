@@ -133,6 +133,24 @@ export class AssetCache {
     return serveFile(f.bin, st.size, req, headers)
   }
 
+  // Make sure a path is cached and fresh, without serving it (the nightly warm). Returns
+  // the cached file, or null when Stash has nothing there.
+  async warm(path: string): Promise<{ file: string; fetched: boolean } | null> {
+    await this.ready
+    const k = createHash('sha256').update(path).digest('hex')
+    const miss = this.missing.get(k)
+    if (miss && miss > Date.now()) return null
+    let meta = await this.readMeta(k)
+    let fetched = false
+    if (!meta || !(VERSIONED.test(path) || Date.now() - meta.fetchedAt < this.ttl)) {
+      if (!meta) this.s.misses++
+      meta = await this.refresh(k, path, meta)
+      if (!meta) return null
+      fetched = true
+    }
+    return { file: this.files(k).bin, fetched }
+  }
+
   // One upstream request per key at a time.
   private refresh(k: string, path: string, old: Meta | null): Promise<Meta | null> {
     let p = this.inflight.get(k)

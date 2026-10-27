@@ -240,6 +240,19 @@ export interface CacheStats {
   // Requests flix actually sent to Stash
   upstream: { queries: number; mutations: number; assets: number; streams: number; changeChecks: number }
   changePollSeconds: number
+  warm: WarmStatus
+}
+
+// The artwork pre-fetch (nightly, or from Settings)
+export interface WarmStatus {
+  running: boolean
+  total: number
+  done: number
+  fetched: number // not cached or out of date, so fetched from Stash
+  failed: number
+  startedAt: string | null
+  finishedAt: string | null
+  nextRun: string | null
 }
 
 export type CacheScope = 'data' | 'assets' | 'all'

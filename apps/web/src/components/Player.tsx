@@ -329,14 +329,19 @@ export function Player({
     }
   }, [])
 
-  // While the sideways phone view covers the page, the page behind must not scroll.
+  // Sideways on a phone the player covers the viewport, but the page behind it stays
+  // scrollable: Safari only tucks its address bar away when the page scrolls, so a swipe up
+  // over the video gives the picture the whole screen. Until then a hint says so.
+  const [barShown, setBarShown] = useState(false)
   useEffect(() => {
     if (!landscapePhone) return
-    const root = document.documentElement
-    const prev = root.style.overflow
-    root.style.overflow = 'hidden'
+    const check = () => setBarShown(innerHeight < Math.min(screen.width, screen.height) - 24)
+    check()
+    addEventListener('resize', check)
+    visualViewport?.addEventListener('resize', check)
     return () => {
-      root.style.overflow = prev
+      removeEventListener('resize', check)
+      visualViewport?.removeEventListener('resize', check)
     }
   }, [landscapePhone])
 
@@ -449,12 +454,6 @@ export function Player({
     tapStart.current = null
     // a swipe that ends on the picture is not a tap
     if (e.pointerType === 'mouse' || !start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) return
-    // Turned sideways but not fullscreen: the browser's address bar still takes space, and
-    // a page may only go fullscreen from a tap, so the first tap does that.
-    if (landscapePhone && !fullscreen) {
-      toggleFullscreen()
-      return
-    }
     const r = e.currentTarget.getBoundingClientRect()
     const zone = e.clientX < r.left + r.width / 3 ? -1 : e.clientX > r.right - r.width / 3 ? 1 : 0
     const now = performance.now()
@@ -519,8 +518,9 @@ export function Player({
       onPointerLeave={(e) => e.pointerType === 'mouse' && setIdle(true)}
       className={clsx(
         'group/player overflow-hidden bg-black select-none [-webkit-touch-callout:none]',
-        // vertical swipes over the video still scroll the page; sideways ones do nothing
-        immersive ? 'touch-none' : 'touch-pan-y',
+        // vertical swipes over the video still scroll the page (sideways, that is what hides
+        // Safari's address bar); sideways ones do nothing
+        fullscreen ? 'touch-none' : 'touch-pan-y',
         fullscreen
           ? 'relative size-full'
           : landscapePhone
@@ -603,9 +603,9 @@ export function Player({
           </button>
         )
       )}
-      {landscapePhone && !fullscreen && (
-        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] text-white/80 ring-1 ring-white/10 backdrop-blur">
-          Tap for full screen
+      {landscapePhone && !fullscreen && barShown && showControls && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
+          Swipe up for the full screen
         </div>
       )}
       {resumedAt !== null && (

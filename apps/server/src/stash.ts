@@ -842,3 +842,22 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
     return { id: t.id, name: t.name, sceneCount: t.sceneCount, image: pick ? mediaUrl(pick.paths.screenshot) : null }
   })
 }
+
+// --- artwork ----------------------------------------------------------------------------
+
+// Every generated image and clip the app shows, as /media/stash URLs (the nightly warm).
+export async function allArtwork(): Promise<string[]> {
+  const all = '{ per_page: -1 }'
+  const r = await gql<Raw>(`{
+    findScenes(filter: ${all}) { scenes { paths { screenshot preview vtt } } }
+    findPerformers(filter: ${all}) { performers { image_path } }
+    findStudios(filter: ${all}) { studios { image_path } }
+  }`)
+  return [
+    ...r.findScenes.scenes.flatMap((s: Raw) => [s.paths.screenshot, s.paths.preview, s.paths.vtt]),
+    ...r.findPerformers.performers.map((p: Raw) => p.image_path),
+    ...r.findStudios.studios.map((s: Raw) => s.image_path),
+  ]
+    .map(mediaUrl)
+    .filter((u): u is string => !!u)
+}

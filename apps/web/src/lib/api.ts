@@ -351,6 +351,15 @@ export function useClearCache() {
   })
 }
 
+// Pre-fetch every image and preview into the server's cache (also runs nightly).
+export function useWarmCache() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => send('POST', '/admin/cache/warm'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cache-stats'] }),
+  })
+}
+
 export const authApi = {
   session: () => get<{ required: boolean; authenticated: boolean }>('/auth/session'),
   login: (password: string) => send('POST', '/auth/login', { password }),

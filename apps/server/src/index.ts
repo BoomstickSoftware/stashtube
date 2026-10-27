@@ -12,6 +12,7 @@ import { config } from './config.ts'
 import { migrateDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
+import { scheduleWarm } from './warm.ts'
 import { dataCache, noteActivity, onStashChange, startChangeDetection, stashVersion, StashError } from './stash.ts'
 
 const app = new Hono()
@@ -98,5 +99,6 @@ warm()
 onStashChange(warm)
 
 startChangeDetection()
+scheduleWarm()
 setInterval(() => assetCache.flushAccessTimes(), 10 * 60_000).unref()
 serve({ fetch: app.fetch, port: config.port }, (info) => console.log(`flix listening on :${info.port}`))

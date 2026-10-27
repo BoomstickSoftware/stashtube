@@ -1,7 +1,7 @@
 import type { CacheScope } from '@flix/shared'
-import { Database, HardDrive, RefreshCw, Server } from 'lucide-react'
+import { Database, Flame, HardDrive, RefreshCw, Server } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useCacheStats, useClearCache } from '../lib/api'
+import { useCacheStats, useClearCache, useWarmCache } from '../lib/api'
 import { ago, bytes } from '../lib/format'
 import { Button, Spinner } from './ui'
 
@@ -10,6 +10,7 @@ const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : 'â€
 export function CachePanel() {
   const { data: s, error } = useCacheStats()
   const clear = useClearCache()
+  const warm = useWarmCache()
   const run = (scope: CacheScope, what: string) => {
     if (window.confirm(`Clear ${what}? The next views fetch from Stash again.`)) clear.mutate(scope)
   }
@@ -49,6 +50,18 @@ export function CachePanel() {
           </Row>
           <Row k="Fetched">{(s.assets.misses + s.assets.refetched).toLocaleString()}</Row>
           {s.assets.staleServed > 0 && <Row k="Stale (Stash down)">{s.assets.staleServed}</Row>}
+          <Row k="Pre-fetch">
+            {s.warm.running
+              ? `${s.warm.done.toLocaleString()} of ${s.warm.total.toLocaleString()}`
+              : s.warm.finishedAt
+                ? `done ${ago(s.warm.finishedAt)}`
+                : 'not run yet'}
+          </Row>
+          {s.warm.nextRun && !s.warm.running && (
+            <Row k="Next pre-fetch">
+              {new Date(s.warm.nextRun).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            </Row>
+          )}
         </Card>
         <Card icon={<Server size={16} />} title="Sent to Stash" sub="since restart">
           <Row k="Queries">{s.upstream.queries.toLocaleString()}</Row>
@@ -62,6 +75,14 @@ export function CachePanel() {
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => run('data', 'cached query results')} disabled={clear.isPending}>
           <RefreshCw size={15} /> Refresh data
+        </Button>
+        <Button
+          onClick={() => warm.mutate()}
+          disabled={warm.isPending || s.warm.running}
+          title="Fetch every screenshot, preview, scrubber sprite and portrait into the cache now; anything already fresh is skipped"
+        >
+          {s.warm.running ? <Spinner className="size-3.5 border" /> : <Flame size={15} />}
+          {s.warm.running ? `Warming ${pct(s.warm.done, s.warm.total)}` : 'Warm images & previews'}
         </Button>
         <Button onClick={() => run('assets', 'all cached images and previews')} disabled={clear.isPending}>
           <HardDrive size={15} /> Clear images & previews

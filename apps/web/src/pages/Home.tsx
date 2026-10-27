@@ -2,8 +2,8 @@ import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { HomeRow, SceneCard } from '@flix/shared'
 import clsx from 'clsx'
-import { ArrowDown, ArrowUp, Pencil, Play, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Play, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
@@ -12,14 +12,20 @@ import { duration } from '../lib/format'
 
 export function Home(): JSX.Element {
   const { data, error, isLoading } = useHome()
-  // Hero: a random video from everything on the page, new on each visit (no extra request).
-  // The pick holds while the feed refreshes in the background (it paints from the cache
-  // first), as long as the video is still on the page.
-  const all = useMemo(() => [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()], [data])
+  // Hero: a carousel over everything on the page, in a shuffled order that is new on each
+  // visit (no extra request). It moves on by itself, by arrow, or by a swipe, and wraps
+  // around. The current pick holds while the feed refreshes in the background, as long as
+  // the video is still on the page.
   const [seed] = useState(Math.random)
+  const order = useMemo(() => {
+    const unique = [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()]
+    const rank = (id: string) => Math.sin(Number(id) * 12.9898 + seed * 78.233) // seeded shuffle
+    return unique.sort((a, b) => rank(a.id) - rank(b.id))
+  }, [data, seed])
   const [heroId, setHeroId] = useState<string>()
-  const hero = all.find((s) => s.id === heroId)
-  if (all.length && !hero) setHeroId(all[Math.floor(seed * all.length)].id)
+  const at = Math.max(0, order.findIndex((s) => s.id === heroId))
+  const hero = order[at]
+  const step = useCallback((d: number) => setHeroId(order[(at + d + order.length) % order.length]?.id), [order, at])
   if (error) return <ErrorBox error={error} />
   if (isLoading)
     return (
@@ -33,34 +39,7 @@ export function Home(): JSX.Element {
 
   return (
     <div className="space-y-10">
-      {hero && (
-        <section className="relative -mx-4 -mt-6 overflow-hidden sm:-mx-6">
-          <img src={hero.screenshot} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
-          <div className="relative mx-auto grid max-w-[1920px] items-center gap-6 px-4 py-8 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-12">
-            <HeroMedia scene={hero} />
-            <div>
-              <div className="text-xs font-bold tracking-widest text-accent uppercase">
-                Tonight’s pick
-              </div>
-              <h1 className="mt-2 text-2xl leading-tight font-black tracking-tight sm:text-4xl">{hero.title}</h1>
-              <div className="mt-3 text-sm text-white/70">
-                {[hero.studio?.name, hero.performers.map((p) => p.name).slice(0, 3).join(', '), duration(hero.durationSec)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </div>
-              <Link
-                to="/scene/$id"
-                params={{ id: hero.id }}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-black transition hover:bg-accent hover:text-white"
-              >
-                <Play size={18} className="fill-current" />
-                {hero.resumeTime > 0 ? `Resume from ${duration(hero.resumeTime)}` : 'Play'}
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+      {hero && <Hero scene={hero} count={order.length} onStep={step} />}
       {data.map((r) =>
         r.savedId ? (
           <PinnedRow key={r.key} row={r} order={data.filter((x) => x.savedId).map((x) => x.savedId!)} />
@@ -69,6 +48,84 @@ export function Home(): JSX.Element {
         ),
       )}
     </div>
+  )
+}
+
+const HERO_EVERY = 12_000 // ms a pick stays up before the next one
+
+// The hero carousel: arrows, a sideways swipe, or the timer move it. The timer waits while
+// the pointer is over it, a preview is playing, or the tab is in the background.
+function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onStep: (d: number) => void }) {
+  const [hovering, setHovering] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const paused = hovering || previewing || count < 2
+  useEffect(() => {
+    if (paused) return
+    const t = setTimeout(() => document.visibilityState === 'visible' && onStep(1), HERO_EVERY)
+    return () => clearTimeout(t)
+  }, [paused, scene.id, onStep])
+  const swipe = useRef<{ x: number; y: number } | null>(null)
+  const arrow =
+    'absolute top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white ring-1 ring-white/10 backdrop-blur transition hover:bg-accent [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/hero:opacity-100'
+  return (
+    <section
+      className="group/hero relative -mx-4 -mt-6 touch-pan-y overflow-hidden sm:-mx-6"
+      onPointerEnter={(e) => e.pointerType === 'mouse' && setHovering(true)}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && setHovering(false)}
+      onPointerDown={(e) => e.pointerType !== 'mouse' && (swipe.current = { x: e.clientX, y: e.clientY })}
+      onPointerUp={(e) => {
+        const s = swipe.current
+        swipe.current = null
+        if (!s) return
+        const dx = e.clientX - s.x
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - s.y) * 1.5) onStep(dx < 0 ? 1 : -1)
+      }}
+      onPointerCancel={() => (swipe.current = null)}
+    >
+      <div key={scene.id} className="animate-fade-in">
+        <img src={scene.screenshot} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
+        <div className="relative mx-auto grid max-w-[1920px] items-center gap-6 px-4 py-8 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-12">
+          <div className="relative">
+            <HeroMedia scene={scene} onPreview={setPreviewing} />
+            {count > 1 && (
+              <>
+                <button onClick={() => onStep(-1)} className={clsx(arrow, 'left-2')} aria-label="Previous pick">
+                  <ChevronLeft size={22} />
+                </button>
+                <button onClick={() => onStep(1)} className={clsx(arrow, 'right-2')} aria-label="Next pick">
+                  <ChevronRight size={22} />
+                </button>
+              </>
+            )}
+          </div>
+          <div>
+            <div className="text-xs font-bold tracking-widest text-accent uppercase">Tonight’s pick</div>
+            <h1 className="mt-2 text-2xl leading-tight font-black tracking-tight sm:text-4xl">{scene.title}</h1>
+            <div className="mt-3 text-sm text-white/70">
+              {[
+                scene.studio?.name,
+                scene.performers
+                  .map((p) => p.name)
+                  .slice(0, 3)
+                  .join(', '),
+                duration(scene.durationSec),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+            <Link
+              to="/scene/$id"
+              params={{ id: scene.id }}
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-black transition hover:bg-accent hover:text-white"
+            >
+              <Play size={18} className="fill-current" />
+              {scene.resumeTime > 0 ? `Resume from ${duration(scene.resumeTime)}` : 'Play'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -131,17 +188,23 @@ function PinnedRow({ row, order }: { row: HomeRow; order: number[] }) {
 
 // Still screenshot by default; the preview clip loads and fades in only while hovered,
 // like the cards (and nothing autoplays on touch screens).
-function HeroMedia({ scene }: { scene: SceneCard }) {
+function HeroMedia({ scene, onPreview }: { scene: SceneCard; onPreview: (on: boolean) => void }) {
   const [hovering, setHovering] = useState(false)
   const [ready, setReady] = useState(false)
   return (
     <Link
       to="/scene/$id"
       params={{ id: scene.id }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => {
+      // a mouse only: on a touch screen the tap that opens the video would start it
+      onPointerEnter={(e) => {
+        if (e.pointerType !== 'mouse') return
+        setHovering(true)
+        onPreview(true)
+      }}
+      onPointerLeave={() => {
         setHovering(false)
         setReady(false)
+        onPreview(false)
       }}
       className="group relative aspect-video overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
     >

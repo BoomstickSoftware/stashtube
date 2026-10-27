@@ -40,6 +40,8 @@ export const config = {
     dataTtl: num('DATA_CACHE_TTL_MINUTES', 360) * 60_000,
     dataStaleFor: num('DATA_CACHE_STALE_HOURS', 168) * 3_600_000,
     dataMaxEntries: num('DATA_CACHE_MAX_ENTRIES', 5000),
+    // Hour of day (UTC) to pre-fetch all artwork into the asset cache; empty turns it off.
+    warmAtUtc: process.env.WARM_AT_UTC === '' ? null : num('WARM_AT_UTC', 6),
     // How often to check Stash for changes while flix is in use; 0 disables.
     pollInterval: num('CHANGE_POLL_SECONDS', 60) * 1000,
   },
