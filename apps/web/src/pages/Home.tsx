@@ -85,8 +85,10 @@ function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onSte
       <div key={scene.id} className="animate-fade-in">
         <img src={scene.screenshot} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
-        <div className="relative mx-auto grid max-w-[1920px] items-center gap-6 px-4 py-8 sm:px-6 md:grid-cols-[1.4fr_1fr] md:py-12">
-          <div className="relative">
+        <div className="relative mx-auto grid max-w-[1920px] grid-cols-1 items-center gap-6 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:py-12">
+          {/* Sized by the viewport, not the title next to it: 16:9, no taller than ~half the
+              screen, so every pick takes the same space and the carousel never jumps. */}
+          <div className="relative mx-auto w-full max-w-[calc(55svh*16/9)]">
             <HeroMedia scene={scene} onPreview={setPreviewing} />
             {count > 1 && (
               <>
@@ -101,8 +103,8 @@ function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onSte
           </div>
           <div>
             <div className="text-xs font-bold tracking-widest text-accent uppercase">Tonight’s pick</div>
-            <h1 className="mt-2 text-2xl leading-tight font-black tracking-tight sm:text-4xl">{scene.title}</h1>
-            <div className="mt-3 text-sm text-white/70">
+            <h1 className="mt-2 line-clamp-2 min-h-[2lh] text-2xl leading-tight font-black tracking-tight [overflow-wrap:anywhere] sm:text-4xl">{scene.title}</h1>
+            <div className="mt-3 truncate text-sm text-white/70">
               {[
                 scene.studio?.name,
                 scene.performers
@@ -206,7 +208,7 @@ function HeroMedia({ scene, onPreview }: { scene: SceneCard; onPreview: (on: boo
         setReady(false)
         onPreview(false)
       }}
-      className="group relative aspect-video overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
+      className="group relative block aspect-video w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
     >
       <img src={scene.screenshot} alt="" className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
       {hovering && scene.preview && (
