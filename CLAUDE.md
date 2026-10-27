@@ -79,7 +79,7 @@ QueryClient set", 2026-10-27).
 |---|---|---|---|
 | Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), saved to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s |
 | Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api.ts`) | home feed, settings, favourites, playlists, blocklist | up to 7 days; painted at once on a cold open, then refetched in the background |
-| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`) | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | TTL `ASSET_CACHE_TTL_HOURS` (168), then revalidated by ETag; stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120) |
+| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`) | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | URLs with Stash's version stamp `?t=` (screenshots, images) never expire, since a changed image gets a new URL (browser: 1 year, immutable); the rest (previews, sprites, VTTs) TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120) |
 | Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
 
 Invalidation:
@@ -117,6 +117,10 @@ On touch screens (`Player.tsx`):
   and on Android a landscape video locks the screen to landscape.
 - A phone turned sideways (`landscape and pointer: coarse and max-height: 520px`) gets the
   player fixed over the whole screen with flix's own controls, padded for the safe areas.
+  The browser's address bar stays (no page can hide it), so the first tap there enters real
+  fullscreen ("Tap for full screen"): fullscreen may only start from a user gesture.
+- The controls' gradient never takes taps itself (on a phone it covers the middle of the
+  picture); only the bar and buttons inside it do.
 - Speed and "Mark this moment" are in the settings menu (no keyboard on a phone).
 
 ## Status and next steps

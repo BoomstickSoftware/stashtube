@@ -3,8 +3,10 @@
 // makes (one screenshot per card), and they change rarely.
 //
 // Layout: <dir>/<k[0..2]>/<k>.bin + <k>.json (metadata), k = sha256 of the Stash path+query.
-// - Fresh for `ttl`; after that, revalidated with If-None-Match / If-Modified-Since when Stash
-//   gave a validator, refetched otherwise. If Stash is unreachable, the stale copy is served.
+// - A path with Stash's version stamp (`?t=`, on screenshots and images) is fresh forever: a
+//   changed image comes under a new URL. Others (previews, sprites, VTTs) are fresh for `ttl`;
+//   after that, revalidated with If-None-Match / If-Modified-Since when Stash gave a
+//   validator, refetched otherwise. If Stash is unreachable, the stale copy is served.
 // - Stash 404s (e.g. a preview not generated yet) are remembered for `missTtl`, in memory.
 // - Total size capped at `maxBytes`, least recently used first out.
 import { createHash, randomUUID } from 'node:crypto'
@@ -45,6 +47,7 @@ export interface AssetStats {
 type Upstream = (path: string, headers: Record<string, string>) => Promise<Response>
 
 const MISS_RETRIES = [1000, 2000] // ms; see fetchUpstream
+const VERSIONED = /[?&]t=/
 
 export class AssetCache {
   private index = new Map<string, IndexEntry>()
@@ -105,7 +108,7 @@ export class AssetCache {
     }
 
     let meta = await this.readMeta(k)
-    if (meta && Date.now() - meta.fetchedAt < this.ttl) {
+    if (meta && (VERSIONED.test(path) || Date.now() - meta.fetchedAt < this.ttl)) {
       this.s.hits++
     } else {
       if (!meta) this.s.misses++

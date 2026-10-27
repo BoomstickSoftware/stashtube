@@ -69,7 +69,8 @@ media.get('/stash/*', async (c) => {
     return proxyStream(path + url.search, c.req.raw)
   }
   // ?t= is Stash's version stamp (screenshots, images), so those URLs never change content.
-  const cacheControl = url.searchParams.has('t') ? 'private, max-age=31536000, immutable' : 'private, max-age=86400'
+  // Previews and sprites change only if Stash regenerates them.
+  const cacheControl = url.searchParams.has('t') ? 'private, max-age=31536000, immutable' : 'private, max-age=604800'
   return assetCache.serve(path + url.search, c.req.raw, cacheControl)
 })
 

@@ -1,6 +1,6 @@
 // Drives the player with real touch events in headless Chrome (iPhone 17 Pro Max size):
 // tap to show/hide controls, drag the seek bar (seeks only on release), double tap the
-// right side (+10 s), swipe sideways (page must not pan). Prints the player state after
+// right side (+10 s), swipe sideways (page must not pan), tap the centre play/pause. Prints the player state after
 // each step. Plays and progress are blocked, so nothing is recorded in Stash.
 // usage: node scripts/touch-check.mjs <outdir> http://localhost:5173 /scene/<id>
 import { spawn } from 'node:child_process'
@@ -75,6 +75,12 @@ const s3 = await state(); console.log('double tap right: t before', before, 'aft
 console.log('before swipe', await state())
 await touch('touchStart', vx + vw * 0.8, vy + vh * 0.5); for (let i = 1; i <= 10; i++) { await touch('touchMove', vx + vw * (0.8 - i * 0.06), vy + vh * 0.5); await sleep(20) } await touch('touchEnd'); await sleep(300)
 console.log('after sideways swipe (controls unchanged by the swipe)', await state())
+// 5. the big play/pause in the middle must take the tap (the controls' gradient once covered it)
+const play = () => evaluate(`(() => { const b = document.querySelector('[aria-label="Pause"],[aria-label="Play"]'); const r = b.getBoundingClientRect(); return { label: b.getAttribute('aria-label'), x: r.left + r.width / 2, y: r.top + r.height / 2, shown: getComputedStyle(b).pointerEvents !== 'none' } })()`)
+let pb = await play()
+if (!pb.shown) { await tap(pb.x, pb.y); await sleep(400); pb = await play() }
+await tap(pb.x, pb.y); await sleep(500)
+console.log('centre button: was', pb.label, '-> paused', (await state()).paused)
 const shot = await send('Page.captureScreenshot', { format: 'png' })
 writeFileSync(`${outDir}/interact.png`, Buffer.from(shot.result.data, 'base64'))
 ws.close(); chrome.kill()

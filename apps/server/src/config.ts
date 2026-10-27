@@ -34,7 +34,7 @@ export const config = {
   cache: {
     dir: process.env.CACHE_DIR || `${process.cwd()}/.cache`,
     assetMaxBytes: num('ASSET_CACHE_MAX_MB', 5120) * 1024 * 1024,
-    assetTtl: num('ASSET_CACHE_TTL_HOURS', 168) * 3_600_000,
+    assetTtl: num('ASSET_CACHE_TTL_HOURS', 720) * 3_600_000,
     // Query results: fresh for the TTL, then served at once while they refresh, for up to
     // the stale window. Change detection marks them stale sooner when Stash data changes.
     dataTtl: num('DATA_CACHE_TTL_MINUTES', 360) * 60_000,

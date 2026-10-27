@@ -449,6 +449,12 @@ export function Player({
     tapStart.current = null
     // a swipe that ends on the picture is not a tap
     if (e.pointerType === 'mouse' || !start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) return
+    // Turned sideways but not fullscreen: the browser's address bar still takes space, and
+    // a page may only go fullscreen from a tap, so the first tap does that.
+    if (landscapePhone && !fullscreen) {
+      toggleFullscreen()
+      return
+    }
     const r = e.currentTarget.getBoundingClientRect()
     const zone = e.clientX < r.left + r.width / 3 ? -1 : e.clientX > r.right - r.width / 3 ? 1 : 0
     const now = performance.now()
@@ -597,6 +603,11 @@ export function Player({
           </button>
         )
       )}
+      {landscapePhone && !fullscreen && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] text-white/80 ring-1 ring-white/10 backdrop-blur">
+          Tap for full screen
+        </div>
+      )}
       {resumedAt !== null && (
         <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/75 py-1 pr-1 pl-3 text-[13px] ring-1 ring-white/10 backdrop-blur">
           <span className="text-white/80 tabular-nums">Resumed at {fmt(resumedAt)}</span>
@@ -621,9 +632,11 @@ export function Player({
 
       <div
         className={clsx(
-          'absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pt-16 pb-2 transition-opacity duration-300 sm:px-4',
-          // hidden controls must not catch taps (a tap meant to show them would seek)
-          showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+          // The gradient is tall and on a phone covers the middle of the picture, so it never
+          // takes taps itself; only the bar and buttons do, and only while visible (a tap
+          // meant to show hidden controls would otherwise seek).
+          'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pt-16 pb-2 transition-opacity duration-300 sm:px-4',
+          showControls ? 'opacity-100 [&>*]:pointer-events-auto' : 'opacity-0',
           immersive &&
             'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',
         )}
