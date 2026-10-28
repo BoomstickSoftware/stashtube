@@ -189,25 +189,61 @@ function PinnedRow({ row, order }: { row: HomeRow; order: number[] }) {
   )
 }
 
-// Still screenshot by default; the preview clip loads and fades in only while hovered,
-// like the cards (and nothing autoplays on touch screens).
+const DRAG_START_PX = 10
+
+// Still screenshot by default; the preview clip loads and fades in while hovered, or on a touch
+// screen after a slight drag, like the cards (a tap still opens the video, and a full sideways
+// swipe still moves the carousel on, which remounts this and ends the preview). It stops once
+// the hero has mostly scrolled out of view.
 function HeroMedia({ scene, onPreview }: { scene: SceneCard; onPreview: (on: boolean) => void }) {
   const [hovering, setHovering] = useState(false)
   const [ready, setReady] = useState(false)
+  const touchStart = useRef<{ x: number; y: number }>(undefined)
+  const dragged = useRef(false) // this touch started the preview, so its click must not open the video
+  const root = useRef<HTMLAnchorElement>(null)
+  const start = () => {
+    setHovering(true)
+    onPreview(true)
+  }
+  const stop = useCallback(() => {
+    setHovering(false)
+    setReady(false)
+    onPreview(false)
+  }, [onPreview])
+
+  useEffect(() => {
+    const el = root.current
+    if (!hovering || !el) return
+    const io = new IntersectionObserver(([entry]) => entry && entry.intersectionRatio < 0.5 && stop(), { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hovering, stop])
+  useEffect(() => stop, [stop])
+
   return (
     <Link
+      ref={root}
       to="/scene/$id"
       params={{ id: scene.id }}
-      // a mouse only: on a touch screen the tap that opens the video would start it
-      onPointerEnter={(e) => {
-        if (e.pointerType !== 'mouse') return
-        setHovering(true)
-        onPreview(true)
+      onPointerEnter={(e) => e.pointerType === 'mouse' && start()}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && stop()}
+      onTouchStart={(e) => {
+        const t = e.touches[0]
+        dragged.current = false
+        touchStart.current = t && e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : undefined
       }}
-      onPointerLeave={() => {
-        setHovering(false)
-        setReady(false)
-        onPreview(false)
+      onTouchMove={(e) => {
+        const from = touchStart.current
+        const t = e.touches[0]
+        if (!from || !t || hovering) return
+        if (Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX) {
+          touchStart.current = undefined
+          dragged.current = true
+          start()
+        }
+      }}
+      onClick={(e) => {
+        if (dragged.current) e.preventDefault()
       }}
       className="group relative block aspect-video w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
     >
