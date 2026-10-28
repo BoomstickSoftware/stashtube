@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
-import { Spinner } from './ui'
+import { Spinner, Toaster } from './ui'
 
 const nav = [
   { to: '/', label: 'Home', icon: Home },
@@ -87,6 +87,7 @@ export function Layout(): JSX.Element {
 
       <main className="mx-auto max-w-[1920px] px-4 py-6 sm:px-6">
         <Outlet />
+        <Toaster />
       </main>
 
       {/* mobile tab bar */}

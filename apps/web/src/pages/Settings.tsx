@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Ban, Search, X } from 'lucide-react'
+import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
@@ -16,6 +16,16 @@ export function Settings(): JSX.Element {
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
+      <Link to="/cleanup" className="flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line hover:bg-raised">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-400">
+          <Trash2 size={18} />
+        </span>
+        <span className="min-w-0">
+          <span className="block font-semibold">Clean up the library</span>
+          <span className="block text-sm text-muted">Low resolution, never watched, low rated, unmatched, duplicates: select and delete</span>
+        </span>
+        <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
+      </Link>
       <section>
         <h1 className="flex items-center gap-2 text-2xl font-black">
           <Ban size={22} className="text-accent" /> Blocklist

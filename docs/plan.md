@@ -74,6 +74,28 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      - The page cannot pan sideways.
      - Hover-only controls are visible on touch.
      - The playlist menu survives the keyboard opening.
+2e. **Round 2 (2026-10-28)**, the user's priorities in order:
+   - Done:
+     - Delete videos through Whisparr: from the multi-select bar, or Delete next to Favorite on a scene.
+     - The scene page shows the full description; file path, format and links fold under the tags.
+     - The home carousel previews on a slight drag (touch).
+     - Cleanup page (`/cleanup`, linked from Settings): lists below 720p, never watched (30+ days),
+       rated ★2 or less, not on StashDB, possible duplicates (perceptual hash, distance 8). Selection
+       is always on, blocked videos are included, and the filter bar narrows further.
+     - Stackable filters: the Browse filters are kept per browser (`lib/filters.ts`). A "+" next to
+       performers, studio and tags on a scene, and "Add to filters" on their pages, adds to them
+       (performers and tags must all match; studios are any-of). The filter bar's "+ Filter"
+       searches performers, studios and tags.
+   - Next, in order:
+     1. Performer attributes as scene filters: age at filming (Stash `performer_age`), ethnicity
+        (`performers_filter.ethnicity`), maybe hair, height; usable in saved rows and as global
+        preferences in Settings.
+     2. Studio families: parent networks as a browse level with a combined feed.
+     3. Stations: endless autoplay from a seed (scene, performer, tag, filter set), thumbs up or
+        skip steering what comes next. Later, mixed with Moments: play a window around each
+        marked moment, fading out and in (window length configurable).
+     4. Moments: an O-counter press also saves a timestamp marker; needs trying out before committing.
+   - "Surprise me" dropped: the home carousel already does it.
 3. **Deploy to k8s** (next):
    - Image: build in Forgejo CI and push to the cluster registry.
    - `infra/flix/` in `~/code/k8s`: namespace, CNPG cluster (1 instance, local-path), Deployment

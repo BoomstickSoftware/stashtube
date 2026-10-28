@@ -1,6 +1,7 @@
 import type { SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, ErrorBox, Spinner } from '../components/ui'
@@ -27,6 +28,7 @@ export function TagPage(): JSX.Element {
         </div>
         {t.description && <p className="mt-2 max-w-3xl text-sm text-white/70">{t.description}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          <AddFilterButton kind="tag" id={id} name={t.name} variant="button" />
           <BlockButton kind="tag" id={id} />
           {[...t.parents, ...t.children].map((r) => (
             <Link key={r.id} to="/tag/$id" params={{ id: r.id }}>

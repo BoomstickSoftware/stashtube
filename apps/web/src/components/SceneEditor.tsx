@@ -6,6 +6,7 @@ import { Bookmark, Check, Pencil, Plus, Search, Sparkles, Trash2, X } from 'luci
 import { useEffect, useState } from 'react'
 import { useJob, useSceneEdits, useTags } from '../lib/api'
 import { duration } from '../lib/format'
+import { AddFilterButton } from './AddFilter'
 import { Chip, Spinner, useDebounced } from './ui'
 
 export function EditableTitle({ scene }: { scene: SceneDetail }) {
@@ -69,9 +70,12 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
               {tag.name} <X size={12} />
             </Chip>
           ) : (
-            <Link key={tag.id} to="/tag/$id" params={{ id: tag.id }}>
-              <Chip className="!py-0.5 !text-xs">{tag.name}</Chip>
-            </Link>
+            <span key={tag.id} className="inline-flex items-center rounded-full bg-raised text-xs text-fg/90">
+              <Link to="/tag/$id" params={{ id: tag.id }} className="rounded-l-full py-0.5 pr-1 pl-3 hover:text-accent">
+                {tag.name}
+              </Link>
+              <AddFilterButton kind="tag" id={tag.id} name={tag.name} className="mr-0.5 !size-5 !bg-transparent !ring-0" />
+            </span>
           ),
         )}
         <button

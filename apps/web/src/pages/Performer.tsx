@@ -3,6 +3,7 @@ import type { JSX } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 import { useState } from 'react'
+import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice, FollowButton, Stat } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
@@ -44,6 +45,7 @@ export function PerformerPage(): JSX.Element {
               <div className="rounded-full bg-raised px-2 py-1">
                 <Stars value={p.rating} onChange={(rating) => rate.mutate({ id, rating })} />
               </div>
+              <AddFilterButton kind="performer" id={id} name={p.name} variant="button" />
               <BlockButton kind="performer" id={id} />
               <button onClick={() => setMore((v) => !v)} className="px-2 text-sm text-muted hover:text-fg">
                 {more ? 'Less' : 'About'}

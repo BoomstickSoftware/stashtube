@@ -303,9 +303,10 @@ const minResolution: Record<number, string> = {
   2160: 'QUAD_HD',
 }
 
-// Stash allows one criterion per field per level, so each exclusion nests one AND deeper.
-function withExclusions(filter: Raw, ex: Exclusions): Raw {
-  const parts: Raw[] = []
+// Stash allows one criterion per field per level, so each exclusion (and each extra criterion
+// that may repeat a field) nests one AND deeper.
+function withExclusions(filter: Raw, ex: Exclusions, extra: Raw[] = []): Raw {
+  const parts: Raw[] = [...extra]
   if (ex.tags.length) parts.push({ tags: { value: ex.tags, modifier: 'EXCLUDES', depth: -1 } })
   if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
   if (ex.studios.length) parts.push({ studios: { value: ex.studios, modifier: 'EXCLUDES', depth: -1 } })
@@ -340,12 +341,26 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): Raw {
   if (q.inProgress) f.resume_time = { value: 0, modifier: 'GREATER_THAN' }
   if (q.favorites) f.performer_favorite = true
 
+  // Cleanup filters. Each can repeat a field set above (e.g. a min and a max resolution).
+  const extra: Raw[] = []
+  if (q.maxHeight && minResolution[q.maxHeight]) {
+    extra.push({ resolution: { value: minResolution[q.maxHeight], modifier: 'LESS_THAN' } })
+  }
+  if (q.maxRating) extra.push({ rating100: { value: q.maxRating * 20 + 1, modifier: 'LESS_THAN' } })
+  if (q.unmatched) extra.push({ stash_id_count: { value: 0, modifier: 'EQUALS' } })
+  if (q.olderDays) {
+    // day granularity keeps the filter, and so the query cache key, stable through the day
+    const before = new Date(Date.now() - q.olderDays * 86_400_000).toISOString().slice(0, 10)
+    extra.push({ created_at: { value: before, modifier: 'LESS_THAN' } })
+  }
+  if (q.duplicates) extra.push({ duplicated: { duplicated: true, phash: true, distance: 8 } })
+
   const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [] } : { ...blocked }
   // A blocked id the user explicitly asked to include wins for this query.
   ex.tags = [...new Set([...ex.tags, ...ids(q.xtags)])].filter((t) => !tags.includes(t))
   ex.performers = ex.performers.filter((p) => !performers.includes(p))
   ex.studios = ex.studios.filter((s) => !studios.includes(s))
-  return withExclusions(f, ex)
+  return withExclusions(f, ex, extra)
 }
 
 export function findFilter(q: {

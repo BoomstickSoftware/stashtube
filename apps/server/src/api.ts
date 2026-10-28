@@ -38,6 +38,11 @@ const sceneQuery = z.object({
   inProgress: flag,
   favorites: flag,
   unblocked: flag,
+  maxHeight: num,
+  maxRating: z.coerce.number().min(1).max(5).optional(),
+  unmatched: flag,
+  olderDays: num,
+  duplicates: flag,
 }) satisfies z.ZodType<SceneQuery>
 
 const listQuery = z.object({

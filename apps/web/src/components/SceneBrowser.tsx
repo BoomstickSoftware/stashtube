@@ -1,9 +1,11 @@
 import type { SceneQuery, SceneSort } from '@flix/shared'
 import { sceneSorts } from '@flix/shared'
-import { ArrowDownWideNarrow, CheckSquare, EyeOff, Pin, Shuffle, SlidersHorizontal, Tag, X } from 'lucide-react'
+import { ArrowDownWideNarrow, CheckCheck, CheckSquare, EyeOff, Pin, Shuffle, SlidersHorizontal, Tag, X } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { usePerformer, useRowMutations, useScenes, useStudio, useTags } from '../lib/api'
 import { idList, toggleId } from '../lib/query'
+import { addToQuery } from '../lib/filters'
+import { FilterSearch } from './AddFilter'
 import { BulkBar } from './Bulk'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
 import { TagPicker } from './TagPicker'
@@ -18,11 +20,13 @@ export function SceneBrowser({
   onChange,
   base = {},
   defaultSort = 'date',
+  alwaysSelecting = false,
 }: {
   query: SceneQuery
   onChange: (patch: Patch) => void
   base?: SceneQuery
   defaultSort?: SceneSort
+  alwaysSelecting?: boolean // cleanup: cards toggle selection from the start, and stay selectable after a bulk action
 }) {
   const effective = useMemo(() => {
     const q: SceneQuery = { ...query, sort: query.sort ?? (query.q ? undefined : defaultSort) }
@@ -43,11 +47,11 @@ export function SceneBrowser({
 
   const scenes = data?.pages.flatMap((p) => p.items) ?? []
   const total = data?.pages[0]?.total
-  const [selecting, setSelecting] = useState(false)
+  const [selecting, setSelecting] = useState(alwaysSelecting)
   const [selected, setSelected] = useState<string[]>([])
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
   const stopSelecting = () => {
-    setSelecting(false)
+    setSelecting(alwaysSelecting)
     setSelected([])
   }
 
@@ -61,7 +65,8 @@ export function SceneBrowser({
         busy={isFetching && !isFetchingNextPage}
         defaultSort={defaultSort}
         selecting={selecting}
-        onSelecting={() => (selecting ? stopSelecting() : setSelecting(true))}
+        onSelecting={alwaysSelecting ? undefined : () => (selecting ? stopSelecting() : setSelecting(true))}
+        onSelectAll={selecting ? () => setSelected(scenes.map((s) => s.id)) : undefined}
       />
       {error ? (
         <ErrorBox error={error} />
@@ -118,6 +123,7 @@ function FilterBar({
   defaultSort,
   selecting,
   onSelecting,
+  onSelectAll,
 }: {
   query: SceneQuery
   effective: SceneQuery
@@ -126,7 +132,8 @@ function FilterBar({
   busy: boolean
   defaultSort: SceneSort
   selecting: boolean
-  onSelecting: () => void
+  onSelecting?: () => void // undefined: selection is always on
+  onSelectAll?: () => void // selects every loaded video
 }) {
   const [picker, setPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -138,9 +145,11 @@ function FilterBar({
   const excluded = idList(query.xtags)
   const sort = query.sort ?? defaultSort
   const durationKey = durations.findIndex((d) => d.min === query.minDuration && d.max === query.maxDuration)
+  const cleanup = cleanupChips(query)
   const anyFilter =
     included.length || excluded.length || query.performers || query.studios || query.minRating || query.minHeight ||
-    query.minDuration || query.maxDuration || query.unwatched || query.favorites || query.unblocked || query.q
+    query.minDuration || query.maxDuration || query.unwatched || query.favorites || query.unblocked || query.q ||
+    cleanup.length
 
   return (
     <div className="sticky top-16 z-20 -mx-4 mb-6 border-b border-white/5 bg-bg/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
@@ -195,6 +204,7 @@ function FilterBar({
           </Chip>
         ))}
         <span className="mx-1 h-5 w-px shrink-0 bg-line" />
+        <FilterSearch query={query} onAdd={(kind, id) => onChange(addToQuery(query, kind, id))} />
         <div ref={pickerRef} className="relative shrink-0">
           <Chip tone={picker ? 'active' : 'default'} onClick={() => setPicker((v) => !v)}>
             <Tag size={14} /> Tags
@@ -219,14 +229,26 @@ function FilterBar({
           <EyeOff size={14} /> {query.unblocked ? 'Showing blocked' : 'Blocked hidden'}
         </Chip>
         <span className="mx-1 h-5 w-px shrink-0 bg-line" />
-        <Chip tone={selecting ? 'active' : 'default'} onClick={onSelecting}>
-          <CheckSquare size={14} /> {selecting ? 'Done' : 'Select'}
-        </Chip>
+        {onSelecting && (
+          <Chip tone={selecting ? 'active' : 'default'} onClick={onSelecting}>
+            <CheckSquare size={14} /> {selecting ? 'Done' : 'Select'}
+          </Chip>
+        )}
+        {onSelectAll && (
+          <Chip onClick={onSelectAll}>
+            <CheckCheck size={14} /> Select all loaded
+          </Chip>
+        )}
         <PinButton query={effective} describe={() => describe(effective, tagName)} />
       </div>
 
-      {(included.length > 0 || excluded.length > 0 || query.performers || query.studios || query.q) && (
+      {(included.length > 0 || excluded.length > 0 || query.performers || query.studios || query.q || cleanup.length > 0) && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {cleanup.map((c) => (
+            <Chip key={c.label} tone="include" onClick={() => onChange(c.clear)}>
+              {c.label} <X size={13} />
+            </Chip>
+          ))}
           {query.q && (
             <Chip tone="active" onClick={() => onChange({ q: undefined })}>
               “{query.q}” <X size={13} />
@@ -265,6 +287,7 @@ function FilterBar({
                 q: undefined, tags: undefined, xtags: undefined, performers: undefined, studios: undefined,
                 minRating: undefined, minHeight: undefined, minDuration: undefined, maxDuration: undefined,
                 unwatched: undefined, favorites: undefined, unblocked: undefined,
+                maxHeight: undefined, maxRating: undefined, unmatched: undefined, olderDays: undefined, duplicates: undefined,
               })
             }
           >
@@ -274,6 +297,17 @@ function FilterBar({
       </div>
     </div>
   )
+}
+
+// Chips for the cleanup filters (set by the Cleanup page's lists), each removable.
+function cleanupChips(q: SceneQuery): { label: string; clear: Patch }[] {
+  const out: { label: string; clear: Patch }[] = []
+  if (q.maxHeight) out.push({ label: `Below ${q.maxHeight >= 2160 ? '4K' : `${q.maxHeight}p`}`, clear: { maxHeight: undefined } })
+  if (q.maxRating) out.push({ label: `Rated ★${q.maxRating} or less`, clear: { maxRating: undefined } })
+  if (q.unmatched) out.push({ label: 'Not on StashDB', clear: { unmatched: undefined } })
+  if (q.olderDays) out.push({ label: `Added ${q.olderDays}+ days ago`, clear: { olderDays: undefined } })
+  if (q.duplicates) out.push({ label: 'Possible duplicates', clear: { duplicates: undefined } })
+  return out
 }
 
 function PerformerChip({ id, onRemove }: { id: string; onRemove: () => void }) {
@@ -305,6 +339,7 @@ function describe(q: SceneQuery, tagName: Map<string, string>): string {
   if (q.unwatched) parts.push('unwatched')
   if (q.favorites) parts.push('favourites')
   if (q.minDuration || q.maxDuration) parts.push(`${q.minDuration ?? 0}–${q.maxDuration ?? '∞'} min`)
+  cleanupChips(q).forEach((c) => parts.push(c.label.toLowerCase()))
   const sort = q.sort && q.sort !== 'date' ? sceneSorts[q.sort] : null
   const title = parts.join(' · ') || sort || 'My row'
   return title.length > 80 ? `${title.slice(0, 77)}…` : title

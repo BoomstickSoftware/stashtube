@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { Star } from 'lucide-react'
+import { useToast } from '../lib/toast'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 
 export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: () => void, active = true) {
@@ -187,4 +188,22 @@ export function Avatar({ src, name, className }: { src?: string | null; name: st
     )
   }
   return <img src={src} alt={name} loading="lazy" onError={() => setBroken(true)} className={clsx('object-cover', className)} />
+}
+
+// One toast at a time, bottom of the screen (above the tab bar on phones); see lib/toast.
+export function Toaster() {
+  const t = useToast()
+  if (!t) return null
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[70] flex justify-center px-4 md:bottom-6">
+      <div
+        key={t.id}
+        role="status"
+        className="pointer-events-auto flex max-w-md min-w-0 animate-fade-in items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 text-sm shadow-2xl ring-1 ring-line"
+      >
+        <span className="min-w-0 truncate">{t.text}</span>
+        {t.action}
+      </div>
+    </div>
+  )
 }

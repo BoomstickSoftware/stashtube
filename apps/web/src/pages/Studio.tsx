@@ -1,6 +1,7 @@
 import type { SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice, FollowButton } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, ErrorBox, Spinner } from '../components/ui'
@@ -34,6 +35,7 @@ export function StudioPage(): JSX.Element {
           <div className="mt-1 text-sm text-muted">{s.sceneCount} videos</div>
           <div className="mt-4 flex flex-wrap gap-2">
             <FollowButton favorite={s.favorite} onToggle={() => fav.mutate({ id, favorite: !s.favorite })} />
+            <AddFilterButton kind="studio" id={id} name={s.name} variant="button" />
             <BlockButton kind="studio" id={id} />
           </div>
           {s.children.length > 0 && (

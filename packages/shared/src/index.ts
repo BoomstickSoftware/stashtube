@@ -201,6 +201,12 @@ export interface SceneQuery {
   inProgress?: boolean // started, not finished (has a resume point)
   favorites?: boolean // only scenes with a favourite performer
   unblocked?: boolean // ignore the blocklist
+  // Cleanup filters
+  maxHeight?: number // below this: 720, 1080, 2160
+  maxRating?: number // rated, at most this many stars
+  unmatched?: boolean // no StashDB link
+  olderDays?: number // added to the library more than this many days ago
+  duplicates?: boolean // looks like another scene (perceptual hash)
 }
 
 export const performerSorts = {

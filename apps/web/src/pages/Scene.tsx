@@ -4,6 +4,7 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Droplet, ExternalLink, FolderOpen, ListVideo, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { Player } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
@@ -114,12 +115,15 @@ function SceneView({ id }: { id: string }) {
       <EditableTitle scene={scene} />
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
         {scene.studio && (
-          <Link to="/studio/$id" params={{ id: scene.studio.id }} className="flex items-center gap-2.5">
-            <div className="flex size-10 items-center justify-center overflow-hidden rounded-full bg-white p-1">
-              {scene.studio.image && <img src={scene.studio.image} alt="" className="max-h-full max-w-full object-contain" />}
-            </div>
-            <div className="font-semibold hover:text-accent">{scene.studio.name}</div>
-          </Link>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link to="/studio/$id" params={{ id: scene.studio.id }} className="flex min-w-0 items-center gap-2.5">
+              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1">
+                {scene.studio.image && <img src={scene.studio.image} alt="" className="max-h-full max-w-full object-contain" />}
+              </div>
+              <div className="font-semibold break-words hover:text-accent">{scene.studio.name}</div>
+            </Link>
+            <AddFilterButton kind="studio" id={scene.studio.id} name={scene.studio.name} />
+          </div>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-full bg-raised px-2 py-1">
@@ -149,10 +153,13 @@ function SceneView({ id }: { id: string }) {
       {scene.performers.length > 0 && (
         <div className="no-scrollbar mt-5 flex gap-4 overflow-x-auto pb-1">
           {scene.performers.map((p) => (
-            <Link key={p.id} to="/performer/$id" params={{ id: p.id }} className="group flex w-20 shrink-0 flex-col items-center text-center">
-              <Avatar src={p.image} name={p.name} className="size-20 rounded-full object-top ring-2 ring-transparent transition group-hover:ring-accent" />
-              <span className="mt-1.5 line-clamp-2 text-xs font-medium group-hover:text-accent">{p.name}</span>
-            </Link>
+            <div key={p.id} className="relative shrink-0">
+              <Link to="/performer/$id" params={{ id: p.id }} className="group flex w-20 flex-col items-center text-center">
+                <Avatar src={p.image} name={p.name} className="size-20 rounded-full object-top ring-2 ring-transparent transition group-hover:ring-accent" />
+                <span className="mt-1.5 line-clamp-2 text-xs font-medium group-hover:text-accent">{p.name}</span>
+              </Link>
+              <AddFilterButton kind="performer" id={p.id} name={p.name} className="absolute top-0 right-0 shadow-lg" />
+            </div>
           ))}
         </div>
       )}

@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { Layout } from './components/Layout'
 import { parseSceneQuery } from './lib/query'
 import { Browse } from './pages/Browse'
+import { Cleanup } from './pages/Cleanup'
 import { Continue } from './pages/Continue'
 import { Performers, Studios, Tags } from './pages/Directories'
 import { History, Stats } from './pages/History'
@@ -48,6 +49,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/playlists', component: Playlists }),
   createRoute({ getParentRoute: () => root, path: '/playlist/$id', component: PlaylistPage }),
   createRoute({ getParentRoute: () => root, path: '/settings', component: Settings }),
+  createRoute({ getParentRoute: () => root, path: '/cleanup', validateSearch: parseSceneQuery, component: Cleanup }),
 ])
 
 export const router = createRouter({
