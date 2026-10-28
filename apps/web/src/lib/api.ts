@@ -312,9 +312,11 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: (patch: Partial<Settings>) => send<Settings>('PUT', '/settings', patch),
     onMutate: (patch) => qc.setQueryData<Settings>(['settings'], (d) => d && { ...d, ...patch }),
-    onSuccess: (s) => {
+    onSuccess: (s, patch) => {
       qc.setQueryData(['settings'], s)
-      qc.invalidateQueries({ queryKey: ['search'] })
+      // performer defaults change every list
+      if (patch.people) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'settings' })
+      else qc.invalidateQueries({ queryKey: ['search'] })
     },
   })
 }

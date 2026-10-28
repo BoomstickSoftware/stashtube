@@ -3,9 +3,10 @@ import { sceneSorts } from '@flix/shared'
 import { ArrowDownWideNarrow, CheckCheck, CheckSquare, EyeOff, Pin, Shuffle, SlidersHorizontal, Tag, X } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { usePerformer, useRowMutations, useScenes, useStudio, useTags } from '../lib/api'
-import { idList, toggleId } from '../lib/query'
+import { ageLabel, idList, toggleId } from '../lib/query'
 import { addToQuery } from '../lib/filters'
 import { FilterSearch } from './AddFilter'
+import { PeopleFilterChip } from './People'
 import { BulkBar } from './Bulk'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
 import { TagPicker } from './TagPicker'
@@ -225,6 +226,10 @@ function FilterBar({
             </div>
           )}
         </div>
+        <PeopleFilterChip
+          value={{ minAge: query.minAge, maxAge: query.maxAge, ethnicities: idNames(query.ethnicities) }}
+          onChange={(v) => onChange({ minAge: v.minAge, maxAge: v.maxAge, ethnicities: v.ethnicities?.join(',') || undefined })}
+        />
         <Chip tone={query.unblocked ? 'active' : 'default'} onClick={() => onChange({ unblocked: !query.unblocked || undefined })}>
           <EyeOff size={14} /> {query.unblocked ? 'Showing blocked' : 'Blocked hidden'}
         </Chip>
@@ -288,6 +293,7 @@ function FilterBar({
                 minRating: undefined, minHeight: undefined, minDuration: undefined, maxDuration: undefined,
                 unwatched: undefined, favorites: undefined, unblocked: undefined,
                 maxHeight: undefined, maxRating: undefined, unmatched: undefined, olderDays: undefined, duplicates: undefined,
+                minAge: undefined, maxAge: undefined, ethnicities: undefined,
               })
             }
           >
@@ -299,9 +305,17 @@ function FilterBar({
   )
 }
 
-// Chips for the cleanup filters (set by the Cleanup page's lists), each removable.
+const idNames = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : undefined)
+
+// Chips for the filters set outside the bar's quick chips (cleanup lists, People), each removable.
 function cleanupChips(q: SceneQuery): { label: string; clear: Patch }[] {
   const out: { label: string; clear: Patch }[] = []
+  const age = ageLabel(q.minAge, q.maxAge)
+  if (age) out.push({ label: age, clear: { minAge: undefined, maxAge: undefined } })
+  for (const e of idNames(q.ethnicities) ?? []) {
+    const rest = idNames(q.ethnicities)!.filter((x) => x !== e)
+    out.push({ label: e, clear: { ethnicities: rest.length ? rest.join(',') : undefined } })
+  }
   if (q.maxHeight) out.push({ label: `Below ${q.maxHeight >= 2160 ? '4K' : `${q.maxHeight}p`}`, clear: { maxHeight: undefined } })
   if (q.maxRating) out.push({ label: `Rated ★${q.maxRating} or less`, clear: { maxRating: undefined } })
   if (q.unmatched) out.push({ label: 'Not on StashDB', clear: { unmatched: undefined } })

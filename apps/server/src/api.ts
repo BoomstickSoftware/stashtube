@@ -43,7 +43,16 @@ const sceneQuery = z.object({
   unmatched: flag,
   olderDays: num,
   duplicates: flag,
+  minAge: z.coerce.number().int().min(18).max(99).optional(),
+  maxAge: z.coerce.number().int().min(18).max(99).optional(),
+  ethnicities: z.string().max(200).regex(/^[A-Za-z ,]*$/).optional(),
 }) satisfies z.ZodType<SceneQuery>
+
+const people = z.object({
+  minAge: z.number().int().min(18).max(99).optional(),
+  maxAge: z.number().int().min(18).max(99).optional(),
+  ethnicities: z.array(z.string().max(40)).max(20).optional(),
+})
 
 const listQuery = z.object({
   q: z.string().max(200).optional(),
@@ -326,13 +335,14 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 api.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean() })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people })
       .partial(),
     await c.req.json(),
   )
   if (b.performerGender) await setSetting('performerGender', b.performerGender)
   if (b.panicUrl) await setSetting('panicUrl', b.panicUrl)
   if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
+  if (b.people) await setSetting('people', b.people)
   return c.json(await getSettings())
 })
 

@@ -86,10 +86,14 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
        performers, studio and tags on a scene, and "Add to filters" on their pages, adds to them
        (performers and tags must all match; studios are any-of). The filter bar's "+ Filter"
        searches performers, studios and tags.
+     - People filter: age at filming and ethnicity, matched on one performer of the Settings
+       gender (Stash's own `performer_age` matches any performer, so a 40+ male co-star would
+       count). Age is matched in yearly release-date buckets (two-year once the library spans
+       more than 16 years; longer OR chains overflow SQLite's parser), right to about six months.
+       Works in pinned rows; Settings › Performer preferences sets defaults for every list, the
+       home feed and related videos (a list's own People filter replaces them; Show blocked
+       drops them).
    - Next, in order:
-     1. Performer attributes as scene filters: age at filming (Stash `performer_age`), ethnicity
-        (`performers_filter.ethnicity`), maybe hair, height; usable in saved rows and as global
-        preferences in Settings.
      2. Studio families: parent networks as a browse level with a combined feed.
      3. Stations: endless autoplay from a seed (scene, performer, tag, filter set), thumbs up or
         skip steering what comes next. Later, mixed with Moments: play a window around each

@@ -37,6 +37,9 @@ export function parseSceneQuery(s: Record<string, unknown>): SceneQuery {
     unmatched: bool(s.unmatched),
     olderDays: num(s.olderDays),
     duplicates: bool(s.duplicates),
+    minAge: num(s.minAge),
+    maxAge: num(s.maxAge),
+    ethnicities: typeof s.ethnicities === 'string' && /^[A-Za-z ,]+$/.test(s.ethnicities) ? s.ethnicities : undefined,
   }
 }
 
@@ -46,4 +49,10 @@ export const toCsv = (ids: string[]) => (ids.length ? ids.join(',') : undefined)
 export function toggleId(csv: string | undefined, id: string): string | undefined {
   const ids = idList(csv)
   return toCsv(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id])
+}
+
+// A short label for an age range, e.g. "Age 18–25", "Age 40+".
+export function ageLabel(min?: number, max?: number): string | null {
+  if (!min && !max) return null
+  return `Age ${min && max ? `${min}–${max}` : min ? `${min}+` : `up to ${max}`}`
 }

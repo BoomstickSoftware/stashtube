@@ -293,6 +293,56 @@ export interface Exclusions {
   tags: string[]
   performers: string[]
   studios: string[]
+  people?: People
+}
+
+// Performer attributes a scene must have: one performer of `gender` (the Settings gender)
+// matching the age at filming and any of the ethnicities. `firstYear` is the earliest scene date.
+export interface People {
+  gender: Raw | null
+  firstYear: number
+  minAge?: number
+  maxAge?: number
+  ethnicities?: string[]
+}
+
+// Joins filters with OR (Stash nests them: a OR (b OR (c …))).
+function anyOf(filters: Raw[]): Raw | null {
+  if (!filters.length) return null
+  return filters.reduceRight((rest: Raw | null, f) => (rest ? { ...f, OR: rest } : f), null)
+}
+
+// The scene-level criterion for `People`, or null. Stash has no "age at filming" per performer,
+// so scenes are matched in release-date buckets: a scene released around date D has a performer
+// aged A..B if they were born between D-(B+1)y and D-Ay, with D the middle of the bucket. One
+// bucket per year (right to about six months), wider if the library spans more than
+// MAX_BUCKETS years: SQLite's parser overflows on long OR chains (36 failed, 18 worked).
+// Contains OR, so it goes last in an AND chain.
+const MAX_BUCKETS = 16
+function peopleCriterion(p: People | undefined): Raw | null {
+  if (!p || (!p.minAge && !p.maxAge && !p.ethnicities?.length)) return null
+  const base: Raw = p.gender ? { gender: p.gender } : {}
+  const who = p.ethnicities?.length ? p.ethnicities.map((e) => ({ ...base, ethnicity: { value: e, modifier: 'EQUALS' } })) : [base]
+  if (!p.minAge && !p.maxAge) return { performers_filter: anyOf(who) }
+  const last = new Date().getFullYear()
+  const step = Math.max(1, Math.ceil((last - p.firstYear + 1) / MAX_BUCKETS))
+  const buckets: Raw[] = []
+  for (let y = p.firstYear; y <= last; y += step) {
+    const end = y + step - 1
+    const mid = (y + end + 1) / 2 // in years; .5 is July 1
+    const at = (years: number) => `${Math.floor(years)}-${years % 1 ? '07' : '01'}-01`
+    const born: Raw =
+      p.minAge && p.maxAge
+        ? { value: at(mid - p.maxAge - 1), value2: at(mid - p.minAge), modifier: 'BETWEEN' }
+        : p.maxAge
+          ? { value: at(mid - p.maxAge - 1), modifier: 'GREATER_THAN' }
+          : { value: at(mid - p.minAge!), modifier: 'LESS_THAN' }
+    buckets.push({
+      date: { value: `${y}-01-01`, value2: `${end}-12-31`, modifier: 'BETWEEN' },
+      performers_filter: anyOf(who.map((w) => ({ ...w, birthdate: born }))),
+    })
+  }
+  return anyOf(buckets)
 }
 
 const ids = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : [])
@@ -307,9 +357,12 @@ const minResolution: Record<number, string> = {
 // that may repeat a field) nests one AND deeper.
 function withExclusions(filter: Raw, ex: Exclusions, extra: Raw[] = []): Raw {
   const parts: Raw[] = [...extra]
+  const people = peopleCriterion(ex.people)
   if (ex.tags.length) parts.push({ tags: { value: ex.tags, modifier: 'EXCLUDES', depth: -1 } })
   if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
   if (ex.studios.length) parts.push({ studios: { value: ex.studios, modifier: 'EXCLUDES', depth: -1 } })
+  // last: it may hold an OR, and Stash allows no AND beside an OR
+  if (people) parts.push(people)
   let node = filter
   for (const p of parts) {
     node.AND = p
@@ -356,6 +409,18 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): Raw {
   if (q.duplicates) extra.push({ duplicated: { duplicated: true, phash: true, distance: 8 } })
 
   const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [] } : { ...blocked }
+  // The list's own age or ethnicity filter replaces the Settings defaults; Show blocked drops them.
+  if (blocked.people) {
+    const own = q.minAge || q.maxAge || q.ethnicities
+    const defaults: Partial<People> = q.unblocked || own ? {} : blocked.people
+    ex.people = {
+      gender: blocked.people.gender,
+      firstYear: blocked.people.firstYear,
+      minAge: own ? q.minAge : defaults.minAge,
+      maxAge: own ? q.maxAge : defaults.maxAge,
+      ethnicities: own ? q.ethnicities?.split(',').filter(Boolean) : defaults.ethnicities,
+    }
+  }
   // A blocked id the user explicitly asked to include wins for this query.
   ex.tags = [...new Set([...ex.tags, ...ids(q.xtags)])].filter((t) => !tags.includes(t))
   ex.performers = ex.performers.filter((p) => !performers.includes(p))
@@ -382,6 +447,17 @@ export function findFilter(q: {
 }
 
 // --- queries --------------------------------------------------------------------
+
+// Year of the earliest dated scene (bounds the age-at-filming filter).
+export async function firstSceneYear(): Promise<number> {
+  const d = await query<Raw>(
+    `query { findScenes(filter: { per_page: 1, sort: "date", direction: ASC }, scene_filter: { date: { value: "1900-01-01", modifier: GREATER_THAN } }) { scenes { date } } }`,
+    {},
+    ['scene'],
+  )
+  const y = Number(d.findScenes.scenes[0]?.date?.slice(0, 4))
+  return Number.isFinite(y) && y > 1900 ? y : 1970
+}
 
 export async function findScenes(filter: Raw, sceneFilter: Raw = {}) {
   const d = await query<Raw>(

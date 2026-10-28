@@ -6,6 +6,7 @@ import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
+import { PeopleControls } from '../components/People'
 import { Button, Chip, useDebounced } from '../components/ui'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings } from '../lib/api'
 
@@ -59,6 +60,8 @@ export function Settings(): JSX.Element {
           ))}
         </div>
       </section>
+
+      <PeopleSetting />
 
       <PlaybackSetting />
 
@@ -144,6 +147,21 @@ function BlockSearch() {
         </div>
       )}
     </div>
+  )
+}
+
+function PeopleSetting() {
+  const { data: settings } = useSettings()
+  const save = useUpdateSettings()
+  return (
+    <section>
+      <h2 className="text-lg font-bold">Performer preferences</h2>
+      <p className="mt-1 mb-4 max-w-xl text-sm text-muted">
+        Every list, the home feed and related videos keep to these: a video needs one performer (of your performer gender) who
+        matches. A list’s own People filter replaces them, and “Show blocked” turns them off.
+      </p>
+      {settings && <PeopleControls value={settings.people ?? {}} onChange={(people) => save.mutate({ people })} />}
+    </section>
   )
 }
 

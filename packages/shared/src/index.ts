@@ -207,7 +207,21 @@ export interface SceneQuery {
   unmatched?: boolean // no StashDB link
   olderDays?: number // added to the library more than this many days ago
   duplicates?: boolean // looks like another scene (perceptual hash)
+  // Performer attributes: one performer of the Settings gender must match them all
+  minAge?: number // age at filming (to the year)
+  maxAge?: number
+  ethnicities?: string // any of, comma-separated
 }
+
+// Defaults for every list (Settings); a list's own age or ethnicity filter replaces them.
+export interface PeopleFilter {
+  minAge?: number
+  maxAge?: number
+  ethnicities?: string[]
+}
+
+// Stash's ethnicity values as StashDB fills them in.
+export const ethnicities = ['Caucasian', 'Latin', 'Black', 'Asian', 'Mixed', 'Middle Eastern', 'Indian', 'Other'] as const
 
 export const performerSorts = {
   name: 'Name',
@@ -271,6 +285,7 @@ export interface Settings {
   introSkip: Record<string, number> // studio id -> seconds to skip at the start
   panicUrl: string // where a double Esc goes
   playOnOpen: boolean // opening a video starts it; off: it waits on the play button
+  people: PeopleFilter // performer age and ethnicity defaults for every list
 }
 
 export interface SavedRow {
