@@ -36,8 +36,20 @@ export function DeleteScenesDialog({
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  // All deleted: close straight away (the scene page navigates off the deleted scene). Otherwise
+  // stay open and list what failed.
   const run = () =>
-    del.mutate({ ids: scenes.map((s) => s.id), onProgress: setProgress }, { onSuccess: (r) => setResults(r) })
+    del.mutate(
+      { ids: scenes.map((s) => s.id), onProgress: setProgress },
+      {
+        onSuccess: (r) => {
+          if (r.every((x) => x.ok)) {
+            onDeleted(r.map((x) => x.id))
+            onClose()
+          } else setResults(r)
+        },
+      },
+    )
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center" onClick={() => !running && close()}>

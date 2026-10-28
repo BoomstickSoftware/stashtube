@@ -501,9 +501,13 @@ export function useDeleteScenes() {
       }
       return results
     },
+    // A deleted scene's own queries are only marked stale: refetching them now would 404 and turn
+    // the open scene page into "not found" before the dialog can navigate away.
     onSuccess: (results) => {
-      for (const r of results) if (r.ok) qc.removeQueries({ queryKey: ['scene', r.id] })
-      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'scene' })
+      const gone = new Set(results.filter((r) => r.ok).map((r) => r.id))
+      const own = (key: readonly unknown[]) => (key[0] === 'scene' || key[0] === 'related') && gone.has(String(key[1]))
+      qc.invalidateQueries({ predicate: (q) => own(q.queryKey), refetchType: 'none' })
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'scene' && !own(q.queryKey) })
     },
   })
 }
