@@ -96,10 +96,13 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      - Studio families: the Studios page groups studios under their network (an "All of …" tile
        opens the combined feed: a studio page already includes sub-studios), independents last;
        A–Z keeps the flat grid. Studio counts include sub-studios (`scene_count(depth: -1)`).
-   - Next, in order:
-     3. Stations: endless autoplay from a seed (scene, performer, tag, filter set), thumbs up or
-        skip steering what comes next. Later, mixed with Moments: play a window around each
-        marked moment, fading out and in (window length configurable).
+     - Stations (`/station`): endless full-screen play from any list's filters ("Station" in the
+       filter bar, so also performer, studio and tag pages; shuffled, no repeats until all have
+       played) or from a scene ("Station" by Related: drifts through related videos). Skip only,
+       no ratings: steer with filters. Full videos (after any intro skip; counts plays after 15 s),
+       or Moments: a 30/60/90 s window around each marker, or at 20/40/60/80% when a video has none,
+       fading out and in between them.
+   - Next:
      4. Moments: an O-counter press also saves a timestamp marker; needs trying out before committing.
    - "Surprise me" dropped: the home carousel already does it.
 3. **Deploy to k8s** (next):

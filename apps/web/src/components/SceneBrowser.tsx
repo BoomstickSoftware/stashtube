@@ -1,10 +1,12 @@
 import type { SceneQuery, SceneSort } from '@flix/shared'
 import { sceneSorts } from '@flix/shared'
-import { ArrowDownWideNarrow, CheckCheck, CheckSquare, EyeOff, Pin, Shuffle, SlidersHorizontal, Tag, X } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { ArrowDownWideNarrow, CheckCheck, CheckSquare, EyeOff, Pin, Radio, Shuffle, SlidersHorizontal, Tag, X } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { usePerformer, useRowMutations, useScenes, useStudio, useTags } from '../lib/api'
 import { ageLabel, idList, toggleId } from '../lib/query'
 import { addToQuery } from '../lib/filters'
+import { stationQuery } from '../lib/station'
 import { FilterSearch } from './AddFilter'
 import { PeopleFilterChip } from './People'
 import { BulkBar } from './Bulk'
@@ -245,6 +247,11 @@ function FilterBar({
           </Chip>
         )}
         <PinButton query={effective} describe={() => describe(effective, tagName)} />
+        <Link to="/station" search={stationQuery(effective)} className="shrink-0">
+          <Chip>
+            <Radio size={14} /> Station
+          </Chip>
+        </Link>
       </div>
 
       {(included.length > 0 || excluded.length > 0 || query.performers || query.studios || query.q || cleanup.length > 0) && (

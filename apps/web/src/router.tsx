@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 import { Layout } from './components/Layout'
 import { parseSceneQuery } from './lib/query'
+import type { StationSearch } from './lib/station'
 import { Browse } from './pages/Browse'
 import { Cleanup } from './pages/Cleanup'
 import { Continue } from './pages/Continue'
@@ -11,6 +12,7 @@ import { PerformerPage } from './pages/Performer'
 import { PlaylistPage, Playlists } from './pages/Playlists'
 import { ScenePage } from './pages/Scene'
 import { Settings } from './pages/Settings'
+import { Station } from './pages/Station'
 import { StudioPage } from './pages/Studio'
 import { TagPage } from './pages/Tag'
 
@@ -50,6 +52,15 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/playlist/$id', component: PlaylistPage }),
   createRoute({ getParentRoute: () => root, path: '/settings', component: Settings }),
   createRoute({ getParentRoute: () => root, path: '/cleanup', validateSearch: parseSceneQuery, component: Cleanup }),
+  createRoute({
+    getParentRoute: () => root, path: '/station',
+    // a filter set, or from=<scene id> to drift through related videos
+    validateSearch: (s: Record<string, unknown>): StationSearch => ({
+      ...parseSceneQuery(s),
+      from: typeof s.from === 'string' || typeof s.from === 'number' ? String(s.from) : undefined,
+    }),
+    component: Station,
+  }),
 ])
 
 export const router = createRouter({

@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Droplet, ExternalLink, FolderOpen, ListVideo, Trash2 } from 'lucide-react'
+import { Droplet, ExternalLink, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
@@ -240,6 +240,14 @@ function SceneView({ id }: { id: string }) {
       )}
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-bold">{playlist.data ? 'Up next' : 'Related'}</h2>
+        <Link
+          to="/station"
+          search={{ from: scene.id }}
+          className="mr-auto ml-3 inline-flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs font-medium hover:bg-line"
+          title="Endless play drifting through related videos"
+        >
+          <Radio size={13} /> Station
+        </Link>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
           Autoplay
           <button

@@ -4,6 +4,7 @@ import type { HomeRow, SceneCard } from '@flix/shared'
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
@@ -248,17 +249,7 @@ function HeroMedia({ scene, onPreview }: { scene: SceneCard; onPreview: (on: boo
       className="group relative block aspect-video w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
     >
       <img src={scene.screenshot} alt="" className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
-      {hovering && scene.preview && (
-        <video
-          src={scene.preview}
-          autoPlay
-          muted
-          loop
-          playsInline
-          onPlaying={() => setReady(true)}
-          className={clsx('absolute inset-0 size-full object-cover transition-opacity duration-300', ready ? 'opacity-100' : 'opacity-0')}
-        />
-      )}
+      {hovering && scene.preview && <PreviewVideo src={scene.preview} ready={ready} onReady={() => setReady(true)} className="duration-300" />}
     </Link>
   )
 }

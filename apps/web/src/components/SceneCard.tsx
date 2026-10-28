@@ -5,6 +5,7 @@ import { Check, Star } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
 import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
+import { PreviewVideo } from './PreviewVideo'
 
 const HOVER_DELAY = 350
 // Touch screens have no hover: a slight drag on the thumbnail starts the preview instead, so a tap still opens the video.
@@ -68,8 +69,9 @@ export function SceneCard({
     <div
       ref={root}
       className={clsx('group min-w-0', className)}
-      onMouseEnter={enter}
-      onMouseLeave={leave}
+      // a real mouse only: iOS sends emulated mouse events on every tap
+      onPointerEnter={(e) => e.pointerType === 'mouse' && !select && enter()}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && leave()}
       onClickCapture={
         select
           ? (e) => {
@@ -96,7 +98,7 @@ export function SceneCard({
         onTouchMove={(e) => {
           const from = touchStart.current
           const t = e.touches[0]
-          if (!from || !t || hovering) return
+          if (!from || !t || hovering || select) return
           if (Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX) {
             touchStart.current = undefined
             dragged.current = true
@@ -125,18 +127,7 @@ export function SceneCard({
           className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
         {hovering && scene.preview && (
-          <video
-            src={scene.preview}
-            autoPlay
-            muted
-            loop
-            playsInline
-            onPlaying={() => setPreviewReady(true)}
-            className={clsx(
-              'absolute inset-0 size-full object-cover transition-opacity duration-200',
-              previewReady ? 'opacity-100' : 'opacity-0',
-            )}
-          />
+          <PreviewVideo src={scene.preview} ready={previewReady} onReady={() => setPreviewReady(true)} className="duration-200" />
         )}
         <div className="absolute right-1.5 bottom-1.5 flex gap-1">
           {res && (
