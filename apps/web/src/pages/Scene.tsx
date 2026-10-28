@@ -164,34 +164,37 @@ function SceneView({ id }: { id: string }) {
           {scene.playCount > 0 && <span>{scene.playCount} views</span>}
           {scene.code && <span className="text-muted">{scene.code}</span>}
         </div>
-        {scene.details && (
-          <p className={clsx('mt-2 whitespace-pre-line text-white/80', !showDetails && 'line-clamp-3')}>{scene.details}</p>
-        )}
-        {showDetails && (
-          <div className="mt-3 space-y-1 text-xs text-muted">
-            {scene.director && <div>Director: {scene.director}</div>}
-            {scene.file && (
-              <>
-                <div className="flex items-center gap-1.5 break-all">
-                  <FolderOpen size={13} className="shrink-0" /> {scene.file.path}
-                </div>
-                <div>
-                  {scene.file.container} · {scene.file.videoCodec} / {scene.file.audioCodec} · {scene.width}×{scene.height} ·{' '}
-                  {scene.file.framerate?.toFixed(2)} fps · {(scene.file.bitrate / 1e6).toFixed(1)} Mbps · {bytes(scene.file.size)}
-                </div>
-              </>
-            )}
-            {scene.urls.map((u) => (
-              <a key={u} href={u} target="_blank" rel="noreferrer noopener" className="flex items-center gap-1.5 hover:text-fg">
-                <ExternalLink size={12} /> {u}
-              </a>
-            ))}
-          </div>
-        )}
-        <button onClick={() => setShowDetails((v) => !v)} className="mt-2 text-xs font-semibold text-muted hover:text-fg">
-          {showDetails ? 'Show less' : 'More'}
-        </button>
+        {scene.details && <p className="mt-2 whitespace-pre-line text-white/80">{scene.details}</p>}
+        {scene.director && <div className="mt-2 text-xs text-muted">Director: {scene.director}</div>}
         <TagEditor scene={scene} />
+        {/* File path, format and source links: only wanted for technical reasons, so folded. */}
+        {(scene.file || scene.urls.length > 0) && (
+          <>
+            <button onClick={() => setShowDetails((v) => !v)} className="mt-3 text-xs font-semibold text-muted hover:text-fg">
+              {showDetails ? 'Hide file and links' : 'File and links'}
+            </button>
+            {showDetails && (
+              <div className="mt-2 space-y-1 text-xs text-muted">
+                {scene.file && (
+                  <>
+                    <div className="flex items-center gap-1.5 break-all">
+                      <FolderOpen size={13} className="shrink-0" /> {scene.file.path}
+                    </div>
+                    <div>
+                      {scene.file.container} · {scene.file.videoCodec} / {scene.file.audioCodec} · {scene.width}×{scene.height} ·{' '}
+                      {scene.file.framerate?.toFixed(2)} fps · {(scene.file.bitrate / 1e6).toFixed(1)} Mbps · {bytes(scene.file.size)}
+                    </div>
+                  </>
+                )}
+                {scene.urls.map((u) => (
+                  <a key={u} href={u} target="_blank" rel="noreferrer noopener" className="flex items-center gap-1.5 break-all hover:text-fg">
+                    <ExternalLink size={12} className="shrink-0" /> {u}
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <IdentifyButton scene={scene} />
           {features?.deleteScenes && (
