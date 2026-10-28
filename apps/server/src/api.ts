@@ -7,6 +7,7 @@ import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
+import * as stations from './stations.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 
@@ -152,6 +153,36 @@ api.put('/rows/:id', async (c) => {
 })
 api.delete('/rows/:id', async (c) => {
   await savedRows.deleteRow(rid(c.req.param('id')))
+  return c.body(null, 204)
+})
+
+// --- stations ----------------------------------------------------------------------
+
+const stationBody = z.object({
+  name: z.string().trim().min(1).max(80),
+  query: sceneQuery,
+  from: z.string().regex(/^\d+$/).optional(),
+  mode: z.enum(['full', 'moments']),
+  window: z.number().int().min(10).max(600),
+})
+
+api.get('/stations', async (c) => c.json(await stations.listStations()))
+api.post('/stations', async (c) => {
+  const b = parse(stationBody, await c.req.json())
+  return c.json({ id: await stations.addStation(b) }, 201)
+})
+api.put('/stations/order', async (c) => {
+  const { ids } = parse(z.object({ ids: z.array(z.number().int()).max(200) }), await c.req.json())
+  await stations.reorderStations(ids)
+  return c.body(null, 204)
+})
+api.put('/stations/:id', async (c) => {
+  const b = parse(stationBody.omit({ from: true }).partial(), await c.req.json())
+  await stations.updateStation(rid(c.req.param('id')), b)
+  return c.body(null, 204)
+})
+api.delete('/stations/:id', async (c) => {
+  await stations.deleteStation(rid(c.req.param('id')))
   return c.body(null, 204)
 })
 

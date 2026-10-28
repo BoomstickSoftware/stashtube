@@ -25,8 +25,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile,
-} from '@flix/shared'
+  TagTile, SavedStation, StationInput } from '@flix/shared'
 import {
   keepPreviousData,
   type Query,
@@ -389,6 +388,29 @@ export function useRowMutations() {
 }
 
 export const useRows = () => useQuery({ queryKey: ['rows'], queryFn: () => get<SavedRow[]>('/rows') })
+
+// --- stations ----------------------------------------------------------------------
+
+export const useStations = () => useQuery({ queryKey: ['stations'], queryFn: () => get<SavedStation[]>('/stations') })
+
+export function useStationMutations() {
+  const qc = useQueryClient()
+  const done = () => qc.invalidateQueries({ queryKey: ['stations'] })
+  return {
+    add: useMutation({ mutationFn: (b: StationInput) => send<{ id: number }>('POST', '/stations', b), onSuccess: done }),
+    update: useMutation({
+      mutationFn: ({ id, ...patch }: { id: number } & Partial<Omit<StationInput, 'from'>>) => send('PUT', `/stations/${id}`, patch),
+      onMutate: ({ id, ...patch }) => qc.setQueryData<SavedStation[]>(['stations'], (d) => d?.map((s) => (s.id === id ? { ...s, ...patch } : s))),
+      onSettled: done,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => send('DELETE', `/stations/${id}`),
+      onMutate: (id) => qc.setQueryData<SavedStation[]>(['stations'], (d) => d?.filter((s) => s.id !== id)),
+      onSettled: done,
+    }),
+    reorder: useMutation({ mutationFn: (ids: number[]) => send('PUT', '/stations/order', { ids }), onSuccess: done }),
+  }
+}
 
 // --- history and stats -------------------------------------------------------------
 

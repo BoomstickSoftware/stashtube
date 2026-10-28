@@ -13,6 +13,7 @@ import { PlaylistPage, Playlists } from './pages/Playlists'
 import { ScenePage } from './pages/Scene'
 import { Settings } from './pages/Settings'
 import { Station } from './pages/Station'
+import { Stations } from './pages/Stations'
 import { StudioPage } from './pages/Studio'
 import { TagPage } from './pages/Tag'
 
@@ -52,12 +53,14 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/playlist/$id', component: PlaylistPage }),
   createRoute({ getParentRoute: () => root, path: '/settings', component: Settings }),
   createRoute({ getParentRoute: () => root, path: '/cleanup', validateSearch: parseSceneQuery, component: Cleanup }),
+  createRoute({ getParentRoute: () => root, path: '/stations', component: Stations }),
   createRoute({
     getParentRoute: () => root, path: '/station',
     // a filter set, or from=<scene id> to drift through related videos
     validateSearch: (s: Record<string, unknown>): StationSearch => ({
       ...parseSceneQuery(s),
       from: typeof s.from === 'string' || typeof s.from === 'number' ? String(s.from) : undefined,
+      id: Number(s.id) > 0 ? Number(s.id) : undefined,
     }),
     component: Station,
   }),

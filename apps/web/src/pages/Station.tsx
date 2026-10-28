@@ -1,12 +1,12 @@
-import type { SceneDetail } from '@flix/shared'
+import type { SceneDetail, SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import type Hls from 'hls.js'
-import { ExternalLink, Pause, Play, Radio, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
+import { ExternalLink, Pause, Play, Radio, Save, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Spinner } from '../components/ui'
-import { addPlay, useSettings } from '../lib/api'
+import { addPlay, useSettings, useStationMutations, useStations } from '../lib/api'
 import { canDirectPlay } from '../lib/media'
 import { loadPrefs, savePrefs, type Segment, segmentsFor, StationQueue, type StationPrefs, stationQuery, windows } from '../lib/station'
 
@@ -15,13 +15,36 @@ const FADE_MS = 700
 const HIDE_MS = 3000
 const COUNT_PLAY_AFTER = 15 // seconds of a full video before it counts as a play
 
+interface Config {
+  id?: number // saved station
+  name?: string
+  query: SceneQuery
+  from?: string
+  prefs: StationPrefs
+}
+
+// /station?id=<saved station>, or ad hoc: a filter set, or from=<scene id>.
+export function Station(): JSX.Element {
+  const { id, from, ...q } = route.useSearch()
+  const stations = useStations()
+  if (id) {
+    const saved = stations.data?.find((s) => s.id === id)
+    if (stations.isLoading) return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black"><Spinner /></div>
+    if (!saved) return <div className="py-24 text-center text-muted">That station no longer exists.</div>
+    const config = { id, name: saved.name, query: saved.query, from: saved.from, prefs: { mode: saved.mode, window: saved.window } }
+    return <StationPlayer key={id} config={config} />
+  }
+  return <StationPlayer key={JSON.stringify([from, q])} config={{ query: stationQuery(q), from, prefs: loadPrefs() }} />
+}
+
 // Full-screen endless play: Skip moves to the next video. In Moments mode it fades between
 // windows of each video, then on to the next.
-export function Station(): JSX.Element {
-  const search = route.useSearch()
+function StationPlayer({ config }: { config: Config }): JSX.Element {
   const navigate = useNavigate()
   const { data: settings } = useSettings()
-  const [prefs, setPrefsState] = useState<StationPrefs>(loadPrefs)
+  const { add, update } = useStationMutations()
+  const [prefs, setPrefsState] = useState<StationPrefs>(config.prefs)
+  const [naming, setNaming] = useState(false)
   const [scene, setScene] = useState<SceneDetail | null>(null)
   const [state, setState] = useState<'loading' | 'playing' | 'paused' | 'empty' | 'tap' | 'error'>('loading')
   const [dim, setDim] = useState(true)
@@ -38,10 +61,7 @@ export function Station(): JSX.Element {
   const introRef = useRef<Record<string, number>>({})
   const watched = useRef({ id: '', secs: 0, last: 0, counted: false })
   const hideTimer = useRef<number>(undefined)
-  const [queue] = useState(() => {
-    const { from, ...q } = search
-    return new StationQueue(stationQuery(q), from)
-  })
+  const [queue] = useState(() => new StationQueue(config.query, config.from))
   useEffect(() => {
     introRef.current = settings?.introSkip ?? {}
   }, [settings])
@@ -163,7 +183,8 @@ export function Station(): JSX.Element {
   const setPrefs = (p: StationPrefs) => {
     setPrefsState(p)
     prefsRef.current = p
-    savePrefs(p)
+    if (config.id) update.mutate({ id: config.id, mode: p.mode, window: p.window })
+    else savePrefs(p)
     // re-plan the current video from where it is now
     const v = video.current
     if (!scene || !v) return
@@ -265,8 +286,41 @@ export function Station(): JSX.Element {
           </button>
           <div className="min-w-0 flex-1 pt-1">
             <div className="flex items-center gap-1.5 text-xs font-bold tracking-widest text-accent uppercase">
-              <Radio size={13} /> Station{search.from ? ' · like a video' : ''}
+              <Radio size={13} /> {config.name ?? `Station${config.from ? ' · like a video' : ''}`}
+              {!config.id && !naming && (
+                <button
+                  onClick={() => setNaming(true)}
+                  className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tracking-normal text-white normal-case hover:bg-white/25"
+                >
+                  <Save size={11} /> Save
+                </button>
+              )}
             </div>
+            {naming && (
+              <form
+                className="mt-1.5 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const name = String(new FormData(e.currentTarget).get('name') ?? '').trim()
+                  if (!name) return
+                  add.mutate(
+                    { name, query: config.query, from: config.from, mode: prefs.mode, window: prefs.window },
+                    { onSuccess: ({ id }) => navigate({ to: '/station', search: { id }, replace: true }) },
+                  )
+                }}
+              >
+                <input
+                  name="name"
+                  autoFocus
+                  maxLength={80}
+                  placeholder="Name this station"
+                  className="min-w-0 flex-1 rounded-full bg-white/15 px-3 py-1 text-base outline-none placeholder:text-white/50 focus:ring-1 focus:ring-accent sm:text-sm"
+                />
+                <button className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-black" disabled={add.isPending}>
+                  Save
+                </button>
+              </form>
+            )}
             {scene && (
               <>
                 <div className="mt-0.5 line-clamp-2 font-semibold break-words">{scene.title}</div>

@@ -288,6 +288,21 @@ export interface Settings {
   people: PeopleFilter // performer age and ethnicity defaults for every list
 }
 
+export type StationMode = 'full' | 'moments'
+
+export interface StationInput {
+  name: string
+  query: SceneQuery
+  from?: string // a scene id: drift through related videos instead of the query
+  mode: StationMode
+  window: number // seconds per moment
+}
+
+export interface SavedStation extends StationInput {
+  id: number
+  cover: string | null // a screenshot from the station
+}
+
 export interface SavedRow {
   id: number
   title: string

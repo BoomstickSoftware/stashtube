@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, Clapperboard, History, Home, ListVideo, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, Clapperboard, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { Login } from '../pages/Login'
@@ -17,6 +17,7 @@ const nav = [
   { to: '/studios', label: 'Studios', icon: Building2 },
   { to: '/tags', label: 'Categories', icon: Tags },
   { to: '/playlists', label: 'Playlists', icon: ListVideo },
+  { to: '/stations', label: 'Stations', icon: Radio, desktopOnly: true }, // phones: header icon (the tab bar is full)
 ] as const
 
 export function Layout(): JSX.Element {
@@ -74,6 +75,9 @@ export function Layout(): JSX.Element {
           <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto p-2 text-muted sm:hidden" aria-label="Search">
             <Search size={20} />
           </button>
+          <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
+            <Radio size={20} />
+          </Link>
           <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />
           </Link>
@@ -92,7 +96,7 @@ export function Layout(): JSX.Element {
 
       {/* mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
-        {nav.map((n) => (
+        {nav.filter((n) => !('desktopOnly' in n)).map((n) => (
           <Link
             key={n.to}
             to={n.to}

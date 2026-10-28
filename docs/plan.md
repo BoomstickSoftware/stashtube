@@ -102,6 +102,11 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
        no ratings: steer with filters. Full videos (after any intro skip; counts plays after 15 s),
        or Moments: a 30/60/90 s window around each marker, or at 20/40/60/80% when a video has none,
        fading out and in between them.
+     - Saved stations: Save (with a name) on a playing station keeps it in the `stations` table
+       (filters or starting scene, mode, window); `/stations` (desktop nav, phone header icon)
+       lists them with covers to play, rename or delete, plus quick-start stations (Everything,
+       Unwatched, Favourite performers, Top rated). Changing mode or window on a saved station
+       updates it.
    - Next:
      4. Moments: an O-counter press also saves a timestamp marker; needs trying out before committing.
    - "Surprise me" dropped: the home carousel already does it.

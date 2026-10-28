@@ -58,3 +58,15 @@ export const savedRows = pgTable('saved_rows', {
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// Named stations: a filter set (or a starting scene to drift from) and how to play it.
+export const stations = pgTable('stations', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  query: jsonb('query').notNull(),
+  fromScene: text('from_scene'),
+  mode: text('mode').notNull().default('full'), // full | moments
+  window: integer('window').notNull().default(60), // seconds per moment
+  position: integer('position').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})

@@ -22,6 +22,13 @@
       "when": 1793035890315,
       "tag": "0002_sharp_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793231210169,
+      "tag": "0003_bright_wonder_man",
+      "breakpoints": true
     }
   ]
 }

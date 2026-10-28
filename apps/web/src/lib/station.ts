@@ -1,11 +1,11 @@
-import type { Page, SceneCard, SceneDetail, SceneQuery } from '@flix/shared'
+import type { Page, SceneCard, SceneDetail, SceneQuery, StationMode } from '@flix/shared'
 import { get, qs, queryClient } from './api'
 
 // A station: endless play from a filter set (shuffled) or from one scene (drifting through
 // related videos). Full mode plays whole videos; Moments plays a window around each marker,
 // or around sample points when a video has none, fading between them.
 
-export type StationMode = 'full' | 'moments'
+export type { StationMode }
 export interface StationPrefs {
   mode: StationMode
   window: number // seconds per moment
@@ -27,7 +27,7 @@ export function savePrefs(p: StationPrefs) {
   } catch {}
 }
 
-export type StationSearch = SceneQuery & { from?: string }
+export type StationSearch = SceneQuery & { from?: string; id?: number }
 
 // The filters a station keeps from a list (its own order is random).
 export function stationQuery(q: SceneQuery): SceneQuery {
