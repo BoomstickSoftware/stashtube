@@ -31,6 +31,17 @@ export const config = {
   mediaOrigin: (process.env.MEDIA_ORIGIN || '').replace(/\/$/, ''),
   // Built web app to serve; unset in dev, where Vite serves it.
   webDist: process.env.WEB_DIST || null,
+  // Whisparr owns the library files (Stash mounts them read-only), so deleting a scene goes
+  // through it. Unset: flix offers no delete. WHISPARR_PATH_MAP="/data/adult=/volume1/Media/adult"
+  // maps the path Stash reports to the path Whisparr knows, like MEDIA_PATH_MAP.
+  whisparr:
+    process.env.WHISPARR_URL && process.env.WHISPARR_API_KEY
+      ? {
+          url: process.env.WHISPARR_URL.replace(/\/$/, ''),
+          apiKey: process.env.WHISPARR_API_KEY,
+          pathMap: pathMap(process.env.WHISPARR_PATH_MAP),
+        }
+      : null,
   cache: {
     dir: process.env.CACHE_DIR || `${process.cwd()}/.cache`,
     assetMaxBytes: num('ASSET_CACHE_MAX_MB', 5120) * 1024 * 1024,

@@ -99,6 +99,11 @@ export async function removeFromPlaylist(id: number, sceneId: string) {
   await touch(id)
 }
 
+// A deleted scene leaves every playlist.
+export async function forgetScene(sceneId: string) {
+  await db.delete(playlistItems).where(eq(playlistItems.sceneId, sceneId))
+}
+
 // Full order from the client; ids not in the playlist are ignored.
 export async function reorderPlaylist(id: number, sceneIds: string[]) {
   await db.transaction(async (tx) => {

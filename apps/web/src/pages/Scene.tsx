@@ -2,13 +2,14 @@ import type { JSX } from 'react'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Droplet, ExternalLink, FolderOpen, ListVideo } from 'lucide-react'
+import { Droplet, ExternalLink, FolderOpen, ListVideo, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { Player } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
-import { useAddO, usePlaylist, useRateScene, useRelated, useScene, useSettings } from '../lib/api'
+import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 
 const route = getRouteApi('/scene/$id')
@@ -28,6 +29,8 @@ function SceneView({ id }: { id: string }) {
   const playlist = usePlaylist(playlistId)
   const rate = useRateScene()
   const addO = useAddO()
+  const { data: features } = useFeatures()
+  const [deleting, setDeleting] = useState(false)
   const [theater, setTheater] = useState(() => localStorage.getItem('flix.theater') === '1')
   const [autoplay, setAutoplay] = useState(() => localStorage.getItem('flix.autoplay') !== '0')
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -189,9 +192,24 @@ function SceneView({ id }: { id: string }) {
           {showDetails ? 'Show less' : 'More'}
         </button>
         <TagEditor scene={scene} />
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <IdentifyButton scene={scene} />
+          {features?.deleteScenes && (
+            <button
+              onClick={() => setDeleting(true)}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/15"
+            >
+              <Trash2 size={14} /> Delete video
+            </button>
+          )}
         </div>
+        {deleting && (
+          <DeleteScenesDialog
+            scenes={[{ id: scene.id, title: scene.title }]}
+            onClose={() => setDeleting(false)}
+            onDeleted={() => (window.history.length > 1 ? window.history.back() : navigate({ to: '/' }))}
+          />
+        )}
       </div>
     </div>
   )
@@ -239,7 +257,7 @@ function SceneView({ id }: { id: string }) {
     return (
       <div>
         <div className="-mx-4 -mt-6 bg-black sm:-mx-6">{player}</div>
-        <div className="mx-auto grid max-w-[1700px] gap-8 lg:grid-cols-[1fr_400px]">
+        <div className="mx-auto grid max-w-[1700px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
           {info}
           <div className="mt-4">{sidebar}</div>
         </div>
@@ -247,7 +265,7 @@ function SceneView({ id }: { id: string }) {
     )
   }
   return (
-    <div className="mx-auto grid max-w-[1800px] gap-8 lg:grid-cols-[1fr_400px]">
+    <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
       <div className="min-w-0">
         {player}
         {info}

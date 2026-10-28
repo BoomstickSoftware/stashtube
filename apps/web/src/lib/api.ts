@@ -3,6 +3,8 @@ import type {
   CacheScope,
   CacheStats,
   Blocklist,
+  DeleteResult,
+  Features,
   HistoryEntry,
   HomeRow,
   JobStatus,
@@ -481,4 +483,27 @@ export function useBulk() {
       onSuccess: done,
     }),
   }
+}
+
+// --- deleting scenes (file, Whisparr entry, Stash scene) --------------------------------
+
+export const useFeatures = () => useQuery({ queryKey: ['features'], queryFn: () => get<Features>('/features'), staleTime: Infinity })
+
+// Small batches keep each request well inside the timeout and let the dialog show progress.
+export function useDeleteScenes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ ids, onProgress }: { ids: string[]; onProgress?: (done: number) => void }) => {
+      const results: DeleteResult[] = []
+      for (let i = 0; i < ids.length; i += 5) {
+        results.push(...(await send<DeleteResult[]>('POST', '/scenes/delete', { sceneIds: ids.slice(i, i + 5) })))
+        onProgress?.(results.length)
+      }
+      return results
+    },
+    onSuccess: (results) => {
+      for (const r of results) if (r.ok) qc.removeQueries({ queryKey: ['scene', r.id] })
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'scene' })
+    },
+  })
 }

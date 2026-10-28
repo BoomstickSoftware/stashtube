@@ -1,11 +1,14 @@
-import { Heart, ListPlus, Plus, X } from 'lucide-react'
+import { Heart, ListPlus, Plus, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useBulk, usePlaylists } from '../lib/api'
+import { useBulk, useFeatures, usePlaylists } from '../lib/api'
+import { DeleteScenesDialog } from './DeleteScenes'
 import { useClickOutside } from './ui'
 
 // Bottom bar while videos are selected in a grid.
-export function BulkBar({ ids, onClear }: { ids: string[]; onClear: () => void }) {
+export function BulkBar({ ids, titleOf, onClear }: { ids: string[]; titleOf: (id: string) => string; onClear: () => void }) {
   const bulk = useBulk()
+  const { data: features } = useFeatures()
+  const [deleting, setDeleting] = useState(false)
   const { data: playlists } = usePlaylists()
   const [menu, setMenu] = useState(false)
   const [name, setName] = useState('')
@@ -71,10 +74,18 @@ export function BulkBar({ ids, onClear }: { ids: string[]; onClear: () => void }
             </div>
           )}
         </div>
+        {features?.deleteScenes && (
+          <button onClick={() => setDeleting(true)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/15">
+            <Trash2 size={16} /> Delete
+          </button>
+        )}
         <button onClick={onClear} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Clear selection">
           <X size={18} />
         </button>
       </div>
+      {deleting && (
+        <DeleteScenesDialog scenes={ids.map((id) => ({ id, title: titleOf(id) }))} onClose={() => setDeleting(false)} onDeleted={onClear} />
+      )}
     </div>
   )
 }

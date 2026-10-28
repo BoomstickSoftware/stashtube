@@ -89,7 +89,7 @@ export function PlaylistPage(): JSX.Element {
   const play = (sceneId?: string) => sceneId && navigate({ to: '/scene/$id', params: { id: sceneId }, search: { playlist: id, play: true } })
 
   return (
-    <div className="mx-auto grid max-w-[1600px] gap-8 lg:grid-cols-[360px_1fr]">
+    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-accent/30 to-surface p-5">
           {p.cover && <img src={p.cover} alt="" className="aspect-video w-full rounded-xl object-cover" />}

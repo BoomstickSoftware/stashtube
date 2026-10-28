@@ -302,3 +302,15 @@ export interface JobStatus {
   progress: number | null
   error: string | null
 }
+
+// What this server can do beyond browsing (depends on its configuration).
+export interface Features {
+  deleteScenes: boolean // Whisparr is configured, so a scene can be deleted with its file
+}
+
+export interface DeleteResult {
+  id: string
+  title: string | null
+  ok: boolean
+  error?: string
+}

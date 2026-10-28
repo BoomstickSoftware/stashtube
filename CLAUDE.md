@@ -54,6 +54,16 @@ packages/shared API contract types shared by both (types only at runtime on the 
    thumbnail starts the preview and swallows the click that ends the drag; a tap still opens the video.
    One card previews at a time, and a preview stops once its card is mostly scrolled away (`SceneCard.tsx`).
 
+9. **Deleting a video** (Delete in the multi-select bar, or on the scene page; both confirm first)
+   goes through Whisparr, which owns the files: Stash mounts the library read-only. `delete.ts` finds the
+   Whisparr entry whose file path equals the scene's (looked up by StashDB id, from Stash's link or the
+   `[uuid]` in Whisparr's folder name; feature films by scanning the full list), deletes it with its files
+   and an import exclusion so it is never grabbed again, then `sceneDestroy`s the Stash scene with its
+   generated files and file record, and drops it from playlists. If any file has no Whisparr entry, nothing
+   is touched. Needs `WHISPARR_URL`, `WHISPARR_API_KEY`, `WHISPARR_PATH_MAP`; without them `/api/features`
+   reports `deleteScenes: false` and no button shows. Page grids pin their mobile column with `grid-cols-1`
+   (`minmax(0,1fr)`): an implicit grid column grows to its widest child and the layout root clips it.
+
 ## Run locally
 
 ```sh
@@ -65,10 +75,9 @@ pnpm dev                         # BFF :8080 + Vite :5173 (proxies /api and /med
 
 Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `docker build -t flix .`
 
-Mobile checks (headless Chrome at iPhone 17 Pro Max size, against `pnpm dev`; plays and
-progress are blocked so Stash records nothing):
+Mobile checks (headless Chrome at iPhone 17 Pro Max size, against `pnpm dev`; plays, progress and deletes are blocked so Stash records nothing):
 - `node scripts/mobile-check.mjs /tmp/m http://localhost:5173 / /browse /scene/<id>` reports
-  horizontal overflow per page and saves screenshots (`W=932 H=430` for landscape, `DESKTOP=1`).
+  horizontal overflow per page, including content cut off at the screen edge by the layout's clip, and saves screenshots (`W=932 H=430` for landscape, `DESKTOP=1`).
 - `node scripts/touch-check.mjs /tmp/t http://localhost:5173 /scene/<id>` drives the player with
   touch events (tap, seek-bar drag, double tap, sideways swipe) and prints its state.
 - `node scripts/card-check.mjs /tmp/c http://localhost:5173 /browse` checks the drag-to-preview on scene cards.

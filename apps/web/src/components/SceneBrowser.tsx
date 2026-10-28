@@ -88,7 +88,9 @@ export function SceneBrowser({
           {isFetchingNextPage && <Spinner className="mx-auto my-8" />}
         </>
       )}
-      {selecting && <BulkBar ids={selected} onClear={stopSelecting} />}
+      {selecting && (
+        <BulkBar ids={selected} titleOf={(id) => scenes.find((s) => s.id === id)?.title ?? `Scene ${id}`} onClear={stopSelecting} />
+      )}
     </div>
   )
 }

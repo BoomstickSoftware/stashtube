@@ -1,8 +1,10 @@
-import type { HomeRow, Page, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
+import type { DeleteResult, Features, HomeRow, Page, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
+import { config } from './config.ts'
+import { deleteScene } from './delete.ts'
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
@@ -213,6 +215,18 @@ api.delete('/scenes/:id/markers/:marker', async (c) => {
   await stash.deleteMarker(c.req.param('id'), c.req.param('marker'))
   return c.body(null, 204)
 })
+
+// Deleting removes the file for good, through Whisparr; one scene at a time so a failure
+// stops only that scene.
+api.post('/scenes/delete', async (c) => {
+  if (!config.whisparr) throw new HTTPException(501, { message: 'deleting needs WHISPARR_URL and WHISPARR_API_KEY' })
+  const ids = parse(itemsBody, await c.req.json())
+  const results: DeleteResult[] = []
+  for (const id of ids) results.push(await deleteScene(id))
+  return c.json(results)
+})
+
+api.get('/features', (c) => c.json({ deleteScenes: !!config.whisparr } satisfies Features))
 
 api.post('/scenes/:id/identify', async (c) => c.json({ jobId: await stash.identifyScene(c.req.param('id')) }, 202))
 api.get('/jobs/:id', async (c) => c.json((await stash.jobStatus(c.req.param('id'))) ?? notFound()))

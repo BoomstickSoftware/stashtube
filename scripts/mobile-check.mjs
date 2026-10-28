@@ -37,9 +37,9 @@ ws.addEventListener('message', (e) => {
 const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })) })
 const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value
 
-// Never record plays or progress in Stash from a test run.
+// Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity'] })
+await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/delete'] })
 const desktop = !!process.env.DESKTOP
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: desktop ? 1 : 2, mobile: !desktop })
 if (!desktop) {
@@ -54,11 +54,13 @@ const probe = `(() => {
   for (const el of document.querySelectorAll('body *')) {
     const r = el.getBoundingClientRect()
     if (!r.width || (r.right <= vw + 1 && r.left >= -1)) continue
-    // ignore things inside a horizontal scroller or clipped by an overflow ancestor
+    // ignore things inside a horizontal scroller or a deliberate crop (overflow hidden), but not content cut
+    // off by the layout root's overflow-x-clip at the viewport edge: that is text the user cannot read
     let p = el.parentElement, clipped = false
     while (p && p !== document.body) {
       const s = getComputedStyle(p)
-      if (s.overflowX !== 'visible') { clipped = true; break }
+      if (s.overflowX === 'auto' || s.overflowX === 'scroll' || s.overflowX === 'hidden') { clipped = true; break }
+      if (s.overflowX === 'clip' && p.getBoundingClientRect().width < vw - 1) { clipped = true; break }
       p = p.parentElement
     }
     if (clipped || getComputedStyle(el).position === 'fixed') continue
