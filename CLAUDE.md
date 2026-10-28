@@ -54,7 +54,7 @@ packages/shared API contract types shared by both (types only at runtime on the 
    thumbnail starts the preview and swallows the click that ends the drag; a tap still opens the video.
    One card previews at a time, and a preview stops once its card is mostly scrolled away (`SceneCard.tsx`).
 
-9. **Deleting a video** (Delete in the multi-select bar, or on the scene page; both confirm first)
+9. **Deleting a video** (Delete in the multi-select bar, or next to Favorite on the scene page; both confirm first)
    goes through Whisparr, which owns the files: Stash mounts the library read-only. `delete.ts` finds the
    Whisparr entry whose file path equals the scene's (looked up by StashDB id, from Stash's link or the
    `[uuid]` in Whisparr's folder name; feature films by scanning the full list), deletes it with its files

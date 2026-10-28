@@ -133,6 +133,15 @@ function SceneView({ id }: { id: string }) {
             <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}
           </button>
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
+          {features?.deleteScenes && (
+            <button
+              onClick={() => setDeleting(true)}
+              title="Delete video"
+              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm text-red-400 hover:bg-red-500/15"
+            >
+              <Trash2 size={17} /> Delete
+            </button>
+          )}
           <PlaylistMenu sceneId={scene.id} />
         </div>
       </div>
@@ -197,14 +206,6 @@ function SceneView({ id }: { id: string }) {
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <IdentifyButton scene={scene} />
-          {features?.deleteScenes && (
-            <button
-              onClick={() => setDeleting(true)}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/15"
-            >
-              <Trash2 size={14} /> Delete video
-            </button>
-          )}
         </div>
         {deleting && (
           <DeleteScenesDialog
