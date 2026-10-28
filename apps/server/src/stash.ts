@@ -183,7 +183,8 @@ const SCENE_DETAIL = `
 `
 
 const PERFORMER_CARD = `id name image_path scene_count favorite rating100 gender country`
-const STUDIO_CARD = `id name image_path scene_count favorite parent_studio { id name }`
+// depth -1: a network counts its studios' videos
+const STUDIO_CARD = `id name image_path scene_count(depth: -1) favorite parent_studio { id name }`
 const TAG_CARD = `id name scene_count favorite`
 
 // --- mappers --------------------------------------------------------------------

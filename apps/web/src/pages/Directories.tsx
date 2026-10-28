@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 // Index pages: performers, studios, tags.
-import { performerSorts, type PerformerGender, type PerformerSort, type TagTile } from '@flix/shared'
+import { performerSorts, type PerformerGender, type PerformerSort, type StudioCard, type TagTile } from '@flix/shared'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Heart, Search, Star } from 'lucide-react'
@@ -132,38 +132,113 @@ function GenderSwitch({ value, onChange }: { value: PerformerGender; onChange: (
   )
 }
 
+// Grouped by network: each network (a studio with sub-studios) heads its own row, with a tile
+// for its combined feed first; studios without a network share one grid at the end. A filter
+// or the A–Z view shows one flat grid.
 export function Studios(): JSX.Element {
   const [q, setQ] = useState('')
+  const [flat, setFlat] = useState(false)
   const dq = useDebounced(q, 200)
-  const { data, error, isLoading } = useStudios({ q: dq || undefined })
+  const { data, error, isLoading } = useStudios({ q: dq || undefined, sort: flat ? 'name' : undefined })
+  const groups = useMemo(() => {
+    const items = data?.items ?? []
+    const byId = new Map(items.map((s) => [s.id, s]))
+    const families = new Map<string, { head: StudioCard | null; name: string; members: StudioCard[] }>()
+    const solo: StudioCard[] = []
+    for (const s of items) {
+      const hasChildren = items.some((c) => c.parent?.id === s.id)
+      if (!s.parent && !hasChildren) solo.push(s)
+      if (!s.parent) continue
+      const f = families.get(s.parent.id) ?? { head: byId.get(s.parent.id) ?? null, name: s.parent.name, members: [] }
+      f.members.push(s)
+      families.set(s.parent.id, f)
+    }
+    const count = (f: { head: StudioCard | null; members: StudioCard[] }) => f.head?.sceneCount ?? f.members.reduce((n, m) => n + m.sceneCount, 0)
+    return { families: [...families.entries()].sort((a, b) => count(b[1]) - count(a[1])), solo, count }
+  }, [data])
+  const grouped = !flat && !dq
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="mr-4 text-2xl font-black">Studios</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter studios" />
+        <Chip tone={!flat ? 'active' : 'default'} onClick={() => setFlat(false)}>
+          Networks
+        </Chip>
+        <Chip tone={flat ? 'active' : 'default'} onClick={() => setFlat(true)}>
+          A–Z
+        </Chip>
       </div>
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
         <Spinner className="mx-auto mt-24" />
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6">
-          {data?.items.map((s) => (
-            <Link key={s.id} to="/studio/$id" params={{ id: s.id }} className="group rounded-2xl bg-surface p-3 ring-1 ring-white/5 transition hover:bg-raised">
-              <div className="flex aspect-[2/1] items-center justify-center rounded-xl p-4">
-                {s.image ? <img src={s.image} alt={s.name} loading="lazy" className="max-h-full max-w-full object-contain" /> : <span className="text-lg font-black">{s.name}</span>}
-              </div>
-              <div className="mt-2.5 flex items-center gap-2 px-1">
-                <span className="truncate font-semibold">{s.name}</span>
-                {s.favorite && <Heart size={14} className="shrink-0 fill-accent text-accent" />}
-                <span className="ml-auto shrink-0 text-xs text-muted">{s.sceneCount}</span>
-              </div>
-              {s.parent && <div className="truncate px-1 text-xs text-muted">{s.parent.name}</div>}
-            </Link>
+      ) : grouped ? (
+        <div className="space-y-10">
+          {groups.families.map(([id, f]) => (
+            <section key={id}>
+              <h2 className="mb-3 flex items-baseline gap-2 text-lg font-bold">
+                <Link to="/studio/$id" params={{ id }} className="hover:text-accent">
+                  {f.name}
+                </Link>
+                <span className="text-sm font-normal text-muted">{groups.count(f)} videos</span>
+              </h2>
+              <StudioGrid>
+                {f.head && <StudioTile s={f.head} label={`All of ${f.name}`} />}
+                {f.members.map((s) => (
+                  <StudioTile key={s.id} s={s} />
+                ))}
+              </StudioGrid>
+            </section>
           ))}
+          {groups.solo.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-lg font-bold">Independent</h2>
+              <StudioGrid>
+                {groups.solo.map((s) => (
+                  <StudioTile key={s.id} s={s} />
+                ))}
+              </StudioGrid>
+            </section>
+          )}
         </div>
+      ) : (
+        <StudioGrid>
+          {data?.items.map((s) => (
+            <StudioTile key={s.id} s={s} showParent />
+          ))}
+        </StudioGrid>
       )}
     </div>
+  )
+}
+
+function StudioGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6">{children}</div>
+}
+
+function StudioTile({ s, label, showParent }: { s: StudioCard; label?: string; showParent?: boolean }) {
+  return (
+    <Link
+      to="/studio/$id"
+      params={{ id: s.id }}
+      className={clsx('group min-w-0 rounded-2xl bg-surface p-3 ring-1 transition hover:bg-raised', label ? 'ring-accent/40' : 'ring-white/5')}
+    >
+      <div className="flex aspect-[2/1] items-center justify-center rounded-xl p-4">
+        {s.image ? (
+          <img src={s.image} alt={s.name} loading="lazy" className="max-h-full max-w-full object-contain" />
+        ) : (
+          <span className="text-center text-lg font-black break-words">{s.name}</span>
+        )}
+      </div>
+      <div className="mt-2.5 flex items-center gap-2 px-1">
+        <span className="truncate font-semibold">{label ?? s.name}</span>
+        {s.favorite && <Heart size={14} className="shrink-0 fill-accent text-accent" />}
+        <span className="ml-auto shrink-0 text-xs text-muted">{s.sceneCount}</span>
+      </div>
+      {showParent && s.parent && <div className="truncate px-1 text-xs text-muted">{s.parent.name}</div>}
+    </Link>
   )
 }
 
