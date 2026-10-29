@@ -52,6 +52,16 @@ body {
   }
 }
 
+/* Discreet mode (the eye in the header): every picture and preview clip is blurred until it is
+   hovered or focused; the video being played is not. */
+html.discreet :is(img, video:not([poster])) {
+  filter: blur(18px) saturate(0.6);
+  transition: filter 0.2s;
+}
+html.discreet :is(a, button, .group):is(:hover, :focus-within) :is(img, video:not([poster])) {
+  filter: none;
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }

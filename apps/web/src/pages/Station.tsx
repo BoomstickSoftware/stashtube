@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Heart,
   ListVideo,
+  Moon,
   Pause,
   Play,
   Radio,
@@ -56,6 +57,7 @@ const HIDE_MS = 3000
 const SAVE_SPOT_EVERY = 15 // seconds of play between saves of where the station is
 const SEEK_STEP = 10
 const UP_NEXT = 30 // scenes listed in the side panel, more on request
+const SLEEP_CHOICES = [15, 30, 60] // minutes
 
 interface Config {
   id?: number // saved station
@@ -120,6 +122,14 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const [point, setPoint] = useState<SeekPoint | null>(null)
   const [flash, setFlash] = useFlash()
   const [panel, setPanel] = useState(false)
+  const [sleepAt, setSleepAt] = useState<number | null>(null) // epoch ms when the station pauses itself
+  const [slept, setSlept] = useState(false)
+  const [now, setNow] = useState(0) // refreshed every half minute while the sleep timer runs, for its pill
+  useEffect(() => {
+    if (!sleepAt) return
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [sleepAt])
   const [list, setList] = useState<{ history: SceneCard[]; upcoming: SceneCard[]; canBack: boolean }>({ history: [], upcoming: [], canBack: false })
   const listSize = useRef(UP_NEXT)
 
@@ -291,6 +301,15 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     if (t > lastT.current && t - lastT.current < 2) sinceSave.current += t - lastT.current
     lastT.current = t
     if (scene) spot.current = { id: scene.id, t }
+    if (sleepAt && Date.now() >= sleepAt) {
+      setSleepAt(null)
+      setSlept(true)
+      v.pause()
+      setState('paused')
+      flush()
+      saveSpot()
+      return
+    }
     if (sinceSave.current >= SAVE_SPOT_EVERY) {
       sinceSave.current = 0
       saveSpot()
@@ -421,6 +440,21 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
           style={{ transitionDuration: `${FADE_MS}ms` }}
         />
 
+        {slept && state === 'paused' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
+            <Moon size={36} className="text-accent" />
+            <div className="text-sm text-white/80">Sleep timer ended</div>
+            <button
+              onClick={() => {
+                setSlept(false)
+                play()
+              }}
+              className="rounded-full bg-white px-5 py-2.5 font-semibold text-black"
+            >
+              Keep going
+            </button>
+          </div>
+        )}
         {(state === 'loading' || state === 'tap' || state === 'empty' || state === 'error') && (
           <div className="absolute inset-0 flex items-center justify-center">
             {state === 'loading' && <Spinner />}
@@ -606,6 +640,15 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                   )}
                 </>
               )}
+              <span className="mx-1 h-4 w-px bg-white/20" />
+              <SleepPill
+                at={sleepAt}
+                now={now}
+                onChange={(at) => {
+                  setSleepAt(at)
+                  setNow(Date.now())
+                }}
+              />
               <button onClick={() => setMuted((m) => !m)} className="rounded-full bg-white/10 p-1.5 sm:hidden" aria-label={muted ? 'Unmute' : 'Mute'}>
                 {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
@@ -628,6 +671,26 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
         />
       )}
     </div>
+  )
+}
+
+// Sleep timer: pauses the station after so many minutes. Tapping cycles off → 15 → 30 → 60 → off.
+function SleepPill({ at, now, onChange }: { at: number | null; now: number; onChange: (at: number | null) => void }) {
+  const left = at ? Math.max(1, Math.round((at - now) / 60_000)) : null
+  const next = () => {
+    const i = at ? SLEEP_CHOICES.findIndex((m) => m * 60_000 >= (at - Date.now()) - 1000) + 1 : 0
+    const m = SLEEP_CHOICES[i]
+    onChange(m ? Date.now() + m * 60_000 : null)
+  }
+  return (
+    <button
+      onClick={next}
+      className={clsx('inline-flex items-center gap-1 rounded-full px-3 py-1 tabular-nums', at ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20')}
+      title="Sleep timer: pause the station after a while"
+      aria-label={left ? `Sleep in ${left} minutes` : 'Sleep timer off'}
+    >
+      <Moon size={14} /> {left ? `${left} min` : 'Sleep'}
+    </button>
   )
 }
 

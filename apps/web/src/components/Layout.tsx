@@ -2,11 +2,12 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, Eye, EyeOff, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
+import { asBool, useStored } from '../lib/storage'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
 import { ShortcutsOverlay } from './Shortcuts'
@@ -34,6 +35,11 @@ export function Layout(): JSX.Element {
   // Installed on a home screen there is no browser chrome, so pages below the top level get
   // a Back button in the header.
   const standalone = useMediaQuery('(display-mode: standalone)')
+  // Discreet: pictures blurred until hovered (index.css), remembered per browser.
+  const [discreet, setDiscreet] = useStored('flix.discreet', asBool(false))
+  useEffect(() => {
+    document.documentElement.classList.toggle('discreet', discreet)
+  }, [discreet])
   const router = useRouter()
   const atStart = useRouterState({ select: (s) => !(s.location.state.__TSR_index > 0) }) // first entry of this session
   const canGoBack = standalone && path !== '/' && !atStart
@@ -98,6 +104,15 @@ export function Layout(): JSX.Element {
           <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
             <Radio size={20} />
           </Link>
+          <button
+            onClick={() => setDiscreet(!discreet)}
+            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg', discreet ? 'text-accent' : 'text-muted')}
+            aria-pressed={discreet}
+            aria-label={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
+            title={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
+          >
+            {discreet ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
           <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />
           </Link>
