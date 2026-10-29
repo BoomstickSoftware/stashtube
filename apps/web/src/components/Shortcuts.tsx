@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 // Every key flix answers to, grouped; shown by `?` anywhere and listed under Settings.
-export const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
+const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
   {
     title: 'Anywhere',
     keys: [

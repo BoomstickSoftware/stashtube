@@ -2,7 +2,8 @@ import type { Marker } from '@flix/shared'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { duration as fmt } from '../lib/format'
-import { cueAt, loadSprites, type SpriteCue } from '../lib/media'
+import { loadSprites, type SpriteCue } from '../lib/media'
+import { SpriteThumb } from './SpriteThumb'
 
 type Pos = { x: number; t: number; w: number }
 
@@ -77,7 +78,6 @@ export function SeekBar({
     show(null, null)
   }
 
-  const cue = point ? cueAt(sprites, point.t) : null
   const shown = scrub ? scrub.t : time
   const pct = (t: number) => `${(t / (dur || 1)) * 100}%`
   const thumbW = 192
@@ -120,19 +120,7 @@ export function SeekBar({
           className="pointer-events-none absolute bottom-7 flex flex-col items-center touch:bottom-10"
           style={{ left: Math.max(thumbW / 2, Math.min(point.w - thumbW / 2, point.x)), transform: 'translateX(-50%)' }}
         >
-          {cue && (
-            <div
-              className="overflow-hidden rounded-lg ring-2 ring-white/90"
-              style={{
-                width: thumbW,
-                height: (thumbW * cue.h) / cue.w,
-                backgroundImage: `url(${cue.url})`,
-                backgroundPosition: `-${(cue.x * thumbW) / cue.w}px -${(cue.y * thumbW) / cue.w}px`,
-                // tiles are scaled from cue.w to thumbW; the sheet scales with them
-                ...spriteSize(sprites, thumbW / cue.w),
-              }}
-            />
-          )}
+          {sprites.length > 0 && <SpriteThumb cues={sprites} t={point.t} width={thumbW} className="overflow-hidden rounded-lg ring-2 ring-white/90" />}
           {(() => {
             const near = markers.find((m) => Math.abs(m.seconds - point.t) < (dur || 1) * 0.01)
             return near ? <span className="mt-1 max-w-48 truncate rounded bg-star px-1.5 py-0.5 text-xs font-semibold text-black">{near.title || 'Marker'}</span> : null
@@ -142,16 +130,4 @@ export function SeekBar({
       )}
     </div>
   )
-}
-
-// Sprite sheets are a grid of equal tiles; infer the sheet size from the cues.
-function spriteSize(cues: SpriteCue[], scale: number) {
-  if (!cues.length) return {}
-  let w = 0
-  let h = 0
-  for (const c of cues) {
-    w = Math.max(w, c.x + c.w)
-    h = Math.max(h, c.y + c.h)
-  }
-  return { backgroundSize: `${w * scale}px ${h * scale}px` }
 }

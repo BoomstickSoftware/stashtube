@@ -4,10 +4,13 @@ import clsx from 'clsx'
 import { Check, Star } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
+import { loadSprites, type SpriteCue } from '../lib/media'
 import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
 import { PreviewVideo } from './PreviewVideo'
+import { SpriteThumb } from './SpriteThumb'
 
 const HOVER_DELAY = 350
+const SCRUB_REST = 700 // ms the mouse rests before the scrubbed frame gives way to the preview clip again
 // Touch screens have no hover: a slight drag on the thumbnail starts the preview instead, so a tap still opens the video.
 const DRAG_START_PX = 10
 
@@ -29,6 +32,11 @@ export function SceneCard({
 }) {
   const [hovering, setHovering] = useState(false)
   const [previewReady, setPreviewReady] = useState(false)
+  // Moving the mouse across the thumbnail scrubs through the sprite frames (the tube-site
+  // convention); once it rests, the preview clip shows again.
+  const [sprites, setSprites] = useState<SpriteCue[]>([])
+  const [scrub, setScrub] = useState<{ t: number; w: number } | null>(null)
+  const restTimer = useRef<number>(undefined)
   const timer = useRef<number>(undefined)
   const touchStart = useRef<{ x: number; y: number }>(undefined)
   const dragged = useRef(false) // this touch started a preview, so the click it ends with must not open the video
@@ -39,8 +47,10 @@ export function SceneCard({
   // Stable across renders, so it can identify this card in `stopActive`.
   const leave = useCallback(function stop() {
     clearTimeout(timer.current)
+    clearTimeout(restTimer.current)
     setHovering(false)
     setPreviewReady(false)
+    setScrub(null)
     if (stopActive === stop) stopActive = undefined
   }, [])
   const start = () => {
@@ -50,6 +60,15 @@ export function SceneCard({
   }
   const enter = () => {
     timer.current = window.setTimeout(start, HOVER_DELAY)
+    if (scene.vtt) loadSprites(scene.vtt).then(setSprites)
+  }
+  const onScrub = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || select || !sprites.length || !scene.durationSec) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))
+    setScrub({ t: frac * scene.durationSec, w: r.width })
+    clearTimeout(restTimer.current)
+    restTimer.current = window.setTimeout(() => setScrub(null), SCRUB_REST)
   }
 
   // Stop a preview once its card has mostly scrolled out of view.
@@ -108,6 +127,7 @@ export function SceneCard({
         onClick={(e) => {
           if (dragged.current) e.preventDefault()
         }}
+        onPointerMove={hovering ? onScrub : undefined}
       >
         {select && (
           <span
@@ -127,7 +147,18 @@ export function SceneCard({
           className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
         {hovering && scene.preview && (
-          <PreviewVideo src={scene.preview} ready={previewReady} onReady={() => setPreviewReady(true)} className="duration-200" />
+          <PreviewVideo src={scene.preview} ready={previewReady && !scrub} onReady={() => setPreviewReady(true)} className="duration-200" />
+        )}
+        {scrub && (
+          <>
+            <SpriteThumb cues={sprites} t={scrub.t} width={scrub.w} className="pointer-events-none absolute top-1/2 left-0 -translate-y-1/2" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-white/20">
+              <div className="h-full bg-white/80" style={{ width: `${(scrub.t / scene.durationSec) * 100}%` }} />
+            </div>
+            <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[11px] font-medium tabular-nums backdrop-blur">
+              {duration(scrub.t)}
+            </span>
+          </>
         )}
         <div className="absolute right-1.5 bottom-1.5 flex gap-1">
           {res && (
