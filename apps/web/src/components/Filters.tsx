@@ -7,7 +7,7 @@ import { useFacets, usePerformer, useSceneCount, useSearch, useStudio, useTags }
 import { addToQuery, clearAll, type FilterKind, filtersOf, filterTotal, hasFilter } from '../lib/filters'
 import { ageLabel, idList, toggleId } from '../lib/query'
 import { PeopleControls } from './People'
-import { Avatar, Spinner, useDebounced } from './ui'
+import { Avatar, Spinner, Switch, useDebounced } from './ui'
 
 // Filters for any list of videos (and a station's), in one place: a search box that finds
 // performers, studios, tags and title words; the filters in play as removable chips; and plain
@@ -235,12 +235,10 @@ function Choice({ title, options, onChange }: { title: string; options: [string,
 
 function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center gap-3 text-left text-sm">
-      <span className={clsx('relative h-6 w-10 shrink-0 rounded-full transition-colors', on ? 'bg-accent' : 'bg-line')}>
-        <span className={clsx('absolute top-1 size-4 rounded-full bg-white transition-all', on ? 'left-5' : 'left-1')} />
-      </span>
+    <label className="flex w-full cursor-pointer items-center gap-3 text-left text-sm">
+      <Switch on={on} onChange={onChange} />
       <span>{children}</span>
-    </button>
+    </label>
   )
 }
 

@@ -1,6 +1,7 @@
 import type { SceneQuery } from '@flix/shared'
 import { useSyncExternalStore } from 'react'
 import { idList, toggleId } from './query'
+import { readStored, writeStored } from './storage'
 
 // The Browse filters, kept in this browser so they build up across pages: a "+" next to a
 // performer, studio or tag anywhere adds it, and opening Browse brings the set back.
@@ -10,25 +11,15 @@ export type FilterKind = 'performer' | 'studio' | 'tag'
 const field = { performer: 'performers', studio: 'studios', tag: 'tags' } as const
 
 const KEY = 'flix:browse-filters'
+const read = () => readStored(KEY, (v) => (v && typeof v === 'object' ? (v as SceneQuery) : {}))
 let current: SceneQuery = read()
 const listeners = new Set<() => void>()
-
-function read(): SceneQuery {
-  try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '{}')
-    return v && typeof v === 'object' ? (v as SceneQuery) : {}
-  } catch {
-    return {}
-  }
-}
 
 export function setBrowseFilters(q: SceneQuery) {
   const clean = Object.fromEntries(Object.entries(q).filter(([k, v]) => v !== undefined && k !== 'page')) as SceneQuery
   if (JSON.stringify(clean) === JSON.stringify(current)) return
   current = clean
-  try {
-    localStorage.setItem(KEY, JSON.stringify(clean))
-  } catch {}
+  writeStored(KEY, clean)
   listeners.forEach((l) => l())
 }
 

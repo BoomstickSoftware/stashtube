@@ -1,7 +1,6 @@
 import type { JSX } from 'react'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import clsx from 'clsx'
 import { Droplet, ExternalLink, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
@@ -9,9 +8,10 @@ import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { Player } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
-import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
+import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
 import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
+import { asBool, useStored } from '../lib/storage'
 
 const route = getRouteApi('/scene/$id')
 
@@ -32,8 +32,8 @@ function SceneView({ id }: { id: string }) {
   const addO = useAddO()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
-  const [theater, setTheater] = useState(() => localStorage.getItem('flix.theater') === '1')
-  const [autoplay, setAutoplay] = useState(() => localStorage.getItem('flix.autoplay') !== '0')
+  const [theater, setTheater] = useStored('flix.theater', asBool(false))
+  const [autoplay, setAutoplay] = useStored('flix.autoplay', asBool(true))
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -69,12 +69,7 @@ function SceneView({ id }: { id: string }) {
   // settings first: whether the video starts by itself depends on them
   if (isLoading || !scene || settingsLoading) return <Spinner className="mx-auto mt-32" />
 
-  const toggleTheater = () => {
-    setTheater((v) => {
-      localStorage.setItem('flix.theater', v ? '0' : '1')
-      return !v
-    })
-  }
+  const toggleTheater = () => setTheater((v) => !v)
 
   const player = (
     <div className="relative">
@@ -250,17 +245,7 @@ function SceneView({ id }: { id: string }) {
         </Link>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
           Autoplay
-          <button
-            role="switch"
-            aria-checked={autoplay}
-            onClick={() => {
-              localStorage.setItem('flix.autoplay', autoplay ? '0' : '1')
-              setAutoplay(!autoplay)
-            }}
-            className={clsx('relative h-5 w-9 rounded-full transition-colors', autoplay ? 'bg-accent' : 'bg-line')}
-          >
-            <span className={clsx('absolute top-0.5 size-4 rounded-full bg-white transition-all', autoplay ? 'left-4.5' : 'left-0.5')} />
-          </button>
+          <Switch size="sm" on={autoplay} onChange={setAutoplay} />
         </label>
       </div>
       <div className="space-y-3">

@@ -3,6 +3,23 @@ import { Star } from 'lucide-react'
 import { useToast } from '../lib/toast'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 
+// An on/off control. `size` md is the default; sm sits inline with small text.
+export function Switch({ on, onChange, disabled, size = 'md', className }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; size?: 'sm' | 'md'; className?: string }) {
+  const sm = size === 'sm'
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={clsx('relative shrink-0 rounded-full transition-colors', sm ? 'h-5 w-9' : 'h-6 w-11', on ? 'bg-accent' : 'bg-line', className)}
+    >
+      <span className={clsx('absolute top-0.5 rounded-full bg-white transition-all', sm ? 'size-4' : 'size-5', on ? (sm ? 'left-4.5' : 'left-5.5') : 'left-0.5')} />
+    </button>
+  )
+}
+
 export function useClickOutside(ref: RefObject<HTMLElement | null>, onOutside: () => void, active = true) {
   useEffect(() => {
     if (!active) return

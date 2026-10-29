@@ -3,11 +3,10 @@ import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
-import clsx from 'clsx'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { PeopleControls } from '../components/People'
-import { Button, Chip, useDebounced } from '../components/ui'
+import { Button, Chip, Switch, useDebounced } from '../components/ui'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings } from '../lib/api'
 
 export function Settings(): JSX.Element {
@@ -180,15 +179,7 @@ function PlaybackSetting() {
             playback.
           </span>
         </span>
-        <button
-          role="switch"
-          aria-checked={on}
-          disabled={!settings}
-          onClick={() => save.mutate({ playOnOpen: !on })}
-          className={clsx('relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors', on ? 'bg-accent' : 'bg-line')}
-        >
-          <span className={clsx('absolute top-0.5 size-5 rounded-full bg-white transition-all', on ? 'left-5.5' : 'left-0.5')} />
-        </button>
+        <Switch on={on} disabled={!settings} onChange={(v) => save.mutate({ playOnOpen: v })} className="mt-0.5" />
       </label>
     </section>
   )

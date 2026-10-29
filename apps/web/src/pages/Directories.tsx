@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Pin, Search, Star, Table as TableIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Avatar, Chip, Empty, ErrorBox, Sentinel, Spinner, useDebounced } from '../components/ui'
+import { useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useSettings, useStudios, useTagTiles, useUpdateSettings } from '../lib/api'
 
 function Filter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
@@ -142,17 +143,13 @@ interface StudioPrefs {
   following: boolean
 }
 const STUDIO_KEY = 'flix:studios'
-function loadStudioPrefs(): StudioPrefs {
-  try {
-    const p = JSON.parse(localStorage.getItem(STUDIO_KEY) ?? '{}')
-    return {
-      view: ['networks', 'grid', 'table'].includes(p.view) ? p.view : 'networks',
-      sort: p.sort === 'name' ? 'name' : 'videos',
-      dir: p.dir === 'asc' ? 'asc' : p.dir === 'desc' ? 'desc' : p.sort === 'name' ? 'asc' : 'desc',
-      following: !!p.following,
-    }
-  } catch {
-    return { view: 'networks', sort: 'videos', dir: 'desc', following: false }
+const parseStudioPrefs = (raw: unknown): StudioPrefs => {
+  const p = (raw ?? {}) as Partial<StudioPrefs>
+  return {
+    view: ['networks', 'grid', 'table'].includes(p.view!) ? p.view! : 'networks',
+    sort: p.sort === 'name' ? 'name' : 'videos',
+    dir: p.dir === 'asc' ? 'asc' : p.dir === 'desc' ? 'desc' : p.sort === 'name' ? 'asc' : 'desc',
+    following: !!p.following,
   }
 }
 
@@ -161,15 +158,8 @@ function loadStudioPrefs(): StudioPrefs {
 // at the end (a text filter shows the flat grid). Grid and Table: every studio, sorted.
 export function Studios(): JSX.Element {
   const [q, setQ] = useState('')
-  const [prefs, setPrefsState] = useState(loadStudioPrefs)
-  const setPrefs = (patch: Partial<StudioPrefs>) =>
-    setPrefsState((p) => {
-      const next = { ...p, ...patch }
-      try {
-        localStorage.setItem(STUDIO_KEY, JSON.stringify(next))
-      } catch {}
-      return next
-    })
+  const [prefs, setPrefsState] = useStored(STUDIO_KEY, parseStudioPrefs)
+  const setPrefs = (patch: Partial<StudioPrefs>) => setPrefsState((p) => ({ ...p, ...patch }))
   const dq = useDebounced(q, 200)
   const fav = useFavoriteStudio()
   const qc = useQueryClient()

@@ -43,9 +43,12 @@ packages/shared API contract types shared by both (types only at runtime on the 
    parameter properties; relative imports end in `.ts`; type-only imports use `import type`.
 6. Page components that use `getRouteApi` declare `: JSX.Element` return types; without it the
    router's types go circular. Search reducers annotate `prev` (`(prev: SceneQuery) => …`).
-7. `useEffect` callbacks must not return a value: Chrome's `window.scrollTo` returns a Promise,
+7. **Browser-side preferences go through `lib/storage.ts`** (`useStored`, `readStored`, `writeStored`):
+   localStorage can be missing or throw (private mode, blocked site data), and the helper is the
+   one place that handles it. On/off settings render with `Switch` from `components/ui.tsx`.
+8. `useEffect` callbacks must not return a value: Chrome's `window.scrollTo` returns a Promise,
    which React then calls as a cleanup and crashes.
-8. **Phones are a first-class client** (iPhone in particular). Use the `touch:` variant
+9. **Phones are a first-class client** (iPhone in particular). Use the `touch:` variant
    (`(pointer: coarse)`, defined in `index.css`) for finger-sized targets and touch-only UI,
    and `[@media(hover:hover)]:` for anything that may hide until hover. Never rely on hover
    to reveal a control. Inputs stay at 16px or larger on touch screens, or iOS zooms the page.
@@ -54,7 +57,7 @@ packages/shared API contract types shared by both (types only at runtime on the 
    thumbnail starts the preview and swallows the click that ends the drag; a tap still opens the video.
    One card previews at a time, and a preview stops once its card is mostly scrolled away (`SceneCard.tsx`).
 
-9. **Deleting a video** (Delete in the multi-select bar, or next to Favorite on the scene page; both confirm first)
+10. **Deleting a video** (Delete in the multi-select bar, or next to Favorite on the scene page; both confirm first)
    goes through Whisparr, which owns the files: Stash mounts the library read-only. `delete.ts` finds the
    Whisparr entry whose file path equals the scene's (looked up by StashDB id, from Stash's link or the
    `[uuid]` in Whisparr's folder name; feature films by scanning the full list), deletes it with its files

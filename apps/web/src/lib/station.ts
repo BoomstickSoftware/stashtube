@@ -1,5 +1,6 @@
 import type { Page, SceneCard, SceneDetail, SceneQuery, StationMode } from '@flix/shared'
 import { get, qs, queryClient } from './api'
+import { readStored, writeStored } from './storage'
 
 // A station: endless play from a filter set (shuffled) or from one scene (drifting through
 // related videos). Full mode plays whole videos; Moments plays a window around each marker,
@@ -13,19 +14,12 @@ export interface StationPrefs {
 export const windows = [30, 60, 90] as const
 
 const KEY = 'flix:station'
-export function loadPrefs(): StationPrefs {
-  try {
-    const p = JSON.parse(localStorage.getItem(KEY) ?? '{}')
-    return { mode: p.mode === 'moments' ? 'moments' : 'full', window: windows.includes(p.window) ? p.window : 60 }
-  } catch {
-    return { mode: 'full', window: 60 }
-  }
-}
-export function savePrefs(p: StationPrefs) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(p))
-  } catch {}
-}
+export const loadPrefs = (): StationPrefs =>
+  readStored(KEY, (raw) => {
+    const p = (raw ?? {}) as Partial<StationPrefs>
+    return { mode: p.mode === 'moments' ? 'moments' : 'full', window: (windows as readonly number[]).includes(p.window!) ? p.window! : 60 }
+  })
+export const savePrefs = (p: StationPrefs) => writeStored(KEY, p)
 
 // start=resume: pick up where the station was left (otherwise a fresh shuffle).
 export type StationSearch = SceneQuery & { from?: string; id?: number; start?: 'resume' }

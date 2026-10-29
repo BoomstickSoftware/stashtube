@@ -22,6 +22,7 @@ import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
+import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekPoint } from './SeekBar'
 import { useMediaQuery } from './ui'
 
@@ -44,29 +45,6 @@ const STALL_WINDOW = 30_000
 const DOUBLE_TAP = 300 // ms between taps that count as a double tap
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
 
-function useStored(key: string, initial: number) {
-  const [v, setV] = useState(() => {
-    try {
-      const s = localStorage.getItem(key)
-      return s === null ? initial : Number(s)
-    } catch {
-      return initial
-    }
-  })
-  const set = useCallback(
-    (n: number) => {
-      setV(n)
-      try {
-        localStorage.setItem(key, String(n))
-      } catch {
-        /* storage unavailable */
-      }
-    },
-    [key],
-  )
-  return [v, set] as const
-}
-
 export function Player({
   scene,
   onEnded,
@@ -86,13 +64,7 @@ export function Player({
 }) {
   const wrap = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
-  const [quality, setQualityState] = useState<Quality>(() => {
-    try {
-      return (localStorage.getItem('flix.quality') as Quality) || 'auto'
-    } catch {
-      return 'auto'
-    }
-  })
+  const [quality, setQualityState] = useStored<Quality>('flix.quality', oneOf(QUALITIES.map(([q]) => q), 'auto'))
   const [fallback, setFallback] = useState(false) // direct play errored
   const [autoRes, setAutoRes] = useState<string | null>(null) // auto mode dropped after stalls
   const canDirect = useMemo(() => canDirectPlay(scene.playback), [scene.playback])
@@ -119,7 +91,7 @@ export function Player({
   const [time, setTime] = useState(0)
   const [buffered, setBuffered] = useState(0)
   const [dur, setDur] = useState(scene.durationSec)
-  const [volume, setVolume] = useStored('flix.volume', 1)
+  const [volume, setVolume] = useStored('flix.volume', asNumber(1))
   const [muted, setMuted] = useState(false)
   const [rate, setRate] = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
@@ -149,11 +121,6 @@ export function Player({
     apply()
   }
   const setQuality = (q: Quality) => {
-    try {
-      localStorage.setItem('flix.quality', q)
-    } catch {
-      /* storage unavailable */
-    }
     switchSource(() => {
       setQualityState(q)
       setAutoRes(null)
