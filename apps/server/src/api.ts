@@ -95,6 +95,9 @@ api.get('/scenes', async (c) => {
 // Counts inside a filtered set, for the filter panel (registered before /scenes/:id).
 api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(sceneQuery, c.req.query()), await exclusions())))
 
+// Videos marked "Not interested" (registered before /scenes/:id).
+api.get('/scenes/hidden', async (c) => c.json(await stash.hiddenScenes()))
+
 api.get('/home', async (c) => c.json(await homeRows()))
 
 // Related videos of the last one played, unwatched ones first.
@@ -232,7 +235,17 @@ api.get('/scenes/:id', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  return c.json(r.scene satisfies SceneDetail)
+  const hidden = await stash.hiddenTag()
+  return c.json({ ...r.scene, hidden: !!hidden && r.tagIds.includes(hidden) } satisfies SceneDetail)
+})
+
+api.put('/scenes/:id/hidden', async (c) => {
+  await stash.setSceneHidden(sceneId(c.req.param('id')), true)
+  return c.body(null, 204)
+})
+api.delete('/scenes/:id/hidden', async (c) => {
+  await stash.setSceneHidden(sceneId(c.req.param('id')), false)
+  return c.body(null, 204)
 })
 
 api.get('/scenes/:id/related', async (c) => {

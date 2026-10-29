@@ -62,6 +62,7 @@ export interface SceneDetail extends SceneCard {
   file: SceneFile | null
   playback: Playback
   markers: Marker[]
+  hidden: boolean // "Not interested": kept out of every list (Settings lists them, to undo)
 }
 
 export interface Page<T> {

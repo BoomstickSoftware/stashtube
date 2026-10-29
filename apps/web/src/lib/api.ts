@@ -277,6 +277,20 @@ function invalidateLists(qc: QueryClient) {
   }
 }
 
+// "Not interested": hides one video from every list; Settings lists them to undo.
+export const useHiddenScenes = () => useQuery({ queryKey: ['hidden'], queryFn: () => get<SceneCard[]>('/scenes/hidden') })
+export function useHideScene() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, hidden }: { id: string; hidden: boolean }) => send(hidden ? 'PUT' : 'DELETE', `/scenes/${id}/hidden`),
+    onSuccess: (_r, { id }) => {
+      invalidateLists(qc)
+      qc.invalidateQueries({ queryKey: ['hidden'] })
+      qc.invalidateQueries({ queryKey: ['scene', id] })
+    },
+  })
+}
+
 export function useBlock() {
   const qc = useQueryClient()
   return useMutation({

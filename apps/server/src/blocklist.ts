@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { blocks } from './db/schema.ts'
 import { genderCriterion, getSettings } from './settings.ts'
-import { type Exclusions, firstSceneYear } from './stash.ts'
+import { type Exclusions, firstSceneYear, hiddenTag } from './stash.ts'
 
 // Read on every listing; cached in memory and invalidated on write (single replica).
 let cache: Exclusions | null = null
@@ -19,8 +19,10 @@ export async function exclusions(): Promise<Exclusions> {
     }
   }
   const settings = await getSettings()
+  const hidden = await hiddenTag() // videos marked "Not interested" stay out like a blocked tag
   return {
     ...cache,
+    tags: hidden ? [...cache.tags, hidden] : cache.tags,
     people: { gender: genderCriterion(settings.performerGender), firstYear: await firstSceneYear(), ...settings.people },
   }
 }

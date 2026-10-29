@@ -230,7 +230,7 @@ export function toSceneCard(s: Raw): SceneCard {
   }
 }
 
-function toSceneDetail(s: Raw): SceneDetail {
+function toSceneDetail(s: Raw): Omit<SceneDetail, 'hidden'> {
   const markers = (s.scene_markers ?? [])
     .map((m: Raw) => ({ id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }))
     .sort((a: { seconds: number }, b: { seconds: number }) => a.seconds - b.seconds)
@@ -745,6 +745,36 @@ export async function destroyScene(id: string) {
       await new Promise((r) => setTimeout(r, 2000))
     }
   }
+}
+
+// "Not interested": a Stash tag flix puts on a video and keeps out of every list (the blocklist
+// machinery excludes it; Settings lists the videos, so it can be undone). Created on first use;
+// its id is looked up once for the exclusions and remembered.
+const HIDDEN_TAG = 'Not interested'
+let hiddenTagId: string | null | undefined
+export async function hiddenTag(create = false): Promise<string | null> {
+  if (hiddenTagId === undefined || (create && hiddenTagId === null)) {
+    const d = await gql<Raw>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
+    hiddenTagId = d.findTags.tags[0]?.id ?? null
+    if (!hiddenTagId && create) {
+      const c = await mutate(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
+      hiddenTagId = c.tagCreate.id
+    }
+  }
+  return hiddenTagId ?? null
+}
+
+export async function setSceneHidden(id: string, hidden: boolean) {
+  const tag = await hiddenTag(hidden)
+  const r = tag ? await getScene(id) : null
+  if (!tag || !r) return
+  await updateScene(id, { tagIds: hidden ? [...new Set([...r.tagIds, tag])] : r.tagIds.filter((t) => t !== tag) })
+}
+
+export async function hiddenScenes(): Promise<SceneCard[]> {
+  const tag = await hiddenTag()
+  if (!tag) return []
+  return (await findScenes(findFilter({ sort: 'updated_at', perPage: 200 }), { tags: { value: [tag], modifier: 'INCLUDES', depth: 0 } })).items
 }
 
 // Markers need a primary tag; flix's own go under "Highlight", created on first use.

@@ -38,7 +38,9 @@ packages/shared API contract types shared by both (types only at runtime on the 
    scenes have no favourite flag), the blocklist, pinned home rows, saved stations and where each station was left (`station_resume`), and settings (performer
    gender switch, per-studio intro skip, panic URL). Settings live next to the page they
    affect, not on the Settings page, unless they are global.
-   Markers created in flix use the Stash tag "Highlight" (created on first use).
+   Markers created in flix use the Stash tag "Highlight" (created on first use). "Not interested"
+   on a video adds the Stash tag "Not interested" (also created on first use); `exclusions()` treats
+   that tag as blocked, so the video leaves every list, and Settings lists them to undo.
 3. **The web app only knows `@flix/shared` types**, never Stash shapes, so the backend can
    be replaced piece by piece later.
 4. **Blocklist** applies to every list, search, feed and related query unless `unblocked=1`.

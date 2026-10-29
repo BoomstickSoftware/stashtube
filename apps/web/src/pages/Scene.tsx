@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
+import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, ExternalLink, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
+import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
@@ -9,8 +10,9 @@ import { Player, type PlayerHandle } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings } from '../lib/api'
+import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
+import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
 
 const route = getRouteApi('/scene/$id')
@@ -30,6 +32,7 @@ function SceneView({ id }: { id: string }) {
   const playlist = usePlaylist(playlistId)
   const rate = useRateScene()
   const addO = useAddO()
+  const hide = useHideScene()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
@@ -130,6 +133,27 @@ function SceneView({ id }: { id: string }) {
             <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}
           </button>
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
+          <button
+            onClick={() => {
+              const hidden = !scene.hidden
+              hide.mutate({ id: scene.id, hidden })
+              if (hidden)
+                showToast(
+                  'Hidden from flix',
+                  <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+                    Undo
+                  </button>,
+                )
+            }}
+            title={scene.hidden ? 'Hidden from every list; show it again' : 'Not interested: keep it out of every list'}
+            aria-pressed={scene.hidden}
+            className={clsx(
+              'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm hover:bg-line',
+              scene.hidden ? 'bg-red-500/15 text-red-300' : 'bg-raised',
+            )}
+          >
+            <EyeOff size={17} /> {scene.hidden ? 'Hidden' : 'Not interested'}
+          </button>
           {features?.deleteScenes && (
             <button
               onClick={() => setDeleting(true)}

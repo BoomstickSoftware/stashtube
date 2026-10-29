@@ -9,7 +9,7 @@ import { PeopleControls } from '../components/People'
 import { ShortcutList } from '../components/Shortcuts'
 import { Button, Chip, Switch } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
-import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings } from '../lib/api'
+import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
 
 export function Settings(): JSX.Element {
   const { data } = useBlocklist()
@@ -61,6 +61,8 @@ export function Settings(): JSX.Element {
           ))}
         </div>
       </section>
+
+      <HiddenSetting />
 
       <PeopleSetting />
 
@@ -129,6 +131,37 @@ function BlockSearch() {
         </div>
       )}
     </div>
+  )
+}
+
+// Videos marked "Not interested", so the mark can be undone.
+function HiddenSetting() {
+  const { data } = useHiddenScenes()
+  const hide = useHideScene()
+  if (!data?.length) return null
+  return (
+    <section>
+      <h2 className="text-lg font-bold">Not interested</h2>
+      <p className="mt-1 max-w-xl text-sm text-muted">
+        Videos you marked “Not interested” (the tag <i>Not interested</i> in Stash). They stay out of every list until shown again.
+      </p>
+      <ul className="mt-3 max-w-xl divide-y divide-line rounded-xl bg-surface">
+        {data.map((s) => (
+          <li key={s.id} className="flex items-center gap-3 p-2">
+            <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
+              <img src={s.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+            </Link>
+            <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{s.title}</div>
+              <div className="truncate text-xs text-muted">{[s.studio?.name, s.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
+            </Link>
+            <Button onClick={() => hide.mutate({ id: s.id, hidden: false })}>
+              Show again
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
