@@ -1,11 +1,12 @@
 import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, Clapperboard, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
+import { useMediaQuery } from '../lib/hooks'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
 import { Spinner, Toaster } from './ui'
@@ -29,6 +30,12 @@ export function Layout(): JSX.Element {
   const path = useRouterState({ select: (s) => s.location.pathname })
   const watchSection = ['/continue', '/history', '/stats'].includes(path)
   usePanicKey()
+  // Installed on a home screen there is no browser chrome, so pages below the top level get
+  // a Back button in the header.
+  const standalone = useMediaQuery('(display-mode: standalone)')
+  const router = useRouter()
+  const atStart = useRouterState({ select: (s) => !(s.location.state.__TSR_index > 0) }) // first entry of this session
+  const canGoBack = standalone && path !== '/' && !atStart
   const pill = 'ml-1.5 rounded-full bg-accent px-1.5 text-[11px] leading-[18px] font-semibold text-white tabular-nums'
   const badge = (to: string) =>
     to === '/continue' && unfinished > 0 ? (
@@ -54,6 +61,11 @@ export function Layout(): JSX.Element {
     <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className="sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
+          {canGoBack && (
+            <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" aria-label="Back">
+              <ChevronLeft size={22} />
+            </button>
+          )}
           <Link to="/" className="flex shrink-0 items-center gap-1.5 text-xl font-black tracking-tight">
             <span className="flex size-7 items-center justify-center rounded-lg bg-accent">
               <svg viewBox="0 0 16 16" className="ml-0.5 size-3.5 fill-white">

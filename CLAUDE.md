@@ -157,6 +157,10 @@ On touch screens (`Player.tsx`):
   hides its address bar when the page scrolls, so a swipe up over the video gives the
   picture the whole screen (a "Swipe up" hint shows while the bar takes space). Locking the
   scroll, as the first version did, kept the bar on screen for good.
+- **Installed** ("Add to Home Screen"; `public/manifest.json` and the Apple meta tags in
+  `index.html`) flix runs standalone: no address bar at all, so the bar dance above never
+  happens. Standalone has no browser Back, so the header shows one on phones below the top level
+  (`display-mode: standalone`). Icons are rendered from `favicon.svg` with `qlmanage -t -s <px>`.
 - The controls' gradient never takes taps itself (on a phone it covers the middle of the
   picture); only the bar and buttons inside it do.
 - Speed and "Mark this moment" are in the settings menu (no keyboard on a phone).
