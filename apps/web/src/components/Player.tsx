@@ -17,14 +17,14 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekPoint } from './SeekBar'
-import { useMediaQuery } from './ui'
+import { useMediaQuery } from '../lib/hooks'
 
 const RATES = [0.5, 1, 1.25, 1.5, 2]
 
@@ -45,7 +45,13 @@ const STALL_WINDOW = 30_000
 const DOUBLE_TAP = 300 // ms between taps that count as a double tap
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
 
+// What the page around the player may ask of it.
+export interface PlayerHandle {
+  seek: (t: number) => void
+}
+
 export function Player({
+  ref,
   scene,
   onEnded,
   onNext,
@@ -54,6 +60,7 @@ export function Player({
   startAt,
   autoStart,
 }: {
+  ref?: Ref<PlayerHandle>
   scene: SceneDetail
   onEnded?: () => void
   onNext?: () => void
@@ -368,6 +375,7 @@ export function Player({
     setTime(t)
     poke()
   }
+  useImperativeHandle(ref, () => ({ seek: seekTo }))
 
   const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu

@@ -35,6 +35,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useState } from 'react'
 
 export class ApiError extends Error {
   status: number
@@ -197,6 +198,11 @@ export const usePlaylist = (id: number | undefined) =>
   })
 
 export const useBlocklist = () => useQuery({ queryKey: ['blocklist'], queryFn: () => get<Blocklist>('/blocklist') })
+export function useIsBlocked(kind: BlockKind, id: string) {
+  const { data } = useBlocklist()
+  const list = kind === 'tag' ? data?.tags : kind === 'performer' ? data?.performers : data?.studios
+  return !!list?.some((x) => x.id === id)
+}
 
 // --- writes ---------------------------------------------------------------------
 
@@ -444,8 +450,9 @@ export const saveStationResume = (key: string, sceneId: string, seconds: number)
 
 // A station card's preview: how many videos it plays and a few screenshots to cycle through
 // (reshuffled daily). A drifting station has no count; its covers are the starting video's related ones.
+const today = () => Math.floor(Date.now() / 86_400_000)
 export function useStationPreview(query: SceneQuery, from?: string) {
-  const day = Math.floor(Date.now() / 86_400_000)
+  const [day] = useState(today) // the day the card was first shown; a tab left open overnight keeps it
   return useQuery({
     queryKey: ['station-preview', query, from, day],
     queryFn: async (): Promise<{ total: number | null; covers: string[] }> => {

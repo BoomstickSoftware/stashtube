@@ -3,7 +3,8 @@ import { Check, Heart, ListPlus, Plus } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFavoriteScenes, usePlaylistMutations, usePlaylists, useScenePlaylists, useToggleFavoriteScene } from '../lib/api'
-import { Button, useClickOutside } from './ui'
+import { Button } from './ui'
+import { useClickOutside } from '../lib/hooks'
 
 const MENU_W = 288
 

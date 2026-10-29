@@ -2,7 +2,7 @@ import { Heart, ListPlus, Plus, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useBulk, useFeatures, usePlaylists } from '../lib/api'
 import { DeleteScenesDialog } from './DeleteScenes'
-import { useClickOutside } from './ui'
+import { useClickOutside } from '../lib/hooks'
 
 // Bottom bar while videos are selected in a grid.
 export function BulkBar({ ids, titleOf, onClear }: { ids: string[]; titleOf: (id: string) => string; onClear: () => void }) {

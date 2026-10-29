@@ -2,10 +2,10 @@ import type { JSX } from 'react'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { Droplet, ExternalLink, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
-import { Player } from '../components/Player'
+import { Player, type PlayerHandle } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
@@ -35,6 +35,7 @@ function SceneView({ id }: { id: string }) {
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
   const [autoplay, setAutoplay] = useStored('flix.autoplay', asBool(true))
   const [countdown, setCountdown] = useState<number | null>(null)
+  const playerRef = useRef<PlayerHandle>(null)
   const [showDetails, setShowDetails] = useState(false)
 
   const queue: Scene[] = useMemo(() => {
@@ -53,11 +54,7 @@ function SceneView({ id }: { id: string }) {
 
   useEffect(() => {
     if (countdown === null) return
-    if (countdown <= 0) {
-      goNext()
-      return
-    }
-    const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+    const timer = setTimeout(() => (countdown <= 1 ? goNext() : setCountdown(countdown - 1)), 1000)
     return () => clearTimeout(timer)
   }, [countdown, goNext])
 
@@ -75,6 +72,7 @@ function SceneView({ id }: { id: string }) {
     <div className="relative">
       <Player
         key={scene.id}
+        ref={playerRef}
         scene={scene}
         theater={theater}
         onTheater={toggleTheater}
@@ -161,10 +159,7 @@ function SceneView({ id }: { id: string }) {
 
       <Chapters
         scene={scene}
-        onSeek={(t) => {
-          const v = document.querySelector<HTMLVideoElement>('main video[poster]') // the player; card previews have no poster
-          if (v) v.currentTime = t
-        }}
+        onSeek={(t) => playerRef.current?.seek(t)}
       />
 
       <div className="mt-5 rounded-2xl bg-surface p-4 text-sm">

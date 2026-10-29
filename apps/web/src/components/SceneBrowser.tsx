@@ -12,7 +12,8 @@ import { ActiveFilters, FilterDialog } from './Filters'
 import { filterTotal } from '../lib/filters'
 import { BulkBar } from './Bulk'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
-import { Chip, Empty, ErrorBox, Sentinel, Spinner, useClickOutside } from './ui'
+import { Chip, Empty, ErrorBox, Sentinel, Spinner } from './ui'
+import { useClickOutside } from '../lib/hooks'
 
 type Patch = Partial<SceneQuery>
 
@@ -43,11 +44,16 @@ export function SceneBrowser({
   const scenes = data?.pages.flatMap((p) => p.items) ?? []
   const total = data?.pages[0]?.total
   const [selecting, setSelecting] = useState(alwaysSelecting)
-  const [selected, setSelected] = useState<string[]>([])
-  const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s)
+      if (!n.delete(id)) n.add(id)
+      return n
+    })
   const stopSelecting = () => {
     setSelecting(alwaysSelecting)
-    setSelected([])
+    setSelected(new Set())
   }
 
   return (
@@ -68,7 +74,7 @@ export function SceneBrowser({
           defaultSort={defaultSort}
           selecting={selecting}
           onSelecting={alwaysSelecting ? undefined : () => (selecting ? stopSelecting() : setSelecting(true))}
-          onSelectAll={selecting ? () => setSelected(scenes.map((s) => s.id)) : undefined}
+          onSelectAll={selecting ? () => setSelected(new Set(scenes.map((s) => s.id))) : undefined}
         />
       )}
       {error ? (
@@ -88,7 +94,7 @@ export function SceneBrowser({
               <SceneCard
                 key={s.id}
                 scene={s}
-                select={selecting ? { selected: selected.includes(s.id), onToggle: () => toggle(s.id) } : undefined}
+                select={selecting ? { selected: selected.has(s.id), onToggle: () => toggle(s.id) } : undefined}
               />
             ))}
           </Grid>
@@ -97,7 +103,7 @@ export function SceneBrowser({
         </>
       )}
       {selecting && (
-        <BulkBar ids={selected} titleOf={(id) => scenes.find((s) => s.id === id)?.title ?? `Scene ${id}`} onClear={stopSelecting} />
+        <BulkBar ids={[...selected]} titleOf={(id) => scenes.find((s) => s.id === id)?.title ?? `Scene ${id}`} onClear={stopSelecting} />
       )}
     </div>
   )

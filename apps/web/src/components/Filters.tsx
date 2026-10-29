@@ -8,7 +8,8 @@ import { lengths, useQueryParts } from '../lib/describe'
 import { addToQuery, clearAll, type FilterKind, filtersOf, filterTotal, hasFilter } from '../lib/filters'
 import { idList, toggleId } from '../lib/query'
 import { PeopleControls } from './People'
-import { Avatar, Spinner, Switch, useDebounced } from './ui'
+import { Avatar, Spinner, Switch } from './ui'
+import { useDebounced } from '../lib/hooks'
 
 // Filters for any list of videos (and a station's), in one place: a search box that finds
 // performers, studios, tags and title words; the filters in play as removable chips; and plain

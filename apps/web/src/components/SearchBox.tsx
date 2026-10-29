@@ -4,7 +4,8 @@ import { Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearch } from '../lib/api'
 import { duration } from '../lib/format'
-import { Avatar, useClickOutside, useDebounced } from './ui'
+import { Avatar } from './ui'
+import { useClickOutside, useDebounced } from '../lib/hooks'
 
 type Hit =
   | { kind: 'scene'; id: string; label: string; sub: string; image: string | null }
@@ -111,7 +112,9 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
               className={clsx('flex w-full items-center gap-3 px-3 py-2 text-left', i === active && 'bg-white/5')}
             >
               {h.kind === 'scene' ? (
-                <img src={h.image ?? ''} alt="" className="aspect-video w-20 shrink-0 rounded-md object-cover" />
+                <span className="aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-raised">
+                  {h.image && <img src={h.image} alt="" className="size-full object-cover" />}
+                </span>
               ) : h.kind === 'performer' ? (
                 <Avatar src={h.image} name={h.label} className="size-9 shrink-0 rounded-full" />
               ) : h.kind === 'studio' ? (

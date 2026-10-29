@@ -6,7 +6,8 @@ import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { PeopleControls } from '../components/People'
-import { Button, Chip, Switch, useDebounced } from '../components/ui'
+import { Button, Chip, Switch } from '../components/ui'
+import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings } from '../lib/api'
 
 export function Settings(): JSX.Element {

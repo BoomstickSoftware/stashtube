@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react'
 import { useJob, useSceneEdits, useTags } from '../lib/api'
 import { duration } from '../lib/format'
 import { AddFilterButton } from './AddFilter'
-import { Chip, Spinner, useDebounced } from './ui'
+import { Chip, Spinner } from './ui'
+import { useDebounced } from '../lib/hooks'
 
 export function EditableTitle({ scene }: { scene: SceneDetail }) {
   const { update } = useSceneEdits(scene.id)

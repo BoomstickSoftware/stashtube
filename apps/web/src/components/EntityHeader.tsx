@@ -1,14 +1,8 @@
 import type { BlockKind } from '@flix/shared'
 import { Ban, Heart } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useBlock, useBlocklist } from '../lib/api'
+import { useBlock, useIsBlocked } from '../lib/api'
 import { Button } from './ui'
-
-export function useIsBlocked(kind: BlockKind, id: string) {
-  const { data } = useBlocklist()
-  const list = kind === 'tag' ? data?.tags : kind === 'performer' ? data?.performers : data?.studios
-  return !!list?.some((x) => x.id === id)
-}
 
 export function BlockButton({ kind, id }: { kind: BlockKind; id: string }) {
   const blocked = useIsBlocked(kind, id)
