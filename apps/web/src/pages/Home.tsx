@@ -1,14 +1,16 @@
 import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
-import type { HomeRow, SceneCard } from '@flix/shared'
+import type { HomeRow, SceneCard, StationResume } from '@flix/shared'
 import clsx from 'clsx'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Play, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, Pencil, Play, Radio, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
-import { useHome, useRowMutations } from '../lib/api'
+import { useHome, useRowMutations, useStationResumes, useStations } from '../lib/api'
+import { QuerySummary } from '../components/QuerySummary'
+import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
 
 export function Home(): JSX.Element {
@@ -41,11 +43,12 @@ export function Home(): JSX.Element {
   return (
     <div className="space-y-10">
       {hero && <Hero scene={hero} count={order.length} onStep={step} />}
+      <PickUpStations />
       {data.map((r) =>
         r.savedId ? (
           <PinnedRow key={r.key} row={r} order={data.filter((x) => x.savedId).map((x) => x.savedId!)} />
         ) : (
-          <Row key={r.key} title={r.title} browse={r.browse} items={r.items} />
+          <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
         ),
       )}
     </div>
@@ -53,6 +56,55 @@ export function Home(): JSX.Element {
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
+
+// Stations left part-way, most recent first: tap one to pick it up where it was.
+function PickUpStations() {
+  const { data: resumes } = useStationResumes()
+  const { data: stations } = useStations()
+  const recent = (resumes ?? []).slice(0, 6)
+  if (!recent.length) return null
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline gap-3">
+        <h2 className="text-lg font-bold tracking-tight sm:text-xl">Pick up a station</h2>
+        <Link to="/stations" className="text-sm text-muted hover:text-accent">
+          All stations
+        </Link>
+      </div>
+      <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+        {recent.map((r) => (
+          <ResumeCard key={r.key} resume={r} name={stations?.find((s) => `id:${s.id}` === r.key)?.name} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ResumeCard({ resume: r, name }: { resume: StationResume; name?: string }) {
+  const search = stationSearchFor(r.key)
+  const label = name ?? (search.from ? 'Like a video' : <QuerySummary query={search} empty="Everything" />)
+  return (
+    <Link to="/station" search={{ ...search, start: 'resume' }} className="group w-[62vw] shrink-0 snap-start sm:w-[260px]">
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
+        <img src={r.scene.screenshot} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        <span className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="flex size-12 items-center justify-center rounded-full bg-white/90 text-black shadow-xl">
+            <Play size={20} className="ml-0.5 fill-current" />
+          </span>
+        </span>
+        <span className="absolute inset-x-2 bottom-2 flex items-center gap-1.5 rounded-full bg-black/75 px-2.5 py-1 text-[11px] backdrop-blur">
+          <History size={12} className="shrink-0 text-accent" />
+          <span className="truncate">{r.scene.title}</span>
+          <span className="ml-auto shrink-0 text-white/70 tabular-nums">{duration(r.seconds)}</span>
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold">
+        <Radio size={13} className="shrink-0 text-accent" />
+        <span className="truncate">{label}</span>
+      </div>
+    </Link>
+  )
+}
 
 // The hero carousel: arrows, a sideways swipe, or the timer move it. The timer waits while
 // the pointer is over it, a preview is playing, or the tab is in the background.

@@ -141,7 +141,8 @@ export interface HomeRow {
   key: string
   title: string
   savedId?: number // a pinned filter (can be renamed, reordered, unpinned)
-  browse: SceneQuery // /browse filters that show the whole row
+  browse?: SceneQuery // /browse filters that show the whole row
+  from?: string // instead: the scene this row is related to ("See all" is a station from it)
   items: SceneCard[]
 }
 

@@ -97,6 +97,19 @@ api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(scen
 
 api.get('/home', async (c) => c.json(await homeRows()))
 
+// Related videos of the last one played, unwatched ones first.
+async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>): Promise<HomeRow | null> {
+  const last = (await stash.history(1))[0]?.scene
+  if (!last) return null
+  const r = await stash.getScene(last.id)
+  if (!r) return null
+  const related = await stash.relatedScenes(last.id, r.performerIds, r.studioId, r.tagIds, blocked)
+  const items = [...related.filter((s) => !s.playCount), ...related.filter((s) => s.playCount)].slice(0, 24)
+  if (items.length < 3) return null
+  const title = last.title.length > 48 ? `${last.title.slice(0, 46).trimEnd()}…` : last.title
+  return { key: 'because', title: `Because you watched ${title}`, from: last.id, items }
+}
+
 // The home feed. Also run at startup and after Stash changes, so the first visit is warm.
 export async function homeRows(): Promise<HomeRow[]> {
   const blocked = await exclusions()
@@ -116,6 +129,11 @@ export async function homeRows(): Promise<HomeRow[]> {
   ])
   const personal: HomeRow[] = []
   if (recs?.forYou.length) personal.push({ key: 'for-you', title: 'For you', browse: { unwatched: true }, items: recs.forYou })
+  const because = await becauseYouWatched(blocked).catch((e) => {
+    console.error('because you watched:', e.message)
+    return null
+  })
+  if (because) personal.push(because)
   const pinnedRows = await Promise.all(
     pinned.map(async (r) => ({ ...(await row(`saved-${r.id}`, r.title, r.query)), savedId: r.id })),
   )

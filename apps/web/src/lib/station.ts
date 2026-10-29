@@ -24,6 +24,17 @@ export const savePrefs = (p: StationPrefs) => writeStored(KEY, p)
 // start=resume: pick up where the station was left (otherwise a fresh shuffle).
 export type StationSearch = SceneQuery & { from?: string; id?: number; start?: 'resume' }
 
+// The /station search that reopens the station a resume key belongs to (the inverse of stationKey).
+export function stationSearchFor(key: string): StationSearch {
+  if (key.startsWith('id:')) return { id: Number(key.slice(3)) }
+  if (key.startsWith('from:')) return { from: key.slice(5) }
+  try {
+    return JSON.parse(key.slice(2)) as SceneQuery
+  } catch {
+    return {}
+  }
+}
+
 // The key a station's resume point is saved under.
 export function stationKey(c: { id?: number; query: SceneQuery; from?: string }): string {
   if (c.id) return `id:${c.id}`

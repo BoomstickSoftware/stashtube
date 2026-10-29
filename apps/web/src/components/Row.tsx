@@ -1,11 +1,11 @@
 import type { SceneCard as Scene, SceneQuery } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Radio } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
 import { SceneCard } from './SceneCard'
 
 // Horizontal shelf of scenes, Netflix-style.
-export function Row({ title, browse, items, actions }: { title: ReactNode; browse?: SceneQuery; items: Scene[]; actions?: ReactNode }) {
+export function Row({ title, browse, from, items, actions }: { title: ReactNode; browse?: SceneQuery; from?: string; items: Scene[]; actions?: ReactNode }) {
   const scroller = useRef<HTMLDivElement>(null)
   const page = (dir: number) => {
     const el = scroller.current
@@ -18,6 +18,11 @@ export function Row({ title, browse, items, actions }: { title: ReactNode; brows
         {browse && (
           <Link to="/browse" search={browse} className="text-sm text-muted transition-opacity hover:text-accent [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100">
             See all
+          </Link>
+        )}
+        {from && (
+          <Link to="/station" search={{ from }} className="inline-flex items-center gap-1 text-sm text-muted transition-opacity hover:text-accent [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100">
+            <Radio size={13} /> Station
           </Link>
         )}
         {actions && <div className="ml-auto flex items-center gap-0.5 opacity-60 transition-opacity group-hover/row:opacity-100">{actions}</div>}
