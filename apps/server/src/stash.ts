@@ -657,6 +657,13 @@ export async function setStudioFavorite(id: string, favorite: boolean) {
   }, ['studio'])
 }
 
+export async function setTagFavorite(id: string, favorite: boolean) {
+  await mutate(`mutation($id: ID!, $f: Boolean) { tagUpdate(input: { id: $id, favorite: $f }) { id } }`, {
+    id,
+    f: favorite,
+  }, ['tag'])
+}
+
 export async function findTags(filter: Raw, blocked: Exclusions, onlyUsed = true) {
   const tf: Raw = {}
   if (onlyUsed) tf.scene_count = { value: 0, modifier: 'GREATER_THAN' }
@@ -961,7 +968,7 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
     const pool = (byTag.get(t.id) ?? []).sort((a, b) => rank(b) - rank(a))
     const pick = pool.find((s) => !used.has(s.id)) ?? pool[0]
     if (pick) used.add(pick.id)
-    return { id: t.id, name: t.name, sceneCount: t.sceneCount, image: pick ? mediaUrl(pick.paths.screenshot) : null }
+    return { id: t.id, name: t.name, sceneCount: t.sceneCount, favorite: t.favorite, image: pick ? mediaUrl(pick.paths.screenshot) : null }
   })
 }
 

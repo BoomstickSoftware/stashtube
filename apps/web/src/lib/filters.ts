@@ -67,3 +67,20 @@ export function addToQuery(query: SceneQuery, kind: FilterKind, id: string): Par
   if (kind === 'tag' && idList(query.xtags).includes(id)) patch.xtags = toggleId(query.xtags, id)
   return patch
 }
+
+// Every filter field (not sort or paging), so "clear all" and "apply" can replace them as a set.
+export const FILTER_KEYS = [
+  'q', 'tags', 'xtags', 'performers', 'studios', 'minRating', 'minHeight', 'minDuration', 'maxDuration',
+  'unwatched', 'inProgress', 'favorites', 'unblocked', 'maxHeight', 'maxRating', 'unmatched', 'olderDays',
+  'duplicates', 'minAge', 'maxAge', 'ethnicities',
+] as const satisfies readonly (keyof SceneQuery)[]
+
+export const clearAll: Partial<SceneQuery> = Object.fromEntries(FILTER_KEYS.map((k) => [k, undefined]))
+export const filtersOf = (q: SceneQuery): Partial<SceneQuery> => Object.fromEntries(FILTER_KEYS.map((k) => [k, q[k]]))
+
+// How many filters are in play (the Filters button's count).
+export const filterTotal = (q: SceneQuery) =>
+  idList(q.performers).length + idList(q.studios).length + idList(q.tags).length + idList(q.xtags).length + idList(q.ethnicities).length +
+  [q.q, q.unwatched, q.inProgress, q.favorites, q.minRating, q.minHeight, q.minDuration || q.maxDuration, q.minAge || q.maxAge,
+    q.maxHeight, q.maxRating, q.unmatched, q.olderDays, q.duplicates, q.unblocked].filter(Boolean).length
+

@@ -1,4 +1,4 @@
-import type { SceneQuery } from '@flix/shared'
+import type { SceneQuery, SceneSort } from '@flix/shared'
 import { sceneSorts } from '@flix/shared'
 
 // URL search params for any page that lists scenes. TanStack Router parses numbers
@@ -56,3 +56,17 @@ export function ageLabel(min?: number, max?: number): string | null {
   if (!min && !max) return null
   return `Age ${min && max ? `${min}–${max}` : min ? `${min}+` : `up to ${max}`}`
 }
+
+// A list's filters plus what its page fixes (`base`, e.g. the performer being viewed).
+export function withBase(query: SceneQuery, base: SceneQuery, defaultSort: SceneSort): SceneQuery {
+  const q: SceneQuery = { ...query, sort: query.sort ?? (query.q ? undefined : defaultSort) }
+  for (const [k, v] of Object.entries(base)) {
+    if (k === 'tags' || k === 'performers' || k === 'studios') {
+      const merged = [...new Set([...idList(v as string), ...idList(q[k])])]
+      q[k] = merged.join(',')
+    } else (q as Record<string, unknown>)[k] = v
+  }
+  if (q.sort === 'random' && !q.seed) q.seed = 1
+  return q
+}
+

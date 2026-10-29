@@ -27,7 +27,16 @@ export function savePrefs(p: StationPrefs) {
   } catch {}
 }
 
-export type StationSearch = SceneQuery & { from?: string; id?: number }
+// start=resume: pick up where the station was left (otherwise a fresh shuffle).
+export type StationSearch = SceneQuery & { from?: string; id?: number; start?: 'resume' }
+
+// The key a station's resume point is saved under.
+export function stationKey(c: { id?: number; query: SceneQuery; from?: string }): string {
+  if (c.id) return `id:${c.id}`
+  if (c.from) return `from:${c.from}`
+  const q = stationQuery(c.query)
+  return `q:${JSON.stringify(Object.fromEntries(Object.entries(q).sort(([a], [b]) => a.localeCompare(b))))}`
+}
 
 // The filters a station keeps from a list (its own order is random).
 export function stationQuery(q: SceneQuery): SceneQuery {
@@ -59,61 +68,143 @@ export function segmentsFor(scene: SceneDetail, prefs: StationPrefs, introSkip =
   return out.slice(0, 6)
 }
 
+// The plan from a point the viewer chose (a seek, a resume): a moment starting there, then the
+// planned ones after it.
+export function segmentsFrom(scene: SceneDetail, prefs: StationPrefs, t: number, introSkip = 0): Segment[] {
+  const d = scene.durationSec
+  if (prefs.mode === 'full') return [{ start: t, end: d }]
+  const cur = { start: t, end: Math.min(d, t + (prefs.window * 2) / 3) }
+  const out = [cur]
+  for (const s of segmentsFor(scene, prefs, introSkip)) {
+    if (s.end <= t) continue
+    const last = out[out.length - 1]!
+    if (s.start <= last.end) last.end = Math.max(last.end, s.end)
+    else out.push({ ...s })
+  }
+  return out
+}
+
 const detail = (id: string) =>
   queryClient.fetchQuery({ queryKey: ['scene', id], queryFn: () => get<SceneDetail>(`/scenes/${id}`), staleTime: 60_000 })
 
-// Hands out scenes one at a time, never repeating until everything has played.
+// Hands out scenes one at a time, never repeating until everything has played. Keeps what
+// has played (to go back, or pick again from the list) and what is coming up.
 export class StationQueue {
   private played = new Set<string>()
-  private pool: string[] = []
+  private pool: SceneCard[] = []
   private page = 1
   private seed = Math.floor(Math.random() * 1e6) + 1
   private last: string | undefined
   private query: SceneQuery
   private from: string | undefined
+  private exhausted = false // this shuffle has handed out its last page
+  history: SceneCard[] = [] // in play order; the last one is playing
+  private pos = -1 // where in history the player is (back moves it)
 
   constructor(query: SceneQuery, from?: string) {
     this.query = query
     this.from = from
   }
 
+  get current(): SceneCard | undefined {
+    return this.history[this.pos]
+  }
+  get canGoBack() {
+    return this.pos > 0
+  }
+
   async next(): Promise<SceneDetail | null> {
+    // after going back, forward walks history again first
+    if (this.pos < this.history.length - 1) return this.open(this.history[++this.pos]!.id)
     const id = await this.nextId()
-    if (!id) return null
+    return id ? this.take(id) : null
+  }
+
+  async back(): Promise<SceneDetail | null> {
+    if (!this.canGoBack) return null
+    return this.open(this.history[--this.pos]!.id)
+  }
+
+  // Play a scene now: one from the up-next list, from history, or a resume point.
+  async jump(id: string): Promise<SceneDetail> {
+    const at = this.history.findIndex((s) => s.id === id)
+    if (at >= 0) {
+      this.pos = at
+      return this.open(id)
+    }
+    this.pool = this.pool.filter((s) => s.id !== id)
+    return this.take(id)
+  }
+
+  // The next `n` scenes, loading more of the shuffle when needed. Drifting: the current
+  // video's related ones that have not played.
+  async upcoming(n: number): Promise<SceneCard[]> {
+    const later = this.history.slice(this.pos + 1)
+    if (this.from) {
+      if (!this.last) return later
+      const related = await this.related(this.last)
+      return [...later, ...related.filter(this.fresh)].slice(0, n)
+    }
+    while (later.length + this.pool.length < n && !this.exhausted && (await this.fill())) {}
+    return [...later, ...this.pool.filter((s) => !this.played.has(s.id))].slice(0, n)
+  }
+
+  private async take(id: string): Promise<SceneDetail> {
+    const s = await detail(id)
     this.played.add(id)
     this.last = id
+    this.history = [...this.history.slice(0, this.pos + 1), s]
+    this.pos = this.history.length - 1
+    return s
+  }
+
+  private async open(id: string): Promise<SceneDetail> {
+    this.last = id
     return detail(id)
+  }
+
+  // Not played on this station (and, for an unwatched station, never watched at all).
+  private fresh = (s: SceneCard) => !this.played.has(s.id) && !(this.query.unwatched && s.playCount > 0)
+
+  private related(id: string) {
+    return queryClient.fetchQuery({
+      queryKey: ['related', id],
+      queryFn: () => get<SceneCard[]>(`/scenes/${id}/related`),
+      staleTime: 5 * 60_000,
+    })
+  }
+
+  // One more page of the shuffle; false when there is nothing more to add.
+  private async fill(): Promise<boolean> {
+    const r = await get<Page<SceneCard>>(`/scenes${qs({ ...this.query, sort: 'random', seed: this.seed, page: this.page, perPage: 40 })}`)
+    this.page++
+    const known = new Set(this.pool.map((s) => s.id))
+    this.pool.push(...r.items.filter((s) => !known.has(s.id)))
+    if (!r.items.length || r.page * r.perPage >= r.total) this.exhausted = true
+    return r.items.length > 0
   }
 
   private async nextId(): Promise<string | undefined> {
     if (this.from) {
       if (!this.last) return this.from
-      const related = await queryClient.fetchQuery({
-        queryKey: ['related', this.last],
-        queryFn: () => get<SceneCard[]>(`/scenes/${this.last}/related`),
-        staleTime: 5 * 60_000,
-      })
-      const fresh = related.find((s) => !this.played.has(s.id))
+      const fresh = (await this.related(this.last)).find(this.fresh)
       if (fresh) return fresh.id
       // drifted into a corner: carry on shuffling the whole library
       this.from = undefined
     }
     for (let tries = 0; tries < 3; tries++) {
       while (this.pool.length) {
-        const id = this.pool.shift()!
-        if (!this.played.has(id)) return id
+        const s = this.pool.shift()!
+        if (!this.played.has(s.id)) return s.id
       }
-      const r = await get<Page<SceneCard>>(`/scenes${qs({ ...this.query, sort: 'random', seed: this.seed, page: this.page, perPage: 40 })}`)
-      this.page++
-      this.pool = r.items.map((s) => s.id)
-      if (!r.items.length) {
-        if (!r.total) return undefined
-        // played everything: start a new shuffle
-        this.played.clear()
-        if (this.last) this.played.add(this.last)
-        this.seed = Math.floor(Math.random() * 1e6) + 1
-        this.page = 1
-      }
+      if (!this.exhausted && (await this.fill())) continue
+      if (!this.played.size && this.exhausted) return undefined
+      // played everything: start a new shuffle
+      this.played.clear()
+      if (this.last) this.played.add(this.last)
+      this.seed = Math.floor(Math.random() * 1e6) + 1
+      this.page = 1
+      this.exhausted = false
     }
     return undefined
   }

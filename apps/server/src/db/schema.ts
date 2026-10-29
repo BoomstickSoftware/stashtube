@@ -70,3 +70,12 @@ export const stations = pgTable('stations', {
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// Where each station was last left: the scene playing and how far in. Keyed by station
+// (`id:<n>` saved, `q:<filters>` ad hoc, `from:<scene>` drifting); the newest 50 are kept.
+export const stationResume = pgTable('station_resume', {
+  key: text('key').primaryKey(),
+  sceneId: text('scene_id').notNull(),
+  seconds: integer('seconds').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})

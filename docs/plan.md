@@ -110,6 +110,31 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    - Next:
      4. Moments: an O-counter press also saves a timestamp marker; needs trying out before committing.
    - "Surprise me" dropped: the home carousel already does it.
+2f. **Round 3 (2026-10-29)**, from use:
+   - Stations page: each card cycles through screenshots of what it plays (4 s, crossfade, staggered, still under
+     reduced motion) and shows its video count; quick starts are cards too. **New station** opens an editor
+     (`/stations/new`, `/stations/<id>/edit`): name, mode, moment length, and the filter panel inline over a live grid
+     of what it will play.
+   - Resume: a playing station saves where it is (scene and second) every 15 s and on leaving, per station
+     (`station_resume`, key `id:<n>`, `q:<filters>` or `from:<scene>`, newest 50 kept). A card with a saved spot
+     shows "Resume …" and its picture resumes; **Shuffle** starts fresh, **Unwatched** plays only never-watched
+     videos (`unwatched=1`, also honoured when drifting).
+   - Station player: the video page's seek bar (`components/SeekBar.tsx`, shared with `Player`: sprite thumbnails,
+     markers; Moments shade the planned windows and a seek plans a moment from there), ±10 s, previous video,
+     Mark this moment, Favorite, and a list panel (side panel, bottom sheet on phones: played, now playing, up next;
+     tap any to jump). Keys: arrows ±5 s, j/l ±10 s, n next, p previous, b mark, [ ] markers, q list. Arrow right
+     skipped to the next video until this round.
+   - Categories: pin a tag (Stash's tag favourite) from its tile or the tag page; pinned tags head the page.
+   - Studios: Networks / Grid / Table views, Most videos / Name sort, Following; kept per browser.
+   - Filters rethought (`components/Filters.tsx`). The old strip of chips with popovers is gone: its Tags, + Filter
+     and People popovers sat inside the sideways-scrolling row, which clipped everything below the input, so
+     searching showed nothing. Every list now has a **Filters** button (with a count), sort, and the filters in
+     play as removable chips (excluded tags marked NOT); the bar is sticky from `sm` up only. Filters opens one
+     dialog (full-screen sheet on phones, portalled to `body`): your filters; one search box for performers,
+     studios, tags (Require / Exclude) and title words, with popular tags before typing; then Watched, Rating,
+     Quality, Length, followed performers, age and ethnicity, and Show blocked. It edits a copy and applies on
+     "Show N videos" (live count). The station editor shows the same panel inline, applying as you go.
+   - Browse nav shows how many filters "Add to filters" has stacked (they live in this browser's localStorage).
 3. **Deploy to k8s** (next):
    - Image: build in Forgejo CI and push to the cluster registry.
    - `infra/flix/` in `~/code/k8s`: namespace, CNPG cluster (1 instance, local-path), Deployment

@@ -1,11 +1,9 @@
 import type { PeopleFilter } from '@flix/shared'
 import { ethnicities } from '@flix/shared'
-import { useRef, useState } from 'react'
-import { Users } from 'lucide-react'
-import { Chip, useClickOutside } from './ui'
+import { Chip } from './ui'
 
 // Age at filming and ethnicity of a performer (of the Settings gender): one performer must
-// match both. Used by the filter bar and by Settings (defaults for every list).
+// match both. Used by the filter panel and by Settings (defaults for every list).
 const agePresets: { label: string; min?: number; max?: number }[] = [
   { label: '18–22', min: 18, max: 22 },
   { label: '18–25', min: 18, max: 25 },
@@ -77,30 +75,6 @@ export function PeopleControls({ value, onChange }: { value: PeopleFilter; onCha
           })}
         </div>
       </div>
-    </div>
-  )
-}
-
-// Filter-bar chip with a popover.
-export function PeopleFilterChip({ value, onChange }: { value: PeopleFilter; onChange: (v: PeopleFilter) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useClickOutside(ref, () => setOpen(false), open)
-  const active = !!(value.minAge || value.maxAge || value.ethnicities?.length)
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <Chip tone={open || active ? 'active' : 'default'} onClick={() => setOpen((v) => !v)}>
-        <Users size={14} /> People
-      </Chip>
-      {open && (
-        <div className="fixed top-32 right-4 left-4 z-50 rounded-2xl bg-surface p-4 shadow-2xl ring-1 ring-line sm:absolute sm:top-10 sm:right-auto sm:left-0 sm:w-96">
-          <PeopleControls value={value} onChange={onChange} />
-          <p className="mt-4 text-xs text-muted">
-            One performer (Settings › performer gender) must match both. Age is to about six months. This replaces your Settings
-            defaults for this list.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

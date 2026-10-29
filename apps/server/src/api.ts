@@ -167,6 +167,15 @@ const stationBody = z.object({
 })
 
 api.get('/stations', async (c) => c.json(await stations.listStations()))
+api.get('/stations/resume', async (c) => c.json(await stations.listResume()))
+api.put('/stations/resume', async (c) => {
+  const b = parse(
+    z.object({ key: z.string().min(3).max(2000), sceneId: z.string().regex(/^\d+$/), seconds: z.number().min(0).max(86_400) }),
+    await c.req.json(),
+  )
+  await stations.saveResume(b.key, b.sceneId, b.seconds)
+  return c.body(null, 204)
+})
 api.post('/stations', async (c) => {
   const b = parse(stationBody, await c.req.json())
   return c.json({ id: await stations.addStation(b) }, 201)
@@ -338,6 +347,12 @@ api.get('/tags', async (c) => {
 api.get('/tags/tiles', async (c) => c.json(await stash.tagTiles(await exclusions())))
 
 api.get('/tags/:id', async (c) => c.json((await stash.getTag(c.req.param('id'))) ?? notFound()))
+
+api.put('/tags/:id/favorite', async (c) => {
+  const { favorite } = parse(z.object({ favorite: z.boolean() }), await c.req.json())
+  await stash.setTagFavorite(c.req.param('id'), favorite)
+  return c.body(null, 204)
+})
 
 // Typeahead: a few of each kind, blocklist applied.
 api.get('/search', async (c) => {

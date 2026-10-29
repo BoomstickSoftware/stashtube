@@ -4,22 +4,26 @@
 // ~15 px tap slop (iOS Safari does not), so the test drags 25 px.
 // usage: node scripts/card-check.mjs <outdir> http://localhost:5173 /browse
 import { spawn } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 const [outDir, base, path] = process.argv.slice(2)
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
-const port = 9333
+// Chrome picks a free port and writes it to the profile. A fixed port would silently attach to
+// any headless Chrome left running from an earlier check (and keep driving its page).
+rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
+    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }

@@ -1,11 +1,12 @@
 import type { SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { Pin } from 'lucide-react'
 import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
-import { Chip, ErrorBox, Spinner } from '../components/ui'
-import { useTag } from '../lib/api'
+import { Button, Chip, ErrorBox, Spinner } from '../components/ui'
+import { useFavoriteTag, useTag } from '../lib/api'
 
 const route = getRouteApi('/tag/$id')
 
@@ -14,6 +15,7 @@ export function TagPage(): JSX.Element {
   const query = route.useSearch()
   const navigate = route.useNavigate()
   const { data: t, error, isLoading } = useTag(id)
+  const pin = useFavoriteTag()
 
   if (error) return <ErrorBox error={error} />
   if (isLoading || !t) return <Spinner className="mx-auto mt-32" />
@@ -28,6 +30,9 @@ export function TagPage(): JSX.Element {
         </div>
         {t.description && <p className="mt-2 max-w-3xl text-sm text-white/70">{t.description}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button variant={t.favorite ? 'solid' : 'ghost'} onClick={() => pin.mutate({ id, favorite: !t.favorite })} title="Pinned categories head the Categories page">
+            <Pin size={16} className={t.favorite ? 'fill-accent text-accent' : ''} /> {t.favorite ? 'Pinned' : 'Pin'}
+          </Button>
           <AddFilterButton kind="tag" id={id} name={t.name} variant="button" />
           <BlockButton kind="tag" id={id} />
           {[...t.parents, ...t.children].map((r) => (

@@ -1,8 +1,8 @@
-import type { SavedStation, SceneQuery, StationInput, StationMode } from '@flix/shared'
-import { asc, eq, sql } from 'drizzle-orm'
+import type { SavedStation, SceneQuery, StationInput, StationMode, StationResume } from '@flix/shared'
+import { asc, desc, eq, notInArray, sql } from 'drizzle-orm'
 import { exclusions } from './blocklist.ts'
 import { db } from './db/index.ts'
-import { stations } from './db/schema.ts'
+import { stationResume, stations } from './db/schema.ts'
 import * as stash from './stash.ts'
 
 // Each station's cover: its starting scene, or a scene from its filters (stable per station).
@@ -52,10 +52,31 @@ export async function updateStation(id: number, patch: Partial<StationInput>) {
 
 export async function deleteStation(id: number) {
   await db.delete(stations).where(eq(stations.id, id))
+  await db.delete(stationResume).where(eq(stationResume.key, `id:${id}`))
 }
 
 export async function reorderStations(ids: number[]) {
   await db.transaction(async (tx) => {
     for (const [position, id] of ids.entries()) await tx.update(stations).set({ position }).where(eq(stations.id, id))
   })
+}
+
+// --- where each station was left ---------------------------------------------------------
+
+const KEEP_RESUMES = 50
+
+export async function listResume(): Promise<StationResume[]> {
+  const rows = await db.select().from(stationResume).orderBy(desc(stationResume.updatedAt))
+  const scenes = new Map((await stash.findScenesByIds(rows.map((r) => r.sceneId))).map((s) => [s.id, s]))
+  return rows.flatMap((r) => {
+    const s = scenes.get(r.sceneId)
+    return s ? [{ key: r.key, seconds: r.seconds, updatedAt: r.updatedAt.toISOString(), scene: s }] : []
+  })
+}
+
+export async function saveResume(key: string, sceneId: string, seconds: number) {
+  const row = { key, sceneId, seconds: Math.floor(seconds), updatedAt: new Date() }
+  await db.insert(stationResume).values(row).onConflictDoUpdate({ target: stationResume.key, set: row })
+  const keep = db.select({ key: stationResume.key }).from(stationResume).orderBy(desc(stationResume.updatedAt)).limit(KEEP_RESUMES)
+  await db.delete(stationResume).where(notInArray(stationResume.key, keep))
 }

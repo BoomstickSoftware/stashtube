@@ -25,7 +25,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile, SavedStation, StationInput } from '@flix/shared'
+  TagTile, SavedStation, StationInput, StationResume } from '@flix/shared'
 import {
   keepPreviousData,
   type Query,
@@ -106,6 +106,17 @@ export function useScenes(q: SceneQuery, perPage = 40) {
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.perPage < last.total ? last.page + 1 : undefined),
     placeholderData: keepPreviousData,
+  })
+}
+
+// How many videos a filter set matches (the filter dialog's "Show N videos").
+export const useSceneCount = (q: SceneQuery) => {
+  const { sort: _s, seed: _d, dir: _r, page: _p, perPage: _n, ...filters } = q
+  return useQuery({
+    queryKey: ['scenes', 'count', filters],
+    queryFn: () => get<Page<SceneCard>>(`/scenes${qs({ ...filters, perPage: 1 })}`).then((p) => p.total),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   })
 }
 
@@ -412,6 +423,32 @@ export function useStationMutations() {
   }
 }
 
+// Where each station was left, newest first (saved while a station plays).
+export const useStationResumes = () =>
+  useQuery({ queryKey: ['station-resume'], queryFn: () => get<StationResume[]>('/stations/resume'), staleTime: 30_000 })
+export const saveStationResume = (key: string, sceneId: string, seconds: number) =>
+  send('PUT', '/stations/resume', { key, sceneId, seconds }).then(() => queryClient.invalidateQueries({ queryKey: ['station-resume'] }))
+
+// A station card's preview: how many videos it plays and a few screenshots to cycle through
+// (reshuffled daily). A drifting station has no count; its covers are the starting video's related ones.
+export function useStationPreview(query: SceneQuery, from?: string) {
+  const day = Math.floor(Date.now() / 86_400_000)
+  return useQuery({
+    queryKey: ['station-preview', query, from, day],
+    queryFn: async (): Promise<{ total: number | null; covers: string[] }> => {
+      if (from) {
+        const related = await get<SceneCard[]>(`/scenes/${from}/related`)
+        return { total: null, covers: related.slice(0, 8).map((s) => s.screenshot) }
+      }
+      // a seed per station, so stations that overlap do not open on the same picture
+      const seed = day + [...JSON.stringify(query)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100_000, 7)
+      const r = await get<Page<SceneCard>>(`/scenes${qs({ ...query, sort: 'random', seed, perPage: 8 })}`)
+      return { total: r.total, covers: r.items.map((s) => s.screenshot) }
+    },
+    staleTime: 10 * 60_000,
+  })
+}
+
 // --- history and stats -------------------------------------------------------------
 
 export const useHistory = () => useQuery({ queryKey: ['scenes', 'history'], queryFn: () => get<HistoryEntry[]>('/history') })
@@ -433,6 +470,19 @@ export function useRemoveFromHistory() {
 
 export const useTagTiles = () =>
   useQuery({ queryKey: ['tags', 'tiles'], queryFn: () => get<TagTile[]>('/tags/tiles'), staleTime: 5 * 60_000 })
+
+// Pins a category (Stash's tag favourite).
+export function useFavoriteTag() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => send('PUT', `/tags/${id}/favorite`, { favorite }),
+    onMutate: ({ id, favorite }) => {
+      qc.setQueryData<TagTile[]>(['tags', 'tiles'], (d) => d?.map((t) => (t.id === id ? { ...t, favorite } : t)))
+      qc.setQueryData<TagDetail>(['tag', id], (d) => d && { ...d, favorite })
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['tags', 'tiles'] }),
+  })
+}
 
 // --- scene edits, markers, identify ---------------------------------------------------
 

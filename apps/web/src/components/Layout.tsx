@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { Building2, Clapperboard, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
+import { filterCount, useBrowseFilters } from '../lib/filters'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
 import { Spinner, Toaster } from './ui'
@@ -24,12 +25,18 @@ export function Layout(): JSX.Element {
   const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: Infinity })
   const [mobileSearch, setMobileSearch] = useState(false)
   const { data: unfinished = 0 } = useContinueCount()
+  const stacked = filterCount(useBrowseFilters()) // performers, studios and tags added with "+"
   const path = useRouterState({ select: (s) => s.location.pathname })
   const watchSection = ['/continue', '/history', '/stats'].includes(path)
   usePanicKey()
+  const pill = 'ml-1.5 rounded-full bg-accent px-1.5 text-[11px] leading-[18px] font-semibold text-white tabular-nums'
   const badge = (to: string) =>
     to === '/continue' && unfinished > 0 ? (
-      <span className="ml-1.5 rounded-full bg-accent px-1.5 text-[11px] leading-[18px] font-semibold text-white tabular-nums">{unfinished}</span>
+      <span className={pill}>{unfinished}</span>
+    ) : to === '/browse' && stacked > 0 ? (
+      <span className={pill} title={`${stacked} stacked filter${stacked === 1 ? '' : 's'}`}>
+        {stacked}
+      </span>
     ) : null
 
   useEffect(() => {
@@ -109,6 +116,14 @@ export function Layout(): JSX.Element {
                 <span className="relative">
                   <n.icon size={20} className={clsx(isActive && 'fill-accent/20')} />
                   {n.to === '/continue' && unfinished > 0 && <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent" />}
+                  {n.to === '/browse' && stacked > 0 && (
+                    <span
+                      title={`${stacked} stacked filter${stacked === 1 ? '' : 's'}`}
+                      className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] leading-4 font-semibold text-white tabular-nums"
+                    >
+                      {stacked}
+                    </span>
+                  )}
                 </span>
                 {n.label}
               </>

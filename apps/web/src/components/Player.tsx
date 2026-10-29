@@ -21,7 +21,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addPlay, saveActivity, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
-import { canDirectPlay, cueAt, loadSprites, type SpriteCue } from '../lib/media'
+import { canDirectPlay } from '../lib/media'
+import { SeekBar, type SeekPoint } from './SeekBar'
 import { useMediaQuery } from './ui'
 
 const SAVE_EVERY = 15 // seconds of playback between activity saves
@@ -127,9 +128,7 @@ export function Player({
   const [fullscreen, setFullscreen] = useState(false)
   const [idle, setIdle] = useState(false)
   const [waiting, setWaiting] = useState(false)
-  const [sprites, setSprites] = useState<SpriteCue[]>([])
-  const [hover, setHover] = useState<{ x: number; t: number; w: number } | null>(null) // mouse over the seek bar
-  const [scrub, setScrub] = useState<{ x: number; t: number; w: number } | null>(null) // dragging the seek bar
+  const [point, setPoint] = useState<SeekPoint | null>(null) // the seek bar is hovered or dragged
   const touch = useMediaQuery('(pointer: coarse)')
   // A phone turned sideways: the player fills the screen with its own controls (iPhone
   // Safari cannot make anything but a bare <video> fullscreen).
@@ -201,10 +200,6 @@ export function Player({
       setFlash('Switched to 720p')
     }
   }
-
-  useEffect(() => {
-    if (scene.vtt) loadSprites(scene.vtt).then(setSprites)
-  }, [scene.vtt])
 
   // AirPlay: Safari's WebKit events. The receiver fetches the media URL itself, which is why
   // playback URLs carry a signed token (see the server's media signing).
@@ -475,46 +470,15 @@ export function Player({
     tapTimer.current = window.setTimeout(() => (controlsShown && playing ? setIdle(true) : poke()), zone ? DOUBLE_TAP : 0)
   }
 
-  // Seek bar. Mouse: seeks as it moves. Touch: the drag previews (thumbnail and time) and
-  // seeks once, on release, so a finger's jitter does not throw the video around.
-  const bar = useRef<HTMLDivElement>(null)
-  const timeAt = (clientX: number) => {
-    const r = bar.current!.getBoundingClientRect()
-    const x = Math.max(0, Math.min(r.width, clientX - r.left))
-    return { x, t: (x / r.width) * (dur || 0), w: r.width }
-  }
-  const onBarDown = (e: React.PointerEvent) => {
-    e.currentTarget.setPointerCapture(e.pointerId)
-    const p = timeAt(e.clientX)
-    setScrub(p)
-    if (e.pointerType === 'mouse') video.current!.currentTime = p.t
-    poke()
-  }
-  const onBarMove = (e: React.PointerEvent) => {
-    const p = timeAt(e.clientX)
-    if (scrub) {
-      setScrub(p)
-      if (e.pointerType === 'mouse') video.current!.currentTime = p.t
-    } else if (e.pointerType === 'mouse') {
-      setHover(p)
-    }
-  }
-  const onBarUp = (e: React.PointerEvent) => {
-    if (scrub && e.pointerType !== 'mouse') {
-      const t = timeAt(e.clientX).t
-      video.current!.currentTime = t
-      setTime(t)
-    }
-    setScrub(null)
+  const seekTo = (t: number) => {
+    video.current!.currentTime = t
+    setTime(t)
     poke()
   }
 
-  const point = scrub ?? hover
-  const cue = point ? cueAt(sprites, point.t) : null
-  const shownTime = scrub ? scrub.t : time
+  const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
-  const thumbW = 192
 
   return (
     <div
@@ -647,66 +611,7 @@ export function Player({
             'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',
         )}
       >
-        {/* seek bar */}
-        <div
-          ref={bar}
-          className="group/bar relative flex h-5 cursor-pointer touch-none items-center touch:h-9"
-          onPointerDown={onBarDown}
-          onPointerMove={onBarMove}
-          onPointerUp={onBarUp}
-          onPointerCancel={() => setScrub(null)}
-          onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}
-        >
-          <div
-            className={clsx(
-              'relative h-1 w-full rounded-full bg-white/25 transition-[height] group-hover/bar:h-1.5 touch:h-1.5',
-              scrub && 'h-1.5 touch:h-2',
-            )}
-          >
-            <div className="absolute inset-y-0 left-0 rounded-full bg-white/35" style={{ width: `${(buffered / (dur || 1)) * 100}%` }} />
-            <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${(shownTime / (dur || 1)) * 100}%` }} />
-            {scene.markers.map((m) => (
-              <div
-                key={m.id}
-                className="absolute -inset-y-0.5 w-1 -translate-x-1/2 rounded-full bg-star"
-                style={{ left: `${(m.seconds / (dur || 1)) * 100}%` }}
-              />
-            ))}
-            {hover && !scrub && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: hover.x }} />}
-            <div
-              className={clsx(
-                'absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-accent transition-transform group-hover/bar:scale-100 touch:scale-100',
-                scrub && 'scale-125 touch:scale-125',
-              )}
-              style={{ left: `${(shownTime / (dur || 1)) * 100}%` }}
-            />
-          </div>
-          {point && (
-            <div
-              className="pointer-events-none absolute bottom-7 flex flex-col items-center touch:bottom-10"
-              style={{ left: Math.max(thumbW / 2, Math.min(point.w - thumbW / 2, point.x)), transform: 'translateX(-50%)' }}
-            >
-              {cue && (
-                <div
-                  className="overflow-hidden rounded-lg ring-2 ring-white/90"
-                  style={{
-                    width: thumbW,
-                    height: (thumbW * cue.h) / cue.w,
-                    backgroundImage: `url(${cue.url})`,
-                    backgroundPosition: `-${(cue.x * thumbW) / cue.w}px -${(cue.y * thumbW) / cue.w}px`,
-                    // tiles are scaled from cue.w to thumbW; the sheet scales with them
-                    ...spriteSize(sprites, thumbW / cue.w),
-                  }}
-                />
-              )}
-              {(() => {
-                const near = scene.markers.find((m) => Math.abs(m.seconds - point.t) < (dur || 1) * 0.01)
-                return near ? <span className="mt-1 max-w-48 truncate rounded bg-star px-1.5 py-0.5 text-xs font-semibold text-black">{near.title || 'Marker'}</span> : null
-              })()}
-              <span className="mt-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium tabular-nums">{fmt(point.t)}</span>
-            </div>
-          )}
-        </div>
+        <SeekBar dur={dur} time={time} buffered={buffered} markers={scene.markers} vtt={scene.vtt} onSeek={seekTo} onPoint={setPoint} />
 
         <div className="mt-1 flex items-center gap-1 sm:gap-2">
           <Ctl onClick={toggle} label={playing ? 'Pause (k)' : 'Play (k)'}>
@@ -868,18 +773,6 @@ type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Prom
 type AirPlayVideo = HTMLVideoElement & {
   webkitShowPlaybackTargetPicker?: () => void
   webkitCurrentPlaybackTargetIsWireless?: boolean
-}
-
-// Sprite sheets are a grid of equal tiles; infer the sheet size from the cues.
-function spriteSize(cues: SpriteCue[], scale: number) {
-  if (!cues.length) return {}
-  let w = 0
-  let h = 0
-  for (const c of cues) {
-    w = Math.max(w, c.x + c.w)
-    h = Math.max(h, c.y + c.h)
-  }
-  return { backgroundSize: `${w * scale}px ${h * scale}px` }
 }
 
 // The touch buttons in the middle of the picture; `active` while they are visible.

@@ -31,7 +31,7 @@ packages/shared API contract types shared by both (types only at runtime on the 
 2. **Stash owns ratings, play counts, resume points, O-counts, markers, performer/studio
    favourites, titles and tags** (so its UI stays consistent). Postgres holds only what Stash
    cannot: playlists (including the built-in Favorites list behind the heart on videos; Stash
-   scenes have no favourite flag), the blocklist, pinned home rows, and settings (performer
+   scenes have no favourite flag), the blocklist, pinned home rows, saved stations and where each station was left (`station_resume`), and settings (performer
    gender switch, per-studio intro skip, panic URL). Settings live next to the page they
    affect, not on the Settings page, unless they are global.
    Markers created in flix use the Stash tag "Highlight" (created on first use).
@@ -81,6 +81,9 @@ Mobile checks (headless Chrome at iPhone 17 Pro Max size, against `pnpm dev`; pl
 - `node scripts/touch-check.mjs /tmp/t http://localhost:5173 /scene/<id>` drives the player with
   touch events (tap, seek-bar drag, double tap, sideways swipe) and prints its state.
 - `node scripts/card-check.mjs /tmp/c http://localhost:5173 /browse` checks the drag-to-preview on scene cards.
+
+The check scripts start their own headless Chrome on a free port (`--remote-debugging-port=0`). _Until 2026-10-29_
+they used port 9333 and silently attached to any Chrome left running there, so runs drove a stale page.
 
 After changing a dependency's version while `pnpm dev` runs, Vite's pre-bundled deps can hold
 two copies of a package. React Query is deduped in `vite.config.ts` because of this ("No

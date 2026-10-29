@@ -303,6 +303,14 @@ export interface SavedStation extends StationInput {
   cover: string | null // a screenshot from the station
 }
 
+// Where a station was left (`key`: `id:<n>` saved, `q:<filters>` ad hoc, `from:<scene>`).
+export interface StationResume {
+  key: string
+  scene: SceneCard
+  seconds: number
+  updatedAt: string
+}
+
 export interface SavedRow {
   id: number
   title: string
@@ -314,6 +322,7 @@ export interface TagTile {
   name: string
   sceneCount: number
   image: string | null // screenshot of a representative scene
+  favorite: boolean // pinned on the Categories page (Stash's tag favourite)
 }
 
 export interface HistoryEntry {

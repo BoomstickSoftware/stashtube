@@ -1,0 +1,477 @@
+import type { SceneQuery } from '@flix/shared'
+import clsx from 'clsx'
+import { Building2, Check, EyeOff, Minus, Plus, Search, SlidersHorizontal, Tag, Type, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { usePerformer, useSceneCount, useSearch, useStudio, useTags } from '../lib/api'
+import { addToQuery, clearAll, type FilterKind, filtersOf, filterTotal, hasFilter } from '../lib/filters'
+import { ageLabel, idList, toggleId } from '../lib/query'
+import { PeopleControls } from './People'
+import { Avatar, Spinner, useDebounced } from './ui'
+
+// Filters for any list of videos (and a station's), in one place: a search box that finds
+// performers, studios, tags and title words; the filters in play as removable chips; and plain
+// choices for the rest. On a list it opens as a dialog (a sheet on phones) and applies on
+// "Show N videos"; the station editor shows it inline and applies as you go.
+
+type Patch = Partial<SceneQuery>
+
+const csv = (v?: string) => (v ? v.split(',').filter(Boolean) : [])
+
+// --- the filters in play, as chips ---------------------------------------------------------
+
+type Active = { key: string; label: React.ReactNode; tone: 'include' | 'exclude' | 'plain'; clear: Patch }
+
+function useActive(q: SceneQuery): Active[] {
+  const { data: tags } = useTags({ sort: 'name' })
+  const tagName = useMemo(() => new Map(tags?.items.map((t) => [t.id, t.name])), [tags])
+  const out: Active[] = []
+  if (q.q) out.push({ key: 'q', label: <>Title has “{q.q}”</>, tone: 'include', clear: { q: undefined } })
+  for (const id of idList(q.performers))
+    out.push({ key: `p${id}`, label: <PerformerName id={id} />, tone: 'include', clear: { performers: toggleId(q.performers, id) } })
+  for (const id of idList(q.studios))
+    out.push({ key: `s${id}`, label: <StudioName id={id} />, tone: 'include', clear: { studios: toggleId(q.studios, id) } })
+  for (const id of idList(q.tags)) out.push({ key: `t${id}`, label: tagName.get(id) ?? '…', tone: 'include', clear: { tags: toggleId(q.tags, id) } })
+  for (const id of idList(q.xtags)) out.push({ key: `x${id}`, label: tagName.get(id) ?? '…', tone: 'exclude', clear: { xtags: toggleId(q.xtags, id) } })
+  if (q.unwatched) out.push({ key: 'unwatched', label: 'Unwatched', tone: 'plain', clear: { unwatched: undefined } })
+  if (q.inProgress) out.push({ key: 'inProgress', label: 'In progress', tone: 'plain', clear: { inProgress: undefined } })
+  if (q.favorites) out.push({ key: 'favorites', label: 'Favourite performers', tone: 'plain', clear: { favorites: undefined } })
+  if (q.minRating) out.push({ key: 'minRating', label: `★ ${q.minRating}+`, tone: 'plain', clear: { minRating: undefined } })
+  if (q.minHeight) out.push({ key: 'minHeight', label: q.minHeight >= 2160 ? '4K' : `${q.minHeight}p+`, tone: 'plain', clear: { minHeight: undefined } })
+  if (q.minDuration || q.maxDuration)
+    out.push({
+      key: 'len',
+      label: lengths.find((l) => l.min === q.minDuration && l.max === q.maxDuration)?.label ?? `${q.minDuration ?? 0}–${q.maxDuration ?? '∞'} min`,
+      tone: 'plain',
+      clear: { minDuration: undefined, maxDuration: undefined },
+    })
+  const age = ageLabel(q.minAge, q.maxAge)
+  if (age) out.push({ key: 'age', label: age, tone: 'plain', clear: { minAge: undefined, maxAge: undefined } })
+  for (const e of csv(q.ethnicities)) {
+    const rest = csv(q.ethnicities).filter((x) => x !== e)
+    out.push({ key: `e${e}`, label: e, tone: 'plain', clear: { ethnicities: rest.length ? rest.join(',') : undefined } })
+  }
+  // set by the cleanup page; shown so they can be removed
+  if (q.maxHeight) out.push({ key: 'maxHeight', label: `Below ${q.maxHeight >= 2160 ? '4K' : `${q.maxHeight}p`}`, tone: 'plain', clear: { maxHeight: undefined } })
+  if (q.maxRating) out.push({ key: 'maxRating', label: `Rated ★${q.maxRating} or less`, tone: 'plain', clear: { maxRating: undefined } })
+  if (q.unmatched) out.push({ key: 'unmatched', label: 'Not on StashDB', tone: 'plain', clear: { unmatched: undefined } })
+  if (q.olderDays) out.push({ key: 'olderDays', label: `Added ${q.olderDays}+ days ago`, tone: 'plain', clear: { olderDays: undefined } })
+  if (q.duplicates) out.push({ key: 'duplicates', label: 'Possible duplicates', tone: 'plain', clear: { duplicates: undefined } })
+  if (q.unblocked) out.push({ key: 'unblocked', label: 'Showing blocked', tone: 'plain', clear: { unblocked: undefined } })
+  return out
+}
+
+function PerformerName({ id }: { id: string }) {
+  return <>{usePerformer(id).data?.name ?? '…'}</>
+}
+function StudioName({ id }: { id: string }) {
+  return <>{useStudio(id).data?.name ?? '…'}</>
+}
+
+// Removable chips for the filters in play. An excluded tag is struck through.
+export function ActiveFilters({ query, onChange, className }: { query: SceneQuery; onChange: (p: Patch) => void; className?: string }) {
+  const active = useActive(query)
+  if (!active.length) return null
+  return (
+    <div className={clsx('flex flex-wrap items-center gap-1.5', className)}>
+      {active.map((a) => (
+        <button
+          key={a.key}
+          type="button"
+          onClick={() => onChange(a.clear)}
+          title="Remove"
+          className={clsx(
+            'inline-flex max-w-full items-center gap-1 rounded-full py-1 pr-2 pl-3 text-[13px] transition-colors',
+            a.tone === 'include' && 'bg-accent/15 text-accent ring-1 ring-accent/40 hover:bg-accent/25',
+            a.tone === 'exclude' && 'bg-red-500/10 text-red-400 ring-1 ring-red-500/30 hover:bg-red-500/20',
+            a.tone === 'plain' && 'bg-raised text-fg ring-1 ring-line hover:bg-line',
+          )}
+        >
+          {a.tone === 'exclude' && <span className="text-[11px] font-semibold uppercase opacity-80">Not</span>}
+          <span className="truncate">{a.label}</span>
+          <X size={13} className="shrink-0 opacity-70" />
+        </button>
+      ))}
+      {active.length > 1 && (
+        <button type="button" onClick={() => onChange(clearAll)} className="px-2 text-xs text-muted hover:text-fg">
+          Clear all
+        </button>
+      )}
+    </div>
+  )
+}
+
+// --- the editor ----------------------------------------------------------------------------
+
+const lengths = [
+  { label: 'Under 15 min', min: undefined, max: 15 },
+  { label: '15–40 min', min: 15, max: 40 },
+  { label: '40+ min', min: 40, max: undefined },
+]
+
+export function FilterPanel({ query: q, onChange }: { query: SceneQuery; onChange: (p: Patch) => void }) {
+  return (
+    <div className="space-y-6">
+      <Section title="Your filters">
+        {filterTotal(q) ? (
+          <ActiveFilters query={q} onChange={onChange} />
+        ) : (
+          <p className="text-sm text-muted">None yet, so every video is in. Search below, or pick from the choices.</p>
+        )}
+      </Section>
+      <FinderSection query={q} onChange={onChange} />
+      <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+        <Choice
+          title="Watched"
+          options={[
+            ['Any', !q.unwatched && !q.inProgress, { unwatched: undefined, inProgress: undefined }],
+            ['Unwatched', !!q.unwatched, { unwatched: true, inProgress: undefined }],
+            ['In progress', !!q.inProgress, { inProgress: true, unwatched: undefined }],
+          ]}
+          onChange={onChange}
+        />
+        <Choice
+          title="Rating"
+          options={[
+            ['Any', !q.minRating, { minRating: undefined }],
+            ['★ 3+', q.minRating === 3, { minRating: 3 }],
+            ['★ 4+', q.minRating === 4, { minRating: 4 }],
+            ['★ 4.5+', q.minRating === 4.5, { minRating: 4.5 }],
+          ]}
+          onChange={onChange}
+        />
+        <Choice
+          title="Quality"
+          options={[
+            ['Any', !q.minHeight, { minHeight: undefined }],
+            ['720p+', q.minHeight === 720, { minHeight: 720 }],
+            ['1080p+', q.minHeight === 1080, { minHeight: 1080 }],
+            ['4K', q.minHeight === 2160, { minHeight: 2160 }],
+          ]}
+          onChange={onChange}
+        />
+        <Choice
+          title="Length"
+          options={[
+            ['Any', !q.minDuration && !q.maxDuration, { minDuration: undefined, maxDuration: undefined }],
+            ...lengths.map(
+              (l): [string, boolean, Patch] => [l.label, q.minDuration === l.min && q.maxDuration === l.max, { minDuration: l.min, maxDuration: l.max }],
+            ),
+          ]}
+          onChange={onChange}
+        />
+      </div>
+      <Section title="Performers">
+        <Toggle on={!!q.favorites} onChange={(v) => onChange({ favorites: v || undefined })}>
+          Only videos with a performer I follow
+        </Toggle>
+        <div className="mt-4">
+          <PeopleControls
+            value={{ minAge: q.minAge, maxAge: q.maxAge, ethnicities: csv(q.ethnicities).length ? csv(q.ethnicities) : undefined }}
+            onChange={(v) => onChange({ minAge: v.minAge, maxAge: v.maxAge, ethnicities: v.ethnicities?.join(',') || undefined })}
+          />
+          <p className="mt-2 text-xs text-muted">
+            Age and ethnicity apply to one performer of your Settings gender, and replace your Settings defaults here.
+          </p>
+        </div>
+      </Section>
+      <Section title="Blocked">
+        <Toggle on={!!q.unblocked} onChange={(v) => onChange({ unblocked: v || undefined })}>
+          <EyeOff size={14} className="inline align-[-2px]" /> Include videos from blocked performers, studios and tags
+        </Toggle>
+      </Section>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+// One choice from a few (a segmented control that wraps on narrow screens).
+function Choice({ title, options, onChange }: { title: string; options: [string, boolean, Patch][]; onChange: (p: Patch) => void }) {
+  return (
+    <Section title={title}>
+      <div role="radiogroup" aria-label={title} className="flex flex-wrap gap-1.5">
+        {options.map(([label, on, patch]) => (
+          <button
+            key={label}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(patch)}
+            className={clsx('rounded-full px-3 py-1.5 text-[13px] touch:py-2', on ? 'bg-white font-medium text-black' : 'bg-raised hover:bg-line')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center gap-3 text-left text-sm">
+      <span className={clsx('relative h-6 w-10 shrink-0 rounded-full transition-colors', on ? 'bg-accent' : 'bg-line')}>
+        <span className={clsx('absolute top-1 size-4 rounded-full bg-white transition-all', on ? 'left-5' : 'left-1')} />
+      </span>
+      <span>{children}</span>
+    </button>
+  )
+}
+
+// One search box for everything that can be a filter. Before typing: popular tags to tap.
+function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p: Patch) => void }) {
+  const [text, setText] = useState('')
+  const term = useDebounced(text.trim(), 150)
+  const searching = term.length >= 2
+  const { data: found, isFetching } = useSearch(searching ? term : '')
+  const { data: tagHits } = useTags({ q: term }, searching)
+  const { data: popular } = useTags({ sort: 'scenes_count' })
+  const add = (kind: FilterKind, id: string) => {
+    onChange(addToQuery(q, kind, id))
+    setText('')
+  }
+  const toggleTag = (id: string, mode: 'tags' | 'xtags') => {
+    const other = mode === 'tags' ? 'xtags' : 'tags'
+    onChange({ [mode]: toggleId(q[mode], id), [other]: idList(q[other]).includes(id) ? toggleId(q[other], id) : q[other] })
+  }
+  const performers = found?.performers.slice(0, 6) ?? []
+  const studios = found?.studios.slice(0, 4) ?? []
+  const tags = tagHits?.items.slice(0, 10) ?? []
+  const row = 'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-raised'
+
+  return (
+    <Section title="Find">
+      <label className="flex h-11 items-center gap-2 rounded-full bg-raised px-4 ring-1 ring-line focus-within:ring-accent/60">
+        <Search size={16} className="shrink-0 text-muted" />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && text.trim()) {
+              e.preventDefault()
+              onChange({ q: text.trim() })
+              setText('')
+            }
+          }}
+          placeholder="Performer, studio, tag or words in the title"
+          className="w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted sm:text-sm"
+        />
+        {isFetching && searching && <Spinner className="size-4 border-2" />}
+        {text && (
+          <button type="button" onClick={() => setText('')} aria-label="Clear search" className="text-muted hover:text-fg">
+            <X size={16} />
+          </button>
+        )}
+      </label>
+
+      {searching ? (
+        <div className="mt-2 space-y-3">
+          <button type="button" className={row} onClick={() => (onChange({ q: term }), setText(''))}>
+            <Icon><Type size={15} /></Icon>
+            <span className="min-w-0 flex-1 truncate text-sm">
+              Titles containing <b>“{term}”</b>
+            </span>
+          </button>
+          {performers.length > 0 && (
+            <Group label="Performers">
+              {performers.map((p) => {
+                const on = hasFilter(q, 'performer', p.id)
+                return (
+                  <button key={p.id} type="button" className={row} onClick={() => (on ? onChange({ performers: toggleId(q.performers, p.id) }) : add('performer', p.id))}>
+                    <Avatar src={p.image} name={p.name} className="size-8 shrink-0 rounded-full object-top" />
+                    <Name name={p.name} sub={videos(p.sceneCount)} />
+                    <State on={on} />
+                  </button>
+                )
+              })}
+            </Group>
+          )}
+          {studios.length > 0 && (
+            <Group label="Studios">
+              {studios.map((s) => {
+                const on = hasFilter(q, 'studio', s.id)
+                return (
+                  <button key={s.id} type="button" className={row} onClick={() => (on ? onChange({ studios: toggleId(q.studios, s.id) }) : add('studio', s.id))}>
+                    <Icon><Building2 size={15} /></Icon>
+                    <Name name={s.name} sub={videos(s.sceneCount)} />
+                    <State on={on} />
+                  </button>
+                )
+              })}
+            </Group>
+          )}
+          {tags.length > 0 && (
+            <Group label="Tags">
+              {tags.map((t) => {
+                const inc = idList(q.tags).includes(t.id)
+                const exc = idList(q.xtags).includes(t.id)
+                return (
+                  <div key={t.id} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-raised">
+                    <Icon><Tag size={15} /></Icon>
+                    <Name name={t.name} sub={videos(t.sceneCount)} />
+                    <TagButton on={inc} tone="include" onClick={() => toggleTag(t.id, 'tags')} />
+                    <TagButton on={exc} tone="exclude" onClick={() => toggleTag(t.id, 'xtags')} />
+                  </div>
+                )
+              })}
+            </Group>
+          )}
+          {found && !performers.length && !studios.length && !tags.length && (
+            <p className="px-2 text-sm text-muted">No performers, studios or tags match. Search titles instead.</p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3">
+          <div className="mb-2 text-xs text-muted">Popular tags. Tap to require one; search a tag to exclude it.</div>
+          <div className="flex flex-wrap gap-1.5">
+            {popular?.items.slice(0, 24).map((t) => {
+              const on = idList(q.tags).includes(t.id)
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => toggleTag(t.id, 'tags')}
+                  className={clsx(
+                    'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[13px] touch:py-1.5',
+                    on ? 'bg-accent text-white' : 'bg-raised hover:bg-line',
+                  )}
+                >
+                  {on ? <Check size={13} /> : <Plus size={13} className="text-muted" />}
+                  {t.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+const videos = (n: number) => `${n.toLocaleString()} video${n === 1 ? '' : 's'}`
+
+const Icon = ({ children }: { children: React.ReactNode }) => (
+  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-muted">{children}</span>
+)
+const Name = ({ name, sub }: { name: string; sub: string }) => (
+  <span className="min-w-0 flex-1">
+    <span className="block truncate text-sm">{name}</span>
+    <span className="block truncate text-xs text-muted">{sub}</span>
+  </span>
+)
+const State = ({ on }: { on: boolean }) =>
+  on ? (
+    <span className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-white">
+      <Check size={12} /> Added
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs ring-1 ring-line">
+      <Plus size={12} /> Add
+    </span>
+  )
+
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="px-2 pb-1 text-[11px] font-semibold tracking-wider text-muted uppercase">{label}</div>
+      {children}
+    </div>
+  )
+}
+
+function TagButton({ on, tone, onClick }: { on: boolean; tone: 'include' | 'exclude'; onClick: () => void }) {
+  const inc = tone === 'include'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={clsx(
+        'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs touch:py-1.5',
+        on ? (inc ? 'bg-accent font-semibold text-white' : 'bg-red-500 font-semibold text-white') : 'bg-raised ring-1 ring-line hover:bg-line',
+      )}
+    >
+      {inc ? <Plus size={12} /> : <Minus size={12} />}
+      {inc ? 'Require' : 'Exclude'}
+    </button>
+  )
+}
+
+// --- as a dialog ---------------------------------------------------------------------------
+
+// Edits a copy and applies it on "Show N videos"; `countQuery` turns the copy into the query
+// whose count to show (adding what the page fixes, like the performer being viewed).
+export function FilterDialog({
+  query,
+  countQuery,
+  onApply,
+  onClose,
+}: {
+  query: SceneQuery
+  countQuery: (q: SceneQuery) => SceneQuery
+  onApply: (p: Patch) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<SceneQuery>(query)
+  const edit = (p: Patch) => setDraft((d) => ({ ...d, ...p }))
+  const { data: count, isFetching } = useSceneCount(countQuery(draft))
+  const apply = () => {
+    onApply(filtersOf(draft))
+    onClose()
+  }
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    addEventListener('keydown', k)
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      removeEventListener('keydown', k)
+      document.body.style.overflow = overflow
+    }
+  }, [onClose])
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filters"
+        onClick={(e) => e.stopPropagation()}
+        className="flex h-[100dvh] w-full flex-col bg-surface sm:h-auto sm:max-h-[min(52rem,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-2xl sm:ring-1 sm:ring-line"
+      >
+        <div className="flex items-center gap-2 border-b border-line px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
+          <SlidersHorizontal size={18} className="text-accent" />
+          <h2 className="text-lg font-bold">Filters</h2>
+          <button type="button" onClick={onClose} className="ml-auto rounded-full p-2 hover:bg-raised" aria-label="Close">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
+          <FilterPanel query={draft} onChange={edit} />
+        </div>
+        <div className="flex items-center gap-3 border-t border-line px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+          <button type="button" onClick={() => setDraft((d) => ({ ...d, ...clearAll }))} className="rounded-full px-3 py-2 text-sm text-muted hover:bg-raised hover:text-fg">
+            Clear all
+          </button>
+          <button
+            type="button"
+            onClick={apply}
+            className="ml-auto flex min-w-44 items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover"
+          >
+            {isFetching && <Spinner className="size-4 border-2 border-white/40 border-t-white" />}
+            Show {count === undefined ? '' : count.toLocaleString()} video{count === 1 ? '' : 's'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}

@@ -13,6 +13,7 @@ import { PlaylistPage, Playlists } from './pages/Playlists'
 import { ScenePage } from './pages/Scene'
 import { Settings } from './pages/Settings'
 import { Station } from './pages/Station'
+import { StationEditor } from './pages/StationEditor'
 import { Stations } from './pages/Stations'
 import { StudioPage } from './pages/Studio'
 import { TagPage } from './pages/Tag'
@@ -61,9 +62,13 @@ const routeTree = root.addChildren([
       ...parseSceneQuery(s),
       from: typeof s.from === 'string' || typeof s.from === 'number' ? String(s.from) : undefined,
       id: Number(s.id) > 0 ? Number(s.id) : undefined,
+      start: s.start === 'resume' ? 'resume' : undefined,
     }),
     component: Station,
   }),
+  // the station editor: its filters live in the URL, like Browse's
+  createRoute({ getParentRoute: () => root, path: '/stations/new', validateSearch: parseSceneQuery, component: StationEditor }),
+  createRoute({ getParentRoute: () => root, path: '/stations/$id/edit', validateSearch: parseSceneQuery, component: StationEditor }),
 ])
 
 export const router = createRouter({
