@@ -29,6 +29,7 @@ interface Meta {
 interface IndexEntry {
   size: number
   used: number
+  meta?: Meta // read from disk on first use, then kept here: a hit costs no file reads
 }
 
 export interface AssetStats {
@@ -91,8 +92,12 @@ export class AssetCache {
   }
 
   private async readMeta(k: string): Promise<Meta | null> {
+    const e = this.index.get(k)
+    if (e?.meta) return e.meta
     try {
-      return JSON.parse(await readFile(this.files(k).meta, 'utf8')) as Meta
+      const meta = JSON.parse(await readFile(this.files(k).meta, 'utf8')) as Meta
+      if (e) e.meta = meta
+      return meta
     } catch {
       return null
     }
@@ -117,20 +122,17 @@ export class AssetCache {
     }
 
     const entry = this.index.get(k)
-    if (entry) entry.used = Date.now()
-    const f = this.files(k)
-    // Size from the file itself: a concurrent refresh may have replaced it since meta was read.
-    const st = await stat(f.bin).catch(() => null)
-    if (!st) {
+    if (!entry) {
       await this.remove(k) // metadata without a file: drop it and fetch again
       return this.serve(path, req, cacheControl)
     }
+    entry.used = Date.now()
     const headers: Record<string, string> = { 'content-type': meta.type, 'cache-control': cacheControl }
     if (meta.etag) {
       headers.etag = meta.etag
       if (req.headers.get('if-none-match') === meta.etag) return new Response(null, { status: 304, headers })
     }
-    return serveFile(f.bin, st.size, req, headers)
+    return serveFile(this.files(k).bin, entry.size, req, headers)
   }
 
   // Make sure a path is cached and fresh, without serving it (the nightly warm). Returns
@@ -189,6 +191,8 @@ export class AssetCache {
       this.s.revalidated++
       const meta = { ...old, fetchedAt: Date.now() }
       await writeFile(f.meta, JSON.stringify(meta))
+      const e = this.index.get(k)
+      if (e) e.meta = meta
       return meta
     }
     if (res.status === 404) {
@@ -229,7 +233,7 @@ export class AssetCache {
     await rename(tmp, f.bin)
     await writeFile(f.meta, JSON.stringify(meta))
     this.bytes += size - (prev?.size ?? 0)
-    this.index.set(k, { size, used: Date.now() })
+    this.index.set(k, { size, used: Date.now(), meta })
     this.missing.delete(k)
     await this.evict()
     return meta

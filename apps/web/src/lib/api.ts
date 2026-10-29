@@ -91,7 +91,7 @@ export const queryClient = new QueryClient({
 // Queries kept in localStorage between visits (see main.tsx): small, and what the first
 // screen needs. They must outlive the default 5-minute gcTime, or leaving the page for a
 // while would drop them from storage too.
-const PERSISTED = ['home', 'settings', 'favorite-scenes', 'playlists', 'blocklist']
+const PERSISTED = ['session', 'home', 'settings', 'favorite-scenes', 'playlists', 'blocklist']
 export const PERSIST_MAX_AGE = 7 * 24 * 3_600_000
 for (const key of PERSISTED) queryClient.setQueryDefaults([key], { gcTime: PERSIST_MAX_AGE })
 export const persistQuery = (q: Query) => q.state.status === 'success' && PERSISTED.includes(q.queryKey[0] as string)

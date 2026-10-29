@@ -2,22 +2,25 @@ import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
+import { compress } from 'hono/compress'
 import { logger } from 'hono/logger'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { admin } from './admin.ts'
 import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
+import { exclusions } from './blocklist.ts'
 import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
 import { scheduleWarm } from './warm.ts'
-import { dataCache, noteActivity, onStashChange, startChangeDetection, StashError } from './stash.ts'
+import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
 
 const app = new Hono()
 
 app.use('/api/*', logger())
+app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
 app.get('/healthz', (c) => c.text('ok'))
 // Readiness is "can serve", which means the database answers; Stash being busy (a scan
 // holds its SQLite lock for minutes) must not take flix out of rotation, the caches cover it.
@@ -96,7 +99,13 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     void saveData().finally(() => process.exit(0))
   })
 }
-const warm = () => void homeRows().catch((e) => console.error('warming home:', e.message))
+// Warm what the first screens read: the home feed, the filter dialog's counts and Categories.
+const warm = () =>
+  void (async () => {
+    await homeRows()
+    const blocked = await exclusions()
+    await Promise.all([sceneFacets({}, blocked), tagTiles(blocked)])
+  })().catch((e) => console.error('warming:', e.message))
 warm()
 onStashChange(warm)
 

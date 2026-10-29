@@ -101,9 +101,9 @@ QueryClient set", 2026-10-27).
 
 | Layer | Where | What | Freshness |
 |---|---|---|---|
-| Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), saved to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s |
+| Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), saved to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot; entries tagged `VOLATILE` (facet and tag-tile working sets, hundreds of KB per filter set) stay in memory only and are re-warmed | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s |
 | Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api.ts`) | home feed, settings, favourites, playlists, blocklist | up to 7 days; painted at once on a cold open, then refetched in the background |
-| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`) | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | URLs with Stash's version stamp `?t=` (screenshots, images) never expire, since a changed image gets a new URL (browser: 1 year, immutable); the rest (previews, sprites, VTTs) TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120); pre-fetched in full daily at `WARM_AT_UTC` (6) and from Settings › Cache (`warm.ts`, 4 at a time, fresh files skipped; sprites found through each VTT) |
+| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`), metadata kept in memory after first use so a hit costs no file reads | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | URLs with Stash's version stamp `?t=` (screenshots, images) never expire, since a changed image gets a new URL (browser: 1 year, immutable); the rest (previews, sprites, VTTs) TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120); pre-fetched in full daily at `WARM_AT_UTC` (6) and from Settings › Cache (`warm.ts`, 4 at a time, fresh files skipped; sprites found through each VTT) |
 | Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
 
 Invalidation:
@@ -113,7 +113,8 @@ Invalidation:
   `activityTags()`), and mark the rest of `scene` stale. _Until 2026-10-27_ they dropped
   every `scene` query, so watching anything left Home and Browse cold.
 - **Changes made in Stash** (scans, Identify, edits in its UI) are caught by a change check: one query every `CHANGE_POLL_SECONDS` (60), only while flix has been used in the last 10 minutes. It compares each type's count and newest `updated_at`; any difference marks the whole query cache stale (served once more while it refreshes) and re-warms the home feed. _Verified 2026-10-26:_ `sceneSaveActivity` does not bump `updated_at`, so progress saves while watching don't trigger it; `sceneUpdate` does.
-- **Warming:** the home feed is built in the background at startup and after each Stash change.
+- **Warming:** the home feed, the unfiltered facets (the filter dialog's counts) and the tag tiles are built in the background at startup and after each Stash change.
+- **Compression:** `/api/*` bodies are gzip'd (`hono/compress`); the home feed goes 108 KB → 17 KB. _Measured 2026-10-29._
 - **Admin:** Settings → Cache shows hit rates and the requests actually sent to Stash, and has clear buttons (`GET /api/admin/cache`, `POST /api/admin/cache/clear {scope: data|assets|all}`).
 
 _Measured 2026-10-26:_ a cold home view cost Stash 7 queries and 79 asset fetches; a warm view cost nothing.

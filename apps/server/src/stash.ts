@@ -15,7 +15,7 @@ import type {
   TagCard,
   TagDetail,
   TagTile, SceneFacets } from '@flix/shared'
-import { MemoryCache } from './cache/memory.ts'
+import { MemoryCache, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
 
@@ -842,7 +842,7 @@ export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<S
       play_count resume_time rating100 files { width height duration } tags { id } performers { id } studio { id parent_studio { id } }
     } } }`,
     { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s: sceneFilter(rest, blocked) },
-    ['scene', 'activity:play', 'activity:resume'],
+    ['scene', 'activity:play', 'activity:resume', VOLATILE], // one per filter set, hundreds of KB each: not worth the disk
   )
   const all: Raw[] = d.findScenes.scenes
   const inSet = all.filter((s) => passes(s, q))
@@ -1022,7 +1022,7 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
     query<Raw>(
       `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } tags { id } } } }`,
       { s: withExclusions({}, { ...blocked }) },
-      ['scene'],
+      ['scene', VOLATILE],
     ),
     findTags({ per_page: 2000, sort: 'scenes_count', direction: 'DESC' }, blocked),
   ])

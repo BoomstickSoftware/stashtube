@@ -5,7 +5,8 @@
 // - Concurrent callers of the same key share one upstream request.
 // - Entries carry tags so a write can drop everything it affects, or only mark it stale.
 // - LRU: Map insertion order, re-inserted on every hit.
-// - save()/load() keep entries across restarts, so a new process does not start cold.
+// - save()/load() keep entries across restarts, so a new process does not start cold. Entries
+//   tagged VOLATILE (large raw working sets that are cheap to rebuild) stay in memory only.
 
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
@@ -26,6 +27,8 @@ export interface MemoryStats {
   evictions: number
   invalidations: number
 }
+
+export const VOLATILE = 'volatile'
 
 export class MemoryCache {
   private entries = new Map<string, Entry<unknown>>()
@@ -121,7 +124,7 @@ export class MemoryCache {
     if (!this.dirty) return
     this.dirty = false
     const now = Date.now()
-    const live = [...this.entries].filter(([, e]) => e.stale > now)
+    const live = [...this.entries].filter(([, e]) => e.stale > now && !e.tags.includes(VOLATILE))
     await mkdir(dirname(file), { recursive: true })
     await writeFile(`${file}.tmp`, JSON.stringify(live))
     await rename(`${file}.tmp`, file)
