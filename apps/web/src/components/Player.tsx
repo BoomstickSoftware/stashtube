@@ -7,6 +7,7 @@ import {
   Maximize,
   Minimize,
   Pause,
+  PictureInPicture2,
   Play,
   RectangleHorizontal,
   RotateCcw,
@@ -43,6 +44,8 @@ const STASH_RES: Record<string, string> = { '1080': 'FULL_HD', '720': 'STANDARD_
 const STALLS_TO_DROP = 3 // stalls within STALL_WINDOW in auto mode
 const STALL_WINDOW = 30_000
 const DOUBLE_TAP = 300 // ms between taps that count as a double tap
+// Picture in picture: the standard API, or Safari's presentation modes (iPhone has only those).
+const PIP = typeof document !== 'undefined' && (document.pictureInPictureEnabled || 'webkitSetPresentationMode' in HTMLVideoElement.prototype)
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
 
 // What the page around the player may ask of it.
@@ -113,6 +116,7 @@ export function Player({
   const [flash, setFlash] = useFlash()
   const [airplay, setAirplay] = useState(false) // a receiver is on the network (Safari only)
   const [casting, setCasting] = useState(false)
+  const [pip, setPip] = useState(false)
 
   const { onTimeUpdate: accountTime, flush, watched } = useWatchAccounting(video, scene.id)
 
@@ -165,6 +169,22 @@ export function Player({
     const v = video.current!
     v.volume = volume
   }, [volume])
+
+  useEffect(() => {
+    const v = video.current as PipVideo
+    const sync = () => setPip(document.pictureInPictureElement === v || v.webkitPresentationMode === 'picture-in-picture')
+    for (const ev of ['enterpictureinpicture', 'leavepictureinpicture', 'webkitpresentationmodechanged']) v.addEventListener(ev, sync)
+    return () => {
+      for (const ev of ['enterpictureinpicture', 'leavepictureinpicture', 'webkitpresentationmodechanged']) v.removeEventListener(ev, sync)
+    }
+  }, [])
+
+  const togglePip = useCallback(() => {
+    const v = video.current as PipVideo
+    if (document.pictureInPictureElement === v) document.exitPictureInPicture().catch(() => {})
+    else if (v.requestPictureInPicture) v.requestPictureInPicture().catch(() => {})
+    else v.webkitSetPresentationMode?.(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture')
+  }, [])
 
   const onTimeUpdate = () => {
     const v = video.current!
@@ -302,6 +322,9 @@ export function Player({
         break
       case 't':
         onTheater()
+        break
+      case 'i':
+        if (PIP) togglePip()
         break
       case 'N':
         onNext?.()
@@ -650,6 +673,11 @@ export function Player({
           >
             {rate}×
           </button>
+          {PIP && (
+            <Ctl onClick={togglePip} label="Picture in picture (i)" className={pip ? 'text-accent' : ''}>
+              <PictureInPicture2 size={20} />
+            </Ctl>
+          )}
           {!fullscreen && (
             <Ctl onClick={onTheater} label="Theater (t)" className="hidden sm:flex">
               <RectangleHorizontal size={20} className={theater ? 'fill-white/30' : ''} />
@@ -668,6 +696,11 @@ type FsDocument = Document & { webkitFullscreenElement?: Element | null; webkitE
 type FsElement = HTMLElement & { webkitRequestFullscreen?: () => void }
 type IosVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
 type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Promise<void>; unlock?: () => void }
+
+type PipVideo = HTMLVideoElement & {
+  webkitPresentationMode?: 'inline' | 'picture-in-picture' | 'fullscreen'
+  webkitSetPresentationMode?: (mode: 'inline' | 'picture-in-picture' | 'fullscreen') => void
+}
 
 type AirPlayVideo = HTMLVideoElement & {
   webkitShowPlaybackTargetPicker?: () => void

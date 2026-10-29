@@ -9,6 +9,7 @@ import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
+import { ShortcutsOverlay } from './Shortcuts'
 import { Spinner, Toaster } from './ui'
 
 const nav = [
@@ -111,6 +112,7 @@ export function Layout(): JSX.Element {
       <main className="mx-auto max-w-[1920px] px-4 py-6 sm:px-6">
         <Outlet />
         <Toaster />
+        <ShortcutsOverlay />
       </main>
 
       {/* mobile tab bar */}

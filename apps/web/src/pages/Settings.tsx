@@ -6,6 +6,7 @@ import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { PeopleControls } from '../components/People'
+import { ShortcutList } from '../components/Shortcuts'
 import { Button, Chip, Switch } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings } from '../lib/api'
@@ -74,28 +75,9 @@ export function Settings(): JSX.Element {
 
       <section>
         <h2 className="text-lg font-bold">Keyboard</h2>
-        <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm sm:grid-cols-3">
-          {[
-            ['/', 'Search'],
-            ['Space / k', 'Play / pause'],
-            ['← →', '±5 s'],
-            ['j / l', '±10 s'],
-            ['↑ ↓', 'Volume'],
-            ['0–9', 'Jump to %'],
-            ['f', 'Fullscreen'],
-            ['t', 'Theater'],
-            ['m', 'Mute'],
-            ['< >', 'Speed'],
-            ['Shift+N', 'Next video'],
-            ['b', 'Mark this moment'],
-            ['[ ]', 'Previous / next marker'],
-            ['Esc Esc', 'Panic: leave flix'],
-          ].map(([k, v]) => (
-            <div key={k} className="flex gap-2">
-              <kbd className="rounded bg-raised px-1.5 text-xs leading-5">{k}</kbd>
-              <span className="text-muted">{v}</span>
-            </div>
-          ))}
+        <p className="mt-1 text-sm text-muted">Press <kbd className="rounded bg-raised px-1">?</kbd> anywhere to see these.</p>
+        <div className="mt-3">
+          <ShortcutList />
         </div>
       </section>
 
