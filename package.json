@@ -6,6 +6,7 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:generate": "pnpm --filter @flix/server db:generate"
   },

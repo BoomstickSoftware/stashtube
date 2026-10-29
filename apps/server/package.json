@@ -6,6 +6,7 @@
     "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node src/index.ts",
     "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --import ./test-env.ts 'src/**/*.test.ts'",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

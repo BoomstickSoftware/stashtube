@@ -81,7 +81,12 @@ cp .env.example .env             # fill STASH_API_KEY (same key as ~/code/nas/.e
 pnpm dev                         # BFF :8080 + Vite :5173 (proxies /api and /media)
 ```
 
-Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `docker build -t flix .`
+Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `pnpm test`, `docker build -t flix .`
+
+Tests are `node:test` files beside the code (`src/**/*.test.ts`, no test dependencies; the image
+build runs them). They cover the pure parts where a mistake only shows as a Stash 500 or a silent
+miss: the filter builder's nesting rules (`stash.test.ts`), the two caches, byte ranges and signed
+links. `test-env.ts` supplies the env `config.ts` needs; nothing reaches Stash or Postgres.
 
 Mobile checks (headless Chrome at iPhone 17 Pro Max size, against `pnpm dev`; plays, progress and deletes are blocked so Stash records nothing):
 - `node scripts/mobile-check.mjs /tmp/m http://localhost:5173 / /browse /scene/<id>` reports

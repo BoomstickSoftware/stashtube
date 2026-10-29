@@ -10,7 +10,7 @@ COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm --filter @flix/server typecheck && pnpm --filter @flix/web build
+RUN pnpm --filter @flix/server typecheck && pnpm --filter @flix/server test && pnpm --filter @flix/web build
 
 FROM ${NODE}
 WORKDIR /app
