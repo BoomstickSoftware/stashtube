@@ -10,7 +10,7 @@ playlists, a global blocklist, a home feed, related videos. Single user, LAN onl
 | this | flix code, Dockerfile, design notes |
 | `~/code/nas` | Stash's config and the NAS side: the NFS export flix reads, Stash API facts (`docs/services.md`) |
 | `~/code/flotilla` | The compose stack that runs Stash |
-| `~/code/k8s` | Where flix will run (namespace, CNPG, NFS PV, ingress) |
+| `~/code/k8s` | Where flix runs, as flix.lan (`infra/flix/`: namespace, CNPG, NFS PV, ingress, secrets). A push to `main` here builds the image in Forgejo CI and commits its digest there; ArgoCD rolls it out. `docs/plan.md` phase 3 has the details |
 
 ## Layout
 

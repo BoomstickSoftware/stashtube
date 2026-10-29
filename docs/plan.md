@@ -169,14 +169,19 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      a card menu on right-click or long press (play, station, favourite, watched, not interested, delete).
    - Not done from the review: a typed Stash response layer (`Raw = any` ×100 in `stash.ts`), a duplicates
      workbench over `findDuplicateScenes`, one endpoint for the station previews, splitting `lib/api.ts`.
-3. **Deploy to k8s** (next):
-   - Image: build in Forgejo CI and push to the cluster registry.
-   - `infra/flix/` in `~/code/k8s`: namespace, CNPG cluster (1 instance, local-path), Deployment
-     (1 replica), Service, Ingress (LAN only, not cloudflared), Secret (STASH_API_KEY,
-     FLIX_SESSION_SECRET), NFS PV/PVC (read-only).
-   - NAS side (`~/code/nas`): read-only export of `/volume1/Media/adult` to the three workers
-     (192.168.1.134–136), added to `ensure-exports` and `nas-post-firmware-update.sh`.
-   - `MEDIA_PATH_MAP=/data/adult=/media/adult` with the NFS volume mounted at `/media/adult`.
+   - Same-day fix: the "Not interested" tag was the first blocked id to reach `findTags`, whose
+     `id: EXCLUDES` criterion Stash's tag filter never had (nor the performer and studio filters), so the
+     tag browser, search and the tag tiles answered 502 in production for about four hours. Blocked ids
+     are now dropped after the query, `Stash HTTP 4xx` errors carry Stash's message, and `finders.test.ts`
+     checks every criterion key against the introspected filter schemas.
+3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
+   builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
+   `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
+   manifests there: namespace, CNPG cluster, Deployment (1 replica, `/healthz` probes), Service, Ingress,
+   `flix-app-secrets` and `flix-db-credentials` from `create-secrets.sh`, the read-only NFS PV of
+   `/volume1/Media/adult` at `/media/adult` (export to the workers 192.168.1.134–136 is in `~/code/nas`),
+   a `local-path` cache PVC. After a push, `kubectl -n flix get deploy flix -o wide` shows the image
+   commit, and the pod log says `warming:` on anything the boot warm could not fetch.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
 5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
    - Mini-player that persists across pages (picture in picture covers the 80/20 for now).

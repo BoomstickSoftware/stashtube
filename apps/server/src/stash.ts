@@ -49,7 +49,7 @@ async function gql<T>(
     }).catch((e: Error) => {
       throw e.name === 'TimeoutError' ? new StashError(`no answer in ${TIMEOUT / 1000} s`) : e
     })
-    if (!res.ok) throw new StashError(`Stash HTTP ${res.status}`)
+    if (!res.ok) throw new StashError(`Stash HTTP ${res.status}: ${await errorDetail(res)}`)
     const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
     if (!body.errors?.length) return body.data as T
     const message = body.errors.map((e) => e.message).join('; ')
@@ -59,6 +59,29 @@ async function gql<T>(
 }
 
 const LOCK_RETRIES = [250, 500, 1000, 2000] // ms between attempts
+
+// What Stash said with a non-2xx answer. A rejected query (an unknown criterion, a wrong
+// variable type) comes back as 400 or 422 with GraphQL errors in the body; a bare status
+// would hide which query was wrong.
+async function errorDetail(res: Response): Promise<string> {
+  const text = await res.text().catch(() => '')
+  try {
+    const body = JSON.parse(text) as { errors?: { message: string }[] }
+    if (body.errors?.length) return body.errors.map((e) => e.message).join('; ')
+  } catch {
+    // not JSON; fall through to the raw text
+  }
+  return text.slice(0, 200)
+}
+
+// Stash's performer, studio and tag filters have no id criterion (v0.31.1's schema; see
+// stash.test.ts), so blocked ids are dropped from each page after the fact. Blocked lists are
+// short and pages small; `total` still counts blocked items that fell on other pages.
+function dropBlocked<T extends { id: string }>(r: { total: number; items: T[] }, blocked: string[]) {
+  if (!blocked.length) return r
+  const items = r.items.filter((x) => !blocked.includes(x.id))
+  return { total: r.total - (r.items.length - items.length), items }
+}
 
 // Cached read. Tags name what a write must drop: 'scene' for anything showing scene data,
 // 'scene:<id>' for one scene; same for performer, studio, tag. 'activity:play' and
@@ -566,7 +589,6 @@ export async function addSceneO(id: string) {
 
 export async function findPerformers(filter: Raw, blocked: Exclusions, extra: Raw = {}, gender: Raw = null) {
   const pf: Raw = { ...extra }
-  if (blocked.performers.length) pf.id = { value: blocked.performers.map(Number), modifier: 'EXCLUDES' }
   if (gender) pf.gender = gender
 
   const d = await query<Raw>(
@@ -576,7 +598,7 @@ export async function findPerformers(filter: Raw, blocked: Exclusions, extra: Ra
     { f: filter, p: pf },
     ['performer'],
   )
-  return { total: d.findPerformers.count as number, items: d.findPerformers.performers.map(toPerformerCard) }
+  return dropBlocked<PerformerCard>({ total: d.findPerformers.count as number, items: d.findPerformers.performers.map(toPerformerCard) }, blocked.performers)
 }
 
 export async function getPerformer(id: string): Promise<PerformerDetail | null> {
@@ -627,7 +649,6 @@ export async function setPerformerRating(id: string, stars: number | null) {
 
 export async function findStudios(filter: Raw, blocked: Exclusions) {
   const sf: Raw = {}
-  if (blocked.studios.length) sf.id = { value: blocked.studios.map(Number), modifier: 'EXCLUDES' }
   const d = await query<Raw>(
     `query($f: FindFilterType, $s: StudioFilterType) {
       findStudios(filter: $f, studio_filter: $s) { count studios { ${STUDIO_CARD} } }
@@ -635,7 +656,7 @@ export async function findStudios(filter: Raw, blocked: Exclusions) {
     { f: filter, s: sf },
     ['studio'],
   )
-  return { total: d.findStudios.count as number, items: d.findStudios.studios.map(toStudioCard) }
+  return dropBlocked<StudioCard>({ total: d.findStudios.count as number, items: d.findStudios.studios.map(toStudioCard) }, blocked.studios)
 }
 
 export async function getStudio(id: string): Promise<StudioDetail | null> {
@@ -671,7 +692,6 @@ export async function setTagFavorite(id: string, favorite: boolean) {
 export async function findTags(filter: Raw, blocked: Exclusions, onlyUsed = true) {
   const tf: Raw = {}
   if (onlyUsed) tf.scene_count = { value: 0, modifier: 'GREATER_THAN' }
-  if (blocked.tags.length) tf.id = { value: blocked.tags.map(Number), modifier: 'EXCLUDES' }
   const d = await query<Raw>(
     `query($f: FindFilterType, $t: TagFilterType) {
       findTags(filter: $f, tag_filter: $t) { count tags { ${TAG_CARD} } }
@@ -679,7 +699,7 @@ export async function findTags(filter: Raw, blocked: Exclusions, onlyUsed = true
     { f: filter, t: tf },
     ['tag'],
   )
-  return { total: d.findTags.count as number, items: d.findTags.tags.map(toTagCard) }
+  return dropBlocked<TagCard>({ total: d.findTags.count as number, items: d.findTags.tags.map(toTagCard) }, blocked.tags)
 }
 
 export async function getTag(id: string): Promise<TagDetail | null> {
