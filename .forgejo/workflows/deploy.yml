@@ -1,4 +1,5 @@
-# Build, scan, push, and pin the k8s deployment to the pushed digest (pattern: kataroom).
+# Build, scan, push, pin the k8s deployment to the pushed digest (pattern: kataroom), then wait
+# for the rollout and smoke-test it, so a broken route is noticed in minutes, not hours.
 name: deploy
 on:
   push:
@@ -12,6 +13,7 @@ jobs:
     runs-on: docker-build
     steps:
       - name: build image, scan, push to Forgejo registry, bump k8s
+        id: build
         shell: sh
         env:
           IMAGE: git.lan:3000/zbmowrey/flix
@@ -26,7 +28,8 @@ jobs:
           git clone "http://oauth2:${CI_TOKEN}@git.lan:3000/zbmowrey/flix.git" src
           cd src && git checkout "$SHA"
           echo "$CI_TOKEN" | docker login git.lan:3000 -u zbmowrey --password-stdin
-          docker build --pull -t "$IMAGE:$SHA" .
+          # GIT_SHA is what /healthz reports, which the smoke step below waits for.
+          docker build --pull --build-arg "GIT_SHA=$SHA" -t "$IMAGE:$SHA" .
           # Scan before pushing, so a failed scan publishes nothing.
           docker run --rm -i \
             --add-host=git.lan:192.168.1.151 \
@@ -62,14 +65,63 @@ jobs:
               -m "deploy: update flix image to ${SHA}" -m "${IMAGE}@${DIGEST}"
             git push
           fi
+      - name: wait for the rollout, then smoke-test it
+        id: smoke
+        shell: sh
+        env:
+          SHA: ${{ github.sha }}
+          # flix's LoadBalancer address, what flix.lan resolves to on the LAN: the same path a
+          # phone takes. Job containers sit on dind's bridge with public DNS, so `.lan` names do
+          # not resolve here (the trivy step needs --add-host for git.lan too), but the LAN IP
+          # routes, and flix answers on it without a Host header.
+          FLIX: http://192.168.1.152
+        run: |
+          set -e
+          command -v curl >/dev/null 2>&1 || apk add --no-cache curl >/dev/null
+          # ArgoCD notices the k8s commit on its next poll (up to 3 min), then the pod restarts
+          # behind a startup probe. A rollout took under 2 min today; give up after 8.
+          i=0
+          until curl -sf -m 5 "$FLIX/healthz" | grep -q "\"version\":\"$SHA\""; do
+            i=$((i + 1))
+            if [ "$i" -gt 96 ]; then
+              echo "rollout of $SHA not seen after 8 min; /healthz says: $(curl -s -m 5 "$FLIX/healthz")"
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "running $SHA after $((i * 5)) s"
+          # The routes behind every page's first paint: the SPA, home, browse facets and tiles, the
+          # three directories and search. Each goes through Stash and the caches, so any filter or
+          # query Stash rejects shows up here as a non-200. If flix ever gets FLIX_PASSWORD, the
+          # /api routes answer 401 instead; that is reported, not failed, until this step logs in.
+          fail=0
+          for p in /readyz / /api/home /api/tags/tiles '/api/tags?perPage=3' '/api/search?q=a' \
+                   /api/scenes/facets '/api/performers?perPage=3' '/api/studios?perPage=3'; do
+            code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$FLIX$p") || code=000
+            case "$code" in
+              200) echo "ok   $code $p" ;;
+              401) case "$p" in /api/*) echo "lock $code $p (password set; not checked)" ;; *) echo "FAIL $code $p"; fail=1 ;; esac ;;
+              *) echo "FAIL $code $p"; fail=1 ;;
+            esac
+          done
+          [ "$fail" = 0 ] || { echo "smoke test failed: flix $SHA is live but broken"; exit 1; }
       - name: notify forge on failure
         if: ${{ failure() }}
         shell: sh
         env:
           FORGE_WEBHOOK: ${{ secrets.DISCORD_FORGE_WEBHOOK }}
+          BUILD: ${{ steps.build.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
         run: |
           [ -n "$FORGE_WEBHOOK" ] || { echo "DISCORD_FORGE_WEBHOOK unset; skipping"; exit 0; }
-          PAYLOAD="{\"content\":\"🚨 **flix** deploy pipeline FAILED on main (build/scan/tag-bump) — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_NUMBER} — not deployed\"}"
+          if [ "$BUILD" != "success" ]; then
+            WHAT="FAILED on main (build/scan/push/tag-bump) — not deployed"
+          elif [ "$SMOKE" != "success" ]; then
+            WHAT="DEPLOYED on main but the smoke test FAILED (a route is broken or the rollout never came up) — check flix.lan"
+          else
+            WHAT="FAILED on main"
+          fi
+          PAYLOAD="{\"content\":\"🚨 **flix** deploy pipeline ${WHAT} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_NUMBER}\"}"
           command -v curl >/dev/null 2>&1 || apk add --no-cache curl >/dev/null 2>&1 || true
           curl -sf -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$FORGE_WEBHOOK" \
             || wget -q -O /dev/null --header='Content-Type: application/json' --post-data="$PAYLOAD" "$FORGE_WEBHOOK" \

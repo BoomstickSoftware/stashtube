@@ -181,7 +181,9 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    `flix-app-secrets` and `flix-db-credentials` from `create-secrets.sh`, the read-only NFS PV of
    `/volume1/Media/adult` at `/media/adult` (export to the workers 192.168.1.134–136 is in `~/code/nas`),
    a `local-path` cache PVC. After a push, `kubectl -n flix get deploy flix -o wide` shows the image
-   commit, and the pod log says `warming:` on anything the boot warm could not fetch.
+   commit, and the pod log says `warming:` on anything the boot warm could not fetch. Since 2026-10-29 the
+   workflow also waits for the rollout (`/healthz` reports the build's commit as `version`) and smoke-tests
+   the first-paint routes; a failed build or a failed smoke test is announced in the forge Discord channel.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
 5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
    - Mini-player that persists across pages (picture in picture covers the 80/20 for now).

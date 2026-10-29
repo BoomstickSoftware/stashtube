@@ -104,6 +104,16 @@ After changing a dependency's version while `pnpm dev` runs, Vite's pre-bundled 
 two copies of a package. React Query is deduped in `vite.config.ts` because of this ("No
 QueryClient set", 2026-10-27).
 
+## Deploy
+
+A push to `main` runs `.forgejo/workflows/deploy.yml` on the cluster's Forgejo runner: build the image
+(`--build-arg GIT_SHA`, reported by `/healthz` as `version`), trivy scan, push to the Forgejo registry,
+commit the tag@digest into `infra/flix/deployment.yaml` in the k8s repo, then wait until `/healthz` on
+flix's LAN address (192.168.1.152, what flix.lan resolves to) reports that commit and smoke-test the
+routes behind every page's first paint (home, tiles, tags, search, facets, performers, studios, the SPA).
+A failure of either phase is posted to the forge Discord channel, naming the phase. Every push goes
+live, so after one, check the run or `kubectl -n flix logs deploy/flix --since=5m` for `warming:` lines.
+
 ## Caching (goal: Stash does only real work)
 
 | Layer | Where | What | Freshness |

@@ -28,7 +28,9 @@ RUN apk upgrade --no-cache \
 COPY apps/server/src apps/server/src
 COPY apps/server/drizzle apps/server/drizzle
 COPY --from=build /app/apps/web/dist /app/web
-ENV NODE_ENV=production PORT=8080 WEB_DIST=/app/web CACHE_DIR=/cache
+# The commit this image was built from, reported by /healthz (the deploy workflow sets it).
+ARG GIT_SHA=dev
+ENV NODE_ENV=production PORT=8080 WEB_DIST=/app/web CACHE_DIR=/cache FLIX_VERSION=${GIT_SHA}
 RUN mkdir /cache && chown node:node /cache
 VOLUME /cache
 USER node

@@ -21,7 +21,9 @@ const app = new Hono()
 
 app.use('/api/*', logger())
 app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
-app.get('/healthz', (c) => c.text('ok'))
+// Liveness, and which build this is: the deploy workflow waits for its commit to appear here
+// before smoke-testing the rollout.
+app.get('/healthz', (c) => c.json({ ok: true, version: process.env.FLIX_VERSION ?? 'dev' }))
 // Readiness is "can serve", which means the database answers; Stash being busy (a scan
 // holds its SQLite lock for minutes) must not take flix out of rotation, the caches cover it.
 app.get('/readyz', async (c) => {
