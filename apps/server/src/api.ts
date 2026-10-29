@@ -92,6 +92,9 @@ api.get('/scenes', async (c) => {
   return c.json({ ...r, page, perPage } satisfies Page<unknown>)
 })
 
+// Counts inside a filtered set, for the filter panel (registered before /scenes/:id).
+api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(sceneQuery, c.req.query()), await exclusions())))
+
 api.get('/home', async (c) => c.json(await homeRows()))
 
 // The home feed. Also run at startup and after Stash changes, so the first visit is warm.

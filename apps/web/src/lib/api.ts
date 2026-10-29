@@ -25,7 +25,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile, SavedStation, StationInput, StationResume } from '@flix/shared'
+  TagTile, SavedStation, StationInput, StationResume, SceneFacets } from '@flix/shared'
 import {
   keepPreviousData,
   type Query,
@@ -106,6 +106,17 @@ export function useScenes(q: SceneQuery, perPage = 40) {
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.perPage < last.total ? last.page + 1 : undefined),
     placeholderData: keepPreviousData,
+  })
+}
+
+// What a filter set holds: counts per tag, performer, studio and quick choice (the filter panel).
+export const useFacets = (q: SceneQuery) => {
+  const { sort: _s, seed: _d, dir: _r, page: _p, perPage: _n, ...filters } = q
+  return useQuery({
+    queryKey: ['scenes', 'facets', filters],
+    queryFn: () => get<SceneFacets>(`/scenes/facets${qs(filters)}`),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   })
 }
 

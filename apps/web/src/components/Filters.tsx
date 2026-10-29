@@ -1,9 +1,9 @@
-import type { SceneQuery } from '@flix/shared'
+import type { SceneFacets, SceneQuery } from '@flix/shared'
 import clsx from 'clsx'
 import { Building2, Check, EyeOff, Minus, Plus, Search, SlidersHorizontal, Tag, Type, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { usePerformer, useSceneCount, useSearch, useStudio, useTags } from '../lib/api'
+import { useFacets, usePerformer, useSceneCount, useSearch, useStudio, useTags } from '../lib/api'
 import { addToQuery, clearAll, type FilterKind, filtersOf, filterTotal, hasFilter } from '../lib/filters'
 import { ageLabel, idList, toggleId } from '../lib/query'
 import { PeopleControls } from './People'
@@ -104,58 +104,67 @@ export function ActiveFilters({ query, onChange, className }: { query: SceneQuer
 // --- the editor ----------------------------------------------------------------------------
 
 const lengths = [
-  { label: 'Under 15 min', min: undefined, max: 15 },
-  { label: '15–40 min', min: 15, max: 40 },
-  { label: '40+ min', min: 40, max: undefined },
+  { key: 'short', label: 'Under 15 min', min: undefined, max: 15 },
+  { key: 'mid', label: '15–40 min', min: 15, max: 40 },
+  { key: 'long', label: '40+ min', min: 40, max: undefined },
 ]
 
-export function FilterPanel({ query: q, onChange }: { query: SceneQuery; onChange: (p: Patch) => void }) {
+// `scope` is the query whose contents are counted (the filters plus what the page fixes, like the
+// performer being viewed); it defaults to the filters themselves.
+export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; scope?: SceneQuery; onChange: (p: Patch) => void }) {
+  const { data: facets } = useFacets(scope ?? q)
+  const opt = facets?.options
   return (
     <div className="space-y-6">
-      <Section title="Your filters">
+      <Section title="Your filters" aside={facets && `${facets.total.toLocaleString()} video${facets.total === 1 ? '' : 's'} match`}>
         {filterTotal(q) ? (
           <ActiveFilters query={q} onChange={onChange} />
         ) : (
           <p className="text-sm text-muted">None yet, so every video is in. Search below, or pick from the choices.</p>
         )}
       </Section>
-      <FinderSection query={q} onChange={onChange} />
+      <FinderSection query={q} onChange={onChange} facets={facets} />
       <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
         <Choice
           title="Watched"
           options={[
-            ['Any', !q.unwatched && !q.inProgress, { unwatched: undefined, inProgress: undefined }],
-            ['Unwatched', !!q.unwatched, { unwatched: true, inProgress: undefined }],
-            ['In progress', !!q.inProgress, { inProgress: true, unwatched: undefined }],
+            ['Any', !q.unwatched && !q.inProgress, { unwatched: undefined, inProgress: undefined }, opt?.watched.any],
+            ['Unwatched', !!q.unwatched, { unwatched: true, inProgress: undefined }, opt?.watched.unwatched],
+            ['In progress', !!q.inProgress, { inProgress: true, unwatched: undefined }, opt?.watched.inProgress],
           ]}
           onChange={onChange}
         />
         <Choice
           title="Rating"
           options={[
-            ['Any', !q.minRating, { minRating: undefined }],
-            ['★ 3+', q.minRating === 3, { minRating: 3 }],
-            ['★ 4+', q.minRating === 4, { minRating: 4 }],
-            ['★ 4.5+', q.minRating === 4.5, { minRating: 4.5 }],
+            ['Any', !q.minRating, { minRating: undefined }, opt?.rating.any],
+            ['★ 3+', q.minRating === 3, { minRating: 3 }, opt?.rating['3']],
+            ['★ 4+', q.minRating === 4, { minRating: 4 }, opt?.rating['4']],
+            ['★ 4.5+', q.minRating === 4.5, { minRating: 4.5 }, opt?.rating['4.5']],
           ]}
           onChange={onChange}
         />
         <Choice
           title="Quality"
           options={[
-            ['Any', !q.minHeight, { minHeight: undefined }],
-            ['720p+', q.minHeight === 720, { minHeight: 720 }],
-            ['1080p+', q.minHeight === 1080, { minHeight: 1080 }],
-            ['4K', q.minHeight === 2160, { minHeight: 2160 }],
+            ['Any', !q.minHeight, { minHeight: undefined }, opt?.quality.any],
+            ['720p+', q.minHeight === 720, { minHeight: 720 }, opt?.quality['720']],
+            ['1080p+', q.minHeight === 1080, { minHeight: 1080 }, opt?.quality['1080']],
+            ['4K', q.minHeight === 2160, { minHeight: 2160 }, opt?.quality['2160']],
           ]}
           onChange={onChange}
         />
         <Choice
           title="Length"
           options={[
-            ['Any', !q.minDuration && !q.maxDuration, { minDuration: undefined, maxDuration: undefined }],
+            ['Any', !q.minDuration && !q.maxDuration, { minDuration: undefined, maxDuration: undefined }, opt?.length.any],
             ...lengths.map(
-              (l): [string, boolean, Patch] => [l.label, q.minDuration === l.min && q.maxDuration === l.max, { minDuration: l.min, maxDuration: l.max }],
+              (l): [string, boolean, Patch, number | undefined] => [
+                l.label,
+                q.minDuration === l.min && q.maxDuration === l.max,
+                { minDuration: l.min, maxDuration: l.max },
+                opt?.length[l.key],
+              ],
             ),
           ]}
           onChange={onChange}
@@ -184,30 +193,39 @@ export function FilterPanel({ query: q, onChange }: { query: SceneQuery; onChang
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">{title}</h3>
+      <h3 className="mb-2 flex items-baseline gap-2 text-xs font-semibold tracking-wider text-muted uppercase">
+        {title}
+        {aside && <span className="ml-auto font-normal tracking-normal normal-case tabular-nums">{aside}</span>}
+      </h3>
       {children}
     </section>
   )
 }
 
 // One choice from a few (a segmented control that wraps on narrow screens).
-function Choice({ title, options, onChange }: { title: string; options: [string, boolean, Patch][]; onChange: (p: Patch) => void }) {
+// Each option shows how many videos it would leave (from the facets); one that would leave none is dimmed.
+function Choice({ title, options, onChange }: { title: string; options: [string, boolean, Patch, number | undefined][]; onChange: (p: Patch) => void }) {
   return (
     <Section title={title}>
       <div role="radiogroup" aria-label={title} className="flex flex-wrap gap-1.5">
-        {options.map(([label, on, patch]) => (
+        {options.map(([label, on, patch, n]) => (
           <button
             key={label}
             type="button"
             role="radio"
             aria-checked={on}
             onClick={() => onChange(patch)}
-            className={clsx('rounded-full px-3 py-1.5 text-[13px] touch:py-2', on ? 'bg-white font-medium text-black' : 'bg-raised hover:bg-line')}
+            className={clsx(
+              'inline-flex items-baseline gap-1.5 rounded-full px-3 py-1.5 text-[13px] touch:py-2',
+              on ? 'bg-white font-medium text-black' : 'bg-raised hover:bg-line',
+              !on && n === 0 && 'opacity-40',
+            )}
           >
             {label}
+            {n !== undefined && <span className={clsx('text-[11px] tabular-nums', on ? 'text-black/60' : 'text-muted')}>{n.toLocaleString()}</span>}
           </button>
         ))}
       </div>
@@ -227,7 +245,10 @@ function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean
 }
 
 // One search box for everything that can be a filter. Before typing: popular tags to tap.
-function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p: Patch) => void }) {
+// With facets, each result says how many of the videos already selected it covers ("12 here"), the
+// ones that cover some come first, and the rest are dimmed: adding them would leave nothing. Studios
+// are any-of, so once one is picked another widens the set, and they keep their library counts.
+function FinderSection({ query: q, onChange, facets }: { query: SceneQuery; onChange: (p: Patch) => void; facets?: SceneFacets }) {
   const [text, setText] = useState('')
   const term = useDebounced(text.trim(), 150)
   const searching = term.length >= 2
@@ -242,9 +263,23 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
     const other = mode === 'tags' ? 'xtags' : 'tags'
     onChange({ [mode]: toggleId(q[mode], id), [other]: idList(q[other]).includes(id) ? toggleId(q[other], id) : q[other] })
   }
-  const performers = found?.performers.slice(0, 6) ?? []
-  const studios = found?.studios.slice(0, 4) ?? []
-  const tags = tagHits?.items.slice(0, 10) ?? []
+  const here = (map: Record<string, number> | undefined, id: string) => (facets && map ? (map[id] ?? 0) : undefined)
+  const byHere = <T extends { id: string }>(items: T[], map?: Record<string, number>) =>
+    facets && map ? [...items].sort((a, b) => Number((map[b.id] ?? 0) > 0) - Number((map[a.id] ?? 0) > 0)) : items
+  const studiosWiden = idList(q.studios).length > 0
+  const performers = byHere(found?.performers ?? [], facets?.performers).slice(0, 6)
+  const studios = byHere(found?.studios ?? [], studiosWiden ? undefined : facets?.studios).slice(0, 4)
+  const tags = byHere(tagHits?.items ?? [], facets?.tags).slice(0, 10)
+  // before typing: the tags most common in the selected videos (the whole library with no filters)
+  const suggested = useMemo(() => {
+    const list = popular?.items ?? []
+    if (!facets) return list.slice(0, 24).map((t) => ({ ...t, n: t.sceneCount }))
+    return list
+      .map((t) => ({ ...t, n: facets.tags[t.id] ?? 0 }))
+      .filter((t) => t.n > 0 && !idList(q.xtags).includes(t.id))
+      .sort((a, b) => Number(idList(q.tags).includes(b.id)) - Number(idList(q.tags).includes(a.id)) || b.n - a.n)
+      .slice(0, 24)
+  }, [popular, facets, q.tags, q.xtags])
   const row = 'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-raised'
 
   return (
@@ -284,10 +319,11 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
             <Group label="Performers">
               {performers.map((p) => {
                 const on = hasFilter(q, 'performer', p.id)
+                const n = here(facets?.performers, p.id)
                 return (
-                  <button key={p.id} type="button" className={row} onClick={() => (on ? onChange({ performers: toggleId(q.performers, p.id) }) : add('performer', p.id))}>
+                  <button key={p.id} type="button" className={clsx(row, !on && n === 0 && 'opacity-45')} onClick={() => (on ? onChange({ performers: toggleId(q.performers, p.id) }) : add('performer', p.id))}>
                     <Avatar src={p.image} name={p.name} className="size-8 shrink-0 rounded-full object-top" />
-                    <Name name={p.name} sub={videos(p.sceneCount)} />
+                    <Name name={p.name} sub={counted(n, p.sceneCount)} />
                     <State on={on} />
                   </button>
                 )
@@ -298,10 +334,11 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
             <Group label="Studios">
               {studios.map((s) => {
                 const on = hasFilter(q, 'studio', s.id)
+                const n = studiosWiden ? undefined : here(facets?.studios, s.id)
                 return (
-                  <button key={s.id} type="button" className={row} onClick={() => (on ? onChange({ studios: toggleId(q.studios, s.id) }) : add('studio', s.id))}>
+                  <button key={s.id} type="button" className={clsx(row, !on && n === 0 && 'opacity-45')} onClick={() => (on ? onChange({ studios: toggleId(q.studios, s.id) }) : add('studio', s.id))}>
                     <Icon><Building2 size={15} /></Icon>
-                    <Name name={s.name} sub={videos(s.sceneCount)} />
+                    <Name name={s.name} sub={counted(n, s.sceneCount)} />
                     <State on={on} />
                   </button>
                 )
@@ -313,10 +350,11 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
               {tags.map((t) => {
                 const inc = idList(q.tags).includes(t.id)
                 const exc = idList(q.xtags).includes(t.id)
+                const n = here(facets?.tags, t.id)
                 return (
-                  <div key={t.id} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-raised">
+                  <div key={t.id} className={clsx('flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-raised', !inc && !exc && n === 0 && 'opacity-45')}>
                     <Icon><Tag size={15} /></Icon>
-                    <Name name={t.name} sub={videos(t.sceneCount)} />
+                    <Name name={t.name} sub={counted(n, t.sceneCount)} />
                     <TagButton on={inc} tone="include" onClick={() => toggleTag(t.id, 'tags')} />
                     <TagButton on={exc} tone="exclude" onClick={() => toggleTag(t.id, 'xtags')} />
                   </div>
@@ -330,9 +368,12 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
         </div>
       ) : (
         <div className="mt-3">
-          <div className="mb-2 text-xs text-muted">Popular tags. Tap to require one; search a tag to exclude it.</div>
+          <div className="mb-2 text-xs text-muted">
+            {facets ? `Most common tags in these ${videos(facets.total)}.` : 'Popular tags.'} Tap to require one; search a tag to
+            exclude it.
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {popular?.items.slice(0, 24).map((t) => {
+            {suggested.map((t) => {
               const on = idList(q.tags).includes(t.id)
               return (
                 <button
@@ -346,6 +387,7 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
                 >
                   {on ? <Check size={13} /> : <Plus size={13} className="text-muted" />}
                   {t.name}
+                  {!on && <span className="text-[11px] text-muted tabular-nums">{t.n.toLocaleString()}</span>}
                 </button>
               )
             })}
@@ -357,6 +399,13 @@ function FinderSection({ query: q, onChange }: { query: SceneQuery; onChange: (p
 }
 
 const videos = (n: number) => `${n.toLocaleString()} video${n === 1 ? '' : 's'}`
+// "12 here · 865 in all" while the selected set is smaller than the item's own videos.
+const counted = (here: number | undefined, all: number) =>
+  here === undefined || here === all
+    ? videos(all)
+    : here === 0
+      ? `None here · ${all.toLocaleString()} in all`
+      : `${here.toLocaleString()} here · ${all.toLocaleString()} in all`
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-muted">{children}</span>
@@ -455,7 +504,7 @@ export function FilterDialog({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
-          <FilterPanel query={draft} onChange={edit} />
+          <FilterPanel query={draft} scope={countQuery(draft)} onChange={edit} />
         </div>
         <div className="flex items-center gap-3 border-t border-line px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
           <button type="button" onClick={() => setDraft((d) => ({ ...d, ...clearAll }))} className="rounded-full px-3 py-2 text-sm text-muted hover:bg-raised hover:text-fg">

@@ -213,6 +213,17 @@ export interface SceneQuery {
   ethnicities?: string // any of, comma-separated
 }
 
+// What a filtered set holds (the filter panel's live counts). `options` counts each quick choice
+// as if that group's own pick were not set: watched any|unwatched|inProgress, rating any|3|4|4.5,
+// quality any|720|1080|2160, length any|short|mid|long.
+export interface SceneFacets {
+  total: number
+  tags: Record<string, number>
+  performers: Record<string, number>
+  studios: Record<string, number>
+  options: Record<'watched' | 'rating' | 'quality' | 'length', Record<string, number>>
+}
+
 // Defaults for every list (Settings); a list's own age or ethnicity filter replaces them.
 export interface PeopleFilter {
   minAge?: number

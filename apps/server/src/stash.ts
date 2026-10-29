@@ -14,8 +14,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile,
-} from '@flix/shared'
+  TagTile, SceneFacets } from '@flix/shared'
 import { MemoryCache } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
@@ -801,6 +800,70 @@ export async function jobStatus(id: string): Promise<JobStatus | null> {
   if (!j) return null
   if (j.status === 'FINISHED') dataCache.invalidate('scene', 'performer', 'studio', 'tag')
   return { id: j.id, status: j.status, progress: j.progress ?? null, error: j.error ?? null }
+}
+
+// --- facets: what is inside a filtered set ---------------------------------------------------
+
+// The quick choices (watched, rating, quality, length) are applied here rather than in Stash, so
+// each choice group can be counted as if its own pick were not set; everything else filters in Stash.
+const LOCAL_KEYS = ['unwatched', 'inProgress', 'minRating', 'minHeight', 'minDuration', 'maxDuration'] as const
+type Local = Pick<SceneQuery, (typeof LOCAL_KEYS)[number]>
+
+// Resolution as Stash buckets it, near enough: the short side, with some slack for odd encodes.
+const RES_MIN: Record<number, number> = { 720: 700, 1080: 1000, 2160: 2000 }
+const local = {
+  watched: (s: Raw, q: Local) => (!q.unwatched || !s.play_count) && (!q.inProgress || s.resume_time > 0),
+  rating: (s: Raw, q: Local) => !q.minRating || (s.rating100 ?? 0) > q.minRating * 20 - 1,
+  quality: (s: Raw, q: Local) => {
+    if (!q.minHeight) return true
+    const f = s.files?.[0]
+    return !!f && Math.min(f.width, f.height) >= (RES_MIN[q.minHeight] ?? q.minHeight)
+  },
+  length: (s: Raw, q: Local) => {
+    const d = s.files?.[0]?.duration ?? 0
+    return (!q.minDuration || d > q.minDuration * 60) && (!q.maxDuration || d < q.maxDuration * 60)
+  },
+}
+type Group = keyof typeof local
+const groups = Object.keys(local) as Group[]
+const passes = (s: Raw, q: Local, except?: Group) => groups.every((g) => g === except || local[g](s, q))
+
+// Counts inside the set a query selects: per tag, performer and studio (a studio also counts its
+// sub-studios' videos, as its filter does), and per quick choice.
+export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
+  const rest: SceneQuery = { ...q }
+  for (const k of LOCAL_KEYS) delete rest[k]
+  const d = await query<Raw>(
+    `query($f: FindFilterType, $s: SceneFilterType) { findScenes(filter: $f, scene_filter: $s) { scenes {
+      play_count resume_time rating100 files { width height duration } tags { id } performers { id } studio { id parent_studio { id } }
+    } } }`,
+    { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s: sceneFilter(rest, blocked) },
+    ['scene', 'activity:play', 'activity:resume'],
+  )
+  const all: Raw[] = d.findScenes.scenes
+  const inSet = all.filter((s) => passes(s, q))
+  const tally = (pick: (s: Raw) => string[]) => {
+    const out: Record<string, number> = {}
+    for (const s of inSet) for (const id of pick(s)) out[id] = (out[id] ?? 0) + 1
+    return out
+  }
+  // each choice group: how many each of its options would give, with the other groups applied
+  const option = (g: Group, opts: Record<string, Local>) => {
+    const pool = all.filter((s) => passes(s, q, g))
+    return Object.fromEntries(Object.entries(opts).map(([k, o]) => [k, pool.filter((s) => local[g](s, o)).length]))
+  }
+  return {
+    total: inSet.length,
+    tags: tally((s) => s.tags.map((t: Raw) => t.id)),
+    performers: tally((s) => s.performers.map((p: Raw) => p.id)),
+    studios: tally((s) => (s.studio ? [s.studio.id, ...(s.studio.parent_studio ? [s.studio.parent_studio.id] : [])] : [])),
+    options: {
+      watched: option('watched', { any: {}, unwatched: { unwatched: true }, inProgress: { inProgress: true } }),
+      rating: option('rating', { any: {}, '3': { minRating: 3 }, '4': { minRating: 4 }, '4.5': { minRating: 4.5 } }),
+      quality: option('quality', { any: {}, '720': { minHeight: 720 }, '1080': { minHeight: 1080 }, '2160': { minHeight: 2160 } }),
+      length: option('length', { any: {}, short: { maxDuration: 15 }, mid: { minDuration: 15, maxDuration: 40 }, long: { minDuration: 40 } }),
+    },
+  }
 }
 
 // --- activity: history, stats, recommendations ---------------------------------------

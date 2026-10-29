@@ -134,6 +134,13 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      studios, tags (Require / Exclude) and title words, with popular tags before typing; then Watched, Rating,
      Quality, Length, followed performers, age and ethnicity, and Show blocked. It edits a copy and applies on
      "Show N videos" (live count). The station editor shows the same panel inline, applying as you go.
+   - Live counts in the filter panel (`GET /api/scenes/facets`, `sceneFacets` in `stash.ts`): one cached Stash query
+     fetches the light fields of every video in the set (tags, performers, studio, rating, resolution, length, play
+     state; ~0.5–0.9 s cold for the whole library of ~2,000) and the BFF tallies them. The panel shows "N videos
+     match"; each choice shows what picking it would give (its own group left out, the rest applied), dimmed at 0;
+     search results say "12 here · 865 in all", those in the set first, dimmed when none are; the tag suggestions are
+     the most common tags in the set. Studios are any-of, so once one is picked the others keep library counts.
+     Quality is bucketed locally (short side ≥ 700/1000/2000 px), close to but not exactly Stash's resolution enum.
    - Browse nav shows how many filters "Add to filters" has stacked (they live in this browser's localStorage).
 3. **Deploy to k8s** (next):
    - Image: build in Forgejo CI and push to the cluster registry.
