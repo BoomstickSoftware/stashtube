@@ -513,14 +513,15 @@ export function useBulk() {
 
 export const useFeatures = () => useQuery({ queryKey: ['features'], queryFn: () => get<Features>('/features'), staleTime: Infinity })
 
-// Small batches keep each request well inside the timeout and let the dialog show progress.
+// One scene per request: a delete can wait up to 30 s on a busy Stash, and each request must
+// stay inside the timeout. It also lets the dialog show progress.
 export function useDeleteScenes() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ ids, onProgress }: { ids: string[]; onProgress?: (done: number) => void }) => {
       const results: DeleteResult[] = []
-      for (let i = 0; i < ids.length; i += 5) {
-        results.push(...(await send<DeleteResult[]>('POST', '/scenes/delete', { sceneIds: ids.slice(i, i + 5) })))
+      for (const id of ids) {
+        results.push(...(await send<DeleteResult[]>('POST', '/scenes/delete', { sceneIds: [id] })))
         onProgress?.(results.length)
       }
       return results

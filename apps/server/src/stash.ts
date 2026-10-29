@@ -717,12 +717,24 @@ export async function sceneForDeletion(id: string): Promise<{ title: string; pat
 
 // Drops the scene and its generated sprites and previews. The file is Whisparr's to delete:
 // Stash mounts the library read-only.
+// A scan or identify job can hold Stash's database lock far longer than gql's short retries,
+// so keep trying for up to DESTROY_WAIT ms (the caller's file is already gone by then).
+const DESTROY_WAIT = 30_000
 export async function destroyScene(id: string) {
-  await mutate(
-    `mutation($i: SceneDestroyInput!) { sceneDestroy(input: $i) }`,
-    { i: { id, delete_file: false, delete_generated: true, destroy_file_entry: true } },
-    ['scene', 'performer', 'studio', 'tag'],
-  )
+  const until = Date.now() + DESTROY_WAIT
+  for (;;) {
+    try {
+      await mutate(
+        `mutation($i: SceneDestroyInput!) { sceneDestroy(input: $i) }`,
+        { i: { id, delete_file: false, delete_generated: true, destroy_file_entry: true } },
+        ['scene', 'performer', 'studio', 'tag'],
+      )
+      return
+    } catch (e) {
+      if (!/database is locked/.test((e as Error).message) || Date.now() > until) throw e
+      await new Promise((r) => setTimeout(r, 2000))
+    }
+  }
 }
 
 // Markers need a primary tag; flix's own go under "Highlight", created on first use.

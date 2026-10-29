@@ -74,7 +74,8 @@ media.get('/stash/*', async (c) => {
   return assetCache.serve(path + url.search, c.req.raw, cacheControl)
 })
 
-function localPath(stashPath: string): string | null {
+// The file on this host's media mount (MEDIA_PATH_MAP), or null when it is not mounted here.
+export function localPath(stashPath: string): string | null {
   for (const [from, to] of config.mediaPathMap) {
     if (stashPath === from || stashPath.startsWith(from + '/')) return to + stashPath.slice(from.length)
   }
