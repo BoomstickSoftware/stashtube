@@ -3,9 +3,10 @@ import clsx from 'clsx'
 import { Building2, Check, EyeOff, Minus, Plus, Search, SlidersHorizontal, Tag, Type, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useFacets, usePerformer, useSceneCount, useSearch, useStudio, useTags } from '../lib/api'
+import { useFacets, useSceneCount, useSearch, useTags } from '../lib/api'
+import { lengths, useQueryParts } from '../lib/describe'
 import { addToQuery, clearAll, type FilterKind, filtersOf, filterTotal, hasFilter } from '../lib/filters'
-import { ageLabel, idList, toggleId } from '../lib/query'
+import { idList, toggleId } from '../lib/query'
 import { PeopleControls } from './People'
 import { Avatar, Spinner, Switch, useDebounced } from './ui'
 
@@ -20,57 +21,9 @@ const csv = (v?: string) => (v ? v.split(',').filter(Boolean) : [])
 
 // --- the filters in play, as chips ---------------------------------------------------------
 
-type Active = { key: string; label: React.ReactNode; tone: 'include' | 'exclude' | 'plain'; clear: Patch }
-
-function useActive(q: SceneQuery): Active[] {
-  const { data: tags } = useTags({ sort: 'name' })
-  const tagName = useMemo(() => new Map(tags?.items.map((t) => [t.id, t.name])), [tags])
-  const out: Active[] = []
-  if (q.q) out.push({ key: 'q', label: <>Title has “{q.q}”</>, tone: 'include', clear: { q: undefined } })
-  for (const id of idList(q.performers))
-    out.push({ key: `p${id}`, label: <PerformerName id={id} />, tone: 'include', clear: { performers: toggleId(q.performers, id) } })
-  for (const id of idList(q.studios))
-    out.push({ key: `s${id}`, label: <StudioName id={id} />, tone: 'include', clear: { studios: toggleId(q.studios, id) } })
-  for (const id of idList(q.tags)) out.push({ key: `t${id}`, label: tagName.get(id) ?? '…', tone: 'include', clear: { tags: toggleId(q.tags, id) } })
-  for (const id of idList(q.xtags)) out.push({ key: `x${id}`, label: tagName.get(id) ?? '…', tone: 'exclude', clear: { xtags: toggleId(q.xtags, id) } })
-  if (q.unwatched) out.push({ key: 'unwatched', label: 'Unwatched', tone: 'plain', clear: { unwatched: undefined } })
-  if (q.inProgress) out.push({ key: 'inProgress', label: 'In progress', tone: 'plain', clear: { inProgress: undefined } })
-  if (q.favorites) out.push({ key: 'favorites', label: 'Favourite performers', tone: 'plain', clear: { favorites: undefined } })
-  if (q.minRating) out.push({ key: 'minRating', label: `★ ${q.minRating}+`, tone: 'plain', clear: { minRating: undefined } })
-  if (q.minHeight) out.push({ key: 'minHeight', label: q.minHeight >= 2160 ? '4K' : `${q.minHeight}p+`, tone: 'plain', clear: { minHeight: undefined } })
-  if (q.minDuration || q.maxDuration)
-    out.push({
-      key: 'len',
-      label: lengths.find((l) => l.min === q.minDuration && l.max === q.maxDuration)?.label ?? `${q.minDuration ?? 0}–${q.maxDuration ?? '∞'} min`,
-      tone: 'plain',
-      clear: { minDuration: undefined, maxDuration: undefined },
-    })
-  const age = ageLabel(q.minAge, q.maxAge)
-  if (age) out.push({ key: 'age', label: age, tone: 'plain', clear: { minAge: undefined, maxAge: undefined } })
-  for (const e of csv(q.ethnicities)) {
-    const rest = csv(q.ethnicities).filter((x) => x !== e)
-    out.push({ key: `e${e}`, label: e, tone: 'plain', clear: { ethnicities: rest.length ? rest.join(',') : undefined } })
-  }
-  // set by the cleanup page; shown so they can be removed
-  if (q.maxHeight) out.push({ key: 'maxHeight', label: `Below ${q.maxHeight >= 2160 ? '4K' : `${q.maxHeight}p`}`, tone: 'plain', clear: { maxHeight: undefined } })
-  if (q.maxRating) out.push({ key: 'maxRating', label: `Rated ★${q.maxRating} or less`, tone: 'plain', clear: { maxRating: undefined } })
-  if (q.unmatched) out.push({ key: 'unmatched', label: 'Not on StashDB', tone: 'plain', clear: { unmatched: undefined } })
-  if (q.olderDays) out.push({ key: 'olderDays', label: `Added ${q.olderDays}+ days ago`, tone: 'plain', clear: { olderDays: undefined } })
-  if (q.duplicates) out.push({ key: 'duplicates', label: 'Possible duplicates', tone: 'plain', clear: { duplicates: undefined } })
-  if (q.unblocked) out.push({ key: 'unblocked', label: 'Showing blocked', tone: 'plain', clear: { unblocked: undefined } })
-  return out
-}
-
-function PerformerName({ id }: { id: string }) {
-  return <>{usePerformer(id).data?.name ?? '…'}</>
-}
-function StudioName({ id }: { id: string }) {
-  return <>{useStudio(id).data?.name ?? '…'}</>
-}
-
 // Removable chips for the filters in play. An excluded tag is struck through.
 export function ActiveFilters({ query, onChange, className }: { query: SceneQuery; onChange: (p: Patch) => void; className?: string }) {
-  const active = useActive(query)
+  const active = useQueryParts(query)
   if (!active.length) return null
   return (
     <div className={clsx('flex flex-wrap items-center gap-1.5', className)}>
@@ -102,12 +55,6 @@ export function ActiveFilters({ query, onChange, className }: { query: SceneQuer
 }
 
 // --- the editor ----------------------------------------------------------------------------
-
-const lengths = [
-  { key: 'short', label: 'Under 15 min', min: undefined, max: 15 },
-  { key: 'mid', label: '15–40 min', min: 15, max: 40 },
-  { key: 'long', label: '40+ min', min: 40, max: undefined },
-]
 
 // `scope` is the query whose contents are counted (the filters plus what the page fixes, like the
 // performer being viewed); it defaults to the filters themselves.

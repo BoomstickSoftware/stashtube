@@ -4,8 +4,9 @@ import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useRowMutations, useScenes, useTags } from '../lib/api'
-import { ageLabel, idList, withBase } from '../lib/query'
+import { useRowMutations, useScenes } from '../lib/api'
+import { rowTitle, useQueryParts } from '../lib/describe'
+import { withBase } from '../lib/query'
 import { stationQuery } from '../lib/station'
 import { ActiveFilters, FilterDialog } from './Filters'
 import { filterTotal } from '../lib/filters'
@@ -137,8 +138,6 @@ function FilterBar({
   onSelectAll?: () => void // selects every loaded video
 }) {
   const [open, setOpen] = useState(false)
-  const { data: allTags } = useTags({ sort: 'name' })
-  const tagName = useMemo(() => new Map(allTags?.items.map((t) => [t.id, t.name])), [allTags])
   const sort = query.sort ?? defaultSort
   const n = filterTotal(query)
 
@@ -190,7 +189,7 @@ function FilterBar({
               <CheckCheck size={14} /> Select all loaded
             </Chip>
           )}
-          <PinButton query={effective} describe={() => describe(effective, tagName)} />
+          <PinButton query={effective} />
           <Link to="/station" search={stationQuery(effective)}>
             <Chip>
               <Radio size={14} /> Station
@@ -211,43 +210,9 @@ function FilterBar({
   )
 }
 
-const idNames = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : undefined)
-
-// Chips for the filters set outside the bar's quick chips (cleanup lists, People), each removable.
-function cleanupChips(q: SceneQuery): { label: string; clear: Patch }[] {
-  const out: { label: string; clear: Patch }[] = []
-  const age = ageLabel(q.minAge, q.maxAge)
-  if (age) out.push({ label: age, clear: { minAge: undefined, maxAge: undefined } })
-  for (const e of idNames(q.ethnicities) ?? []) {
-    const rest = idNames(q.ethnicities)!.filter((x) => x !== e)
-    out.push({ label: e, clear: { ethnicities: rest.length ? rest.join(',') : undefined } })
-  }
-  if (q.maxHeight) out.push({ label: `Below ${q.maxHeight >= 2160 ? '4K' : `${q.maxHeight}p`}`, clear: { maxHeight: undefined } })
-  if (q.maxRating) out.push({ label: `Rated ★${q.maxRating} or less`, clear: { maxRating: undefined } })
-  if (q.unmatched) out.push({ label: 'Not on StashDB', clear: { unmatched: undefined } })
-  if (q.olderDays) out.push({ label: `Added ${q.olderDays}+ days ago`, clear: { olderDays: undefined } })
-  if (q.duplicates) out.push({ label: 'Possible duplicates', clear: { duplicates: undefined } })
-  return out
-}
-
-// A readable default title for a pinned row, from the filters in play.
-function describe(q: SceneQuery, tagName: Map<string, string>): string {
-  const parts: string[] = []
-  if (q.q) parts.push(`“${q.q}”`)
-  idList(q.tags).forEach((t) => parts.push(tagName.get(t) ?? `#${t}`))
-  idList(q.xtags).forEach((t) => parts.push(`no ${tagName.get(t) ?? `#${t}`}`))
-  if (q.minHeight) parts.push(q.minHeight >= 2160 ? '4K' : `${q.minHeight}p+`)
-  if (q.minRating) parts.push(`★${q.minRating}+`)
-  if (q.unwatched) parts.push('unwatched')
-  if (q.favorites) parts.push('favourites')
-  if (q.minDuration || q.maxDuration) parts.push(`${q.minDuration ?? 0}–${q.maxDuration ?? '∞'} min`)
-  cleanupChips(q).forEach((c) => parts.push(c.label.toLowerCase()))
-  const sort = q.sort && q.sort !== 'date' ? sceneSorts[q.sort] : null
-  const title = parts.join(' · ') || sort || 'My row'
-  return title.length > 80 ? `${title.slice(0, 77)}…` : title
-}
-
-function PinButton({ query, describe }: { query: SceneQuery; describe: () => string }) {
+function PinButton({ query }: { query: SceneQuery }) {
+  const parts = useQueryParts(query)
+  const describe = () => rowTitle(query, parts)
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [pinned, setPinned] = useState(false)
