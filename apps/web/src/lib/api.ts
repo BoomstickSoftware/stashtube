@@ -236,6 +236,18 @@ export function useAddO() {
 }
 
 export const addPlay = (id: string) => send('POST', `/scenes/${id}/play`)
+// "Mark as watched": one play, so Unwatched lists and the New badge let it go.
+export function useMarkWatched() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => addPlay(id),
+    onSuccess: (_r, id) => {
+      patchScene(qc, id, { playCount: 1 })
+      qc.invalidateQueries({ queryKey: ['scenes'] })
+      qc.invalidateQueries({ queryKey: ['home'] })
+    },
+  })
+}
 export const saveActivity = (id: string, resumeTime: number, playDuration: number) =>
   send('POST', `/scenes/${id}/activity`, { resumeTime, playDuration })
 

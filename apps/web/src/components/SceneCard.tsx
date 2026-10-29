@@ -6,11 +6,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
 import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
+import { CardMenu } from './CardMenu'
 import { PreviewVideo } from './PreviewVideo'
 import { SpriteThumb } from './SpriteThumb'
 
 const HOVER_DELAY = 350
 const SCRUB_REST = 700 // ms the mouse rests before the scrubbed frame gives way to the preview clip again
+const LONG_PRESS = 500 // ms a finger holds still on a card before its menu opens
 // Touch screens have no hover: a slight drag on the thumbnail starts the preview instead, so a tap still opens the video.
 const DRAG_START_PX = 10
 
@@ -37,6 +39,9 @@ export function SceneCard({
   // Moving the mouse across the thumbnail scrubs through the sprite frames (the tube-site
   // convention); once it rests, the preview clip shows again.
   const [sprites, setSprites] = useState<SpriteCue[]>([])
+  // Right-click, or a long press on a touch screen, opens the card's menu.
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const pressTimer = useRef<number>(undefined)
   const [scrub, setScrub] = useState<{ t: number; w: number } | null>(null)
   const restTimer = useRef<number>(undefined)
   const timer = useRef<number>(undefined)
@@ -115,16 +120,33 @@ export function SceneCard({
           const t = e.touches[0]
           dragged.current = false
           touchStart.current = t && e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : undefined
+          clearTimeout(pressTimer.current)
+          if (t && !select)
+            pressTimer.current = window.setTimeout(() => {
+              dragged.current = true // the click that ends this press must not open the video
+              touchStart.current = undefined
+              leave()
+              setMenu({ x: t.clientX, y: t.clientY })
+            }, LONG_PRESS)
         }}
         onTouchMove={(e) => {
           const from = touchStart.current
           const t = e.touches[0]
           if (!from || !t || hovering || select) return
           if (Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX) {
+            clearTimeout(pressTimer.current)
             touchStart.current = undefined
             dragged.current = true
             start()
           }
+        }}
+        onTouchEnd={() => clearTimeout(pressTimer.current)}
+        onTouchCancel={() => clearTimeout(pressTimer.current)}
+        onContextMenu={(e) => {
+          if (select) return
+          e.preventDefault()
+          leave()
+          setMenu({ x: e.clientX, y: e.clientY })
         }}
         onClick={(e) => {
           if (dragged.current) e.preventDefault()
@@ -240,6 +262,7 @@ export function SceneCard({
           <PlaylistMenu sceneId={scene.id} variant="icon" />
         </div>
       </div>
+      {menu && <CardMenu scene={scene} at={menu} onClose={() => setMenu(null)} />}
     </div>
   )
 }
