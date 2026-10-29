@@ -1,6 +1,5 @@
 import type { SceneDetail } from '@flix/shared'
 import clsx from 'clsx'
-import type Hls from 'hls.js'
 import {
   Airplay,
   Bookmark,
@@ -19,14 +18,13 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { addPlay, saveActivity, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
+import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
+import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import { SeekBar, type SeekPoint } from './SeekBar'
 import { useMediaQuery } from './ui'
 
-const SAVE_EVERY = 15 // seconds of playback between activity saves
-const COUNT_PLAY_AFTER = 20 // seconds watched before it counts as a play
 const RATES = [0.5, 1, 1.25, 1.5, 2]
 
 // Quality: 'auto' plays the original when the browser can and drops to a 720p transcode
@@ -88,7 +86,6 @@ export function Player({
 }) {
   const wrap = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
-  const hls = useRef<Hls | null>(null)
   const [quality, setQualityState] = useState<Quality>(() => {
     try {
       return (localStorage.getItem('flix.quality') as Quality) || 'auto'
@@ -134,40 +131,15 @@ export function Player({
   // Safari cannot make anything but a bare <video> fullscreen).
   const landscapePhone = useMediaQuery('(orientation: landscape) and (pointer: coarse) and (max-height: 520px)')
   const immersive = fullscreen || landscapePhone
-  const [flash, setFlash] = useState<string | null>(null)
+  const [flash, setFlash] = useFlash()
   const [airplay, setAirplay] = useState(false) // a receiver is on the network (Safari only)
   const [casting, setCasting] = useState(false)
 
-  // playback accounting
-  const watched = useRef(0)
-  const unsaved = useRef(0)
-  const counted = useRef(false)
-  const lastTick = useRef<number | null>(null)
+  const { onTimeUpdate: accountTime, flush, watched } = useWatchAccounting(video, scene.id)
 
   // Source setup. Direct play first; a media error or (in auto) repeated stalls switch to
   // Stash's HLS transcode, continuing from the same point.
-  useEffect(() => {
-    const v = video.current!
-    let cancelled = false
-    hls.current?.destroy()
-    hls.current = null
-    if (mode === 'direct' || v.canPlayType('application/vnd.apple.mpegurl')) {
-      v.src = src
-    } else {
-      import('hls.js').then(({ default: H }) => {
-        if (cancelled) return
-        const h = new H({ maxBufferLength: 30, startPosition: pendingSeek.current ?? -1 })
-        h.loadSource(src)
-        h.attachMedia(v)
-        hls.current = h
-      })
-    }
-    return () => {
-      cancelled = true
-      hls.current?.destroy()
-      hls.current = null
-    }
-  }, [mode, src])
+  useEffect(() => attachSource(video.current!, src, pendingSeek.current), [src])
 
   // Keep the position across a source switch.
   const switchSource = (apply: () => void) => {
@@ -190,10 +162,9 @@ export function Player({
     setMenu(false)
   }
 
-  const onStall = () => {
+  const onStall = (now: number) => {
     const v = video.current!
-    if (quality !== 'auto' || autoRes || v.seeking || watched.current < 3 || mode !== 'direct') return
-    const now = Date.now()
+    if (quality !== 'auto' || autoRes || v.seeking || watched() < 3 || mode !== 'direct') return
     stalls.current = [...stalls.current.filter((t) => now - t < STALL_WINDOW), now]
     if (stalls.current.length >= STALLS_TO_DROP) {
       switchSource(() => setAutoRes('STANDARD_HD'))
@@ -221,40 +192,11 @@ export function Player({
     v.volume = volume
   }, [volume])
 
-  const flush = useCallback(() => {
-    const v = video.current
-    if (!v || unsaved.current < 1) return
-    const end = v.duration && v.currentTime > v.duration - 15
-    saveActivity(scene.id, end ? 0 : v.currentTime, unsaved.current).catch(() => {})
-    unsaved.current = 0
-  }, [scene.id])
-
-  // Save on tab close / navigation away.
-  useEffect(() => {
-    const h = () => flush()
-    window.addEventListener('pagehide', h)
-    return () => {
-      window.removeEventListener('pagehide', h)
-      flush()
-    }
-  }, [flush])
-
   const onTimeUpdate = () => {
     const v = video.current!
     setTime(v.currentTime)
     if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1))
-    const now = performance.now()
-    if (!v.paused && lastTick.current !== null) {
-      const d = Math.min(2, (now - lastTick.current) / 1000) * v.playbackRate
-      watched.current += d
-      unsaved.current += d
-      if (!counted.current && watched.current >= COUNT_PLAY_AFTER) {
-        counted.current = true
-        addPlay(scene.id).catch(() => {})
-      }
-      if (unsaved.current >= SAVE_EVERY) flush()
-    }
-    lastTick.current = now
+    accountTime()
   }
 
   const onLoaded = () => {
@@ -285,7 +227,7 @@ export function Player({
     const v = video.current!
     v.currentTime = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + d))
     setFlash(d > 0 ? `+${d}s` : `${d}s`)
-  }, [])
+  }, [setFlash])
 
   // The player element where the Fullscreen API exists (desktop, Android, iPad); on iPhone
   // only the <video> itself, which then plays with the system's own controls. On a phone a
@@ -352,88 +294,72 @@ export function Player({
     return () => clearTimeout(t)
   }, [resumedAt])
 
-  useEffect(() => {
-    if (!flash) return
-    const t = setTimeout(() => setFlash(null), 600)
-    return () => clearTimeout(t)
-  }, [flash])
-
   // Keyboard: YouTube conventions.
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement
-      if (el.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return
-      const v = video.current!
-      switch (e.key) {
-        case ' ':
-        case 'k':
-          toggle()
-          break
-        case 'ArrowLeft':
-          seekBy(-5)
-          break
-        case 'ArrowRight':
-          seekBy(5)
-          break
-        case 'j':
-          seekBy(-10)
-          break
-        case 'l':
-          seekBy(10)
-          break
-        case 'ArrowUp':
-          setVolume(Math.min(1, volume + 0.1))
-          break
-        case 'ArrowDown':
-          setVolume(Math.max(0, volume - 0.1))
-          break
-        case 'm':
-          setMuted((m) => !m)
-          break
-        case 'f':
-          toggleFullscreen()
-          break
-        case 't':
-          onTheater()
-          break
-        case 'N':
-          onNext?.()
-          break
-        case 'b':
-          addMarker({ seconds: Math.round(v.currentTime * 10) / 10, title: '' })
-          setFlash('Marked')
-          break
-        case ']':
-        case '[': {
-          const t = v.currentTime
-          const m =
-            e.key === ']'
-              ? scene.markers.find((x) => x.seconds > t + 1)
-              : [...scene.markers].reverse().find((x) => x.seconds < t - 2)
-          if (m) {
-            v.currentTime = m.seconds
-            setFlash(m.title || fmt(m.seconds))
-          }
-          break
+  usePlayerKeys((e) => {
+    const v = video.current!
+    switch (e.key) {
+      case ' ':
+      case 'k':
+        toggle()
+        break
+      case 'ArrowLeft':
+        seekBy(-5)
+        break
+      case 'ArrowRight':
+        seekBy(5)
+        break
+      case 'j':
+        seekBy(-10)
+        break
+      case 'l':
+        seekBy(10)
+        break
+      case 'ArrowUp':
+        setVolume(Math.min(1, volume + 0.1))
+        break
+      case 'ArrowDown':
+        setVolume(Math.max(0, volume - 0.1))
+        break
+      case 'm':
+        setMuted((m) => !m)
+        break
+      case 'f':
+        toggleFullscreen()
+        break
+      case 't':
+        onTheater()
+        break
+      case 'N':
+        onNext?.()
+        break
+      case 'b':
+        addMarker({ seconds: Math.round(v.currentTime * 10) / 10, title: '' })
+        setFlash('Marked')
+        break
+      case ']':
+      case '[': {
+        const m = nextMarker(scene.markers, v.currentTime, e.key === ']' ? 1 : -1)
+        if (m) {
+          v.currentTime = m.seconds
+          setFlash(m.title || fmt(m.seconds))
         }
-        case '>':
-        case '<': {
-          const i = RATES.indexOf(rate) + (e.key === '>' ? 1 : -1)
-          const r = RATES[Math.max(0, Math.min(RATES.length - 1, i))]
-          setRate(r)
-          v.playbackRate = r
-          setFlash(`${r}×`)
-          break
-        }
-        default:
-          if (/^[0-9]$/.test(e.key) && v.duration) v.currentTime = (v.duration * Number(e.key)) / 10
-          else return
+        break
       }
-      e.preventDefault()
+      case '>':
+      case '<': {
+        const i = RATES.indexOf(rate) + (e.key === '>' ? 1 : -1)
+        const r = RATES[Math.max(0, Math.min(RATES.length - 1, i))]
+        setRate(r)
+        v.playbackRate = r
+        setFlash(`${r}×`)
+        break
+      }
+      default:
+        if (/^[0-9]$/.test(e.key) && v.duration) v.currentTime = (v.duration * Number(e.key)) / 10
+        else return false
     }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [toggle, seekBy, toggleFullscreen, onTheater, onNext, volume, setVolume, rate, scene.markers, addMarker])
+    return true
+  })
 
   // Hide controls while playing and the mouse is still, or a while after a tap.
   const idleTimer = useRef<number>(undefined)
@@ -510,17 +436,15 @@ export function Player({
         muted={muted}
         onPlay={() => {
           setPlaying(true)
-          lastTick.current = performance.now()
           poke()
         }}
         onPause={() => {
           setPlaying(false)
-          lastTick.current = null
           flush()
         }}
-        onWaiting={() => {
+        onWaiting={(e) => {
           setWaiting(true)
-          onStall()
+          onStall(e.timeStamp)
         }}
         onPlaying={() => setWaiting(false)}
         onTimeUpdate={onTimeUpdate}

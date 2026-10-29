@@ -3,7 +3,6 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import type Hls from 'hls.js'
 import {
   Bookmark,
   ExternalLink,
@@ -25,7 +24,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { SeekBar, type SeekPoint } from '../components/SeekBar'
 import { Spinner } from '../components/ui'
 import {
-  addPlay,
   get,
   saveStationResume,
   useFavoriteScenes,
@@ -38,6 +36,7 @@ import {
 } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
+import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import {
   loadPrefs,
   savePrefs,
@@ -54,7 +53,6 @@ import {
 const route = getRouteApi('/station')
 const FADE_MS = 700
 const HIDE_MS = 3000
-const COUNT_PLAY_AFTER = 15 // seconds of a full video before it counts as a play
 const SAVE_SPOT_EVERY = 15 // seconds of play between saves of where the station is
 const SEEK_STEP = 10
 const UP_NEXT = 30 // scenes listed in the side panel, more on request
@@ -120,19 +118,20 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const [buffered, setBuffered] = useState(0)
   const [dur, setDur] = useState(0)
   const [point, setPoint] = useState<SeekPoint | null>(null)
-  const [flash, setFlash] = useState<string | null>(null)
+  const [flash, setFlash] = useFlash()
   const [panel, setPanel] = useState(false)
   const [list, setList] = useState<{ history: SceneCard[]; upcoming: SceneCard[]; canBack: boolean }>({ history: [], upcoming: [], canBack: false })
   const listSize = useRef(UP_NEXT)
 
   const video = useRef<HTMLVideoElement>(null)
-  const hls = useRef<Hls | null>(null)
   const segs = useRef<Segment[]>([])
   const segIdx = useRef(0)
   const busy = useRef(false) // a fade or scene change is running
   const prefsRef = useRef(prefs)
   const introRef = useRef<Record<string, number>>({})
-  const watched = useRef({ id: '', secs: 0, last: 0, counted: false, sinceSave: 0 })
+  const sinceSave = useRef(0) // seconds played since the station's spot was saved
+  const lastT = useRef(0)
+  const [fallen, setFallen] = useState<string | null>(null) // the scene whose direct play errored: use HLS
   const hideTimer = useRef<number>(undefined)
   const [queue] = useState(() => new StationQueue(config.query, config.from))
   useEffect(() => {
@@ -142,6 +141,9 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   // The scene as the rest of the app sees it, so a marker added here shows on the bar.
   const live = useQuery({ queryKey: ['scene', scene?.id], queryFn: () => get<SceneDetail>(`/scenes/${scene!.id}`), enabled: !!scene, staleTime: 60_000 })
   const markers = (live.data ?? scene)?.markers ?? []
+  // Full videos count as watched in Stash (plays, history, resume point) as on the video page;
+  // Moments only sample, so they leave no trace.
+  const { onTimeUpdate: accountTime, flush } = useWatchAccounting(video, scene?.id, { resume: prefs.mode === 'full' })
   const edits = useSceneEdits(scene?.id ?? '')
   const favorites = useFavoriteScenes()
   const toggleFavorite = useToggleFavoriteScene()
@@ -221,52 +223,44 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const prevScene = () => list.canBack && load(() => queue.back())
   const pick = (id: string) => load(() => queue.jump(id))
 
-  // Load each scene's source and seek to its first segment.
+  // Load each scene's source and seek to its first segment. A direct file that errors is
+  // retried through Stash's HLS transcode from the same point (`fallen`).
   useEffect(() => {
     const v = video.current
     if (!scene || !v) return
-    let cancelled = false
-    const start = segs.current[0]?.start ?? 0
-    hls.current?.destroy()
-    hls.current = null
+    const direct = canDirectPlay(scene.playback) && fallen !== scene.id
+    const start = fallen === scene.id ? lastT.current : (segs.current[0]?.start ?? 0)
     setTime(start)
     setBuffered(0)
     setDur(scene.durationSec)
-    const direct = canDirectPlay(scene.playback)
     const onMeta = () => {
       setDur(v.duration || scene.durationSec)
       if (Math.abs(v.currentTime - start) > 1) v.currentTime = start
       play()
     }
     v.addEventListener('loadedmetadata', onMeta, { once: true })
-    if (direct || v.canPlayType('application/vnd.apple.mpegurl')) {
-      v.src = direct ? scene.playback.direct : scene.playback.hls
-    } else {
-      import('hls.js').then(({ default: H }) => {
-        if (cancelled) return
-        const h = new H({ maxBufferLength: 30, startPosition: start })
-        h.loadSource(scene.playback.hls)
-        h.attachMedia(v)
-        hls.current = h
-      })
-    }
-    watched.current = { id: scene.id, secs: 0, last: start, counted: false, sinceSave: 0 }
+    const detach = attachSource(v, direct ? scene.playback.direct : scene.playback.hls, start)
+    sinceSave.current = 0
+    lastT.current = start
     spot.current = { id: scene.id, t: start }
     return () => {
-      cancelled = true
+      detach()
       v.removeEventListener('loadedmetadata', onMeta)
     }
-  }, [scene, play])
+  }, [scene, fallen, play])
+  const onError = () => {
+    if (scene && canDirectPlay(scene.playback) && fallen !== scene.id) {
+      lastT.current = video.current?.currentTime || lastT.current
+      setFallen(scene.id)
+    } else nextScene()
+  }
 
   const resume = useRef(config.resume)
   useEffect(() => {
     const r = resume.current
     // after mount: it sets state
     const t = setTimeout(() => (r ? load(() => queue.jump(r.sceneId), r.seconds) : nextScene()))
-    return () => {
-      clearTimeout(t)
-      hls.current?.destroy()
-    }
+    return () => clearTimeout(t)
   }, [load, nextScene, queue])
 
   const nextSegment = useCallback(async () => {
@@ -290,23 +284,16 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const onTime = () => {
     const v = video.current!
     const seg = segs.current[segIdx.current]
-    const w = watched.current
     const t = v.currentTime
     setTime(t)
     if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1))
-    if (t > w.last && t - w.last < 2) {
-      w.secs += t - w.last
-      w.sinceSave += t - w.last
-    }
-    w.last = t
+    accountTime()
+    if (t > lastT.current && t - lastT.current < 2) sinceSave.current += t - lastT.current
+    lastT.current = t
     if (scene) spot.current = { id: scene.id, t }
-    if (w.sinceSave >= SAVE_SPOT_EVERY) {
-      w.sinceSave = 0
+    if (sinceSave.current >= SAVE_SPOT_EVERY) {
+      sinceSave.current = 0
       saveSpot()
-    }
-    if (prefsRef.current.mode === 'full' && !w.counted && w.secs >= COUNT_PLAY_AFTER && scene) {
-      w.counted = true
-      addPlay(scene.id).catch(() => {})
     }
     if (!busy.current && seg && seg.end < v.duration - 1 && t >= seg.end - FADE_MS / 1000) nextSegment()
   }
@@ -335,19 +322,12 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     setFlash('Marked')
   }
   const jumpMarker = (dir: 1 | -1) => {
-    const t = video.current?.currentTime ?? 0
-    const m = dir > 0 ? markers.find((x) => x.seconds > t + 1) : [...markers].reverse().find((x) => x.seconds < t - 2)
+    const m = nextMarker(markers, video.current?.currentTime ?? 0, dir)
     if (m) {
       seekTo(m.seconds)
       setFlash(m.title || fmt(m.seconds))
     }
   }
-
-  useEffect(() => {
-    if (!flash) return
-    const t = setTimeout(() => setFlash(null), 600)
-    return () => clearTimeout(t)
-  }, [flash])
 
   const setPrefs = (p: StationPrefs) => {
     setPrefsState(p)
@@ -373,6 +353,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     else {
       v.pause()
       setState('paused')
+      flush()
     }
   }
   const poke = () => {
@@ -388,30 +369,25 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   }
 
   // Keys follow the video page where they overlap (space, arrows, j/l, b, [ ], m).
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return
-      if (e.key === ' ' || e.key === 'k') toggle()
-      else if (e.key === 'ArrowRight') seekBy(5)
-      else if (e.key === 'ArrowLeft') seekBy(-5)
-      else if (e.key === 'l') seekBy(SEEK_STEP)
-      else if (e.key === 'j') seekBy(-SEEK_STEP)
-      else if (e.key === 'n' || e.key === 'N') nextScene()
-      else if (e.key === 'p' || e.key === 'P') prevScene()
-      else if (e.key === 'b') mark()
-      else if (e.key === ']') jumpMarker(1)
-      else if (e.key === '[') jumpMarker(-1)
-      else if (e.key === 'q') togglePanel()
-      else if (e.key === 'm') setMuted((m) => !m)
-      else if (e.key === 'Escape') {
-        if (panel) setPanel(false)
-        else exit()
-      } else return
-      e.preventDefault()
-      poke()
-    }
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
+  usePlayerKeys((e) => {
+    if (e.key === ' ' || e.key === 'k') toggle()
+    else if (e.key === 'ArrowRight') seekBy(5)
+    else if (e.key === 'ArrowLeft') seekBy(-5)
+    else if (e.key === 'l') seekBy(SEEK_STEP)
+    else if (e.key === 'j') seekBy(-SEEK_STEP)
+    else if (e.key === 'n' || e.key === 'N') nextScene()
+    else if (e.key === 'p' || e.key === 'P') prevScene()
+    else if (e.key === 'b') mark()
+    else if (e.key === ']') jumpMarker(1)
+    else if (e.key === '[') jumpMarker(-1)
+    else if (e.key === 'q') togglePanel()
+    else if (e.key === 'm') setMuted((m) => !m)
+    else if (e.key === 'Escape') {
+      if (panel) setPanel(false)
+      else exit()
+    } else return false
+    poke()
+    return true
   })
 
   const controlsVisible = shown || state !== 'playing' || point !== null
@@ -428,7 +404,10 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
           playsInline
           muted={muted}
           onTimeUpdate={onTime}
-          onEnded={() => nextScene()}
+          onEnded={() => {
+            flush()
+            nextScene()
+          }}
           onPlaying={() => {
             setState('playing')
             if (busy.current || dim) {
@@ -436,7 +415,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
               fade('in')
             }
           }}
-          onError={() => nextScene()}
+          onError={onError}
           onClick={toggle}
           className={clsx('absolute inset-0 size-full object-contain transition-opacity ease-in-out', dim ? 'opacity-0' : 'opacity-100')}
           style={{ transitionDuration: `${FADE_MS}ms` }}

@@ -124,6 +124,12 @@ mpeg4, wmv vc1, av1) transcode. The first HLS segment takes ~2.3 s.
 A saved resume point is applied automatically, with a "Resumed at … · Start over" pill for 8 s
 (Start over honours the studio's intro skip).
 
+`lib/playback.ts` is what the video page's `Player` and the station player share: attaching a
+source (direct, or HLS through hls.js), the watch accounting (a play after 20 s, time and
+resume point saved to Stash every 15 s and on pause, end, leave and tab close), the key guard,
+marker jumps and the flash label. A station in Full mode records plays and resume points like
+the video page (so Continue, History and Most played see it); Moments mode records nothing.
+
 On touch screens (`Player.tsx`):
 - A tap shows or hides the controls; it does not pause. A double tap on the left or right
   third seeks 10 s. While the controls show, the middle has −10 / play-pause / +10 buttons.

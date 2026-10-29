@@ -1,0 +1,128 @@
+// What the video page's Player and the station player share: attaching a source (direct or
+// HLS), telling Stash what was watched, the keyboard guard, marker jumps and the flash label.
+import type { Marker } from '@flix/shared'
+import type Hls from 'hls.js'
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { addPlay, saveActivity } from './api'
+
+export const COUNT_PLAY_AFTER = 20 // seconds watched before a video counts as played
+const SAVE_EVERY = 15 // seconds of playback between activity saves
+
+const isHls = (src: string) => /\.m3u8(\?|$)/.test(src)
+
+// Point the element at `src`, through hls.js when the browser cannot play HLS itself (anything
+// but Safari). Returns the teardown; call it before attaching the next source.
+export function attachSource(v: HTMLVideoElement, src: string, startAt: number | null): () => void {
+  let hls: Hls | null = null
+  let cancelled = false
+  if (!isHls(src) || v.canPlayType('application/vnd.apple.mpegurl')) {
+    v.src = src
+  } else {
+    import('hls.js').then(({ default: H }) => {
+      if (cancelled) return
+      hls = new H({ maxBufferLength: 30, startPosition: startAt ?? -1 })
+      hls.loadSource(src)
+      hls.attachMedia(v)
+    })
+  }
+  return () => {
+    cancelled = true
+    hls?.destroy()
+    hls = null
+  }
+}
+
+// The marker after (dir 1) or before (dir -1) time `t`, with a little slack so repeated
+// presses keep moving.
+export function nextMarker(markers: Marker[], t: number, dir: 1 | -1): Marker | undefined {
+  return dir > 0 ? markers.find((m) => m.seconds > t + 1) : [...markers].reverse().find((m) => m.seconds < t - 2)
+}
+
+// Seconds watched, from the element's own clock: a jump of more than two seconds is a seek
+// and does not count. After COUNT_PLAY_AFTER seconds the scene counts as played; every
+// SAVE_EVERY seconds, on pause, on leaving and on tab close the time and resume point go to
+// Stash. `resume: false` (a station's Moments mode) records nothing: sampling is not watching.
+export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sceneId: string | undefined, { resume = true } = {}) {
+  const opts = useRef({ sceneId, resume })
+  useLayoutEffect(() => {
+    opts.current = { sceneId, resume }
+  })
+  // One set of stable functions over one mutable record; nothing here re-renders anything.
+  const [acct] = useState(() => {
+    const s = { id: sceneId, last: null as number | null, watched: 0, unsaved: 0, counted: false }
+    const flush = () => {
+      const v = video.current
+      if (!v || !s.id || !opts.current.resume || s.unsaved < 1) return
+      const end = v.duration && v.currentTime > v.duration - 15
+      saveActivity(s.id, end ? 0 : v.currentTime, s.unsaved).catch(() => {})
+      s.unsaved = 0
+    }
+    const onTimeUpdate = () => {
+      const v = video.current
+      if (!v || !s.id) return
+      const t = v.currentTime
+      if (!v.paused && s.last !== null && t > s.last && t - s.last < 2) {
+        const d = t - s.last
+        s.watched += d
+        s.unsaved += d
+        if (opts.current.resume && !s.counted && s.watched >= COUNT_PLAY_AFTER) {
+          s.counted = true
+          addPlay(s.id).catch(() => {})
+        }
+        if (s.unsaved >= SAVE_EVERY) flush()
+      }
+      s.last = t
+    }
+    // a new scene: save what the last one had, start counting afresh
+    const reset = (id: string | undefined) => {
+      if (s.id === id) return
+      flush()
+      Object.assign(s, { id, last: null, watched: 0, unsaved: 0, counted: false })
+    }
+    // seconds of the current scene watched so far (stall detection waits for a few)
+    const watched = () => s.watched
+    return { flush, onTimeUpdate, reset, watched }
+  })
+
+  useEffect(() => acct.reset(sceneId), [acct, sceneId])
+
+  useEffect(() => {
+    addEventListener('pagehide', acct.flush)
+    return () => {
+      removeEventListener('pagehide', acct.flush)
+      acct.flush()
+    }
+  }, [acct])
+
+  return acct
+}
+
+// A short label over the picture ("+10s", "Marked"), gone again after a moment.
+export function useFlash(): [string | null, (s: string) => void] {
+  const [flash, setFlash] = useState<string | null>(null)
+  useEffect(() => {
+    if (!flash) return
+    const t = setTimeout(() => setFlash(null), 600)
+    return () => clearTimeout(t)
+  }, [flash])
+  return [flash, setFlash]
+}
+
+// Player shortcuts: `handle` returns true for a key it used, which is then not passed on.
+// Keys typed into a field, or with a modifier, never reach it. Bound once; the handler may
+// close over anything, the latest one is always called.
+export function usePlayerKeys(handle: (e: KeyboardEvent) => boolean | void) {
+  const latest = useRef(handle)
+  useLayoutEffect(() => {
+    latest.current = handle
+  })
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (el.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return
+      if (latest.current(e)) e.preventDefault()
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])
+}
