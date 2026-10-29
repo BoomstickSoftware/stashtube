@@ -51,6 +51,7 @@ const TAP_SEEK = 10 // seconds per double tap on either side of the video
 // What the page around the player may ask of it.
 export interface PlayerHandle {
   seek: (t: number) => void
+  time: () => number // where playback is now
 }
 
 export function Player({
@@ -398,7 +399,7 @@ export function Player({
     setTime(t)
     poke()
   }
-  useImperativeHandle(ref, () => ({ seek: seekTo }))
+  useImperativeHandle(ref, () => ({ seek: seekTo, time: () => video.current?.currentTime ?? 0 }))
 
   const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu

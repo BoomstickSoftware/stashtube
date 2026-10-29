@@ -10,7 +10,7 @@ import { Player, type PlayerHandle } from '../components/Player'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene } from '../lib/api'
+import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
@@ -33,6 +33,7 @@ function SceneView({ id }: { id: string }) {
   const rate = useRateScene()
   const addO = useAddO()
   const hide = useHideScene()
+  const edits = useSceneEdits(id)
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
@@ -126,8 +127,13 @@ function SceneView({ id }: { id: string }) {
             <Stars value={scene.rating} onChange={(rating) => rate.mutate({ id: scene.id, rating })} />
           </div>
           <button
-            onClick={() => addO.mutate(scene.id)}
-            title="O counter"
+            onClick={() => {
+              addO.mutate(scene.id)
+              // the moment matters as much as the count: mark it, once the video has been playing
+              const t = playerRef.current?.time() ?? 0
+              if (t > 3) edits.addMarker.mutate({ seconds: Math.round(t * 10) / 10, title: 'O' })
+            }}
+            title="O counter (also marks this moment)"
             className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
           >
             <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}

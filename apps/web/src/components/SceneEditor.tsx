@@ -9,6 +9,8 @@ import { duration } from '../lib/format'
 import { AddFilterButton } from './AddFilter'
 import { Chip, Spinner } from './ui'
 import { useDebounced } from '../lib/hooks'
+import { loadSprites, type SpriteCue } from '../lib/media'
+import { SpriteThumb } from './SpriteThumb'
 
 export function EditableTitle({ scene }: { scene: SceneDetail }) {
   const { update } = useSceneEdits(scene.id)
@@ -152,8 +154,13 @@ export function IdentifyButton({ scene }: { scene: SceneDetail }) {
   )
 }
 
-// Markers as chapters: jump, rename, delete. Press "b" in the player to add one.
+// Markers as chapters, each with its frame from the scrubber sprites: jump, rename, delete.
+// Press "b" in the player to add one; an O-counter press adds one too.
 export function Chapters({ scene, onSeek }: { scene: SceneDetail; onSeek: (t: number) => void }) {
+  const [sprites, setSprites] = useState<SpriteCue[]>([])
+  useEffect(() => {
+    if (scene.vtt && scene.markers.length) loadSprites(scene.vtt).then(setSprites)
+  }, [scene.vtt, scene.markers.length])
   if (!scene.markers.length) {
     return (
       <div className="mt-4 text-xs text-muted">
@@ -172,22 +179,24 @@ export function Chapters({ scene, onSeek }: { scene: SceneDetail; onSeek: (t: nu
       </h3>
       <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
         {scene.markers.map((m) => (
-          <ChapterChip key={m.id} scene={scene} marker={m} onSeek={onSeek} />
+          <ChapterChip key={m.id} scene={scene} marker={m} sprites={sprites} onSeek={onSeek} />
         ))}
       </div>
     </div>
   )
 }
 
-function ChapterChip({ scene, marker, onSeek }: { scene: SceneDetail; marker: Marker; onSeek: (t: number) => void }) {
+function ChapterChip({ scene, marker, sprites, onSeek }: { scene: SceneDetail; marker: Marker; sprites: SpriteCue[]; onSeek: (t: number) => void }) {
   const { renameMarker, deleteMarker } = useSceneEdits(scene.id)
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(marker.title)
   return (
-    <div className="group flex shrink-0 items-center gap-1 rounded-xl bg-surface py-1.5 pr-1 pl-3 ring-1 ring-white/5">
-      <button onClick={() => onSeek(marker.seconds)} className="text-xs font-semibold text-star tabular-nums hover:underline">
-        {duration(marker.seconds)}
+    <div className="group w-40 shrink-0 rounded-xl bg-surface p-1.5 ring-1 ring-white/5">
+      <button onClick={() => onSeek(marker.seconds)} className="relative block aspect-video w-full overflow-hidden rounded-lg bg-raised" title="Jump here">
+        {sprites.length > 0 && <SpriteThumb cues={sprites} t={marker.seconds} width={148} className="absolute top-1/2 left-0 -translate-y-1/2" />}
+        <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] font-semibold text-star tabular-nums">{duration(marker.seconds)}</span>
       </button>
+      <div className="mt-1 flex items-center">
       {editing ? (
         <form
           onSubmit={(e) => {
@@ -200,17 +209,18 @@ function ChapterChip({ scene, marker, onSeek }: { scene: SceneDetail; marker: Ma
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => setEditing(false)}
-            className="w-36 rounded bg-raised px-1.5 py-0.5 text-xs outline-none"
+            className="w-full rounded bg-raised px-1.5 py-0.5 text-xs outline-none"
           />
         </form>
       ) : (
-        <button onClick={() => setEditing(true)} className="max-w-40 truncate px-1 text-xs" title="Rename">
+        <button onClick={() => setEditing(true)} className="min-w-0 flex-1 truncate px-1 text-left text-xs" title="Rename">
           {marker.title || 'Untitled'}
         </button>
       )}
       <button onClick={() => deleteMarker.mutate(marker.id)} className="rounded p-1 text-muted hover:text-red-400 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label="Delete marker">
         <Trash2 size={12} />
       </button>
+      </div>
     </div>
   )
 }
