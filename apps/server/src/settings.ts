@@ -1,4 +1,5 @@
 import type { PerformerGender, Settings } from '@flix/shared'
+import type { GenderCriterionInput } from './stash.schema.ts'
 import { db } from './db/index.ts'
 import { settings } from './db/schema.ts'
 
@@ -30,7 +31,7 @@ export function genderAllows(setting: PerformerGender, g: string | null): boolea
 }
 
 // Stash GenderEnum criterion for a performer-list setting.
-export function genderCriterion(g: PerformerGender) {
+export function genderCriterion(g: PerformerGender): GenderCriterionInput | null {
   if (g === 'women') return { value_list: ['MALE'], modifier: 'EXCLUDES' }
   if (g === 'men') return { value: 'MALE', modifier: 'EQUALS' }
   return null

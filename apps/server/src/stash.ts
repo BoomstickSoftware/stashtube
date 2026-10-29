@@ -18,6 +18,34 @@ import type {
 import { MemoryCache, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
+// Generated from stash.schema.graphql (Stash's own schema; see codegen.ts). Filter inputs are
+// exact: a criterion Stash does not have is a type error here instead of a 400 from Stash.
+import type {
+  DateCriterionInput,
+  FindFilterType,
+  FindPerformersResultType,
+  FindScenesResultType,
+  FindStudiosResultType,
+  FindTagsResultType,
+  GenderCriterionInput,
+  IdentifyFieldOptionsInput,
+  Mutation,
+  Performer,
+  PerformerFilterType,
+  Query,
+  ResolutionEnum,
+  Scene,
+  SceneFilterType,
+  SceneMarkerCreateInput,
+  SceneUpdateInput,
+  Studio,
+  StudioFilterType,
+  Tag,
+  TagFilterType,
+  VideoFile,
+} from './stash.schema.ts'
+
+export type { FindFilterType, GenderCriterionInput, PerformerFilterType, SceneFilterType } from './stash.schema.ts'
 
 export class StashError extends Error {}
 
@@ -92,8 +120,8 @@ function query<T>(q: string, variables: Record<string, unknown>, tags: string[],
 
 // Write, then drop the cached results it changes. `expires` names results that it changes
 // only slightly (a progress bar on a card): they stay, served once more while they refresh.
-async function mutate(q: string, variables: Record<string, unknown>, invalidates: string[], expires: string[] = []) {
-  const d = await gql<Raw>(q, variables)
+async function mutate<T = unknown>(q: string, variables: Record<string, unknown>, invalidates: string[], expires: string[] = []) {
+  const d = await gql<T>(q, variables)
   dataCache.invalidate(...invalidates)
   if (expires.length) dataCache.expire(...expires)
   return d
@@ -109,7 +137,7 @@ function activityTags(...parts: unknown[]): string[] {
 }
 
 // Uncached health probe.
-export const stashVersion = () => gql<Raw>('{ version { version } }')
+export const stashVersion = () => gql<Pick<Query, 'version'>>('{ version { version } }')
 
 // Random-sort seed that changes once a day: shuffled lists page stably within a day and
 // re-shuffle the next, instead of being frozen forever by a constant.
@@ -135,7 +163,7 @@ const IDLE_AFTER = 10 * 60_000
 
 async function checkForChanges() {
   lastCheck = Date.now()
-  const d = await gql<Raw>(`{
+  const d = await gql<{ s: FindScenesResultType; p: FindPerformersResultType; st: FindStudiosResultType; t: FindTagsResultType }>(`{
     s: findScenes(filter: { per_page: 1, sort: "updated_at", direction: DESC }) { count scenes { updated_at } }
     p: findPerformers(filter: { per_page: 1, sort: "updated_at", direction: DESC }) { count performers { updated_at } }
     st: findStudios(filter: { per_page: 1, sort: "updated_at", direction: DESC }) { count studios { updated_at } }
@@ -215,31 +243,33 @@ const TAG_CARD = `id name scene_count favorite`
 
 // --- mappers --------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Raw = any
+// The mappers take Stash's object types whole, but each query selects only the fields its
+// fragment names: a field the fragment leaves out is `undefined` at runtime whatever the type
+// says. Hence the `?? 0` / `|| null` defaults, and new fields go into the fragment first.
+const file = (s: Pick<Scene, 'files'>) => s.files?.[0] as VideoFile | undefined
 
-const ref = (r: Raw, imageKey = 'image_path'): Ref => ({
+const ref = (r: Pick<Performer | Studio, 'id' | 'name' | 'image_path'>): Ref => ({
   id: r.id,
   name: r.name,
-  image: mediaUrl(r[imageKey]),
+  image: mediaUrl(r.image_path),
 })
 
-function sceneTitle(s: Raw): string {
+function sceneTitle(s: Pick<Scene, 'id' | 'title' | 'files'>): string {
   if (s.title) return s.title
-  const path: string | undefined = s.files?.[0]?.path
+  const path = file(s)?.path
   return path ? path.split('/').pop()!.replace(/\.[^.]+$/, '') : `Scene ${s.id}`
 }
 
-export function toSceneCard(s: Raw): SceneCard {
-  const f = s.files?.[0] ?? {}
+export function toSceneCard(s: Scene): SceneCard {
+  const f = file(s)
   return {
     id: s.id,
     title: sceneTitle(s),
     date: s.date ?? null,
-    durationSec: f.duration ?? 0,
-    width: f.width ?? 0,
-    height: f.height ?? 0,
-    size: f.size ?? 0,
+    durationSec: f?.duration ?? 0,
+    width: f?.width ?? 0,
+    height: f?.height ?? 0,
+    size: f?.size ?? 0,
     rating: stars(s.rating100),
     playCount: s.play_count ?? 0,
     oCount: s.o_counter ?? 0,
@@ -247,25 +277,25 @@ export function toSceneCard(s: Raw): SceneCard {
     lastPlayedAt: s.last_played_at ?? null,
     createdAt: s.created_at,
     studio: s.studio ? ref(s.studio) : null,
-    performers: (s.performers ?? []).map((p: Raw) => ref(p)),
+    performers: (s.performers ?? []).map((p) => ref(p)),
     screenshot: mediaUrl(s.paths?.screenshot)!,
     preview: mediaUrl(s.paths?.preview),
     vtt: mediaUrl(s.paths?.vtt),
   }
 }
 
-function toSceneDetail(s: Raw): Omit<SceneDetail, 'hidden'> {
+function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden'> {
   const markers = (s.scene_markers ?? [])
-    .map((m: Raw) => ({ id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }))
-    .sort((a: { seconds: number }, b: { seconds: number }) => a.seconds - b.seconds)
-  const f = s.files?.[0]
+    .map((m) => ({ id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }))
+    .sort((a, b) => a.seconds - b.seconds)
+  const f = file(s)
   return {
     ...toSceneCard(s),
     details: s.details || null,
     code: s.code || null,
     director: s.director || null,
     urls: s.urls ?? [],
-    tags: (s.tags ?? []).map((t: Raw) => ({ id: t.id, name: t.name })),
+    tags: (s.tags ?? []).map((t) => ({ id: t.id, name: t.name })),
     file: f
       ? {
           path: f.path,
@@ -288,7 +318,7 @@ function toSceneDetail(s: Raw): Omit<SceneDetail, 'hidden'> {
   }
 }
 
-export const toPerformerCard = (p: Raw): PerformerCard => ({
+export const toPerformerCard = (p: Performer): PerformerCard => ({
   id: p.id,
   name: p.name,
   image: mediaUrl(p.image_path),
@@ -299,7 +329,7 @@ export const toPerformerCard = (p: Raw): PerformerCard => ({
   country: p.country || null,
 })
 
-export const toStudioCard = (s: Raw): StudioCard => ({
+export const toStudioCard = (s: Studio): StudioCard => ({
   id: s.id,
   name: s.name,
   image: mediaUrl(s.image_path),
@@ -308,7 +338,7 @@ export const toStudioCard = (s: Raw): StudioCard => ({
   parent: s.parent_studio ? { id: s.parent_studio.id, name: s.parent_studio.name } : null,
 })
 
-export const toTagCard = (t: Raw): TagCard => ({
+export const toTagCard = (t: Tag): TagCard => ({
   id: t.id,
   name: t.name,
   sceneCount: t.scene_count ?? 0,
@@ -327,7 +357,7 @@ export interface Exclusions {
 // Performer attributes a scene must have: one performer of `gender` (the Settings gender)
 // matching the age at filming and any of the ethnicities. `firstYear` is the earliest scene date.
 export interface People {
-  gender: Raw | null
+  gender: GenderCriterionInput | null
   firstYear: number
   minAge?: number
   maxAge?: number
@@ -335,9 +365,9 @@ export interface People {
 }
 
 // Joins filters with OR (Stash nests them: a OR (b OR (c …))).
-function anyOf(filters: Raw[]): Raw | null {
+function anyOf<F extends { OR?: F | null }>(filters: F[]): F | null {
   if (!filters.length) return null
-  return filters.reduceRight((rest: Raw | null, f) => (rest ? { ...f, OR: rest } : f), null)
+  return filters.reduceRight<F | null>((rest, f) => (rest ? { ...f, OR: rest } : f), null)
 }
 
 // The scene-level criterion for `People`, or null. Stash has no "age at filming" per performer,
@@ -347,19 +377,19 @@ function anyOf(filters: Raw[]): Raw | null {
 // MAX_BUCKETS years: SQLite's parser overflows on long OR chains (36 failed, 18 worked).
 // Contains OR, so it goes last in an AND chain.
 const MAX_BUCKETS = 16
-function peopleCriterion(p: People | undefined): Raw | null {
+function peopleCriterion(p: People | undefined): SceneFilterType | null {
   if (!p || (!p.minAge && !p.maxAge && !p.ethnicities?.length)) return null
-  const base: Raw = p.gender ? { gender: p.gender } : {}
-  const who = p.ethnicities?.length ? p.ethnicities.map((e) => ({ ...base, ethnicity: { value: e, modifier: 'EQUALS' } })) : [base]
+  const base: PerformerFilterType = p.gender ? { gender: p.gender } : {}
+  const who: PerformerFilterType[] = p.ethnicities?.length ? p.ethnicities.map((e) => ({ ...base, ethnicity: { value: e, modifier: 'EQUALS' } })) : [base]
   if (!p.minAge && !p.maxAge) return { performers_filter: anyOf(who) }
   const last = new Date().getFullYear()
   const step = Math.max(1, Math.ceil((last - p.firstYear + 1) / MAX_BUCKETS))
-  const buckets: Raw[] = []
+  const buckets: SceneFilterType[] = []
   for (let y = p.firstYear; y <= last; y += step) {
     const end = y + step - 1
     const mid = (y + end + 1) / 2 // in years; .5 is July 1
     const at = (years: number) => `${Math.floor(years)}-${years % 1 ? '07' : '01'}-01`
-    const born: Raw =
+    const born: DateCriterionInput =
       p.minAge && p.maxAge
         ? { value: at(mid - p.maxAge - 1), value2: at(mid - p.minAge), modifier: 'BETWEEN' }
         : p.maxAge
@@ -367,7 +397,7 @@ function peopleCriterion(p: People | undefined): Raw | null {
           : { value: at(mid - p.minAge!), modifier: 'LESS_THAN' }
     buckets.push({
       date: { value: `${y}-01-01`, value2: `${end}-12-31`, modifier: 'BETWEEN' },
-      performers_filter: anyOf(who.map((w) => ({ ...w, birthdate: born }))),
+      performers_filter: anyOf<PerformerFilterType>(who.map((w) => ({ ...w, birthdate: born }))),
     })
   }
   return anyOf(buckets)
@@ -375,7 +405,7 @@ function peopleCriterion(p: People | undefined): Raw | null {
 
 const ids = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : [])
 
-const minResolution: Record<number, string> = {
+const minResolution: Record<number, ResolutionEnum> = {
   720: 'WEB_HD',
   1080: 'STANDARD_HD',
   2160: 'QUAD_HD',
@@ -383,8 +413,8 @@ const minResolution: Record<number, string> = {
 
 // Stash allows one criterion per field per level, so each exclusion (and each extra criterion
 // that may repeat a field) nests one AND deeper.
-function withExclusions(filter: Raw, ex: Exclusions, extra: Raw[] = []): Raw {
-  const parts: Raw[] = [...extra]
+function withExclusions(filter: SceneFilterType, ex: Exclusions, extra: SceneFilterType[] = []): SceneFilterType {
+  const parts: SceneFilterType[] = [...extra]
   const people = peopleCriterion(ex.people)
   if (ex.tags.length) parts.push({ tags: { value: ex.tags, modifier: 'EXCLUDES', depth: -1 } })
   if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
@@ -399,8 +429,8 @@ function withExclusions(filter: Raw, ex: Exclusions, extra: Raw[] = []): Raw {
   return filter
 }
 
-export function sceneFilter(q: SceneQuery, blocked: Exclusions): Raw {
-  const f: Raw = {}
+export function sceneFilter(q: SceneQuery, blocked: Exclusions): SceneFilterType {
+  const f: SceneFilterType = {}
   const tags = ids(q.tags)
   const performers = ids(q.performers)
   const studios = ids(q.studios)
@@ -423,7 +453,7 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): Raw {
   if (q.favorites) f.performer_favorite = true
 
   // Cleanup filters. Each can repeat a field set above (e.g. a min and a max resolution).
-  const extra: Raw[] = []
+  const extra: SceneFilterType[] = []
   if (q.maxHeight && minResolution[q.maxHeight]) {
     extra.push({ resolution: { value: minResolution[q.maxHeight], modifier: 'LESS_THAN' } })
   }
@@ -463,7 +493,7 @@ export function findFilter(q: {
   page?: number
   perPage?: number
   seed?: number
-}) {
+}): FindFilterType {
   const sort = q.sort === 'random' ? `random_${q.seed ?? 1}` : q.sort
   return {
     q: q.q || undefined,
@@ -478,7 +508,7 @@ export function findFilter(q: {
 
 // Year of the earliest dated scene (bounds the age-at-filming filter).
 export async function firstSceneYear(): Promise<number> {
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findScenes'>>(
     `query { findScenes(filter: { per_page: 1, sort: "date", direction: ASC }, scene_filter: { date: { value: "1900-01-01", modifier: GREATER_THAN } }) { scenes { date } } }`,
     {},
     ['scene'],
@@ -487,43 +517,43 @@ export async function firstSceneYear(): Promise<number> {
   return Number.isFinite(y) && y > 1900 ? y : 1970
 }
 
-export async function findScenes(filter: Raw, sceneFilter: Raw = {}) {
-  const d = await query<Raw>(
+export async function findScenes(filter: FindFilterType, sceneFilter: SceneFilterType = {}) {
+  const d = await query<Pick<Query, 'findScenes'>>(
     `query($f: FindFilterType, $s: SceneFilterType) {
       findScenes(filter: $f, scene_filter: $s) { count scenes { ${SCENE_CARD} } }
     }`,
     { f: filter, s: sceneFilter },
     ['scene', ...activityTags(filter, sceneFilter)],
   )
-  return { total: d.findScenes.count as number, items: d.findScenes.scenes.map(toSceneCard) }
+  return { total: d.findScenes.count, items: d.findScenes.scenes.map(toSceneCard) }
 }
 
 export async function findScenesByIds(sceneIds: string[]): Promise<SceneCard[]> {
   if (!sceneIds.length) return []
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findScenes'>>(
     `query($ids: [ID!]) { findScenes(ids: $ids) { scenes { ${SCENE_CARD} } } }`,
     { ids: sceneIds },
     ['scene'],
   )
-  const byId = new Map<string, SceneCard>(d.findScenes.scenes.map((s: Raw) => [s.id, toSceneCard(s)]))
+  const byId = new Map<string, SceneCard>(d.findScenes.scenes.map((s) => [s.id, toSceneCard(s)]))
   return sceneIds.map((id) => byId.get(id)).filter((s): s is SceneCard => !!s)
 }
 
 export async function getScene(id: string) {
-  const d = await query<Raw>(`query($id: ID!) { findScene(id: $id) { ${SCENE_DETAIL} } }`, { id }, ['scene', `scene:${id}`])
+  const d = await query<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { ${SCENE_DETAIL} } }`, { id }, ['scene', `scene:${id}`])
   if (!d.findScene) return null
   return {
     scene: toSceneDetail(d.findScene),
-    performerIds: d.findScene.performers.map((p: Raw) => p.id) as string[],
-    studioId: (d.findScene.studio?.id ?? null) as string | null,
-    tagIds: d.findScene.tags.map((t: Raw) => t.id) as string[],
+    performerIds: d.findScene.performers.map((p) => p.id),
+    studioId: d.findScene.studio?.id ?? null,
+    tagIds: d.findScene.tags.map((t) => t.id),
   }
 }
 
 // Stash path of a scene's primary file, for direct play from the NFS mount.
 export async function sceneFilePath(id: string): Promise<string | null> {
-  const d = await query<Raw>(`query($id: ID!) { findScene(id: $id) { files { path } } }`, { id }, [`scene:${id}`])
-  return d.findScene?.files?.[0]?.path ?? null
+  const d = await query<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { files { path } } }`, { id }, [`scene:${id}`])
+  return d.findScene ? (file(d.findScene)?.path ?? null) : null
 }
 
 // Candidates share a performer or the studio; score favours performers, then studio,
@@ -536,24 +566,24 @@ export async function relatedScenes(
   blocked: Exclusions,
 ): Promise<SceneCard[]> {
   const fields = `${SCENE_CARD} tags { id }`
-  const queries: Promise<Raw>[] = []
-  const notSelf = (f: Raw) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked })
-  const run = (f: Raw) =>
-    query<Raw>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
+  const queries: Promise<Pick<Query, 'findScenes'>>[] = []
+  const notSelf = (f: SceneFilterType) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked })
+  const run = (f: SceneFilterType) =>
+    query<Pick<Query, 'findScenes'>>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
       s: notSelf(f),
     }, ['scene'])
   if (performerIds.length) queries.push(run({ performers: { value: performerIds, modifier: 'INCLUDES' } }))
   if (studioId) queries.push(run({ studios: { value: [studioId], modifier: 'INCLUDES', depth: 0 } }))
   if (tagIds.length) queries.push(run({ tags: { value: tagIds.slice(0, 20), modifier: 'INCLUDES', depth: 0 } }))
   const results = await Promise.all(queries)
-  const seen = new Map<string, Raw>()
+  const seen = new Map<string, Scene>()
   for (const r of results) for (const s of r.findScenes.scenes) seen.set(s.id, s)
   const tagSet = new Set(tagIds)
   const perfSet = new Set(performerIds)
-  const score = (s: Raw) =>
-    s.performers.filter((p: Raw) => perfSet.has(p.id)).length * 10 +
+  const score = (s: Scene) =>
+    s.performers.filter((p) => perfSet.has(p.id)).length * 10 +
     (studioId && s.studio?.id === studioId ? 4 : 0) +
-    s.tags.filter((t: Raw) => tagSet.has(t.id)).length * 0.25 +
+    s.tags.filter((t) => tagSet.has(t.id)).length * 0.25 +
     (s.rating100 ?? 50) / 100
   return [...seen.values()]
     .sort((a, b) => score(b) - score(a))
@@ -583,26 +613,26 @@ export async function saveSceneActivity(id: string, resumeTime: number, playDura
 }
 
 export async function addSceneO(id: string) {
-  const d = await mutate(`mutation($id: ID!) { sceneAddO(id: $id) { count } }`, { id }, ['scene'])
-  return d.sceneAddO.count as number
+  const d = await mutate<Pick<Mutation, 'sceneAddO'>>(`mutation($id: ID!) { sceneAddO(id: $id) { count } }`, { id }, ['scene'])
+  return d.sceneAddO.count
 }
 
-export async function findPerformers(filter: Raw, blocked: Exclusions, extra: Raw = {}, gender: Raw = null) {
-  const pf: Raw = { ...extra }
+export async function findPerformers(filter: FindFilterType, blocked: Exclusions, extra: PerformerFilterType = {}, gender: GenderCriterionInput | null = null) {
+  const pf: PerformerFilterType = { ...extra }
   if (gender) pf.gender = gender
 
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findPerformers'>>(
     `query($f: FindFilterType, $p: PerformerFilterType) {
       findPerformers(filter: $f, performer_filter: $p) { count performers { ${PERFORMER_CARD} } }
     }`,
     { f: filter, p: pf },
     ['performer'],
   )
-  return dropBlocked<PerformerCard>({ total: d.findPerformers.count as number, items: d.findPerformers.performers.map(toPerformerCard) }, blocked.performers)
+  return dropBlocked({ total: d.findPerformers.count, items: d.findPerformers.performers.map(toPerformerCard) }, blocked.performers)
 }
 
 export async function getPerformer(id: string): Promise<PerformerDetail | null> {
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findPerformer'>>(
     `query($id: ID!) { findPerformer(id: $id) {
       ${PERFORMER_CARD} disambiguation alias_list birthdate ethnicity hair_color eye_color height_cm
       measurements fake_tits career_start career_end tattoos piercings details urls tags { id name }
@@ -629,7 +659,7 @@ export async function getPerformer(id: string): Promise<PerformerDetail | null> 
     piercings: p.piercings || null,
     details: p.details || null,
     urls: p.urls ?? [],
-    tags: (p.tags ?? []).map((t: Raw) => ({ id: t.id, name: t.name })),
+    tags: (p.tags ?? []).map((t) => ({ id: t.id, name: t.name })),
   }
 }
 
@@ -647,20 +677,20 @@ export async function setPerformerRating(id: string, stars: number | null) {
   }, ['performer'])
 }
 
-export async function findStudios(filter: Raw, blocked: Exclusions) {
-  const sf: Raw = {}
-  const d = await query<Raw>(
+export async function findStudios(filter: FindFilterType, blocked: Exclusions) {
+  const sf: StudioFilterType = {}
+  const d = await query<Pick<Query, 'findStudios'>>(
     `query($f: FindFilterType, $s: StudioFilterType) {
       findStudios(filter: $f, studio_filter: $s) { count studios { ${STUDIO_CARD} } }
     }`,
     { f: filter, s: sf },
     ['studio'],
   )
-  return dropBlocked<StudioCard>({ total: d.findStudios.count as number, items: d.findStudios.studios.map(toStudioCard) }, blocked.studios)
+  return dropBlocked({ total: d.findStudios.count, items: d.findStudios.studios.map(toStudioCard) }, blocked.studios)
 }
 
 export async function getStudio(id: string): Promise<StudioDetail | null> {
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findStudio'>>(
     `query($id: ID!) { findStudio(id: $id) { ${STUDIO_CARD} details urls child_studios { id name image_path } } }`,
     { id },
     ['studio', `studio:${id}`],
@@ -671,7 +701,7 @@ export async function getStudio(id: string): Promise<StudioDetail | null> {
     ...toStudioCard(s),
     details: s.details || null,
     urls: s.urls ?? [],
-    children: (s.child_studios ?? []).map((c: Raw) => ref(c)),
+    children: (s.child_studios ?? []).map((c) => ref(c)),
   }
 }
 
@@ -689,21 +719,21 @@ export async function setTagFavorite(id: string, favorite: boolean) {
   }, ['tag'])
 }
 
-export async function findTags(filter: Raw, blocked: Exclusions, onlyUsed = true) {
-  const tf: Raw = {}
+export async function findTags(filter: FindFilterType, blocked: Exclusions, onlyUsed = true) {
+  const tf: TagFilterType = {}
   if (onlyUsed) tf.scene_count = { value: 0, modifier: 'GREATER_THAN' }
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findTags'>>(
     `query($f: FindFilterType, $t: TagFilterType) {
       findTags(filter: $f, tag_filter: $t) { count tags { ${TAG_CARD} } }
     }`,
     { f: filter, t: tf },
     ['tag'],
   )
-  return dropBlocked<TagCard>({ total: d.findTags.count as number, items: d.findTags.tags.map(toTagCard) }, blocked.tags)
+  return dropBlocked({ total: d.findTags.count, items: d.findTags.tags.map(toTagCard) }, blocked.tags)
 }
 
 export async function getTag(id: string): Promise<TagDetail | null> {
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findTag'>>(
     `query($id: ID!) { findTag(id: $id) { ${TAG_CARD} description aliases parents { id name } children { id name } } }`,
     { id },
     ['tag', `tag:${id}`],
@@ -714,8 +744,8 @@ export async function getTag(id: string): Promise<TagDetail | null> {
     ...toTagCard(t),
     description: t.description || null,
     aliases: t.aliases ?? [],
-    parents: t.parents.map((p: Raw) => ({ id: p.id, name: p.name })),
-    children: t.children.map((c: Raw) => ({ id: c.id, name: c.name })),
+    parents: t.parents.map((p) => ({ id: p.id, name: p.name })),
+    children: t.children.map((c) => ({ id: c.id, name: c.name })),
   }
 }
 
@@ -725,14 +755,14 @@ export async function namesFor(kind: 'tag' | 'performer' | 'studio', id: string)
     performer: `query($id: ID!) { x: findPerformer(id: $id) { name } }`,
     studio: `query($id: ID!) { x: findStudio(id: $id) { name } }`,
   }[kind]
-  const d = await query<Raw>(q, { id }, [kind, `${kind}:${id}`])
+  const d = await query<{ x: Pick<Tag, 'name'> | null }>(q, { id }, [kind, `${kind}:${id}`])
   return d.x?.name ?? null
 }
 
 // --- edits ------------------------------------------------------------------------
 
 export async function updateScene(id: string, patch: { title?: string; tagIds?: string[] }) {
-  const input: Raw = { id }
+  const input: SceneUpdateInput = { id }
   if (patch.title !== undefined) input.title = patch.title
   if (patch.tagIds !== undefined) input.tag_ids = patch.tagIds
   await mutate(`mutation($i: SceneUpdateInput!) { sceneUpdate(input: $i) { id } }`, { i: input }, ['scene', 'tag'])
@@ -740,10 +770,10 @@ export async function updateScene(id: string, patch: { title?: string; tagIds?: 
 
 // What deleting a scene needs: its files and StashDB links. Uncached, so it sees the scene as it is now.
 export async function sceneForDeletion(id: string): Promise<{ title: string; paths: string[]; stashIds: string[] } | null> {
-  const d = await gql<Raw>(`query($id: ID!) { findScene(id: $id) { id title files { path } stash_ids { stash_id } } }`, { id })
+  const d = await gql<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { id title files { path } stash_ids { stash_id } } }`, { id })
   const s = d.findScene
   if (!s) return null
-  return { title: sceneTitle(s), paths: s.files.map((f: Raw) => f.path), stashIds: s.stash_ids.map((x: Raw) => x.stash_id) }
+  return { title: sceneTitle(s), paths: s.files.map((f) => f.path), stashIds: s.stash_ids.map((x) => x.stash_id) }
 }
 
 // Drops the scene and its generated sprites and previews. The file is Whisparr's to delete:
@@ -775,11 +805,11 @@ const HIDDEN_TAG = 'Not interested'
 let hiddenTagId: string | null | undefined
 export async function hiddenTag(create = false): Promise<string | null> {
   if (hiddenTagId === undefined || (create && hiddenTagId === null)) {
-    const d = await gql<Raw>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
+    const d = await gql<Pick<Query, 'findTags'>>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
     hiddenTagId = d.findTags.tags[0]?.id ?? null
     if (!hiddenTagId && create) {
-      const c = await mutate(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
-      hiddenTagId = c.tagCreate.id
+      const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
+      hiddenTagId = c.tagCreate?.id ?? null
     }
   }
   return hiddenTagId ?? null
@@ -800,17 +830,19 @@ export async function hiddenScenes(): Promise<SceneCard[]> {
 
 // Markers need a primary tag; flix's own go under "Highlight", created on first use.
 async function highlightTag(): Promise<string> {
-  const d = await gql<Raw>(`{ findTags(tag_filter: { name: { value: "Highlight", modifier: EQUALS } }) { tags { id } } }`)
+  const d = await gql<Pick<Query, 'findTags'>>(`{ findTags(tag_filter: { name: { value: "Highlight", modifier: EQUALS } }) { tags { id } } }`)
   if (d.findTags.tags[0]) return d.findTags.tags[0].id
-  const c = await mutate(`mutation { tagCreate(input: { name: "Highlight" }) { id } }`, {}, ['tag'])
+  const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation { tagCreate(input: { name: "Highlight" }) { id } }`, {}, ['tag'])
+  if (!c.tagCreate) throw new StashError('tagCreate returned no tag')
   return c.tagCreate.id
 }
 
 export async function createMarker(sceneId: string, seconds: number, title: string) {
   const tag = await highlightTag()
+  const i: SceneMarkerCreateInput = { scene_id: sceneId, seconds, title, primary_tag_id: tag }
   await mutate(
     `mutation($i: SceneMarkerCreateInput!) { sceneMarkerCreate(input: $i) { id } }`,
-    { i: { scene_id: sceneId, seconds, title, primary_tag_id: tag } },
+    { i },
     [`scene:${sceneId}`],
   )
 }
@@ -826,8 +858,8 @@ export async function deleteMarker(sceneId: string, id: string) {
 // Look one scene up on StashDB with the merge rules the NAS docs record for Identify
 // (merge title, date, details, studio, performers, tags; create missing; skip ambiguous).
 export async function identifyScene(id: string): Promise<string> {
-  const field = (f: string, createMissing = false) => ({ field: f, strategy: 'MERGE', createMissing })
-  const d = await mutate(
+  const field = (f: string, createMissing = false): IdentifyFieldOptionsInput => ({ field: f, strategy: 'MERGE', createMissing })
+  const d = await mutate<Pick<Mutation, 'metadataIdentify'>>(
     `mutation($i: IdentifyMetadataInput!) { metadataIdentify(input: $i) }`,
     {
       i: {
@@ -850,7 +882,7 @@ export async function identifyScene(id: string): Promise<string> {
 }
 
 export async function jobStatus(id: string): Promise<JobStatus | null> {
-  const d = await gql<Raw>(`query($id: ID!) { findJob(input: { id: $id }) { id status progress error } }`, { id })
+  const d = await gql<Pick<Query, 'findJob'>>(`query($id: ID!) { findJob(input: { id: $id }) { id status progress error } }`, { id })
   const j = d.findJob
   if (!j) return null
   if (j.status === 'FINISHED') dataCache.invalidate('scene', 'performer', 'studio', 'tag')
@@ -867,37 +899,37 @@ type Local = Pick<SceneQuery, (typeof LOCAL_KEYS)[number]>
 // Resolution as Stash buckets it, near enough: the short side, with some slack for odd encodes.
 const RES_MIN: Record<number, number> = { 720: 700, 1080: 1000, 2160: 2000 }
 const local = {
-  watched: (s: Raw, q: Local) => (!q.unwatched || !s.play_count) && (!q.inProgress || s.resume_time > 0),
-  rating: (s: Raw, q: Local) => !q.minRating || (s.rating100 ?? 0) > q.minRating * 20 - 1,
-  quality: (s: Raw, q: Local) => {
+  watched: (s: Scene, q: Local) => (!q.unwatched || !s.play_count) && (!q.inProgress || (s.resume_time ?? 0) > 0),
+  rating: (s: Scene, q: Local) => !q.minRating || (s.rating100 ?? 0) > q.minRating * 20 - 1,
+  quality: (s: Scene, q: Local) => {
     if (!q.minHeight) return true
-    const f = s.files?.[0]
+    const f = file(s)
     return !!f && Math.min(f.width, f.height) >= (RES_MIN[q.minHeight] ?? q.minHeight)
   },
-  length: (s: Raw, q: Local) => {
-    const d = s.files?.[0]?.duration ?? 0
+  length: (s: Scene, q: Local) => {
+    const d = file(s)?.duration ?? 0
     return (!q.minDuration || d > q.minDuration * 60) && (!q.maxDuration || d < q.maxDuration * 60)
   },
 }
 type Group = keyof typeof local
 const groups = Object.keys(local) as Group[]
-const passes = (s: Raw, q: Local, except?: Group) => groups.every((g) => g === except || local[g](s, q))
+const passes = (s: Scene, q: Local, except?: Group) => groups.every((g) => g === except || local[g](s, q))
 
 // Counts inside the set a query selects: per tag, performer and studio (a studio also counts its
 // sub-studios' videos, as its filter does), and per quick choice.
 export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
   const rest: SceneQuery = { ...q }
   for (const k of LOCAL_KEYS) delete rest[k]
-  const d = await query<Raw>(
+  const d = await query<Pick<Query, 'findScenes'>>(
     `query($f: FindFilterType, $s: SceneFilterType) { findScenes(filter: $f, scene_filter: $s) { scenes {
       play_count resume_time rating100 files { width height duration } tags { id } performers { id } studio { id parent_studio { id } }
     } } }`,
     { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s: sceneFilter(rest, blocked) },
     ['scene', 'activity:play', 'activity:resume', VOLATILE], // one per filter set, hundreds of KB each: not worth the disk
   )
-  const all: Raw[] = d.findScenes.scenes
+  const all = d.findScenes.scenes
   const inSet = all.filter((s) => passes(s, q))
-  const tally = (pick: (s: Raw) => string[]) => {
+  const tally = (pick: (s: Scene) => string[]) => {
     const out: Record<string, number> = {}
     for (const s of inSet) for (const id of pick(s)) out[id] = (out[id] ?? 0) + 1
     return out
@@ -909,8 +941,8 @@ export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<S
   }
   return {
     total: inSet.length,
-    tags: tally((s) => s.tags.map((t: Raw) => t.id)),
-    performers: tally((s) => s.performers.map((p: Raw) => p.id)),
+    tags: tally((s) => s.tags.map((t) => t.id)),
+    performers: tally((s) => s.performers.map((p) => p.id)),
     studios: tally((s) => (s.studio ? [s.studio.id, ...(s.studio.parent_studio ? [s.studio.parent_studio.id] : [])] : [])),
     options: {
       watched: option('watched', { any: {}, unwatched: { unwatched: true }, inProgress: { inProgress: true } }),
@@ -925,8 +957,8 @@ export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<S
 
 // Every scene you have touched: played, rated or O'd. One cached query feeds history,
 // stats and "For you".
-async function activityScenes(): Promise<Raw[]> {
-  const d = await query<Raw>(
+async function activityScenes(): Promise<Scene[]> {
+  const d = await query<Pick<Query, 'findScenes'>>(
     `query { findScenes(
       filter: { per_page: -1, sort: "last_played_at", direction: DESC },
       scene_filter: {
@@ -940,7 +972,7 @@ async function activityScenes(): Promise<Raw[]> {
   return d.findScenes.scenes
 }
 
-const weight = (s: Raw) => (s.play_count ?? 0) + 2 * (s.o_counter ?? 0) + (s.rating100 ? (s.rating100 / 20 - 3) * 1.5 : 0)
+const weight = (s: Scene) => (s.play_count ?? 0) + 2 * (s.o_counter ?? 0) + (s.rating100 ? (s.rating100 / 20 - 3) * 1.5 : 0)
 
 export async function history(limit = 300): Promise<HistoryEntry[]> {
   const scenes = await activityScenes()
@@ -981,9 +1013,9 @@ export async function stats(showGender: (g: string | null) => boolean): Promise<
     o += s.o_counter ?? 0
     if (n) watched++
     if (!n) continue
-    s.performers.forEach((p: Raw) => showGender(p.gender) && add(perf, ref(p), n))
+    s.performers.forEach((p) => showGender(p.gender) && add(perf, ref(p), n))
     if (s.studio) add(studios, ref(s.studio), n)
-    s.tags.forEach((t: Raw) => add(tags, { id: t.id, name: t.name }, n))
+    s.tags.forEach((t) => add(tags, { id: t.id, name: t.name }, n))
     for (const t of s.play_history ?? []) {
       const at = new Date(t)
       if (at.getTime() < since) continue
@@ -1013,21 +1045,21 @@ export async function stats(showGender: (g: string | null) => boolean): Promise<
 export async function recommendations(blocked: Exclusions, showGender: (g: string | null) => boolean) {
   const scenes = await activityScenes()
   if (!scenes.length) return null
-  const totalRaw = await query<Raw>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
-  const total = totalRaw.findScenes.count as number
+  const totalRaw = await query<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
+  const total = totalRaw.findScenes.count
   const pAff = new Map<string, { ref: Ref; w: number; gender: string | null }>()
   const sAff = new Map<string, number>()
   const tAff = new Map<string, number>()
   for (const s of scenes) {
     const w = weight(s)
     if (w <= 0) continue
-    s.performers.forEach((p: Raw) => {
+    s.performers.forEach((p) => {
       const e = pAff.get(p.id) ?? { ref: ref(p), w: 0, gender: p.gender ?? null }
       e.w += w
       pAff.set(p.id, e)
     })
     if (s.studio) sAff.set(s.studio.id, (sAff.get(s.studio.id) ?? 0) + w)
-    s.tags.forEach((t: Raw) => tAff.set(t.id, (tAff.get(t.id) ?? 0) + w * Math.log(1 + total / Math.max(1, t.scene_count))))
+    s.tags.forEach((t) => tAff.set(t.id, (tAff.get(t.id) ?? 0) + w * Math.log(1 + total / Math.max(1, t.scene_count))))
   }
   const topIds = <T,>(m: Map<string, T>, val: (v: T) => number, n: number) =>
     [...m.entries()].sort((a, b) => val(b[1]) - val(a[1])).slice(0, n).map(([k]) => k)
@@ -1036,8 +1068,8 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
   const topTags = topIds(tAff, (v) => v, 6)
 
   const fields = `${SCENE_CARD} tags { id }`
-  const run = (f: Raw) =>
-    query<Raw>(
+  const run = (f: SceneFilterType) =>
+    query<Pick<Query, 'findScenes'>>(
       `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 60, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`,
       { s: withExclusions({ ...f, play_count: { value: 0, modifier: 'EQUALS' } }, { ...blocked }) },
       ['scene', 'activity:play'],
@@ -1047,12 +1079,12 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
     topStudios.length ? run({ studios: { value: topStudios, modifier: 'INCLUDES', depth: 0 } }) : null,
     topTags.length ? run({ tags: { value: topTags, modifier: 'INCLUDES', depth: 0 } }) : null,
   ])
-  const cands = new Map<string, Raw>()
+  const cands = new Map<string, Scene>()
   for (const r of results) for (const s of r?.findScenes.scenes ?? []) cands.set(s.id, s)
-  const score = (s: Raw) =>
-    s.performers.reduce((a: number, p: Raw) => a + (pAff.get(p.id)?.w ?? 0), 0) +
+  const score = (s: Scene) =>
+    s.performers.reduce((a, p) => a + (pAff.get(p.id)?.w ?? 0), 0) +
     (s.studio ? (sAff.get(s.studio.id) ?? 0) * 0.5 : 0) +
-    s.tags.reduce((a: number, t: Raw) => a + (tAff.get(t.id) ?? 0) * 0.1, 0)
+    s.tags.reduce((a, t) => a + (tAff.get(t.id) ?? 0) * 0.1, 0)
   const forYou = [...cands.values()].sort((a, b) => score(b) - score(a)).slice(0, 24).map(toSceneCard)
 
   // "More with …" for the two performers you return to most (gender switch applies).
@@ -1070,17 +1102,17 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
 // most-played scene carrying the tag that no bigger tag already used.
 export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
   const [scenesRaw, tagsRaw] = await Promise.all([
-    query<Raw>(
+    query<Pick<Query, 'findScenes'>>(
       `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } tags { id } } } }`,
       { s: withExclusions({}, { ...blocked }) },
       ['scene', VOLATILE],
     ),
     findTags({ per_page: 2000, sort: 'scenes_count', direction: 'DESC' }, blocked),
   ])
-  const scenes = scenesRaw.findScenes.scenes as Raw[]
-  const byTag = new Map<string, Raw[]>()
+  const scenes = scenesRaw.findScenes.scenes
+  const byTag = new Map<string, Scene[]>()
   for (const s of scenes) for (const t of s.tags) (byTag.get(t.id) ?? byTag.set(t.id, []).get(t.id)!).push(s)
-  const rank = (s: Raw) => (s.rating100 ?? 50) + Math.min(s.play_count ?? 0, 10) * 3
+  const rank = (s: Scene) => (s.rating100 ?? 50) + Math.min(s.play_count ?? 0, 10) * 3
   const used = new Set<string>()
   return tagsRaw.items.map((t: TagCard) => {
     const pool = (byTag.get(t.id) ?? []).sort((a, b) => rank(b) - rank(a))
@@ -1095,15 +1127,15 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
 // Every generated image and clip the app shows, as /media/stash URLs (the nightly warm).
 export async function allArtwork(): Promise<string[]> {
   const all = '{ per_page: -1 }'
-  const r = await gql<Raw>(`{
+  const r = await gql<Pick<Query, 'findScenes' | 'findPerformers' | 'findStudios'>>(`{
     findScenes(filter: ${all}) { scenes { paths { screenshot preview vtt } } }
     findPerformers(filter: ${all}) { performers { image_path } }
     findStudios(filter: ${all}) { studios { image_path } }
   }`)
   return [
-    ...r.findScenes.scenes.flatMap((s: Raw) => [s.paths.screenshot, s.paths.preview, s.paths.vtt]),
-    ...r.findPerformers.performers.map((p: Raw) => p.image_path),
-    ...r.findStudios.studios.map((s: Raw) => s.image_path),
+    ...r.findScenes.scenes.flatMap((s) => [s.paths.screenshot, s.paths.preview, s.paths.vtt]),
+    ...r.findPerformers.performers.map((p) => p.image_path),
+    ...r.findStudios.studios.map((s) => s.image_path),
   ]
     .map(mediaUrl)
     .filter((u): u is string => !!u)

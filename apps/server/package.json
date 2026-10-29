@@ -7,7 +7,9 @@
     "start": "node src/index.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test --import ./test-env.ts 'src/**/*.test.ts'",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "schema": "node ../../scripts/stash-schema.mjs",
+    "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {
     "@flix/shared": "workspace:*",
@@ -18,8 +20,11 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "7.4.6",
+    "@graphql-codegen/typescript": "6.1.2",
     "@types/node": "^24.19.2",
     "drizzle-kit": "^0.31.11",
+    "graphql": "17.0.2",
     "typescript": "~6.0.3"
   }
 }

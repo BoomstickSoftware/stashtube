@@ -167,8 +167,8 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      free; a performer's page shows her age at filming on each card; discreet mode (the eye in the header,
      pictures blurred until hovered); a sleep timer on stations; a playlist as a station (`/station?playlist=`);
      a card menu on right-click or long press (play, station, favourite, watched, not interested, delete).
-   - Not done from the review: a typed Stash response layer (`Raw = any` ×100 in `stash.ts`), a duplicates
-     workbench over `findDuplicateScenes`, one endpoint for the station previews, splitting `lib/api.ts`.
+   - Not done from the review: a duplicates workbench over `findDuplicateScenes`, one endpoint for the
+     station previews, splitting `lib/api.ts`. (The typed Stash layer followed the same day, below.)
    - Same-day fix: the "Not interested" tag was the first blocked id to reach `findTags`, whose
      `id: EXCLUDES` criterion Stash's tag filter never had (nor the performer and studio filters), so the
      tag browser, search and the tag tiles answered 502 in production for about four hours. Blocked ids
@@ -193,7 +193,10 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    - PIN lock after idle.
    - Chromecast.
    - Whisparr integration: follow = monitor, a Coming-soon row, download state.
-   - Typed Stash responses in `stash.ts` (hand-written interfaces per fragment, or graphql-codegen).
+   - Done 2026-10-29: typed Stash layer. `src/stash.schema.ts` is generated from Stash's schema
+     (`stash.schema.graphql`, graphql-codegen); `Raw = any` is gone from `stash.ts`. Filter inputs are exact,
+     so a criterion Stash lacks fails typecheck. Object types describe responses whole, but each query
+     selects only its fragment's fields: anything else is `undefined` at runtime whatever the type says.
 6. **Later**:
    - TPDB as a second stash-box endpoint in Stash.
    - Markers / chapters on the seek bar.

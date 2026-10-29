@@ -17,6 +17,11 @@ playlists, a global blocklist, a home feed, related videos. Single user, LAN onl
 ```
 apps/server     Hono BFF on Node 26 (runs .ts natively, no build step)
   src/stash.ts    every Stash GraphQL call and the Stash→flix mapping; nothing else knows Stash's schema
+  src/stash.schema.ts  generated (graphql-codegen) from stash.schema.graphql, Stash v0.31.1's own schema:
+                  filter inputs are exact types (an unknown criterion is a compile error, not a 400),
+                  object types describe responses whole though each query selects a subset. After a
+                  Stash upgrade: `pnpm --filter @flix/server schema` (STASH_URL + STASH_API_KEY in the
+                  env, or a saved introspection JSON as the argument), then `codegen`; commit both files.
   src/media.ts    /media/stash/* proxy (adds ApiKey, rewrites HLS), /media/play/:id direct file
   src/api.ts      /api routes (zod-validated)
   src/db/         Drizzle schema + migrations (drizzle/), migrate on boot
