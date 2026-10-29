@@ -142,6 +142,33 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      the most common tags in the set. Studios are any-of, so once one is picked the others keep library counts.
      Quality is bucketed locally (short side ≥ 700/1000/2000 px), close to but not exactly Stash's resolution enum.
    - Browse nav shows how many filters "Add to filters" has stacked (they live in this browser's localStorage).
+2g. **Round 4 (2026-10-29)**, a review pass over the whole codebase, one commit per initiative:
+   - Correctness: Related and For-you candidates reshuffle daily (`daySeed`; they were frozen by constant
+     seeds); the unused playlist join on every scene load is gone; `/readyz` probes Postgres, not Stash (a
+     scan must not take flix out of rotation); up-next items start playing; the favourites set is built once
+     per load.
+   - Players share `lib/playback.ts` (source attach incl. hls.js, watch accounting, keys, marker jumps,
+     flash). The station falls back to HLS on a media error instead of skipping, records plays and resume
+     points in Stash in Full mode, and binds its keys once.
+   - One storage helper (`lib/storage.ts`) and one `Switch`; one `describeQuery` (`lib/describe.ts`) behind the
+     filter chips, station summaries and pinned-row titles; hooks out of `ui.tsx`; chapters seek through a
+     `PlayerHandle`; selection is a Set; lint is clean.
+   - File-based routes (`src/routes/`, `@tanstack/router-plugin`, `autoCodeSplitting`): the main chunk went
+     from 554 kB to 256 kB + a 124 kB shared UI chunk, pages load on intent, search types reach `navigate()`.
+   - Server speed: asset hits read no files (metadata kept in the index); facet and tag-tile working sets stay
+     out of `data.json` (`VOLATILE`); facets and tiles are warmed at boot; `/api` is gzip'd (home 108 → 17 kB);
+     the session answer is persisted so a cold open paints at once.
+   - Tests: `node:test` suites (`pnpm test`, run in the image build) for the filter builder's nesting rules,
+     both caches, byte ranges and signed links.
+   - Features: installable (manifest, icons, Apple meta, Back button when standalone); scrub sprite frames by
+     moving the mouse across a card; picture in picture (`i`); `?` shortcuts overlay; "Not interested" (a
+     Stash tag, excluded like the blocklist, undone from Settings); Home rows "Because you watched" and "Pick up
+     a station"; an O-counter press marks the moment and chapter chips show their frame; deletes say what they
+     free; a performer's page shows her age at filming on each card; discreet mode (the eye in the header,
+     pictures blurred until hovered); a sleep timer on stations; a playlist as a station (`/station?playlist=`);
+     a card menu on right-click or long press (play, station, favourite, watched, not interested, delete).
+   - Not done from the review: a typed Stash response layer (`Raw = any` ×100 in `stash.ts`), a duplicates
+     workbench over `findDuplicateScenes`, one endpoint for the station previews, splitting `lib/api.ts`.
 3. **Deploy to k8s** (next):
    - Image: build in Forgejo CI and push to the cluster registry.
    - `infra/flix/` in `~/code/k8s`: namespace, CNPG cluster (1 instance, local-path), Deployment
@@ -151,16 +178,15 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      (192.168.1.134–136), added to `ensure-exports` and `nas-post-firmware-update.sh`.
    - `MEDIA_PATH_MAP=/data/adult=/media/adult` with the NFS volume mounted at `/media/adult`.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
-5. **Backlog** (brainstormed 2026-10-26, not picked yet):
-   - Scrub sprite frames on card hover.
-   - Mini-player while browsing.
-   - "Not interested" on a single video.
-   - Blur mode for thumbnails.
+5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
+   - Mini-player that persists across pages (picture in picture covers the 80/20 for now).
+   - Duplicates workbench: Stash's `findDuplicateScenes` groups side by side (resolution, bitrate, size),
+     the worse copy pre-selected.
    - Private session (no history).
    - PIN lock after idle.
-   - Install as an app (PWA).
    - Chromecast.
    - Whisparr integration: follow = monitor, a Coming-soon row, download state.
+   - Typed Stash responses in `stash.ts` (hand-written interfaces per fragment, or graphql-codegen).
 6. **Later**:
    - TPDB as a second stash-box endpoint in Stash.
    - Markers / chapters on the seek bar.
@@ -171,7 +197,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
 
 ## Known gaps
 
-- Router types: the code-based route tree loses search-param types in reducers (they are
-  annotated by hand). Moving to TanStack's file-based routing plugin would restore them.
+- A `navigate({ to: '.' })` reducer sees the union of every route's search type, so `prev` is cast
+  (`StationEditor`); routes themselves are typed since Round 4's move to file-based routing.
 - The `hls.js` chunk is 574 kB; it only loads for transcoded videos.
 - Related videos are scored in the BFF from up to 120 candidates (same performers, studio, tags).
