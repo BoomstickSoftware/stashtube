@@ -343,9 +343,11 @@ export function useUpdateSettings() {
 }
 
 // Videos' hearts: membership in the built-in Favorites playlist, loaded once as a set.
-export function useFavoriteScenes() {
-  const { data } = useQuery({ queryKey: ['favorite-scenes'], queryFn: () => get<string[]>('/favorites'), staleTime: Infinity })
-  return new Set(data ?? [])
+const NO_FAVORITES: ReadonlySet<string> = new Set()
+const toSet = (ids: string[]): ReadonlySet<string> => new Set(ids)
+export function useFavoriteScenes(): ReadonlySet<string> {
+  const { data } = useQuery({ queryKey: ['favorite-scenes'], queryFn: () => get<string[]>('/favorites'), staleTime: Infinity, select: toSet })
+  return data ?? NO_FAVORITES
 }
 
 export function useToggleFavoriteScene() {

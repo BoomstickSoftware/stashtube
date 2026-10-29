@@ -61,7 +61,6 @@ export interface SceneDetail extends SceneCard {
   tags: Ref[]
   file: SceneFile | null
   playback: Playback
-  playlists: { id: number; name: string }[]
   markers: Marker[]
 }
 

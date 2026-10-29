@@ -88,6 +88,10 @@ function activityTags(...parts: unknown[]): string[] {
 // Uncached health probe.
 export const stashVersion = () => gql<Raw>('{ version { version } }')
 
+// Random-sort seed that changes once a day: shuffled lists page stably within a day and
+// re-shuffle the next, instead of being frozen forever by a constant.
+export const daySeed = () => Math.floor(Date.now() / 86_400_000)
+
 // GET a Stash path with the API key. Used by the asset cache and the media proxy.
 export function stashFetch(path: string, headers: Record<string, string>, signal?: AbortSignal) {
   if (/\/stream/.test(path)) upstream.streams++
@@ -226,7 +230,7 @@ export function toSceneCard(s: Raw): SceneCard {
   }
 }
 
-function toSceneDetail(s: Raw): Omit<SceneDetail, 'playlists'> {
+function toSceneDetail(s: Raw): SceneDetail {
   const markers = (s.scene_markers ?? [])
     .map((m: Raw) => ({ id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }))
     .sort((a: { seconds: number }, b: { seconds: number }) => a.seconds - b.seconds)
@@ -511,7 +515,7 @@ export async function relatedScenes(
   const queries: Promise<Raw>[] = []
   const notSelf = (f: Raw) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked })
   const run = (f: Raw) =>
-    query<Raw>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_7" }) { scenes { ${fields} } } }`, {
+    query<Raw>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
       s: notSelf(f),
     }, ['scene'])
   if (performerIds.length) queries.push(run({ performers: { value: performerIds, modifier: 'INCLUDES' } }))
@@ -983,7 +987,7 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
   const fields = `${SCENE_CARD} tags { id }`
   const run = (f: Raw) =>
     query<Raw>(
-      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 60, sort: "random_11" }) { scenes { ${fields} } } }`,
+      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 60, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`,
       { s: withExclusions({ ...f, play_count: { value: 0, modifier: 'EQUALS' } }, { ...blocked }) },
       ['scene', 'activity:play'],
     )

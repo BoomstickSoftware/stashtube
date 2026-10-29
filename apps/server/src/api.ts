@@ -10,6 +10,7 @@ import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
+import { daySeed } from './stash.ts'
 
 export const api = new Hono()
 
@@ -76,7 +77,6 @@ const notFound = () => {
   throw new HTTPException(404, { message: 'not found' })
 }
 
-const daySeed = () => Math.floor(Date.now() / 86_400_000)
 
 // --- scenes ---------------------------------------------------------------------
 
@@ -214,8 +214,7 @@ api.get('/scenes/:id', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  const playlists = await pl.playlistsContaining(id)
-  return c.json({ ...r.scene, playlists } satisfies SceneDetail)
+  return c.json(r.scene satisfies SceneDetail)
 })
 
 api.get('/scenes/:id/related', async (c) => {

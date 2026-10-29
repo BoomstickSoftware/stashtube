@@ -9,22 +9,24 @@ import { admin } from './admin.ts'
 import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { config } from './config.ts'
-import { migrateDb } from './db/index.ts'
+import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
 import { scheduleWarm } from './warm.ts'
-import { dataCache, noteActivity, onStashChange, startChangeDetection, stashVersion, StashError } from './stash.ts'
+import { dataCache, noteActivity, onStashChange, startChangeDetection, StashError } from './stash.ts'
 
 const app = new Hono()
 
 app.use('/api/*', logger())
 app.get('/healthz', (c) => c.text('ok'))
+// Readiness is "can serve", which means the database answers; Stash being busy (a scan
+// holds its SQLite lock for minutes) must not take flix out of rotation, the caches cover it.
 app.get('/readyz', async (c) => {
   try {
-    await stashVersion()
+    await pingDb()
     return c.text('ok')
   } catch (e) {
-    return c.text(`stash unreachable: ${(e as Error).message}`, 503)
+    return c.text(`database unreachable: ${(e as Error).message}`, 503)
   }
 })
 

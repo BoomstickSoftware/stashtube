@@ -299,7 +299,7 @@ function UpNextItem({ scene, playlist }: { scene: Scene; playlist?: number }) {
     <Link
       to="/scene/$id"
       params={{ id: scene.id }}
-      search={playlist ? { playlist } : {}}
+      search={{ ...(playlist ? { playlist } : {}), play: true }}
       className="group flex gap-3 rounded-xl p-1 hover:bg-surface"
     >
       <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg bg-surface">
