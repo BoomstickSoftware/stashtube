@@ -2,6 +2,7 @@ import type { DeleteResult } from '@flix/shared'
 import { AlertTriangle, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useDeleteScenes } from '../lib/api'
+import { bytes } from '../lib/format'
 import { Button, Spinner } from './ui'
 
 // Confirmation before deleting videos for good: the file goes from the NAS, the scene from
@@ -11,7 +12,7 @@ export function DeleteScenesDialog({
   onClose,
   onDeleted,
 }: {
-  scenes: { id: string; title: string }[]
+  scenes: { id: string; title: string; size?: number }[]
   onClose: () => void
   onDeleted: (ids: string[]) => void
 }) {
@@ -19,6 +20,7 @@ export function DeleteScenesDialog({
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<DeleteResult[] | null>(null)
   const n = scenes.length
+  const total = scenes.reduce((a, s) => a + (s.size ?? 0), 0)
   const running = del.isPending
   const failed = results?.filter((r) => !r.ok) ?? []
   const deleted = results?.filter((r) => r.ok).map((r) => r.id) ?? []
@@ -94,6 +96,12 @@ export function DeleteScenesDialog({
                 <p className="mt-1 text-sm text-white/80">
                   The {n === 1 ? 'file is' : 'files are'} deleted from the NAS and removed from Stash. Whisparr drops{' '}
                   {n === 1 ? 'it' : 'them'} and won't download {n === 1 ? 'it' : 'them'} again. This can't be undone.
+                  {total > 0 && (
+                    <>
+                      {' '}
+                      Frees <b className="text-fg">{bytes(total)}</b>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

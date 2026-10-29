@@ -1,4 +1,4 @@
-import type { SceneQuery, SceneSort } from '@flix/shared'
+import type { SceneCard as SceneCardType, SceneQuery, SceneSort } from '@flix/shared'
 import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -26,6 +26,7 @@ export function SceneBrowser({
   defaultSort = 'date',
   alwaysSelecting = false,
   forStation = false,
+  cardMeta,
 }: {
   query: SceneQuery
   onChange: (patch: Patch) => void
@@ -33,6 +34,7 @@ export function SceneBrowser({
   defaultSort?: SceneSort
   alwaysSelecting?: boolean // cleanup: cards toggle selection from the start, and stay selectable after a bulk action
   forStation?: boolean // the station editor: just the grid (its filters are edited above it)
+  cardMeta?: (s: SceneCardType) => string | null // one more fact per card, e.g. a performer's age at filming
 }) {
   const effective = useMemo(() => withBase(query, base, defaultSort), [query, base, defaultSort])
 
@@ -95,6 +97,7 @@ export function SceneBrowser({
                 key={s.id}
                 scene={s}
                 select={selecting ? { selected: selected.has(s.id), onToggle: () => toggle(s.id) } : undefined}
+                extra={cardMeta?.(s)}
               />
             ))}
           </Grid>
@@ -103,7 +106,14 @@ export function SceneBrowser({
         </>
       )}
       {selecting && (
-        <BulkBar ids={[...selected]} titleOf={(id) => scenes.find((s) => s.id === id)?.title ?? `Scene ${id}`} onClear={stopSelecting} />
+        <BulkBar
+          ids={[...selected]}
+          infoOf={(id) => {
+            const s = scenes.find((x) => x.id === id)
+            return { title: s?.title ?? `Scene ${id}`, size: s?.size ?? 0 }
+          }}
+          onClear={stopSelecting}
+        />
       )}
     </div>
   )

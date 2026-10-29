@@ -171,7 +171,7 @@ export const rating100 = (s: number | null) => (s == null || s <= 0 ? null : Mat
 
 const SCENE_CARD = `
   id title date created_at rating100 play_count o_counter resume_time last_played_at
-  files { path duration width height }
+  files { path duration width height size }
   paths { screenshot preview vtt }
   studio { id name image_path }
   performers { id name image_path }
@@ -216,6 +216,7 @@ export function toSceneCard(s: Raw): SceneCard {
     durationSec: f.duration ?? 0,
     width: f.width ?? 0,
     height: f.height ?? 0,
+    size: f.size ?? 0,
     rating: stars(s.rating100),
     playCount: s.play_count ?? 0,
     oCount: s.o_counter ?? 0,

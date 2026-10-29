@@ -5,7 +5,7 @@ import { DeleteScenesDialog } from './DeleteScenes'
 import { useClickOutside } from '../lib/hooks'
 
 // Bottom bar while videos are selected in a grid.
-export function BulkBar({ ids, titleOf, onClear }: { ids: string[]; titleOf: (id: string) => string; onClear: () => void }) {
+export function BulkBar({ ids, infoOf, onClear }: { ids: string[]; infoOf: (id: string) => { title: string; size: number }; onClear: () => void }) {
   const bulk = useBulk()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
@@ -84,7 +84,7 @@ export function BulkBar({ ids, titleOf, onClear }: { ids: string[]; titleOf: (id
         </button>
       </div>
       {deleting && (
-        <DeleteScenesDialog scenes={ids.map((id) => ({ id, title: titleOf(id) }))} onClose={() => setDeleting(false)} onDeleted={onClear} />
+        <DeleteScenesDialog scenes={ids.map((id) => ({ id, ...infoOf(id) }))} onClose={() => setDeleting(false)} onDeleted={onClear} />
       )}
     </div>
   )

@@ -46,6 +46,17 @@ export function bytes(n: number): string {
   return `${n.toFixed(i >= 3 ? 1 : 0)} ${u[i]}`
 }
 
+// Age on a given date (a performer's age when a video was filmed), to the year.
+export function ageAt(birthdate: string | null, on: string | null): number | null {
+  if (!birthdate || !on) return null
+  const b = new Date(birthdate)
+  const d = new Date(on)
+  if (Number.isNaN(b.getTime()) || Number.isNaN(d.getTime())) return null
+  let a = d.getFullYear() - b.getFullYear()
+  if (d < new Date(d.getFullYear(), b.getMonth(), b.getDate())) a--
+  return a > 0 && a < 100 ? a : null
+}
+
 export function age(birthdate: string | null): number | null {
   if (!birthdate) return null
   const b = new Date(birthdate)

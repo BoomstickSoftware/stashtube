@@ -236,7 +236,7 @@ function SceneView({ id }: { id: string }) {
         </div>
         {deleting && (
           <DeleteScenesDialog
-            scenes={[{ id: scene.id, title: scene.title }]}
+            scenes={[{ id: scene.id, title: scene.title, size: scene.file?.size }]}
             onClose={() => setDeleting(false)}
             onDeleted={() => (window.history.length > 1 ? window.history.back() : navigate({ to: '/' }))}
           />

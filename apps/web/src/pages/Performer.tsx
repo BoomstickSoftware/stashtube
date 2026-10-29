@@ -8,7 +8,7 @@ import { BlockButton, BlockedNotice, FollowButton, Stat } from '../components/En
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
 import { useFavoritePerformer, usePerformer, useRatePerformer } from '../lib/api'
-import { age, date } from '../lib/format'
+import { age, ageAt, date } from '../lib/format'
 
 const route = getRouteApi('/performer/$id')
 
@@ -84,6 +84,10 @@ export function PerformerPage(): JSX.Element {
         query={query}
         base={{ performers: id, unblocked: undefined }}
         onChange={(patch) => navigate({ to: ".", search: (prev: SceneQuery) => ({ ...prev, ...patch }), replace: true })}
+        cardMeta={(s) => {
+          const a = ageAt(p.birthdate, s.date)
+          return a ? `age ${a}` : null
+        }}
       />
     </div>
   )

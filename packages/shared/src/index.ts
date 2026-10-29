@@ -14,6 +14,7 @@ export interface SceneCard {
   durationSec: number
   width: number
   height: number
+  size: number // bytes of the primary file (deletes show what they free)
   rating: number | null // 0-5 stars, half steps allowed
   playCount: number
   oCount: number

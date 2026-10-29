@@ -23,12 +23,14 @@ export function SceneCard({
   className,
   compact,
   select,
+  extra,
 }: {
   scene: Scene
   playlist?: number
   className?: string
   compact?: boolean
   select?: { selected: boolean; onToggle: () => void } // multi-select mode: clicks toggle instead of opening
+  extra?: string | null // one more fact for the meta line
 }) {
   const [hovering, setHovering] = useState(false)
   const [previewReady, setPreviewReady] = useState(false)
@@ -228,7 +230,7 @@ export function SceneCard({
             </div>
           )}
           <div className="mt-0.5 truncate text-[12px] text-muted/80">
-            {[scene.studio && compact ? scene.studio.name : null, date(scene.date) ?? ago(scene.createdAt), scene.playCount ? `${scene.playCount} view${scene.playCount > 1 ? 's' : ''}` : null]
+            {[scene.studio && compact ? scene.studio.name : null, date(scene.date) ?? ago(scene.createdAt), extra, scene.playCount ? `${scene.playCount} view${scene.playCount > 1 ? 's' : ''}` : null]
               .filter(Boolean)
               .join(' · ')}
           </div>
