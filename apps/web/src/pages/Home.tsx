@@ -8,7 +8,7 @@ import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
-import { useHome, useRowMutations, useStationResumes, useStations } from '../lib/api'
+import { useHome, usePlaylists, useRowMutations, useStationResumes, useStations } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -61,7 +61,10 @@ const HERO_EVERY = 12_000 // ms a pick stays up before the next one
 function PickUpStations() {
   const { data: resumes } = useStationResumes()
   const { data: stations } = useStations()
+  const { data: playlists } = usePlaylists()
   const recent = (resumes ?? []).slice(0, 6)
+  const nameOf = (key: string) =>
+    key.startsWith('pl:') ? playlists?.find((p) => `pl:${p.id}` === key)?.name : stations?.find((s) => `id:${s.id}` === key)?.name
   if (!recent.length) return null
   return (
     <section>
@@ -73,7 +76,7 @@ function PickUpStations() {
       </div>
       <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
         {recent.map((r) => (
-          <ResumeCard key={r.key} resume={r} name={stations?.find((s) => `id:${s.id}` === r.key)?.name} />
+          <ResumeCard key={r.key} resume={r} name={nameOf(r.key)} />
         ))}
       </div>
     </section>

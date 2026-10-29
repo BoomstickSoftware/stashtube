@@ -1,4 +1,4 @@
-import type { Page, SceneCard, SceneDetail, SceneQuery, StationMode } from '@flix/shared'
+import type { Page, PlaylistDetail, SceneCard, SceneDetail, SceneQuery, StationMode } from '@flix/shared'
 import { get, qs, queryClient } from './api'
 import { readStored, writeStored } from './storage'
 
@@ -21,13 +21,15 @@ export const loadPrefs = (): StationPrefs =>
   })
 export const savePrefs = (p: StationPrefs) => writeStored(KEY, p)
 
-// start=resume: pick up where the station was left (otherwise a fresh shuffle).
-export type StationSearch = SceneQuery & { from?: string; id?: number; start?: 'resume' }
+// start=resume: pick up where the station was left (otherwise a fresh shuffle). playlist=<id>
+// plays a playlist in its order.
+export type StationSearch = SceneQuery & { from?: string; id?: number; playlist?: number; start?: 'resume' }
 
 // The /station search that reopens the station a resume key belongs to (the inverse of stationKey).
 export function stationSearchFor(key: string): StationSearch {
   if (key.startsWith('id:')) return { id: Number(key.slice(3)) }
   if (key.startsWith('from:')) return { from: key.slice(5) }
+  if (key.startsWith('pl:')) return { playlist: Number(key.slice(3)) }
   try {
     return JSON.parse(key.slice(2)) as SceneQuery
   } catch {
@@ -36,9 +38,10 @@ export function stationSearchFor(key: string): StationSearch {
 }
 
 // The key a station's resume point is saved under.
-export function stationKey(c: { id?: number; query: SceneQuery; from?: string }): string {
+export function stationKey(c: { id?: number; query: SceneQuery; from?: string; playlist?: number }): string {
   if (c.id) return `id:${c.id}`
   if (c.from) return `from:${c.from}`
+  if (c.playlist) return `pl:${c.playlist}`
   const q = stationQuery(c.query)
   return `q:${JSON.stringify(Object.fromEntries(Object.entries(q).sort(([a], [b]) => a.localeCompare(b))))}`
 }
@@ -93,7 +96,8 @@ const detail = (id: string) =>
   queryClient.fetchQuery({ queryKey: ['scene', id], queryFn: () => get<SceneDetail>(`/scenes/${id}`), staleTime: 60_000 })
 
 // Hands out scenes one at a time, never repeating until everything has played. Keeps what
-// has played (to go back, or pick again from the list) and what is coming up.
+// has played (to go back, or pick again from the list) and what is coming up. A playlist
+// station plays the list in its order, then starts over.
 export class StationQueue {
   private played = new Set<string>()
   private pool: SceneCard[] = []
@@ -102,13 +106,15 @@ export class StationQueue {
   private last: string | undefined
   private query: SceneQuery
   private from: string | undefined
+  private playlist: number | undefined
   private exhausted = false // this shuffle has handed out its last page
   history: SceneCard[] = [] // in play order; the last one is playing
   private pos = -1 // where in history the player is (back moves it)
 
-  constructor(query: SceneQuery, from?: string) {
+  constructor(query: SceneQuery, from?: string, playlist?: number) {
     this.query = query
     this.from = from
+    this.playlist = playlist
   }
 
   get current(): SceneCard | undefined {
@@ -179,8 +185,15 @@ export class StationQueue {
     })
   }
 
-  // One more page of the shuffle; false when there is nothing more to add.
+  // One more page of the shuffle (a playlist comes whole, in order); false when there is
+  // nothing more to add.
   private async fill(): Promise<boolean> {
+    if (this.playlist) {
+      const p = await queryClient.fetchQuery({ queryKey: ['playlist', this.playlist], queryFn: () => get<PlaylistDetail>(`/playlists/${this.playlist}`), staleTime: 60_000 })
+      this.pool.push(...p.items.filter((s) => !this.played.has(s.id)))
+      this.exhausted = true
+      return p.items.length > 0
+    }
     const r = await get<Page<SceneCard>>(`/scenes${qs({ ...this.query, sort: 'random', seed: this.seed, page: this.page, perPage: 40 })}`)
     this.page++
     const known = new Set(this.pool.map((s) => s.id))

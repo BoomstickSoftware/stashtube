@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, GripVertical, ListVideo, Play, Plus, Shuffle, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, ListVideo, Play, Plus, Radio, Shuffle, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button, Empty, ErrorBox, Spinner } from '../components/ui'
 import { usePlaylist, usePlaylistMutations, usePlaylists } from '../lib/api'
@@ -125,6 +125,13 @@ export function PlaylistPage(): JSX.Element {
             <Button variant="solid" onClick={() => play(ids[0])} disabled={!ids.length}>
               <Play size={16} className="fill-current" /> Play all
             </Button>
+            {ids.length > 0 && (
+              <Link to="/station" search={{ playlist: id }}>
+                <Button title="Play the list full screen, in order, like a station">
+                  <Radio size={16} /> Station
+                </Button>
+              </Link>
+            )}
             <Button
               disabled={!ids.length}
               onClick={() => {

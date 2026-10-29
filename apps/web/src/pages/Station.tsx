@@ -31,6 +31,7 @@ import {
   useSceneEdits,
   useSettings,
   useStationMutations,
+  usePlaylists,
   useStationResumes,
   useStations,
   useToggleFavoriteScene,
@@ -64,6 +65,7 @@ interface Config {
   name?: string
   query: SceneQuery
   from?: string
+  playlist?: number // play this playlist in order
   prefs: StationPrefs
   key: string // where its resume point is saved
   resume?: { sceneId: string; seconds: number } // start here
@@ -72,9 +74,10 @@ interface Config {
 // /station?id=<saved station>, or ad hoc: a filter set, or from=<scene id>. unwatched=1 on a
 // saved station plays only its unwatched videos; start=resume picks up where it was left.
 export function Station(): JSX.Element {
-  const { id, from, start, ...q } = route.useSearch()
+  const { id, from, playlist, start, ...q } = route.useSearch()
   const stations = useStations()
   const resumes = useStationResumes()
+  const playlists = usePlaylists()
   const wait = <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black"><Spinner /></div>
   let config: Omit<Config, 'key'>
   if (id) {
@@ -88,6 +91,11 @@ export function Station(): JSX.Element {
       from: saved.from,
       prefs: { mode: saved.mode, window: saved.window },
     }
+  } else if (playlist) {
+    if (playlists.isPending) return wait
+    const p = playlists.data?.find((x) => x.id === playlist)
+    if (!p) return <div className="py-24 text-center text-muted">That playlist no longer exists.</div>
+    config = { name: p.name, query: {}, playlist, prefs: loadPrefs() }
   } else config = { query: stationQuery(q), from, prefs: loadPrefs() }
   const key = stationKey(config)
   if (start === 'resume' && resumes.isPending) return wait
@@ -143,7 +151,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const lastT = useRef(0)
   const [fallen, setFallen] = useState<string | null>(null) // the scene whose direct play errored: use HLS
   const hideTimer = useRef<number>(undefined)
-  const [queue] = useState(() => new StationQueue(config.query, config.from))
+  const [queue] = useState(() => new StationQueue(config.query, config.from, config.playlist))
   useEffect(() => {
     introRef.current = settings?.introSkip ?? {}
   }, [settings])
@@ -491,7 +499,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
               <div className="flex items-center gap-1.5 text-xs font-bold tracking-widest text-accent uppercase">
                 <Radio size={13} /> {config.name ?? `Station${config.from ? ' · like a video' : ''}`}
                 {config.query.unwatched && <span className="tracking-normal text-white/60 normal-case">· unwatched</span>}
-                {!config.id && !naming && (
+                {!config.id && !config.playlist && !naming && (
                   <button
                     onClick={() => setNaming(true)}
                     className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tracking-normal text-white normal-case hover:bg-white/25"
