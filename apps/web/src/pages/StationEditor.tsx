@@ -47,11 +47,11 @@ function Editor({
   useEffect(() => {
     if (seeded.current || !initial || Object.keys(initial.query).length === 0) return
     seeded.current = true
-    if (Object.values(query).every((v) => v === undefined)) navigate({ to: '.', search: initial.query as never, replace: true })
+    if (Object.values(query).every((v) => v === undefined)) navigate({ to: '.', search: initial.query, replace: true })
   }, [initial, query, navigate])
 
   const setFilters = (patch: Partial<SceneQuery>) =>
-    navigate({ to: '.', search: (prev: SceneQuery) => ({ ...prev, ...patch }) as never, replace: true })
+    navigate({ to: '.', search: (prev) => ({ ...(prev as SceneQuery), ...patch }), replace: true })
   const drifting = !!initial?.from
   const busy = add.isPending || update.isPending
   const save = (thenPlay: boolean) => {

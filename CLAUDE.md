@@ -21,6 +21,10 @@ apps/server     Hono BFF on Node 26 (runs .ts natively, no build step)
   src/api.ts      /api routes (zod-validated)
   src/db/         Drizzle schema + migrations (drizzle/), migrate on boot
 apps/web        Vite + React 19 + Tailwind 4 + TanStack Router/Query
+  src/routes/     one file per path (TanStack file routing: `scene.$id.tsx`, `stations_.new.tsx` is
+                  /stations/new outside /stations); search validation lives here, the page in src/pages/.
+                  The Vite plugin writes src/routeTree.gen.ts (committed) and splits every page into
+                  its own chunk, loaded on intent.
 packages/shared API contract types shared by both (types only at runtime on the server)
 ```
 
@@ -42,7 +46,8 @@ packages/shared API contract types shared by both (types only at runtime on the 
 5. Server code must be erasable TypeScript (`erasableSyntaxOnly`): no enums, namespaces or
    parameter properties; relative imports end in `.ts`; type-only imports use `import type`.
 6. Page components that use `getRouteApi` declare `: JSX.Element` return types; without it the
-   router's types go circular. Search reducers annotate `prev` (`(prev: SceneQuery) => …`).
+   router's types go circular. A `navigate({ to: '.' })` reducer gets the union of every route's
+   search, so cast `prev` (`(prev) => ({ ...(prev as SceneQuery), ...patch })`).
 7. **Browser-side preferences go through `lib/storage.ts`** (`useStored`, `readStored`, `writeStored`):
    localStorage can be missing or throw (private mode, blocked site data), and the helper is the
    one place that handles it. On/off settings render with `Switch` from `components/ui.tsx`.
