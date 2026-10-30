@@ -183,6 +183,10 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    carries a `why` line. Weights live in the `settings` table (shared across devices, as decided); the seed is
    one per page load (`/home?seed=`, Shuffle on the row draws another). Settings previews the top 12 live
    while dragging (`POST /api/featured/preview`, unsaved). Tests in `featured.test.ts`.
+   Follow-up the same day: the first deploy crash-looped because the image carried only the server's
+   source and `featured.ts` imported the defaults from `@flix/shared`; the Dockerfile now copies
+   `packages/shared/src` into the runtime stage, so the defaults have one home (shared) and value imports
+   from there are fine. `imports.test.ts` pins that.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The

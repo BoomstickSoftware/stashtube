@@ -45,7 +45,7 @@ export interface FeaturedWeights {
   surprise: number
 }
 
-// The web's copy; the server has its own in apps/server/src/featured.ts (its image ships no shared code).
+// Used by both: the web's dials and the server's ranker (the runtime image ships this package).
 export const FEATURED_DEFAULTS: FeaturedWeights = {
   dormant: 0.4,
   shelfAge: 0.2,

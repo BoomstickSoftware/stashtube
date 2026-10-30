@@ -1,4 +1,4 @@
-import type { FeaturedWeights, SceneCard } from '@flix/shared'
+import { FEATURED_DEFAULTS, type FeaturedWeights, type SceneCard } from '@flix/shared'
 
 // The Featured engine: every video in the library gets a score from a handful of signals,
 // each rank-normalised to 0..1 so a dial means the same thing whatever its unit, times the
@@ -6,22 +6,8 @@ import type { FeaturedWeights, SceneCard } from '@flix/shared'
 // (one per visit), so the order holds while you scroll and changes next time. Pure: the
 // pool and the affinities come from stash.ts, this file only ranks.
 
-// The server's copy of the defaults: the runtime image ships no code from @flix/shared (only
-// its types, erased at run time), so a value import from there crashes at boot. Keep in step
-// with FEATURED_DEFAULTS in packages/shared (the web's copy).
-export const FEATURED_DEFAULTS: FeaturedWeights = {
-  dormant: 0.4,
-  shelfAge: 0.2,
-  fresh: 0,
-  performer: 0.5,
-  tag: 0.3,
-  studio: 0,
-  watched: -0.2,
-  marked: 0,
-  rated: 0.3,
-  oCount: 0,
-  surprise: 0.3,
-}
+// The defaults live in @flix/shared with the web's; the image ships that package's source.
+export { FEATURED_DEFAULTS }
 
 export type Signal = Exclude<keyof FeaturedWeights, 'surprise'>
 

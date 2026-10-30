@@ -27,6 +27,9 @@ RUN apk upgrade --no-cache \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /root/.cache /root/.npm
 COPY apps/server/src apps/server/src
 COPY apps/server/drizzle apps/server/drizzle
+# The workspace link apps/server/node_modules/@flix/shared points here: the server imports
+# values from it (the Featured defaults), not only types, so its source must be in the image.
+COPY packages/shared/src packages/shared/src
 COPY --from=build /app/apps/web/dist /app/web
 # The commit this image was built from, reported by /healthz (the deploy workflow sets it).
 ARG GIT_SHA=dev

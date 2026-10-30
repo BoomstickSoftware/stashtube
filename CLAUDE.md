@@ -30,7 +30,7 @@ apps/web        Vite + React 19 + Tailwind 4 + TanStack Router/Query
                   /stations/new outside /stations); search validation lives here, the page in src/pages/.
                   The Vite plugin writes src/routeTree.gen.ts (committed) and splits every page into
                   its own chunk, loaded on intent.
-packages/shared API contract types shared by both (types only at runtime on the server)
+packages/shared API contract types and the few values both sides need (Featured defaults); shipped in the image
 ```
 
 ## Rules

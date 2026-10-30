@@ -1,36 +1,18 @@
-// The runtime image copies apps/server/src and the server's production deps, not
-// packages/shared: a value import from @flix/shared passes typecheck and the tests in the
-// build stage (where shared is present) and then crashes the pod at boot with
-// ERR_MODULE_NOT_FOUND (2026-10-30). Only `import type` may cross that line.
+// The runtime image must carry @flix/shared's source, not only its types: the server imports
+// values from it (the Featured defaults). It once did not (2026-10-30), and a value import that
+// passed typecheck and the tests in the build stage crashed the pod at boot with
+// ERR_MODULE_NOT_FOUND. This runs in the build stage, where shared is present either way, so it
+// guards the contract from the code side; the Dockerfile's COPY of packages/shared/src is the
+// other half, and the deploy's smoke test is what catches a broken image.
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, it } from 'node:test'
+import { FEATURED_DEFAULTS } from '@flix/shared'
+import { FEATURED_DEFAULTS as serverDefaults, SIGNALS } from './featured.ts'
 
-const SRC = new URL('.', import.meta.url).pathname
-
-function* files(dir: string): Generator<string> {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name)
-    if (e.isDirectory()) yield* files(p)
-    else if (p.endsWith('.ts') && !p.endsWith('.test.ts')) yield p
-  }
-}
-
-describe('server imports', () => {
-  it('take only types from @flix/shared', () => {
-    const offenders: string[] = []
-    for (const f of files(SRC)) {
-      const src = readFileSync(f, 'utf8')
-      for (const m of src.matchAll(/^import\s+([\s\S]*?)\s+from\s+'@flix\/shared'/gm)) {
-        const clause = m[1]!
-        // `import type { … }` is fine; `import { type A, B }` is not unless every name is a type
-        if (clause.startsWith('type ')) continue
-        const names = clause.replace(/^\{|\}$/g, '').split(',').map((n) => n.trim()).filter(Boolean)
-        if (names.every((n) => n.startsWith('type '))) continue
-        offenders.push(`${f.slice(SRC.length)}: ${m[0].split('\n')[0]}`)
-      }
-    }
-    assert.deepEqual(offenders, [])
+describe('shared package', () => {
+  it('resolves at run time and is the one source of the Featured defaults', () => {
+    assert.equal(serverDefaults, FEATURED_DEFAULTS)
+    for (const s of SIGNALS) assert.equal(typeof FEATURED_DEFAULTS[s], 'number')
+    assert.equal(typeof FEATURED_DEFAULTS.surprise, 'number')
   })
 })
