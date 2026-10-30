@@ -147,7 +147,7 @@ export function Player({
   const markAsO = () => {
     if (!marked?.id) return
     addO.mutate(scene.id)
-    edits.renameMarker.mutate({ marker: marked.id, title: 'O' })
+    edits.updateMarker.mutate({ marker: marked.id, title: 'O' })
     setMarked(null)
     setFlash('O')
   }

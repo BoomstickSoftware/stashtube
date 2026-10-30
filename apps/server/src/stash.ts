@@ -37,7 +37,9 @@ import type {
   ResolutionEnum,
   Scene,
   SceneFilterType,
+  SceneMarker,
   SceneMarkerCreateInput,
+  SceneMarkerUpdateInput,
   SceneUpdateInput,
   Studio,
   StudioFilterType,
@@ -234,7 +236,7 @@ const SCENE_DETAIL = `
   details code director urls
   tags { id name }
   files { size format video_codec audio_codec bit_rate frame_rate }
-  scene_markers { id seconds end_seconds title primary_tag { name } }
+  scene_markers { id seconds end_seconds title primary_tag { id name } }
 `
 
 const PERFORMER_CARD = `id name image_path scene_count favorite rating100 gender country`
@@ -286,9 +288,7 @@ export function toSceneCard(s: Scene): SceneCard {
 }
 
 function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden'> {
-  const markers = (s.scene_markers ?? [])
-    .map((m) => ({ id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }))
-    .sort((a, b) => a.seconds - b.seconds)
+  const markers = (s.scene_markers ?? []).map(toMarker).sort((a, b) => a.seconds - b.seconds)
   const f = file(s)
   return {
     ...toSceneCard(s),
@@ -858,22 +858,40 @@ async function highlightTag(): Promise<string> {
   return c.tagCreate.id
 }
 
+// A marker as the app shows it. An untitled marker is named after its primary tag, which Stash
+// requires on every marker (flix's own default is "Highlight").
+export const toMarker = (m: Pick<SceneMarker, 'id' | 'seconds' | 'end_seconds' | 'title'> & { primary_tag?: { id: string; name: string } | null }): Marker => ({
+  id: m.id,
+  seconds: m.seconds,
+  endSeconds: m.end_seconds ?? null,
+  title: m.title || m.primary_tag?.name || '',
+  tag: m.primary_tag?.name ?? '',
+  tagId: m.primary_tag?.id ?? '',
+})
+
+const MARKER_FIELDS = 'id seconds end_seconds title primary_tag { id name }'
+
 // Returns the marker, so the player can offer Undo (and an O upgrade) right after.
-export async function createMarker(sceneId: string, seconds: number, title: string): Promise<Marker> {
-  const tag = await highlightTag()
-  const i: SceneMarkerCreateInput = { scene_id: sceneId, seconds, title, primary_tag_id: tag }
+export async function createMarker(sceneId: string, seconds: number, title: string, tagId?: string): Promise<Marker> {
+  const i: SceneMarkerCreateInput = { scene_id: sceneId, seconds, title, primary_tag_id: tagId || (await highlightTag()) }
   const d = await mutate<Pick<Mutation, 'sceneMarkerCreate'>>(
-    `mutation($i: SceneMarkerCreateInput!) { sceneMarkerCreate(input: $i) { id seconds end_seconds title primary_tag { name } } }`,
+    `mutation($i: SceneMarkerCreateInput!) { sceneMarkerCreate(input: $i) { ${MARKER_FIELDS} } }`,
     { i },
     [`scene:${sceneId}`],
   )
-  const m = d.sceneMarkerCreate
-  if (!m) throw new StashError('sceneMarkerCreate returned no marker')
-  return { id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }
+  if (!d.sceneMarkerCreate) throw new StashError('sceneMarkerCreate returned no marker')
+  return toMarker(d.sceneMarkerCreate)
 }
 
-export async function updateMarker(sceneId: string, id: string, title: string) {
-  await mutate(`mutation($i: SceneMarkerUpdateInput!) { sceneMarkerUpdate(input: $i) { id } }`, { i: { id, title } }, [`scene:${sceneId}`])
+export async function updateMarker(sceneId: string, id: string, patch: { title?: string; tagId?: string }): Promise<Marker> {
+  const i: SceneMarkerUpdateInput = { id, title: patch.title, primary_tag_id: patch.tagId }
+  const d = await mutate<Pick<Mutation, 'sceneMarkerUpdate'>>(
+    `mutation($i: SceneMarkerUpdateInput!) { sceneMarkerUpdate(input: $i) { ${MARKER_FIELDS} } }`,
+    { i },
+    [`scene:${sceneId}`],
+  )
+  if (!d.sceneMarkerUpdate) throw new StashError('sceneMarkerUpdate returned no marker')
+  return toMarker(d.sceneMarkerUpdate)
 }
 
 export async function deleteMarker(sceneId: string, id: string) {

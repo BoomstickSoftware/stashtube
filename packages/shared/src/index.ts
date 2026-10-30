@@ -84,6 +84,7 @@ export interface Marker {
   endSeconds: number | null
   title: string
   tag: string // primary tag name
+  tagId: string
 }
 
 export interface SceneDetail extends SceneCard {

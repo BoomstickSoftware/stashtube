@@ -365,15 +365,15 @@ api.patch('/scenes/:id', async (c) => {
   return c.body(null, 204)
 })
 
-const markerBody = z.object({ seconds: z.number().min(0), title: z.string().trim().max(120).default('') })
+const markerBody = z.object({ seconds: z.number().min(0), title: z.string().trim().max(120).default(''), tagId: z.string().min(1).optional() })
 api.post('/scenes/:id/markers', async (c) => {
   const b = parse(markerBody, await c.req.json())
-  return c.json(await stash.createMarker(c.req.param('id'), b.seconds, b.title), 201)
+  return c.json(await stash.createMarker(c.req.param('id'), b.seconds, b.title, b.tagId), 201)
 })
+// Title and/or primary tag; the Moments list edits both in place.
 api.put('/scenes/:id/markers/:marker', async (c) => {
-  const b = parse(z.object({ title: z.string().trim().max(120) }), await c.req.json())
-  await stash.updateMarker(c.req.param('id'), c.req.param('marker'), b.title)
-  return c.body(null, 204)
+  const b = parse(z.object({ title: z.string().trim().max(120).optional(), tagId: z.string().min(1).optional() }), await c.req.json())
+  return c.json(await stash.updateMarker(c.req.param('id'), c.req.param('marker'), b))
 })
 api.delete('/scenes/:id/markers/:marker', async (c) => {
   await stash.deleteMarker(c.req.param('id'), c.req.param('marker'))

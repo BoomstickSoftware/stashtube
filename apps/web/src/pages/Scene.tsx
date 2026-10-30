@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { PlayerSlot } from '../components/NowPlaying'
-import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
+import { Moments } from '../components/Moments'
+import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
 import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
@@ -194,7 +195,7 @@ function SceneView({ id }: { id: string }) {
         </div>
       )}
 
-      <Chapters scene={scene} onSeek={(t) => nowPlaying.seek(t)} />
+      <Moments scene={scene} onSeek={(t) => nowPlaying.seek(t)} />
 
       <div className="mt-5 rounded-2xl bg-surface p-4 text-sm">
         <div className="flex flex-wrap gap-x-3 gap-y-1 font-medium">

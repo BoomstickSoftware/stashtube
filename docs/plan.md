@@ -247,6 +247,10 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    reachable in fullscreen for the first time). `b` and the menu item show the same banner. A tap closes the gear
    menu. A hint teaches the hold on the first three videos. The check script now blocks and logs marker, O and
    rating writes, so gesture tests prove the attempt without touching Stash.
+2s. **Moments list (2026-10-30)**: the marker chips under the video became a list you can come back to and
+   edit: frame, time, title and primary tag per row, title edited in place, tag picked from a search over Stash's
+   tags (Stash needs one on every marker; flix's default is "Highlight"), delete with Undo. The seek-bar ticks and a
+   station's Moments follow the edits at once. Phone: full-width rows; desktop: two columns.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The

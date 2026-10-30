@@ -228,6 +228,11 @@ yet), O counts an O-counter press and retitles the marker `O`. `POST /scenes/:id
 returns the marker for this. The first three videos on a touch device show "Hold the picture
 to mark a moment" while the controls are up (`flix.hint.hold`). The station player has the
 same hold (flash only, no banner). A private session blocks all of it with its toast.
+Below the video, **Moments** (`components/Moments.tsx`) lists every marker with its sprite
+frame, time, title and primary tag, each editable in place (title on blur or Enter, tag via a
+search over Stash's tags; `PUT /scenes/:id/markers/:marker` takes `title` and/or `tagId`),
+delete with an Undo toast that recreates it (`POST` takes an optional `tagId`). O markers show
+a droplet. `Marker.tagId` carries the primary tag id; an untitled marker displays its tag's name.
 
 **Mini-player.** The video page does not render the `Player`: it opens its scene in
 `lib/nowPlaying.ts` (a small external store) and renders a `PlayerSlot`; `NowPlayingHost`, mounted

@@ -176,11 +176,11 @@ export function useSceneEdits(id: string) {
       onSuccess: refresh,
     }),
     addMarker: useMutation({
-      mutationFn: (b: { seconds: number; title: string }) => send<Marker>('POST', `/scenes/${id}/markers`, b),
+      mutationFn: (b: { seconds: number; title: string; tagId?: string }) => send<Marker>('POST', `/scenes/${id}/markers`, b),
       onSuccess: refresh,
     }),
-    renameMarker: useMutation({
-      mutationFn: ({ marker, title }: { marker: string; title: string }) => send('PUT', `/scenes/${id}/markers/${marker}`, { title }),
+    updateMarker: useMutation({
+      mutationFn: ({ marker, ...patch }: { marker: string; title?: string; tagId?: string }) => send<Marker>('PUT', `/scenes/${id}/markers/${marker}`, patch),
       onSuccess: refresh,
     }),
     deleteMarker: useMutation({
