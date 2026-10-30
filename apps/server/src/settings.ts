@@ -1,9 +1,9 @@
-import type { PerformerGender, Settings } from '@flix/shared'
+import { FEATURED_DEFAULTS, type PerformerGender, type Settings } from '@flix/shared'
 import type { GenderCriterionInput } from './stash.schema.ts'
 import { db } from './db/index.ts'
 import { settings } from './db/schema.ts'
 
-const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/', playOnOpen: false, people: {} }
+const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/', playOnOpen: false, people: {}, featured: FEATURED_DEFAULTS }
 
 // Single replica, so an in-memory copy is authoritative after the first read.
 let cache: Settings | null = null
@@ -11,7 +11,9 @@ let cache: Settings | null = null
 export async function getSettings(): Promise<Settings> {
   if (cache) return cache
   const rows = await db.select().from(settings)
-  cache = { ...defaults, ...Object.fromEntries(rows.map((r) => [r.key, r.value])) } as Settings
+  const stored = Object.fromEntries(rows.map((r) => [r.key, r.value])) as Partial<Settings>
+  // a dial added since the row was saved keeps its default
+  cache = { ...defaults, ...stored, featured: { ...FEATURED_DEFAULTS, ...stored.featured } }
   return cache
 }
 

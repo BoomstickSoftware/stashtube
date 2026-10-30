@@ -1,16 +1,18 @@
-import type { DeleteResult, Features, HomeRow, Page, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
+import type { DeleteResult, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
+import { NO_AFFINITY, rankFeatured, sanitizeWeights, type Affinity, type Candidate } from './featured.ts'
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 import { daySeed } from './stash.ts'
+import type { Scene } from './stash.schema.ts'
 
 export const api = new Hono()
 
@@ -98,7 +100,47 @@ api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(scen
 // Videos marked "Not interested" (registered before /scenes/:id).
 api.get('/scenes/hidden', async (c) => c.json(await stash.hiddenScenes()))
 
-api.get('/home', async (c) => c.json(await homeRows()))
+api.get('/home', async (c) => c.json(await homeRows(seedParam(c.req.query('seed')))))
+
+// --- featured -------------------------------------------------------------------
+
+// The page sends one seed per visit; anything else (the warm, curl) gets today's.
+const seedParam = (s: string | undefined) => (s && /^[\w-]{1,40}$/.test(s) ? s : String(daySeed()))
+const limitParam = (s: string | undefined) => Math.min(60, Math.max(1, Number(s) || 24))
+const weightsBody = z.object(Object.fromEntries(['dormant', 'shelfAge', 'fresh', 'performer', 'tag', 'studio', 'watched', 'marked', 'rated', 'oCount', 'surprise'].map((k) => [k, z.number().min(-1).max(1)])) as Record<keyof FeaturedWeights, z.ZodNumber>).partial()
+
+const toCandidate = (s: Scene): Candidate => ({
+  card: stash.toSceneCard(s),
+  performerIds: s.performers.map((p) => p.id),
+  studioId: s.studio?.id ?? null,
+  tagIds: s.tags.map((t) => t.id),
+  favPerformer: s.performers.some((p) => p.favorite),
+  favStudio: !!s.studio?.favorite,
+  favTag: s.tags.some((t) => t.favorite),
+  markers: s.scene_markers?.length ?? 0,
+  rating100: s.rating100 ?? null,
+})
+
+// The Featured row: the library scored by the saved (or given) dials, for this seed.
+async function featured(weights: FeaturedWeights, seed: string, limit: number): Promise<SceneCard[]> {
+  const blocked = await exclusions()
+  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities()])
+  const affinity: Affinity = aff
+    ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
+    : NO_AFFINITY
+  return rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit).map((r) => ({ ...r.card, why: r.why }))
+}
+
+api.get('/featured', async (c) =>
+  c.json(await featured((await getSettings()).featured, seedParam(c.req.query('seed')), limitParam(c.req.query('limit')))),
+)
+
+// Settings' live preview: score with dials that are not saved (yet).
+api.post('/featured/preview', async (c) => {
+  const b = parse(z.object({ weights: weightsBody, seed: z.string().optional(), limit: z.number().optional() }), await c.req.json())
+  const weights = sanitizeWeights(b.weights, (await getSettings()).featured)
+  return c.json(await featured(weights, seedParam(b.seed), limitParam(b.limit == null ? undefined : String(b.limit))))
+})
 
 // Related videos of the last one played, unwatched ones first.
 async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>): Promise<HomeRow | null> {
@@ -114,7 +156,7 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
 }
 
 // The home feed. Also run at startup and after Stash changes, so the first visit is warm.
-export async function homeRows(): Promise<HomeRow[]> {
+export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
   const blocked = await exclusions()
   const row = async (key: string, title: string, query: SceneQuery): Promise<HomeRow> => {
     const f = query.sort === 'random' && !query.seed ? { ...query, seed: daySeed() } : query
@@ -131,6 +173,11 @@ export async function homeRows(): Promise<HomeRow[]> {
     savedRows.listRows(),
   ])
   const personal: HomeRow[] = []
+  const picks = await featured(settings.featured, visitSeed, 24).catch((e) => {
+    console.error('featured:', e.message)
+    return []
+  })
+  if (picks.length) personal.push({ key: 'featured', title: 'Featured', items: picks })
   if (recs?.forYou.length) personal.push({ key: 'for-you', title: 'For you', browse: { unwatched: true }, items: recs.forYou })
   const because = await becauseYouWatched(blocked).catch((e) => {
     console.error('because you watched:', e.message)
@@ -414,7 +461,7 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 api.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody })
       .partial(),
     await c.req.json(),
   )
@@ -422,6 +469,7 @@ api.put('/settings', async (c) => {
   if (b.panicUrl) await setSetting('panicUrl', b.panicUrl)
   if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
   if (b.people) await setSetting('people', b.people)
+  if (b.featured) await setSetting('featured', sanitizeWeights(b.featured, (await getSettings()).featured))
   return c.json(await getSettings())
 })
 

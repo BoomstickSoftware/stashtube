@@ -26,6 +26,37 @@ export interface SceneCard {
   screenshot: string
   preview: string | null
   vtt: string | null
+  why?: string // Featured only: the signals that put it there, in words ("Favourite performer · not seen in 7 months")
+}
+
+// The Featured engine's dials: how much each signal counts, -1 (avoid) to 1 (prefer).
+// `surprise` is the weight of a per-visit random term; 0 makes the order fully deterministic.
+export interface FeaturedWeights {
+  dormant: number // long since last played (never played: since added)
+  shelfAge: number // long since added
+  fresh: number // newly added
+  performer: number // favourite performers and the ones you watch
+  tag: number // favourite tags and the ones you watch
+  studio: number // favourite studios and the ones you watch
+  watched: number // play count (negative: rarely watched)
+  marked: number // marker count
+  rated: number // rating
+  oCount: number // O-counter
+  surprise: number
+}
+
+export const FEATURED_DEFAULTS: FeaturedWeights = {
+  dormant: 0.4,
+  shelfAge: 0.2,
+  fresh: 0,
+  performer: 0.5,
+  tag: 0.3,
+  studio: 0,
+  watched: -0.2,
+  marked: 0,
+  rated: 0.3,
+  oCount: 0,
+  surprise: 0.3,
 }
 
 export interface SceneFile {
@@ -299,6 +330,7 @@ export interface Settings {
   panicUrl: string // where a double Esc goes
   playOnOpen: boolean // opening a video starts it; off: it waits on the play button
   people: PeopleFilter // performer age and ethnicity defaults for every list
+  featured: FeaturedWeights // the Featured row's dials
 }
 
 export type StationMode = 'full' | 'moments'

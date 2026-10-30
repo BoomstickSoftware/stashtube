@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { HomeRow, SceneCard, StationResume } from '@flix/shared'
 import clsx from 'clsx'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, Pencil, Play, Radio, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, Pencil, Play, Radio, Shuffle, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
@@ -14,15 +14,19 @@ import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
 
 export function Home(): JSX.Element {
-  const { data, error, isLoading } = useHome()
-  // Hero: a carousel over everything on the page, in a shuffled order that is new on each
-  // visit (no extra request). It moves on by itself, by arrow, or by a swipe, and wraps
-  // around. The current pick holds while the feed refreshes in the background, as long as
-  // the video is still on the page.
-  const [seed] = useState(Math.random)
+  // One seed per visit: the server's Featured row (and so the hero) keeps its order while
+  // the feed refreshes, and Shuffle draws a new one.
+  const [seed, setSeed] = useState(newSeed)
+  const { data, error, isLoading } = useHome(seed)
+  // Hero: the top of the Featured row, in score order; without one (no library yet), a
+  // shuffle of everything on the page. It moves on by itself, by arrow, or by a swipe, and
+  // wraps around. The current pick holds while the feed refreshes in the background, as
+  // long as the video is still on the page.
   const order = useMemo(() => {
+    const featured = (data ?? []).find((r) => r.key === 'featured')
+    if (featured) return featured.items.slice(0, HERO_PICKS)
     const unique = [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()]
-    const rank = (id: string) => Math.sin(Number(id) * 12.9898 + seed * 78.233) // seeded shuffle
+    const rank = (id: string) => Math.sin(Number(id) * 12.9898 + hash(seed) * 78.233) // seeded shuffle
     return unique.sort((a, b) => rank(a.id) - rank(b.id))
   }, [data, seed])
   const [heroId, setHeroId] = useState<string>()
@@ -47,6 +51,17 @@ export function Home(): JSX.Element {
       {data.map((r) =>
         r.savedId ? (
           <PinnedRow key={r.key} row={r} order={data.filter((x) => x.savedId).map((x) => x.savedId!)} />
+        ) : r.key === 'featured' ? (
+          <Row
+            key={r.key}
+            title={r.title}
+            items={r.items}
+            actions={
+              <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(newSeed())}>
+                <Shuffle size={15} />
+              </button>
+            }
+          />
         ) : (
           <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
         ),
@@ -56,6 +71,10 @@ export function Home(): JSX.Element {
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
+const HERO_PICKS = 8 // how many of the Featured row the hero cycles through
+
+const newSeed = () => Math.random().toString(36).slice(2, 10)
+const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 1000, 7) / 1000
 
 // Stations left part-way, most recent first: tap one to pick it up where it was.
 function PickUpStations() {

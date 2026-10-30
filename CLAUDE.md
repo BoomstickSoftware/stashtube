@@ -143,6 +143,18 @@ _Measured 2026-10-26:_ a cold home view cost Stash 7 queries and 79 asset fetche
 _Measured 2026-10-27:_ cold `/api/home` 0.7–1.9 s, warm 4–8 ms; after a server restart it is
 answered from the restored cache (10 ms, 0 Stash queries).
 
+## Featured
+
+The Home page's first row (and the hero above it) is the library ranked by `featured.ts`: ten
+signals, each rank-normalised over the whole pool (`featuredPool()` in `stash.ts`: every scene
+minus exclusions, one cached VOLATILE query), times the weights saved under the `featured`
+settings key (Settings → Featured, shared across devices), plus `surprise` × `hash01(id:seed)`.
+The seed is the page's: `useHome(seed)` sends one made at load, Shuffle makes another, and
+anything without one (the warm, curl) gets the day's. `POST /api/featured/preview` scores
+unsaved weights for Settings' live strip. Affinities come from `affinities()` (what you played,
+rated and O'd), shared with For-you. New signal: add it to `FeaturedWeights` and `SIGNALS`,
+its raw value in `rawSignals`, its words in `phrase`, and a dial in `FeaturedDials.tsx`.
+
 ## Playback
 
 The client checks `canPlayType` for the file's container and codecs: if the browser can play

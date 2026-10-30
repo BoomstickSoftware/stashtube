@@ -5,6 +5,7 @@ import type {
   Blocklist,
   DeleteResult,
   Features,
+  FeaturedWeights,
   HistoryEntry,
   HomeRow,
   JobStatus,
@@ -98,7 +99,19 @@ export const persistQuery = (q: Query) => q.state.status === 'success' && PERSIS
 
 // --- reads ----------------------------------------------------------------------
 
-export const useHome = () => useQuery({ queryKey: ['home'], queryFn: () => get<HomeRow[]>('/home') })
+// `seed` is the visit's: the Featured row and hero keep their order across refetches until
+// the page makes a new one.
+export const useHome = (seed: string) => useQuery({ queryKey: ['home', seed], queryFn: () => get<HomeRow[]>(`/home?seed=${seed}`), placeholderData: keepPreviousData })
+
+// Settings' live preview of the Featured dials, unsaved.
+export const useFeaturedPreview = (weights: FeaturedWeights, enabled: boolean) =>
+  useQuery({
+    queryKey: ['featured-preview', weights],
+    queryFn: () => send<SceneCard[]>('POST', '/featured/preview', { weights, seed: 'preview', limit: 12 }),
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+    enabled,
+  })
 
 export function useScenes(q: SceneQuery, perPage = 40) {
   return useInfiniteQuery({
@@ -369,6 +382,7 @@ export function useUpdateSettings() {
       qc.setQueryData(['settings'], s)
       // performer defaults change every list
       if (patch.people) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'settings' })
+      else if (patch.featured) qc.invalidateQueries({ queryKey: ['home'] })
       else qc.invalidateQueries({ queryKey: ['search'] })
     },
   })

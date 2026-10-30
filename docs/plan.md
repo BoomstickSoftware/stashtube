@@ -174,6 +174,15 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      tag browser, search and the tag tiles answered 502 in production for about four hours. Blocked ids
      are now dropped after the query, `Stash HTTP 4xx` errors carry Stash's message, and `finders.test.ts`
      checks every criterion key against the introspected filter schemas.
+2h. **Featured (2026-10-30)**: the Home page's first row and Tonight's pick come from one scoring pass over
+   the whole library (`apps/server/src/featured.ts`, pure; the pool and affinities from `stash.ts`). Ten
+   signals, each rank-normalised 0..1 (dormant, shelf age, fresh, performer, tag, studio, watched, marked,
+   rated, O-counter) times a weight the user sets (-1..1) on Settings → Featured, plus `surprise` × a hash of
+   the scene id and the visit's seed. Defaults: dormant 0.4, shelf age 0.2, performer 0.5, tag 0.3, rated 0.3,
+   watched -0.2, surprise 0.3, the rest 0. At most two picks per performer and three per studio. Every pick
+   carries a `why` line. Weights live in the `settings` table (shared across devices, as decided); the seed is
+   one per page load (`/home?seed=`, Shuffle on the row draws another). Settings previews the top 12 live
+   while dragging (`POST /api/featured/preview`, unsaved). Tests in `featured.test.ts`.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The

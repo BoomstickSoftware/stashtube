@@ -256,6 +256,8 @@ export function SceneCard({
               .filter(Boolean)
               .join(' · ')}
           </div>
+          {/* a Featured pick says why it is here, on its own line so it is not cut off */}
+          {scene.why && <div className="mt-0.5 truncate text-[11px] text-accent/90">{scene.why}</div>}
         </div>
         <div className="-mr-1.5 flex shrink-0 flex-col items-center opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:has-[[aria-pressed=true]]:opacity-100">
           <FavoriteSceneButton sceneId={scene.id} />

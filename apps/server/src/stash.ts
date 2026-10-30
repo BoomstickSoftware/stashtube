@@ -1042,12 +1042,19 @@ export async function stats(showGender: (g: string | null) => boolean): Promise<
 
 // Affinity from what you watched, rated and O'd; tags are weighted by rarity so that
 // near-universal tags do not drown out distinctive ones.
-export async function recommendations(blocked: Exclusions, showGender: (g: string | null) => boolean) {
+export interface Affinities {
+  performers: Map<string, { ref: Ref; w: number; gender: string | null }>
+  studios: Map<string, number>
+  tags: Map<string, number>
+}
+
+// How much each performer, studio and tag figures in what you watched, rated and O'd.
+export async function affinities(): Promise<Affinities | null> {
   const scenes = await activityScenes()
   if (!scenes.length) return null
   const totalRaw = await query<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
   const total = totalRaw.findScenes.count
-  const pAff = new Map<string, { ref: Ref; w: number; gender: string | null }>()
+  const pAff: Affinities['performers'] = new Map()
   const sAff = new Map<string, number>()
   const tAff = new Map<string, number>()
   for (const s of scenes) {
@@ -1061,6 +1068,13 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
     if (s.studio) sAff.set(s.studio.id, (sAff.get(s.studio.id) ?? 0) + w)
     s.tags.forEach((t) => tAff.set(t.id, (tAff.get(t.id) ?? 0) + w * Math.log(1 + total / Math.max(1, t.scene_count))))
   }
+  return { performers: pAff, studios: sAff, tags: tAff }
+}
+
+export async function recommendations(blocked: Exclusions, showGender: (g: string | null) => boolean) {
+  const aff = await affinities()
+  if (!aff) return null
+  const { performers: pAff, studios: sAff, tags: tAff } = aff
   const topIds = <T,>(m: Map<string, T>, val: (v: T) => number, n: number) =>
     [...m.entries()].sort((a, b) => val(b[1]) - val(a[1])).slice(0, n).map(([k]) => k)
   const topPerf = topIds(pAff, (v) => v.w, 8)
@@ -1094,6 +1108,22 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
     .slice(0, 2)
     .map((p) => p.ref)
   return { forYou, favPerformers }
+}
+
+// --- featured -------------------------------------------------------------------------
+
+// Everything the Featured engine scores: the whole library (minus exclusions) with the card
+// fields plus what the signals read. One query, cached like the rest but kept out of the
+// saved cache (it is the biggest result flix holds and is cheap to refetch).
+export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
+  const d = await query<Pick<Query, 'findScenes'>>(
+    `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: -1, sort: "created_at", direction: DESC }) {
+      scenes { ${SCENE_CARD} tags { id favorite } scene_markers { id } performers { favorite } studio { favorite } }
+    } }`,
+    { s: withExclusions({}, { ...blocked }) },
+    ['scene', 'activity:play', VOLATILE],
+  )
+  return d.findScenes.scenes
 }
 
 // --- tag tiles ------------------------------------------------------------------------
