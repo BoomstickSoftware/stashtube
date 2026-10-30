@@ -6,6 +6,23 @@ import type { FeaturedWeights, SceneCard } from '@flix/shared'
 // (one per visit), so the order holds while you scroll and changes next time. Pure: the
 // pool and the affinities come from stash.ts, this file only ranks.
 
+// The server's copy of the defaults: the runtime image ships no code from @flix/shared (only
+// its types, erased at run time), so a value import from there crashes at boot. Keep in step
+// with FEATURED_DEFAULTS in packages/shared (the web's copy).
+export const FEATURED_DEFAULTS: FeaturedWeights = {
+  dormant: 0.4,
+  shelfAge: 0.2,
+  fresh: 0,
+  performer: 0.5,
+  tag: 0.3,
+  studio: 0,
+  watched: -0.2,
+  marked: 0,
+  rated: 0.3,
+  oCount: 0,
+  surprise: 0.3,
+}
+
 export type Signal = Exclude<keyof FeaturedWeights, 'surprise'>
 
 export const SIGNALS: Signal[] = ['dormant', 'shelfAge', 'fresh', 'performer', 'tag', 'studio', 'watched', 'marked', 'rated', 'oCount']

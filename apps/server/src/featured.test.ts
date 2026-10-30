@@ -2,8 +2,8 @@
 // negative weights, and the "why" line.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { FEATURED_DEFAULTS, type FeaturedWeights, type SceneCard } from '@flix/shared'
-import { type Candidate, hash01, NO_AFFINITY, rankFeatured, rankNormalize, sanitizeWeights, span } from './featured.ts'
+import type { FeaturedWeights, SceneCard } from '@flix/shared'
+import { type Candidate, FEATURED_DEFAULTS, hash01, NO_AFFINITY, rankFeatured, rankNormalize, sanitizeWeights, span } from './featured.ts'
 
 const NOW = Date.parse('2026-10-30T00:00:00Z')
 const day = 86_400_000

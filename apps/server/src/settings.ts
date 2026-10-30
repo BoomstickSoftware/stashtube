@@ -1,4 +1,5 @@
-import { FEATURED_DEFAULTS, type PerformerGender, type Settings } from '@flix/shared'
+import type { PerformerGender, Settings } from '@flix/shared'
+import { FEATURED_DEFAULTS } from './featured.ts'
 import type { GenderCriterionInput } from './stash.schema.ts'
 import { db } from './db/index.ts'
 import { settings } from './db/schema.ts'

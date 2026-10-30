@@ -45,6 +45,7 @@ export interface FeaturedWeights {
   surprise: number
 }
 
+// The web's copy; the server has its own in apps/server/src/featured.ts (its image ships no shared code).
 export const FEATURED_DEFAULTS: FeaturedWeights = {
   dormant: 0.4,
   shelfAge: 0.2,
