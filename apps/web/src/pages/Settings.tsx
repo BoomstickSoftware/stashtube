@@ -12,6 +12,8 @@ import { ShortcutList } from '../components/Shortcuts'
 import { Button, Chip, Switch } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
+import { asBool, useStored } from '../lib/storage'
 
 export function Settings(): JSX.Element {
   const { data } = useBlocklist()
@@ -190,6 +192,7 @@ function PlaybackSetting() {
   const { data: settings } = useSettings()
   const save = useUpdateSettings()
   const on = !!settings?.playOnOpen
+  const [keep, setKeep] = useStored(KEEP_PLAYING_KEY, asBool(true)) // per browser, like the other player prefs
   return (
     <section>
       <h2 className="text-lg font-bold">Playback</h2>
@@ -202,6 +205,15 @@ function PlaybackSetting() {
           </span>
         </span>
         <Switch on={on} disabled={!settings} onChange={(v) => save.mutate({ playOnOpen: v })} className="mt-0.5" />
+      </label>
+      <label className="mt-4 flex max-w-xl cursor-pointer items-start justify-between gap-4">
+        <span>
+          <span className="block text-sm font-medium">Keep playing while browsing</span>
+          <span className="mt-0.5 block text-sm text-muted">
+            Leaving a video’s page docks it in a corner, still playing; tap it to go back. Off: leaving the page stops it.
+          </span>
+        </span>
+        <Switch on={keep} onChange={setKeep} className="mt-0.5" />
       </label>
     </section>
   )

@@ -142,13 +142,15 @@ export function useFlash(): [string | null, (s: string) => void] {
 
 // Player shortcuts: `handle` returns true for a key it used, which is then not passed on.
 // Keys typed into a field, or with a modifier, never reach it. Bound once; the handler may
-// close over anything, the latest one is always called.
-export function usePlayerKeys(handle: (e: KeyboardEvent) => boolean | void) {
+// close over anything, the latest one is always called. `enabled` false unbinds (a docked
+// mini-player leaves the keys to the page being browsed).
+export function usePlayerKeys(handle: (e: KeyboardEvent) => boolean | void, enabled = true) {
   const latest = useRef(handle)
   useLayoutEffect(() => {
     latest.current = handle
   })
   useEffect(() => {
+    if (!enabled) return
     const h = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
       if (el.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return
@@ -156,5 +158,5 @@ export function usePlayerKeys(handle: (e: KeyboardEvent) => boolean | void) {
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [])
+  }, [enabled])
 }

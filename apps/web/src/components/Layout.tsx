@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Building2, ChevronLeft, Clapperboard, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
 import { setPrivate, useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
 import { Login } from '../pages/Login'
+import { NowPlayingHost } from './NowPlaying'
 import { PinLock } from './PinLock'
 import { SearchBox } from './SearchBox'
 import { ShortcutsOverlay } from './Shortcuts'
@@ -47,6 +48,7 @@ export function Layout(): JSX.Element {
   const router = useRouter()
   const atStart = useRouterState({ select: (s) => !(s.location.state.__TSR_index > 0) }) // first entry of this session
   const canGoBack = standalone && path !== '/' && !atStart
+  const root = useRef<HTMLDivElement>(null) // the now-playing host positions the player within it
   const pill = 'ml-1.5 rounded-full bg-accent px-1.5 text-[11px] leading-[18px] font-semibold text-white tabular-nums'
   const badge = (to: string) =>
     to === '/continue' && unfinished > 0 ? (
@@ -69,7 +71,7 @@ export function Layout(): JSX.Element {
   return (
     // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
     // hidden, keeps the sticky header working)
-    <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
           {canGoBack && (
@@ -144,6 +146,7 @@ export function Layout(): JSX.Element {
         <ShortcutsOverlay />
         <PinLock />
       </main>
+      <NowPlayingHost root={root} />
 
       {/* mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">

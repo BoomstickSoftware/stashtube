@@ -211,6 +211,17 @@ The seek bar (`SeekBar.tsx`, both players) draws markers as ticks: `groupMarkers
 marks (title `O`) draw thin and white, named markers yellow. Hovering a tick shows its frame and
 `tickLabel` (title · tag); clicking or tapping a tick's 24 px pad seeks to the marker itself.
 
+**Mini-player.** The video page does not render the `Player`: it opens its scene in
+`lib/nowPlaying.ts` (a small external store) and renders a `PlayerSlot`; `NowPlayingHost`, mounted
+once in `Layout`, renders the one `Player` and lays it over that slot (absolute within the layout,
+re-measured by ResizeObserver, so it scrolls with the page), or, on any other page, docks it as a
+strip above the phone tab bar / a card bottom-right on desktop (`mini` prop: picture and progress
+line only, keys unbound). Both placements share one element skeleton, so the `<video>` is the same
+node throughout and nothing reloads; coming back to the scene finds it still playing. Leaving a page
+whose video never started, or with Settings → Playback "Keep playing while browsing" off
+(`flix.keepPlaying`, per browser), stops it; entering `/station` stops it; Stop on the card unmounts
+it. Watch accounting continues while docked (unless the session is private).
+
 The Stations page gets every card's pictures and count from one request, `GET /api/stations/previews?day=&q=`
 (`stations.previews`: saved stations by id, the quick-start queries under the JSON the client sent, each
 one cached Stash query, six in flight at once); `/stations/resume` carries each station's or playlist's

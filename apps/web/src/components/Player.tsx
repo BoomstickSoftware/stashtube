@@ -22,6 +22,7 @@ import { type Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef,
 import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
+import type { Status } from '../lib/nowPlaying'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
@@ -53,6 +54,7 @@ const TAP_SEEK = 10 // seconds per double tap on either side of the video
 export interface PlayerHandle {
   seek: (t: number) => void
   time: () => number // where playback is now
+  toggle: () => void // play or pause
 }
 
 export function Player({
@@ -64,6 +66,8 @@ export function Player({
   onTheater,
   startAt,
   autoStart,
+  mini = false,
+  onStatus,
 }: {
   ref?: Ref<PlayerHandle>
   scene: SceneDetail
@@ -73,6 +77,10 @@ export function Player({
   onTheater: () => void
   startAt?: number
   autoStart: boolean // play as soon as it loads; otherwise wait on the play button
+  // Docked in a corner while another page shows (lib/nowPlaying.ts): just the picture and a
+  // progress line; the mini-player's own bar has the buttons, and keys stay with the page.
+  mini?: boolean
+  onStatus?: (s: Status) => void
 }) {
   const wrap = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -190,11 +198,17 @@ export function Player({
     else v.webkitSetPresentationMode?.(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture')
   }, [])
 
+  const report = (patch: Partial<Status> = {}) => {
+    const v = video.current
+    if (v && onStatus) onStatus({ playing: !v.paused, time: v.currentTime, dur: v.duration || scene.durationSec, ended: v.ended, ...patch })
+  }
+
   const onTimeUpdate = () => {
     const v = video.current!
     setTime(v.currentTime)
     if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1))
     accountTime()
+    report()
   }
 
   const onLoaded = () => {
@@ -292,7 +306,7 @@ export function Player({
     return () => clearTimeout(t)
   }, [resumedAt])
 
-  // Keyboard: YouTube conventions.
+  // Keyboard: YouTube conventions. Docked, the keys belong to the page being browsed.
   usePlayerKeys((e) => {
     const v = video.current!
     switch (e.key) {
@@ -359,7 +373,7 @@ export function Player({
         else return false
     }
     return true
-  })
+  }, !mini)
 
   // Hide controls while playing and the mouse is still, or a while after a tap.
   const idleTimer = useRef<number>(undefined)
@@ -401,7 +415,7 @@ export function Player({
     setTime(t)
     poke()
   }
-  useImperativeHandle(ref, () => ({ seek: seekTo, time: () => video.current?.currentTime ?? 0 }))
+  useImperativeHandle(ref, () => ({ seek: seekTo, time: () => video.current?.currentTime ?? 0, toggle }))
 
   const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu
@@ -420,12 +434,14 @@ export function Player({
         fullscreen ? 'touch-none' : 'touch-pan-y',
         fullscreen
           ? 'relative size-full'
-          : landscapePhone
-            ? 'fixed inset-0 z-[70] h-dvh w-full'
-            : theater
-              ? 'relative aspect-video max-h-[calc(100dvh-8rem)] w-full'
-              : 'relative aspect-video rounded-2xl',
-        !showControls && 'cursor-none',
+          : mini
+            ? 'relative aspect-video'
+            : landscapePhone
+              ? 'fixed inset-0 z-[70] h-dvh w-full'
+              : theater
+                ? 'relative aspect-video max-h-[calc(100dvh-8rem)] w-full'
+                : 'relative aspect-video rounded-2xl',
+        !showControls && !mini && 'cursor-none',
       )}
     >
       <video
@@ -438,10 +454,12 @@ export function Player({
         onPlay={() => {
           setPlaying(true)
           poke()
+          report({ playing: true })
         }}
         onPause={() => {
           setPlaying(false)
           flush()
+          report({ playing: false })
         }}
         onWaiting={(e) => {
           setWaiting(true)
@@ -452,6 +470,7 @@ export function Player({
         onLoadedMetadata={onLoaded}
         onEnded={() => {
           flush()
+          report({ playing: false, ended: true })
           onEnded?.()
         }}
         onError={() => mode === 'direct' && switchSource(() => setFallback(true))}
@@ -463,16 +482,23 @@ export function Player({
           <div className="text-sm text-white/80">Playing on AirPlay</div>
         </div>
       )}
-      <div
-        className="absolute inset-0"
-        onPointerDown={(e) => (tapStart.current = { x: e.clientX, y: e.clientY })}
-        onPointerUp={onSurfaceTap}
-        onClick={() => pointerType.current === 'mouse' && toggle()}
-        onDoubleClick={() => pointerType.current === 'mouse' && toggleFullscreen()}
-      />
+      {!mini && (
+        <div
+          className="absolute inset-0"
+          onPointerDown={(e) => (tapStart.current = { x: e.clientX, y: e.clientY })}
+          onPointerUp={onSurfaceTap}
+          onClick={() => pointerType.current === 'mouse' && toggle()}
+          onDoubleClick={() => pointerType.current === 'mouse' && toggleFullscreen()}
+        />
+      )}
 
       {waiting && !casting && <div className="pointer-events-none absolute inset-0 m-auto size-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />}
-      {touch ? (
+      {mini && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
+          <div className="h-full bg-accent" style={{ width: `${dur ? (time / dur) * 100 : 0}%` }} />
+        </div>
+      )}
+      {mini ? null : touch ? (
         // Touch: back / play-pause / forward in the middle while the controls show.
         <div
           className={clsx(
@@ -503,7 +529,7 @@ export function Player({
           Swipe up for the full screen
         </div>
       )}
-      {resumedAt !== null && (
+      {resumedAt !== null && !mini && (
         <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/75 py-1 pr-1 pl-3 text-[13px] ring-1 ring-white/10 backdrop-blur">
           <span className="text-white/80 tabular-nums">Resumed at {fmt(resumedAt)}</span>
           <button
@@ -531,6 +557,7 @@ export function Player({
           // takes taps itself; only the bar and buttons do, and only while visible (a tap
           // meant to show hidden controls would otherwise seek).
           'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pt-16 pb-2 transition-opacity duration-300 sm:px-4',
+          mini && 'hidden',
           showControls ? 'opacity-100 [&>*]:pointer-events-auto' : 'opacity-0',
           immersive &&
             'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',

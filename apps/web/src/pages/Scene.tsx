@@ -3,15 +3,16 @@ import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
-import { Player, type PlayerHandle } from '../components/Player'
+import { PlayerSlot } from '../components/NowPlaying'
 import { Chapters, EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
 import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
+import { nowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
@@ -40,8 +41,8 @@ function SceneView({ id }: { id: string }) {
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
   const [autoplay, setAutoplay] = useStored('flix.autoplay', asBool(true))
   const [countdown, setCountdown] = useState<number | null>(null)
-  const playerRef = useRef<PlayerHandle>(null)
   const [showDetails, setShowDetails] = useState(false)
+  const toggleTheater = useCallback(() => setTheater((v) => !v), [setTheater])
 
   const queue: Scene[] = useMemo(() => {
     if (playlist.data) {
@@ -67,27 +68,30 @@ function SceneView({ id }: { id: string }) {
     window.scrollTo({ top: 0 })
   }, [id])
 
+  // The video itself lives in Layout's host (lib/nowPlaying.ts): this page opens it, keeps
+  // its handlers current, and on leaving lets it dock or stop.
+  const autoStart = !!play || !!settings?.playOnOpen
+  useEffect(() => {
+    if (scene && settings) nowPlaying.open(scene, { startAt: t, autoStart, theater })
+  }, [scene, settings, t, autoStart, theater])
+  useEffect(() => nowPlaying.setTheater(theater), [theater])
+  useEffect(() => {
+    nowPlaying.setHandlers({
+      onNext: next ? goNext : undefined,
+      onEnded: () => autoplay && next && setCountdown(5),
+      onTheater: toggleTheater,
+    })
+  }, [next, goNext, autoplay, toggleTheater])
+  useEffect(() => () => nowPlaying.leave(id), [id])
+
   if (error) return <ErrorBox error={error} />
   // settings first: whether the video starts by itself depends on them
   if (isLoading || !scene || settingsLoading) return <Spinner className="mx-auto mt-32" />
 
-  const toggleTheater = () => setTheater((v) => !v)
-
   const player = (
-    <div className="relative">
-      <Player
-        key={scene.id}
-        ref={playerRef}
-        scene={scene}
-        theater={theater}
-        onTheater={toggleTheater}
-        startAt={t}
-        autoStart={!!play || !!settings?.playOnOpen}
-        onNext={next ? goNext : undefined}
-        onEnded={() => autoplay && next && setCountdown(5)}
-      />
+    <PlayerSlot theater={theater}>
       {countdown !== null && next && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-[35] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="w-80 max-w-[90%] text-center">
             <div className="text-sm text-muted">Up next in {countdown}</div>
             <img src={next.screenshot} alt="" className="mt-3 hidden aspect-video w-full rounded-xl object-cover sm:block" />
@@ -103,7 +107,7 @@ function SceneView({ id }: { id: string }) {
           </div>
         </div>
       )}
-    </div>
+    </PlayerSlot>
   )
 
   const res = resolution(scene.height)
@@ -132,7 +136,7 @@ function SceneView({ id }: { id: string }) {
               guardWrite(() => {
                 addO.mutate(scene.id)
                 // the moment matters as much as the count: mark it, once the video has been playing
-                const t = playerRef.current?.time() ?? 0
+                const t = nowPlaying.time()
                 if (t > 3) edits.addMarker.mutate({ seconds: Math.round(t * 10) / 10, title: 'O' })
               })
             }
@@ -190,10 +194,7 @@ function SceneView({ id }: { id: string }) {
         </div>
       )}
 
-      <Chapters
-        scene={scene}
-        onSeek={(t) => playerRef.current?.seek(t)}
-      />
+      <Chapters scene={scene} onSeek={(t) => nowPlaying.seek(t)} />
 
       <div className="mt-5 rounded-2xl bg-surface p-4 text-sm">
         <div className="flex flex-wrap gap-x-3 gap-y-1 font-medium">

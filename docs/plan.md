@@ -225,6 +225,14 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    whether coming back to the tab locks. `L` locks at once. The lock screen hides the app root outright, pauses
    every video, takes the PIN from a keypad or the phone keyboard, shakes on a wrong try and waits 30 s after
    five. A privacy screen, not security, and the copy says so.
+2p. **Mini-player (2026-10-30)**: the video keeps playing while you browse. The scene page renders a slot and
+   opens its scene in `lib/nowPlaying.ts`; `NowPlayingHost` in Layout renders the one `Player` over that slot
+   (absolute in the layout, ResizeObserver-measured) or docks it, strip above the phone tab bar or card
+   bottom-right on desktop, with title, time, play/pause, stop and a tap back to the page. One element
+   skeleton for both placements keeps the same `<video>` node, so nothing reloads (verified: the node's
+   marker survived Home and back, time monotonic). Keys unbind while docked; stations stop it; Settings →
+   Playback "Keep playing while browsing" turns it off. `FLIX_SERVER=http://flix.lan` lets Vite proxy to prod
+   for UI checks when no dev BFF runs.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -237,7 +245,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    the first-paint routes; a failed build or a failed smoke test is announced in the forge Discord channel.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
 5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
-   - Mini-player that persists across pages (picture in picture covers the 80/20 for now).
+   - Done 2026-10-30: mini-player (2p).
    - Done 2026-10-30: duplicates workbench (2m).
    - Done 2026-10-30: private session (2n).
    - Done 2026-10-30: PIN lock after idle (2o).
