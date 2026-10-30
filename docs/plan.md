@@ -241,6 +241,12 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    old monitor-and-search path. Without StashDB the shelf is Whisparr's list as before (`source` says which).
    Everything in Whisparr stays unmonitored (0/36 studios, 0/9,363 scenes on 2026-10-30); flix never monitors
    a studio or performer.
+2r. **Hold to mark (2026-10-30)**: marking a moment on a phone took pause → gear → Mark → close → resume.
+   Now a half-second hold on the picture marks it without pausing (both players), with a pulse where the finger
+   was and a 5 s banner offering Undo and an O upgrade (the O-counter press that also retitles the marker `O`,
+   reachable in fullscreen for the first time). `b` and the menu item show the same banner. A tap closes the gear
+   menu. A hint teaches the hold on the first three videos. The check script now blocks and logs marker, O and
+   rating writes, so gesture tests prove the attempt without touching Stash.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The

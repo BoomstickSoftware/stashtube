@@ -220,6 +220,15 @@ The seek bar (`SeekBar.tsx`, both players) draws markers as ticks: `groupMarkers
 marks (title `O`) draw thin and white, named markers yellow. Hovering a tick shows its frame and
 `tickLabel` (title · tag); clicking or tapping a tick's 24 px pad seeks to the marker itself.
 
+**Marking a moment.** On a touch screen, holding the picture for half a second (`useLongPress`
+in `lib/hooks.ts`) marks the current time without pausing or showing the controls; `b` and the
+gear menu's "Mark this moment" do the same elsewhere. Every mark shows a banner for 5 s,
+"Marked m:ss · O · Undo": Undo deletes the marker (or cancels it if Stash has not answered
+yet), O counts an O-counter press and retitles the marker `O`. `POST /scenes/:id/markers`
+returns the marker for this. The first three videos on a touch device show "Hold the picture
+to mark a moment" while the controls are up (`flix.hint.hold`). The station player has the
+same hold (flash only, no banner). A private session blocks all of it with its toast.
+
 **Mini-player.** The video page does not render the `Player`: it opens its scene in
 `lib/nowPlaying.ts` (a small external store) and renders a `PlayerSlot`; `NowPlayingHost`, mounted
 once in `Layout`, renders the one `Player` and lays it over that slot (absolute within the layout,

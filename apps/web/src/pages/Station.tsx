@@ -39,6 +39,7 @@ import {
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { guardWrite, isPrivate } from '../lib/privacy'
+import { useLongPress } from '../lib/hooks'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import {
   loadPrefs,
@@ -349,6 +350,8 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     if (!guardWrite(() => edits.addMarker.mutate({ seconds: Math.round((video.current?.currentTime ?? 0) * 10) / 10, title: '' }))) return
     setFlash('Marked')
   }
+  // hold the picture to mark, as in the scene player (touch only; a mouse never starts it)
+  const hold = useLongPress(mark)
   const jumpMarker = (dir: 1 | -1) => {
     const m = nextMarker(markers, video.current?.currentTime ?? 0, dir)
     if (m) {
@@ -444,7 +447,15 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
             }
           }}
           onError={onError}
-          onClick={toggle}
+          onPointerDown={hold.onPointerDown}
+          onPointerMove={hold.onPointerMove}
+          onPointerUp={hold.onPointerUp}
+          onPointerCancel={hold.onPointerCancel}
+          onClick={() => {
+            // the lift after a hold is not a tap
+            if (hold.fired.current) hold.fired.current = false
+            else toggle()
+          }}
           className={clsx('absolute inset-0 size-full object-contain transition-opacity ease-in-out', dim ? 'opacity-0' : 'opacity-100')}
           style={{ transitionDuration: `${FADE_MS}ms` }}
         />

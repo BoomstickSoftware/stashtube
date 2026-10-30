@@ -368,8 +368,7 @@ api.patch('/scenes/:id', async (c) => {
 const markerBody = z.object({ seconds: z.number().min(0), title: z.string().trim().max(120).default('') })
 api.post('/scenes/:id/markers', async (c) => {
   const b = parse(markerBody, await c.req.json())
-  await stash.createMarker(c.req.param('id'), b.seconds, b.title)
-  return c.body(null, 204)
+  return c.json(await stash.createMarker(c.req.param('id'), b.seconds, b.title), 201)
 })
 api.put('/scenes/:id/markers/:marker', async (c) => {
   const b = parse(z.object({ title: z.string().trim().max(120) }), await c.req.json())

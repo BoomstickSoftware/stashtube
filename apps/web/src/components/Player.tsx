@@ -4,6 +4,7 @@ import {
   Airplay,
   Bookmark,
   Check,
+  Droplet,
   Maximize,
   Minimize,
   Pause,
@@ -19,7 +20,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { type Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
+import { useAddO, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import type { Status } from '../lib/nowPlaying'
@@ -27,7 +28,7 @@ import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting }
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekPoint } from './SeekBar'
-import { useMediaQuery } from '../lib/hooks'
+import { useLongPress, useMediaQuery } from '../lib/hooks'
 
 const RATES = [0.5, 1, 1.25, 1.5, 2]
 
@@ -49,6 +50,8 @@ const DOUBLE_TAP = 300 // ms between taps that count as a double tap
 // Picture in picture: the standard API, or Safari's presentation modes (iPhone has only those).
 const PIP = typeof document !== 'undefined' && (document.pictureInPictureEnabled || 'webkitSetPresentationMode' in HTMLVideoElement.prototype)
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
+const MARK_BANNER_MS = 5000 // how long "Marked · Undo · O" stays
+const HOLD_HINTS = 3 // videos that show "Hold the picture to mark a moment"
 
 // What the page around the player may ask of it.
 export interface PlayerHandle {
@@ -105,9 +108,54 @@ export function Player({
   const [menuMax, setMenuMax] = useState(0) // px; the menu scrolls inside a short player
   const { data: settings } = useSettings()
   const setIntro = useIntroSkip()
-  const addMarkerNow = useSceneEdits(scene.id).addMarker.mutate
+  const edits = useSceneEdits(scene.id)
+  const addO = useAddO()
+  // The last mark made from the player: a banner offers Undo and "O" for a few seconds. `id`
+  // arrives when Stash answers; x/y is where the finger was (a pulse shows there), -1 for keys.
+  const [marked, setMarked] = useState<{ id: string | null; seconds: number; x: number; y: number } | null>(null)
+  const undoWanted = useRef<number | null>(null) // Undo pressed before Stash answered
+  useEffect(() => {
+    if (!marked) return
+    const t = setTimeout(() => setMarked(null), MARK_BANNER_MS)
+    return () => clearTimeout(t)
+  }, [marked])
   // a marker is a trace of this viewing: a private session drops none
-  const addMarker = (m: { seconds: number; title: string }) => guardWrite(() => addMarkerNow(m))
+  const markAt = (seconds: number, at?: { x: number; y: number }) => {
+    const s = Math.round(seconds * 10) / 10
+    return guardWrite(() => {
+      undoWanted.current = null
+      setMarked({ id: null, seconds: s, x: at?.x ?? -1, y: at?.y ?? -1 })
+      edits.addMarker.mutate(
+        { seconds: s, title: '' },
+        {
+          onSuccess: (m) => {
+            if (undoWanted.current === s) {
+              undoWanted.current = null
+              edits.deleteMarker.mutate(m.id)
+            } else setMarked((cur) => (cur && cur.seconds === s ? { ...cur, id: m.id } : cur))
+          },
+        },
+      )
+    })
+  }
+  const undoMark = () => {
+    if (!marked) return
+    if (marked.id) edits.deleteMarker.mutate(marked.id)
+    else undoWanted.current = marked.seconds
+    setMarked(null)
+  }
+  const markAsO = () => {
+    if (!marked?.id) return
+    addO.mutate(scene.id)
+    edits.renameMarker.mutate({ marker: marked.id, title: 'O' })
+    setMarked(null)
+    setFlash('O')
+  }
+  // "Hold the picture to mark a moment" shows on the first few videos, until a hold happens.
+  const [holdHints, setHoldHints] = useStored('flix.hint.hold', asNumber(0))
+  const [hintEligible] = useState(() => holdHints < HOLD_HINTS)
+  const [hintDone, setHintDone] = useState(false)
+  const hintCounted = useRef(false)
   const introSkip = scene.studio ? settings?.introSkip[scene.studio.id] : undefined
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
@@ -348,7 +396,7 @@ export function Player({
         onNext?.()
         break
       case 'b':
-        if (addMarker({ seconds: Math.round(v.currentTime * 10) / 10, title: '' })) setFlash('Marked')
+        markAt(v.currentTime)
         break
       case ']':
       case '[': {
@@ -390,11 +438,27 @@ export function Player({
   const lastTap = useRef<{ at: number; zone: number } | null>(null)
   const tapTimer = useRef<number>(undefined)
   const tapStart = useRef<{ x: number; y: number } | null>(null)
+  // Hold the picture to mark the moment, without pausing or showing the controls.
+  const hold = useLongPress(
+    (x, y) => {
+      tapStart.current = null // the lift that follows is not a tap
+      if (menu) return
+      const r = wrap.current?.getBoundingClientRect()
+      if (markAt(video.current?.currentTime ?? 0, r ? { x: x - r.left, y: y - r.top } : undefined)) {
+        setHintDone(true)
+        setHoldHints(HOLD_HINTS)
+      }
+    },
+    { enabled: touch && !mini },
+  )
   const onSurfaceTap = (e: React.PointerEvent) => {
     const start = tapStart.current
     tapStart.current = null
     // a swipe that ends on the picture is not a tap
     if (e.pointerType === 'mouse' || !start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) return
+    // a tap closes an open menu or dismisses the mark banner, and does nothing else
+    if (menu) return setMenu(false)
+    if (marked) return setMarked(null)
     const r = e.currentTarget.getBoundingClientRect()
     const zone = e.clientX < r.left + r.width / 3 ? -1 : e.clientX > r.right - r.width / 3 ? 1 : 0
     const now = performance.now()
@@ -455,6 +519,10 @@ export function Player({
           setPlaying(true)
           poke()
           report({ playing: true })
+          if (touch && !mini && hintEligible && !hintCounted.current) {
+            hintCounted.current = true
+            setHoldHints((n) => n + 1)
+          }
         }}
         onPause={() => {
           setPlaying(false)
@@ -485,8 +553,16 @@ export function Player({
       {!mini && (
         <div
           className="absolute inset-0"
-          onPointerDown={(e) => (tapStart.current = { x: e.clientX, y: e.clientY })}
-          onPointerUp={onSurfaceTap}
+          onPointerDown={(e) => {
+            tapStart.current = { x: e.clientX, y: e.clientY }
+            hold.onPointerDown(e)
+          }}
+          onPointerMove={hold.onPointerMove}
+          onPointerCancel={hold.onPointerCancel}
+          onPointerUp={(e) => {
+            hold.onPointerUp()
+            onSurfaceTap(e)
+          }}
           onClick={() => pointerType.current === 'mouse' && toggle()}
           onDoubleClick={() => pointerType.current === 'mouse' && toggleFullscreen()}
         />
@@ -524,7 +600,34 @@ export function Player({
           </button>
         )
       )}
-      {landscapePhone && !fullscreen && barShown && showControls && (
+      {touch && !mini && hintEligible && !hintDone && showControls && !marked && !waiting && (
+        <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
+          Hold the picture to mark a moment
+        </div>
+      )}
+      {marked && !mini && (
+        <>
+          {marked.x >= 0 && (
+            <span key={marked.seconds} className="pulse-once pointer-events-none absolute size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-star" style={{ left: marked.x, top: marked.y }} />
+          )}
+          <div className="absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/80 py-1 pr-1 pl-3 text-[13px] whitespace-nowrap ring-1 ring-white/10 backdrop-blur">
+            <Bookmark size={14} className="text-star" />
+            <span className="text-white/90 tabular-nums">Marked {fmt(marked.seconds)}</span>
+            <button
+              onClick={markAsO}
+              disabled={!marked.id}
+              title="Count an O at this moment"
+              className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 font-semibold hover:bg-sky-500/40 disabled:opacity-50"
+            >
+              <Droplet size={13} /> O
+            </button>
+            <button onClick={undoMark} className="rounded-full bg-white px-3 py-1 font-semibold text-black hover:bg-accent hover:text-white">
+              Undo
+            </button>
+          </div>
+        </>
+      )}
+      {landscapePhone && !fullscreen && barShown && showControls && !marked && (
         <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
           Swipe up for the full screen
         </div>
@@ -627,7 +730,7 @@ export function Player({
                 <button
                   onClick={() => {
                     setMenu(false)
-                    if (addMarker({ seconds: Math.round(time * 10) / 10, title: '' })) setFlash('Marked')
+                    markAt(time)
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
                 >

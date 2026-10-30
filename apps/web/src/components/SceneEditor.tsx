@@ -167,7 +167,7 @@ export function Chapters({ scene, onSeek }: { scene: SceneDetail; onSeek: (t: nu
         <span className="touch:hidden">
           Press <kbd className="rounded bg-raised px-1">b</kbd> while watching
         </span>
-        <span className="hidden touch:inline">Use Mark in the player’s settings menu</span> to mark a moment.
+        <span className="hidden touch:inline">Hold the picture while watching</span> to mark a moment.
       </div>
     )
   }

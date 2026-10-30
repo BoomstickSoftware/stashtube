@@ -15,7 +15,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile, SceneFacets } from '@flix/shared'
+  TagTile, SceneFacets, Marker } from '@flix/shared'
 import { MemoryCache, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
@@ -858,14 +858,18 @@ async function highlightTag(): Promise<string> {
   return c.tagCreate.id
 }
 
-export async function createMarker(sceneId: string, seconds: number, title: string) {
+// Returns the marker, so the player can offer Undo (and an O upgrade) right after.
+export async function createMarker(sceneId: string, seconds: number, title: string): Promise<Marker> {
   const tag = await highlightTag()
   const i: SceneMarkerCreateInput = { scene_id: sceneId, seconds, title, primary_tag_id: tag }
-  await mutate(
-    `mutation($i: SceneMarkerCreateInput!) { sceneMarkerCreate(input: $i) { id } }`,
+  const d = await mutate<Pick<Mutation, 'sceneMarkerCreate'>>(
+    `mutation($i: SceneMarkerCreateInput!) { sceneMarkerCreate(input: $i) { id seconds end_seconds title primary_tag { name } } }`,
     { i },
     [`scene:${sceneId}`],
   )
+  const m = d.sceneMarkerCreate
+  if (!m) throw new StashError('sceneMarkerCreate returned no marker')
+  return { id: m.id, seconds: m.seconds, endSeconds: m.end_seconds ?? null, title: m.title || m.primary_tag?.name || '', tag: m.primary_tag?.name ?? '' }
 }
 
 export async function updateMarker(sceneId: string, id: string, title: string) {

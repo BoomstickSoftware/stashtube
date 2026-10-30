@@ -4,6 +4,7 @@ import type {
   HistoryEntry,
   HomeRow,
   JobStatus,
+  Marker,
   Page,
   SceneCard,
   SceneDetail,
@@ -175,7 +176,7 @@ export function useSceneEdits(id: string) {
       onSuccess: refresh,
     }),
     addMarker: useMutation({
-      mutationFn: (b: { seconds: number; title: string }) => send('POST', `/scenes/${id}/markers`, b),
+      mutationFn: (b: { seconds: number; title: string }) => send<Marker>('POST', `/scenes/${id}/markers`, b),
       onSuccess: refresh,
     }),
     renameMarker: useMutation({
