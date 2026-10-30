@@ -95,6 +95,15 @@ cp .env.example .env             # fill STASH_API_KEY (same key as ~/code/nas/.e
 pnpm dev                         # BFF :8080 + Vite :5173 (proxies /api and /media)
 ```
 
+`.env` is gitignored and only the server's `dev` script reads it (`--env-file-if-exists=../../.env`);
+`pnpm start` expects the variables exported. Without it the BFF exits at startup with
+`STASH_API_KEY is not set`. There is no checked-in copy of the key anywhere: fill it by hand, never by
+copying from another repo's `.env`. On this Mac port 5173 is held by another project's OrbStack container
+(`mylottoplancom-vite-1`), so Vite moves to 5174; pass `--port 5174 --strictPort` so the check scripts
+hit the right one. Without a local BFF, `FLIX_SERVER=http://flix.lan pnpm --filter @flix/web exec vite
+--port 5174 --strictPort` drives the UI against production: use it only with the check scripts, which
+block every write, never for clicking through by hand.
+
 Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `pnpm test`, `docker build -t flix .`
 
 Tests are `node:test` files beside the code (`src/**/*.test.ts`, no test dependencies; the image
@@ -125,6 +134,13 @@ flix's LAN address (192.168.1.152, what flix.lan resolves to) reports that commi
 routes behind every page's first paint (home, tiles, tags, search, facets, performers, studios, the SPA).
 A failure of either phase is posted to the forge Discord channel, naming the phase. Every push goes
 live, so after one, check the run or `kubectl -n flix logs deploy/flix --since=5m` for `warming:` lines.
+
+Data lives in the `flix` database of the shared CNPG cluster `postgres` (namespace `cnpg`, k8s repo
+`infra/cnpg/cluster/init-flix-database.yaml`), not in a PVC of its own. It is covered by that cluster's
+backups: a base backup at 03:00 UTC plus continuous WAL archiving to MinIO (30-day retention), mirrored
+to the NAS `K8sBackups/cnpg/` at 03:40 UTC and shipped to S3 at 10:30 UTC. Details and the restore
+procedure are in the k8s repo, `docs/cnpg.md` and `docs/nas-backups.md`. Ratings, play counts, O-counts
+and markers are Stash's and follow Stash's backups on the NAS. _verified 2026-10-30_
 
 ## Caching (goal: Stash does only real work)
 
