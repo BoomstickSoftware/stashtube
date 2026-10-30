@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene } from '../lib/api'
 import { useClickOutside, useMediaQuery } from '../lib/hooks'
+import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { DeleteScenesDialog } from './DeleteScenes'
 
@@ -86,7 +87,7 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
         {item(<Heart size={16} className={fav ? 'fill-accent text-accent' : ''} />, fav ? 'Remove from Favorites' : 'Add to Favorites', () =>
           toggleFavorite.mutate({ id: scene.id, favorite: !fav }),
         )}
-        {scene.playCount === 0 && item(<CheckCheck size={16} />, 'Mark as watched', () => watched.mutate(scene.id))}
+        {scene.playCount === 0 && item(<CheckCheck size={16} />, 'Mark as watched', () => guardWrite(() => watched.mutate(scene.id)))}
         {item(<EyeOff size={16} />, 'Not interested', () => {
           hide.mutate({ id: scene.id, hidden: true })
           showToast(

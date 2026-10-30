@@ -227,6 +227,20 @@ On touch screens (`Player.tsx`):
   picture); only the bar and buttons inside it do.
 - Speed and "Mark this moment" are in the settings menu (no keyboard on a phone).
 
+## Privacy
+
+Three layers, all browser-side, none needing a login:
+
+- **Discreet mode** (the eye in the header, `flix.discreet` in localStorage): pictures and
+  previews blur until hovered or focused (`html.discreet` rules in `index.css`).
+- **Private session** (the ghost in the header, or Settings → Privacy; `lib/privacy.ts`,
+  `flix.private` in sessionStorage so it ends with the tab or the installed app): nothing watched
+  this visit is recorded. `useWatchAccounting` sends no plays or activity, the station saves no
+  spot, and `guardWrite()` turns the rating, O, marker and "Mark as watched" actions into a
+  toast. Favourites, playlists, Not interested, deletes and metadata edits still go through: they
+  are curation, not a trace of viewing. A new write that records what was watched must go through
+  `guardWrite()` or check `isPrivate()`.
+
 ## Status and next steps
 
 See `docs/plan.md`.

@@ -12,6 +12,7 @@ import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
 import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
+import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
 
@@ -124,15 +125,17 @@ function SceneView({ id }: { id: string }) {
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-full bg-raised px-2 py-1">
-            <Stars value={scene.rating} onChange={(rating) => rate.mutate({ id: scene.id, rating })} />
+            <Stars value={scene.rating} onChange={(rating) => guardWrite(() => rate.mutate({ id: scene.id, rating }))} />
           </div>
           <button
-            onClick={() => {
-              addO.mutate(scene.id)
-              // the moment matters as much as the count: mark it, once the video has been playing
-              const t = playerRef.current?.time() ?? 0
-              if (t > 3) edits.addMarker.mutate({ seconds: Math.round(t * 10) / 10, title: 'O' })
-            }}
+            onClick={() =>
+              guardWrite(() => {
+                addO.mutate(scene.id)
+                // the moment matters as much as the count: mark it, once the video has been playing
+                const t = playerRef.current?.time() ?? 0
+                if (t > 3) edits.addMarker.mutate({ seconds: Math.round(t * 10) / 10, title: 'O' })
+              })
+            }
             title="O counter (also marks this moment)"
             className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
           >

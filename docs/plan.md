@@ -209,6 +209,11 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    searches a performer or studio (library policy, known-issues #40). The 25 MB movie list is cached 2 min
    in memory only. Whisparr's calendar was empty even with `unmonitored=true` (nothing upcoming is ever added
    unmonitored), so the planned "Coming soon" row became the recent-releases row.
+2n. **Private session (2026-10-30)**: the ghost in the header (and Settings → Privacy) records nothing for the rest
+   of the visit: no plays, play time or resume points, no station spot, and the rating, O, marker and "Mark as
+   watched" actions answer with a toast instead. It lives in sessionStorage, so it survives a reload and ends with
+   the tab. Deliberate acts (favourites, playlists, Not interested, deletes, edits) still go through. Verified
+   headless: 30 s of playback attempted no write with it on, three (play, activity ×2) with it off.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -224,7 +229,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    - Mini-player that persists across pages (picture in picture covers the 80/20 for now).
    - Duplicates workbench: Stash's `findDuplicateScenes` groups side by side (resolution, bitrate, size),
      the worse copy pre-selected.
-   - Private session (no history).
+   - Done 2026-10-30: private session (2n).
    - PIN lock after idle.
    - Done 2026-10-30: Whisparr integration (2l). Not Chromecast: the user has AirPlay.
    - Done 2026-10-29: typed Stash layer. `src/stash.schema.ts` is generated from Stash's schema

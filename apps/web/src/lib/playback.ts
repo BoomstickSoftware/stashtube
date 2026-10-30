@@ -4,6 +4,7 @@ import type { Marker } from '@flix/shared'
 import type Hls from 'hls.js'
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { addPlay, saveActivity } from './api'
+import { isPrivate } from './privacy'
 
 export const COUNT_PLAY_AFTER = 20 // seconds watched before a video counts as played
 const SAVE_EVERY = 15 // seconds of playback between activity saves
@@ -70,7 +71,8 @@ export function tickLabel({ markers }: Tick): string {
 // Seconds watched, from the element's own clock: a jump of more than two seconds is a seek
 // and does not count. After COUNT_PLAY_AFTER seconds the scene counts as played; every
 // SAVE_EVERY seconds, on pause, on leaving and on tab close the time and resume point go to
-// Stash. `resume: false` (a station's Moments mode) records nothing: sampling is not watching.
+// Stash. `resume: false` (a station's Moments mode) records nothing: sampling is not watching,
+// and neither does a private session (lib/privacy.ts).
 export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sceneId: string | undefined, { resume = true } = {}) {
   const opts = useRef({ sceneId, resume })
   useLayoutEffect(() => {
@@ -81,6 +83,7 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
     const s = { id: sceneId, last: null as number | null, watched: 0, unsaved: 0, counted: false }
     const flush = () => {
       const v = video.current
+      if (isPrivate()) s.unsaved = 0 // watched in private: forgotten, not saved later
       if (!v || !s.id || !opts.current.resume || s.unsaved < 1) return
       const end = v.duration && v.currentTime > v.duration - 15
       saveActivity(s.id, end ? 0 : v.currentTime, s.unsaved).catch(() => {})
@@ -94,7 +97,7 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
         const d = t - s.last
         s.watched += d
         s.unsaved += d
-        if (opts.current.resume && !s.counted && s.watched >= COUNT_PLAY_AFTER) {
+        if (opts.current.resume && !s.counted && s.watched >= COUNT_PLAY_AFTER && !isPrivate()) {
           s.counted = true
           addPlay(s.id).catch(() => {})
         }

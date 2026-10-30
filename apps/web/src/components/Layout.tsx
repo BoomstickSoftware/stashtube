@@ -2,11 +2,12 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, Eye, EyeOff, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
+import { setPrivate, useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
 import { Login } from '../pages/Login'
 import { SearchBox } from './SearchBox'
@@ -40,6 +41,8 @@ export function Layout(): JSX.Element {
   useEffect(() => {
     document.documentElement.classList.toggle('discreet', discreet)
   }, [discreet])
+  // Private session: nothing watched this visit is recorded (lib/privacy.ts). Ends with the tab.
+  const priv = useIsPrivate()
   const router = useRouter()
   const atStart = useRouterState({ select: (s) => !(s.location.state.__TSR_index > 0) }) // first entry of this session
   const canGoBack = standalone && path !== '/' && !atStart
@@ -66,7 +69,7 @@ export function Layout(): JSX.Element {
     // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
     // hidden, keeps the sticky header working)
     <div className="min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
-      <header className="sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl">
+      <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
           {canGoBack && (
             <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" aria-label="Back">
@@ -81,6 +84,7 @@ export function Layout(): JSX.Element {
             </span>
             flix
           </Link>
+          {priv && <span className="hidden rounded-full bg-violet-400/15 px-2 text-[11px] leading-5 font-semibold text-violet-300 sm:inline">Private</span>}
           <nav className="hidden items-center gap-1 md:flex">
             {nav.slice(1).map((n) => (
               <Link
@@ -112,6 +116,15 @@ export function Layout(): JSX.Element {
             title={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
           >
             {discreet ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+          <button
+            onClick={() => setPrivate(!priv)}
+            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg', priv ? 'text-violet-300' : 'text-muted')}
+            aria-pressed={priv}
+            aria-label={priv ? 'End the private session' : 'Private session: record nothing this visit'}
+            title={priv ? 'Private session on: nothing is recorded. Click to end it' : 'Private session: record nothing this visit'}
+          >
+            <Ghost size={20} />
           </button>
           <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />

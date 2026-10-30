@@ -23,6 +23,7 @@ import { useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
+import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekPoint } from './SeekBar'
 import { useMediaQuery } from '../lib/hooks'
@@ -96,7 +97,9 @@ export function Player({
   const [menuMax, setMenuMax] = useState(0) // px; the menu scrolls inside a short player
   const { data: settings } = useSettings()
   const setIntro = useIntroSkip()
-  const addMarker = useSceneEdits(scene.id).addMarker.mutate
+  const addMarkerNow = useSceneEdits(scene.id).addMarker.mutate
+  // a marker is a trace of this viewing: a private session drops none
+  const addMarker = (m: { seconds: number; title: string }) => guardWrite(() => addMarkerNow(m))
   const introSkip = scene.studio ? settings?.introSkip[scene.studio.id] : undefined
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
@@ -331,8 +334,7 @@ export function Player({
         onNext?.()
         break
       case 'b':
-        addMarker({ seconds: Math.round(v.currentTime * 10) / 10, title: '' })
-        setFlash('Marked')
+        if (addMarker({ seconds: Math.round(v.currentTime * 10) / 10, title: '' })) setFlash('Marked')
         break
       case ']':
       case '[': {
@@ -597,9 +599,8 @@ export function Player({
               >
                 <button
                   onClick={() => {
-                    addMarker({ seconds: Math.round(time * 10) / 10, title: '' })
                     setMenu(false)
-                    setFlash('Marked')
+                    if (addMarker({ seconds: Math.round(time * 10) / 10, title: '' })) setFlash('Marked')
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
                 >

@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
 import { PeopleControls } from '../components/People'
+import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
 import { Button, Chip, Switch } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
@@ -72,6 +73,8 @@ export function Settings(): JSX.Element {
       <PlaybackSetting />
 
       <PanicSetting />
+
+      <PrivacySetting />
 
       <section>
         <h2 className="mb-3 text-lg font-bold">Cache</h2>

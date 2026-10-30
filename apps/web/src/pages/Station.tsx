@@ -38,6 +38,7 @@ import {
 } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
+import { guardWrite, isPrivate } from '../lib/privacy'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import {
   loadPrefs,
@@ -172,7 +173,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const spot = useRef<{ id: string; t: number } | null>(null)
   const saveSpot = useCallback(() => {
     const s = spot.current
-    if (s) saveStationResume(config.key, s.id, s.t).catch(() => {})
+    if (s && !isPrivate()) saveStationResume(config.key, s.id, s.t).catch(() => {})
   }, [config.key])
   useEffect(() => {
     addEventListener('pagehide', saveSpot)
@@ -345,7 +346,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   }
   const mark = () => {
     if (!scene) return
-    edits.addMarker.mutate({ seconds: Math.round((video.current?.currentTime ?? 0) * 10) / 10, title: '' })
+    if (!guardWrite(() => edits.addMarker.mutate({ seconds: Math.round((video.current?.currentTime ?? 0) * 10) / 10, title: '' }))) return
     setFlash('Marked')
   }
   const jumpMarker = (dir: 1 | -1) => {
