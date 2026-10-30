@@ -6,3 +6,6 @@ process.env.DATABASE_URL ??= 'postgres://test@127.0.0.1:1/test'
 process.env.CACHE_DIR ??= `${process.cwd()}/.cache-test`
 process.env.CHANGE_POLL_SECONDS ??= '0'
 process.env.WARM_AT_UTC ??= ''
+// A Whisparr that is "configured" so its module loads; tests replace fetch and never reach it.
+process.env.WHISPARR_URL ??= 'http://whisparr.test'
+process.env.WHISPARR_API_KEY ??= 'test'

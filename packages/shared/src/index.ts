@@ -412,6 +412,26 @@ export interface JobStatus {
 // What this server can do beyond browsing (depends on its configuration).
 export interface Features {
   deleteScenes: boolean // Whisparr is configured, so a scene can be deleted with its file
+  whisparr: boolean // and scenes it knows but has not downloaded can be listed and fetched one at a time
+}
+
+// A scene Whisparr knows about that is not in the library (yet). `state` follows the download:
+// available (nothing happening), grabbed (sent to the download client in the last two days),
+// downloading (in Whisparr's queue), downloaded (has a file; shown only while the state settles).
+export type WantedState = 'available' | 'grabbed' | 'downloading' | 'downloaded'
+export interface WantedScene {
+  whisparrId: number
+  title: string
+  date: string | null // YYYY-MM-DD
+  studio: string | null
+  performers: string[]
+  image: string | null // StashDB's cover, served from its CDN
+  runtime: number | null // minutes
+  state: WantedState
+}
+export interface WhisparrActivity {
+  downloading: WantedScene[]
+  grabbed: WantedScene[]
 }
 
 export interface DeleteResult {

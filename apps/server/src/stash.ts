@@ -1170,3 +1170,26 @@ export async function allArtwork(): Promise<string[]> {
     .map(mediaUrl)
     .filter((u): u is string => !!u)
 }
+
+// --- Whisparr bridge ----------------------------------------------------------------------
+
+// A performer's or studio's StashDB ids (several when StashDB merged duplicates): the key
+// Whisparr files its scenes under.
+export async function stashIdsOf(kind: 'performer' | 'studio', id: string): Promise<string[]> {
+  if (kind === 'performer') {
+    const d = await query<Pick<Query, 'findPerformer'>>(`query($id: ID!) { findPerformer(id: $id) { stash_ids { stash_id } } }`, { id }, ['performer', `performer:${id}`])
+    return d.findPerformer?.stash_ids.map((s) => s.stash_id) ?? []
+  }
+  const d = await query<Pick<Query, 'findStudio'>>(`query($id: ID!) { findStudio(id: $id) { stash_ids { stash_id } } }`, { id }, ['studio', `studio:${id}`])
+  return d.findStudio?.stash_ids.map((s) => s.stash_id) ?? []
+}
+
+// The favourite performers' StashDB ids, for "new from your favourites" that is not downloaded.
+export async function favoritePerformerStashIds(): Promise<string[]> {
+  const d = await query<Pick<Query, 'findPerformers'>>(
+    `{ findPerformers(filter: { per_page: -1 }, performer_filter: { filter_favorites: true }) { performers { stash_ids { stash_id } } } }`,
+    {},
+    ['performer'],
+  )
+  return d.findPerformers.performers.flatMap((p) => p.stash_ids.map((s) => s.stash_id))
+}

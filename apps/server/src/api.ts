@@ -9,6 +9,7 @@ import { NO_AFFINITY, rankFeatured, sanitizeWeights, type Affinity, type Candida
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
+import * as whisparr from './whisparr.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 import { daySeed } from './stash.ts'
@@ -374,7 +375,7 @@ api.post('/scenes/delete', async (c) => {
   return c.json(results)
 })
 
-api.get('/features', (c) => c.json({ deleteScenes: !!config.whisparr } satisfies Features))
+api.get('/features', (c) => c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr } satisfies Features))
 
 api.post('/scenes/:id/identify', async (c) => c.json({ jobId: await stash.identifyScene(c.req.param('id')) }, 202))
 api.get('/jobs/:id', async (c) => c.json((await stash.jobStatus(c.req.param('id'))) ?? notFound()))
@@ -597,4 +598,24 @@ api.put('/blocklist/:kind/:id', async (c) => {
 api.delete('/blocklist/:kind/:id', async (c) => {
   await unblock(parse(kind, c.req.param('kind')), c.req.param('id'))
   return c.body(null, 204)
+})
+
+// --- Whisparr: scenes it knows but has not downloaded, and one explicit fetch at a time ----
+// Nothing here monitors or searches a performer or a studio (library policy; see whisparr.ts).
+
+api.get('/whisparr/performer/:id', async (c) => c.json(config.whisparr ? await whisparr.wanted({ performers: await stash.stashIdsOf('performer', c.req.param('id')) }) : []))
+api.get('/whisparr/studio/:id', async (c) => c.json(config.whisparr ? await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }) : []))
+api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await whisparr.recentWanted(await stash.favoritePerformerStashIds()) : []))
+api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
+
+api.post('/whisparr/get/:id', async (c) => {
+  if (!config.whisparr) throw new HTTPException(404, { message: 'Whisparr is not configured' })
+  const raw = c.req.param('id')
+  if (!/^\d{1,9}$/.test(raw)) throw new HTTPException(400, { message: 'one Whisparr scene id is required' })
+  try {
+    return c.json(await whisparr.getScene(Number(raw)))
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
+    throw e
+  }
 })

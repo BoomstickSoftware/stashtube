@@ -8,7 +8,8 @@ import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
-import { useHome, useRowMutations, useStationResumes } from '../lib/api'
+import { WantedRow } from '../components/WantedRow'
+import { useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -66,8 +67,17 @@ export function Home(): JSX.Element {
           <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
         ),
       )}
+      <NotDownloaded />
     </div>
   )
+}
+
+// Recent releases from favourite performers that Whisparr knows and the library lacks. Only
+// with Whisparr configured, and only when there are a few, like the other rows.
+function NotDownloaded() {
+  const { data } = useWhisparrNew()
+  if (!data || data.length < 3) return null
+  return <WantedRow title="New from your favourites, not downloaded" hint="Get fetches one scene" items={data} />
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one

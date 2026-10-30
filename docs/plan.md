@@ -201,6 +201,14 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
 2k. **`lib/api.ts` split by domain (2026-10-30)**: `lib/api/` holds client, scenes, people, playlists, stations,
    home and settings modules behind an `index.ts` that re-exports them, so every `from '../lib/api'` import
    still works. A pure refactor: the export list, all 66 query keys and the built chunks are unchanged.
+2l. **Whisparr from flix (2026-10-30)**: performer and studio pages get a "Not in your library yet" shelf of the
+   scenes Whisparr lists for them without a file (matched by StashDB id, newest first, with the download state
+   from Whisparr's queue and last grabs); Home gets "New from your favourites, not downloaded" (recent releases
+   from favourite performers, shown from 3 items). Each card has one button, Get, which monitors that scene and
+   searches for it alone; the server refuses any other id shape and feature films, and nothing monitors or
+   searches a performer or studio (library policy, known-issues #40). The 25 MB movie list is cached 2 min
+   in memory only. Whisparr's calendar was empty even with `unmonitored=true` (nothing upcoming is ever added
+   unmonitored), so the planned "Coming soon" row became the recent-releases row.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -218,8 +226,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      the worse copy pre-selected.
    - Private session (no history).
    - PIN lock after idle.
-   - Chromecast.
-   - Whisparr integration: follow = monitor, a Coming-soon row, download state.
+   - Done 2026-10-30: Whisparr integration (2l). Not Chromecast: the user has AirPlay.
    - Done 2026-10-29: typed Stash layer. `src/stash.schema.ts` is generated from Stash's schema
      (`stash.schema.graphql`, graphql-codegen); `Raw = any` is gone from `stash.ts`. Filter inputs are exact,
      so a criterion Stash lacks fails typecheck. Object types describe responses whole, but each query

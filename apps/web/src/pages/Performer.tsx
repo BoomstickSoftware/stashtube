@@ -7,6 +7,7 @@ import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice, FollowButton, Stat } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
+import { WantedShelf } from '../components/WantedRow'
 import { useFavoritePerformer, usePerformer, useRatePerformer } from '../lib/api'
 import { age, ageAt, date } from '../lib/format'
 
@@ -80,6 +81,7 @@ export function PerformerPage(): JSX.Element {
         )}
       </section>
       <BlockedNotice kind="performer" id={id} />
+      <WantedShelf kind="performer" id={id} />
       <SceneBrowser
         query={query}
         base={{ performers: id, unblocked: undefined }}

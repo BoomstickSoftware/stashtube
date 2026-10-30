@@ -5,6 +5,7 @@ import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice, FollowButton } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, ErrorBox, Spinner } from '../components/ui'
+import { WantedShelf } from '../components/WantedRow'
 import { useFavoriteStudio, useStudio } from '../lib/api'
 
 const route = getRouteApi('/studio/$id')
@@ -51,6 +52,7 @@ export function StudioPage(): JSX.Element {
         </div>
       </section>
       <BlockedNotice kind="studio" id={id} />
+      <WantedShelf kind="studio" id={id} />
       <SceneBrowser
         query={query}
         base={{ studios: id }}

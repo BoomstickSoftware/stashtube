@@ -43,7 +43,7 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/delete'] })
+await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/delete', '*/api/whisparr/get/*'] })
 const desktop = !!process.env.DESKTOP
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: desktop ? 1 : 2, mobile: !desktop })
 if (!desktop) {
