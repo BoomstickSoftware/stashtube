@@ -1,8 +1,9 @@
 import type { Marker } from '@flix/shared'
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { duration as fmt } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
+import { groupMarkers, tickLabel, type Tick } from '../lib/playback'
 import { SpriteThumb } from './SpriteThumb'
 
 type Pos = { x: number; t: number; w: number }
@@ -53,28 +54,44 @@ export function SeekBar({
     onPoint?.(p ? { t: p.t, scrubbing: !!s } : null)
   }
 
+  const ticks = useMemo(() => groupMarkers(markers, dur), [markers, dur])
+  // Where a touch started, and the tick under it if any: a tap on a tick seeks to the marker
+  // itself, a drag that starts there scrubs as usual.
+  const down = useRef<{ x: number; tick: Tick | null }>({ x: 0, tick: null })
+
   const timeAt = (clientX: number) => {
     const r = bar.current!.getBoundingClientRect()
     const x = Math.max(0, Math.min(r.width, clientX - r.left))
     return { x, t: (x / r.width) * (dur || 0), w: r.width }
   }
+  // The pointer position, snapped to the tick whose pad it is over.
+  const pointAt = (e: React.PointerEvent): Pos & { tick: Tick | null } => {
+    const p = timeAt(e.clientX)
+    const pad = (e.target as HTMLElement).closest?.('[data-tick]') as HTMLElement | null
+    const tick = pad ? (ticks[Number(pad.dataset.tick)] ?? null) : null
+    return tick ? { ...p, t: tick.t, x: (tick.t / (dur || 1)) * p.w, tick } : { ...p, tick: null }
+  }
   const onDown = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId)
-    const p = timeAt(e.clientX)
+    const p = pointAt(e)
+    down.current = { x: e.clientX, tick: p.tick }
     show(null, p)
     if (e.pointerType === 'mouse') onSeek(p.t)
   }
   const onMove = (e: React.PointerEvent) => {
-    const p = timeAt(e.clientX)
     if (scrub) {
+      const p = timeAt(e.clientX)
       show(null, p)
       if (e.pointerType === 'mouse') onSeek(p.t)
     } else if (e.pointerType === 'mouse') {
-      show(p, null)
+      show(pointAt(e), null)
     }
   }
   const onUp = (e: React.PointerEvent) => {
-    if (scrub && e.pointerType !== 'mouse') onSeek(timeAt(e.clientX).t)
+    if (scrub && e.pointerType !== 'mouse') {
+      const { x, tick } = down.current
+      onSeek(tick && Math.abs(e.clientX - x) < 8 ? tick.t : timeAt(e.clientX).t)
+    }
     show(null, null)
   }
 
@@ -103,8 +120,15 @@ export function SeekBar({
         ))}
         <div className="absolute inset-y-0 left-0 rounded-full bg-white/35" style={{ width: pct(buffered) }} />
         <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: pct(shown) }} />
-        {markers.map((m) => (
-          <div key={m.id} className="absolute -inset-y-0.5 w-1 -translate-x-1/2 rounded-full bg-star" style={{ left: pct(m.seconds) }} />
+        {ticks.map((k, i) => (
+          <div key={k.markers[0].id} className="absolute inset-y-0 -translate-x-1/2" style={{ left: pct(k.t) }}>
+            <div className={clsx('absolute -inset-y-0.5 left-1/2 -translate-x-1/2 rounded-full', k.o ? 'w-0.5 bg-white/80' : 'w-1 bg-star')} />
+            {k.markers.length > 1 && (
+              <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[9px] leading-none font-semibold text-star tabular-nums">{k.markers.length}</span>
+            )}
+            {/* the tap target: a tap here seeks to the marker, not to where the finger landed */}
+            <div data-tick={i} className="absolute top-1/2 left-1/2 size-6 -translate-x-1/2 -translate-y-1/2" />
+          </div>
         ))}
         {hover && !scrub && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: hover.x }} />}
         <div
@@ -122,8 +146,12 @@ export function SeekBar({
         >
           {sprites.length > 0 && <SpriteThumb cues={sprites} t={point.t} width={thumbW} className="overflow-hidden rounded-lg ring-2 ring-white/90" />}
           {(() => {
-            const near = markers.find((m) => Math.abs(m.seconds - point.t) < (dur || 1) * 0.01)
-            return near ? <span className="mt-1 max-w-48 truncate rounded bg-star px-1.5 py-0.5 text-xs font-semibold text-black">{near.title || 'Marker'}</span> : null
+            const near = ticks.find((k) => Math.abs(k.t - point.t) < (dur || 1) * 0.01)
+            return near ? (
+              <span className={clsx('mt-1 max-w-48 truncate rounded px-1.5 py-0.5 text-xs font-semibold', near.o ? 'bg-white/90 text-black' : 'bg-star text-black')}>
+                {tickLabel(near)}
+              </span>
+            ) : null
           })()}
           <span className="mt-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium tabular-nums">{fmt(point.t)}</span>
         </div>

@@ -172,6 +172,10 @@ source (direct, or HLS through hls.js), the watch accounting (a play after 20 s,
 resume point saved to Stash every 15 s and on pause, end, leave and tab close), the key guard,
 marker jumps and the flash label. A station in Full mode records plays and resume points like
 the video page (so Continue, History and Most played see it); Moments mode records nothing.
+The seek bar (`SeekBar.tsx`, both players) draws markers as ticks: `groupMarkers` in
+`lib/playback.ts` merges markers within 1% of the duration into one tick with a count, O-counter
+marks (title `O`) draw thin and white, named markers yellow. Hovering a tick shows its frame and
+`tickLabel` (title · tag); clicking or tapping a tick's 24 px pad seeks to the marker itself.
 
 On touch screens (`Player.tsx`):
 - A tap shows or hides the controls; it does not pause. A double tap on the left or right

@@ -38,6 +38,35 @@ export function nextMarker(markers: Marker[], t: number, dir: 1 | -1): Marker | 
   return dir > 0 ? markers.find((m) => m.seconds > t + 1) : [...markers].reverse().find((m) => m.seconds < t - 2)
 }
 
+// One tick on the seek bar: the markers within 1% of the duration of each other, so a cluster
+// of O presses reads as one tick with a count rather than a smear. `o` when every one of them
+// is an O-counter mark (the player titles those 'O'); those draw thinner than a named marker.
+export interface Tick {
+  t: number
+  markers: Marker[]
+  o: boolean
+}
+
+export function groupMarkers(markers: Marker[], dur: number): Tick[] {
+  const near = (dur || 1) * 0.01
+  const ticks: Tick[] = []
+  for (const m of [...markers].sort((a, b) => a.seconds - b.seconds)) {
+    const last = ticks.at(-1)
+    if (last && m.seconds - last.markers[0].seconds < near) {
+      last.markers.push(m)
+      last.o &&= m.title === 'O'
+    } else ticks.push({ t: m.seconds, markers: [m], o: m.title === 'O' })
+  }
+  return ticks
+}
+
+// What the hover card says about a tick: the marker's title and tag, or how many there are.
+export function tickLabel({ markers }: Tick): string {
+  if (markers.length > 1) return `${markers.length} markers`
+  const [m] = markers
+  return m.title && m.tag && m.title !== m.tag ? `${m.title} · ${m.tag}` : m.title || m.tag || 'Marker'
+}
+
 // Seconds watched, from the element's own clock: a jump of more than two seconds is a seek
 // and does not count. After COUNT_PLAY_AFTER seconds the scene counts as played; every
 // SAVE_EVERY seconds, on pause, on leaving and on tab close the time and resume point go to

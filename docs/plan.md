@@ -187,6 +187,12 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    source and `featured.ts` imported the defaults from `@flix/shared`; the Dockerfile now copies
    `packages/shared/src` into the runtime stage, so the defaults have one home (shared) and value imports
    from there are fine. `imports.test.ts` pins that.
+2i. **Markers on the seek bar (2026-10-30)**: `SeekBar` draws every marker as a tick (named ones yellow, the
+   player's O marks thin and white; markers within 1% of the duration merge into one tick with a count,
+   `groupMarkers` in `lib/playback.ts`). Hovering a tick shows its sprite frame with the title and tag;
+   a click or a tap on the tick's 24 px pad seeks to the marker itself rather than where the pointer
+   landed, and a drag that starts there still scrubs. `[` and `]` are unchanged and agree with the ticks.
+   Verified with fake markers patched into the scene response (the library has none yet).
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -212,7 +218,6 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
      selects only its fragment's fields: anything else is `undefined` at runtime whatever the type says.
 6. **Later**:
    - TPDB as a second stash-box endpoint in Stash.
-   - Markers / chapters on the seek bar.
    - A PWA, Chromecast.
    - A hosted endpoint behind strong auth (e.g. Cloudflare Access or Tailscale Funnel with an
      identity provider), not just the app password.
