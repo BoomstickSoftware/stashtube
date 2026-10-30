@@ -30,6 +30,13 @@ apps/web        Vite + React 19 + Tailwind 4 + TanStack Router/Query
                   /stations/new outside /stations); search validation lives here, the page in src/pages/.
                   The Vite plugin writes src/routeTree.gen.ts (committed) and splits every page into
                   its own chunk, loaded on intent.
+  src/lib/api/    the API hooks, one module per domain, re-exported by index.ts (pages import '../lib/api'):
+                  client.ts (fetch, ApiError, qs, the QueryClient and PERSISTED keys; imports no domain module),
+                  scenes.ts (lists, one scene, search, rating/O/plays, hiding, edits, markers, history, delete),
+                  people.ts (performers, studios, tags, tiles, their favourites, blocklist, intro skip),
+                  playlists.ts (playlists, the Favorites heart, bulk actions), stations.ts (stations, resume,
+                  previews), home.ts (home rows, Featured preview, pinned rows), settings.ts (settings,
+                  features, admin cache, login)
 packages/shared API contract types and the few values both sides need (Featured defaults); shipped in the image
 ```
 
@@ -124,7 +131,7 @@ live, so after one, check the run or `kubectl -n flix logs deploy/flix --since=5
 | Layer | Where | What | Freshness |
 |---|---|---|---|
 | Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), saved to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot; entries tagged `VOLATILE` (facet and tag-tile working sets, hundreds of KB per filter set) stay in memory only and are re-warmed | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s |
-| Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api.ts`) | home feed, settings, favourites, playlists, blocklist | up to 7 days; painted at once on a cold open, then refetched in the background |
+| Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api/client.ts`) | home feed, settings, favourites, playlists, blocklist | up to 7 days; painted at once on a cold open, then refetched in the background |
 | Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`), metadata kept in memory after first use so a hit costs no file reads | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | URLs with Stash's version stamp `?t=` (screenshots, images) never expire, since a changed image gets a new URL (browser: 1 year, immutable); the rest (previews, sprites, VTTs) TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120); pre-fetched in full daily at `WARM_AT_UTC` (6) and from Settings › Cache (`warm.ts`, 4 at a time, fresh files skipped; sprites found through each VTT) |
 | Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
 
