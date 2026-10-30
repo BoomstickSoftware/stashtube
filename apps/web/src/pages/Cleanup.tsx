@@ -1,7 +1,7 @@
 import type { SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
-import { getRouteApi } from '@tanstack/react-router'
-import { Trash2 } from 'lucide-react'
+import { getRouteApi, Link } from '@tanstack/react-router'
+import { Copy, Trash2 } from 'lucide-react'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, Empty } from '../components/ui'
 import { useFeatures } from '../lib/api'
@@ -15,7 +15,6 @@ const lists: { label: string; hint: string; query: SceneQuery }[] = [
   { label: 'Never watched', hint: 'added 30+ days ago, never played', query: { unwatched: true, olderDays: 30 } },
   { label: 'Rated ★2 or less', hint: 'rated, at most two stars', query: { maxRating: 2 } },
   { label: 'Not on StashDB', hint: 'no StashDB match: often mislabelled', query: { unmatched: true } },
-  { label: 'Possible duplicates', hint: 'look alike by perceptual hash', query: { duplicates: true } },
 ]
 const cleared: SceneQuery = { maxHeight: undefined, maxRating: undefined, unmatched: undefined, olderDays: undefined, duplicates: undefined, unwatched: undefined }
 
@@ -41,6 +40,13 @@ export function Cleanup(): JSX.Element {
               <span title={l.hint}>{l.label}</span>
             </Chip>
           ))}
+          <Link
+            to="/duplicates"
+            title="the same video more than once, side by side, the worse copy pre-selected"
+            className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-[13px] whitespace-nowrap text-amber-300 ring-1 ring-amber-500/30 transition-colors hover:bg-amber-500/25"
+          >
+            <Copy size={13} /> Duplicates
+          </Link>
         </div>
       </section>
       {features && !features.deleteScenes ? (

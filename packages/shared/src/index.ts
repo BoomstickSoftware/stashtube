@@ -409,6 +409,23 @@ export interface JobStatus {
   error: string | null
 }
 
+// Duplicates workbench: scenes Stash's perceptual hashes say are the same video, grouped. Each
+// group names the copy to keep and pre-selects the rest; the file facts are what that choice
+// is made on (size, width, height and duration are already on the card).
+export interface DuplicateScene extends SceneCard {
+  file: { path: string; bitrate: number; videoCodec: string; framerate: number }
+}
+export interface DuplicateGroup {
+  scenes: DuplicateScene[]
+  keep: string // the best copy's id
+  suggested: string[] // every other id, pre-selected for deletion
+}
+export interface Duplicates {
+  distance: number // phash distance: 0 exact
+  durationDiff: number // seconds, -1 for any
+  groups: DuplicateGroup[]
+}
+
 // What this server can do beyond browsing (depends on its configuration).
 export interface Features {
   deleteScenes: boolean // Whisparr is configured, so a scene can be deleted with its file

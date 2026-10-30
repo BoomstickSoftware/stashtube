@@ -1,10 +1,11 @@
-import type { DeleteResult, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
+import type { DeleteResult, Duplicates, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
+import { toGroup } from './duplicates.ts'
 import { NO_AFFINITY, rankFeatured, sanitizeWeights, type Affinity, type Candidate } from './featured.ts'
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
@@ -102,6 +103,20 @@ api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(scen
 api.get('/scenes/hidden', async (c) => c.json(await stash.hiddenScenes()))
 
 api.get('/home', async (c) => c.json(await homeRows(seedParam(c.req.query('seed')))))
+
+// --- duplicates -----------------------------------------------------------------
+
+// Stash's phash groups with the copy to keep chosen (duplicates.ts). Includes blocked and
+// hidden videos: this is library hygiene, like /cleanup.
+const duplicatesQuery = z.object({
+  distance: z.coerce.number().int().min(0).max(16).default(0),
+  durationDiff: z.coerce.number().min(-1).default(-1),
+})
+api.get('/duplicates', async (c) => {
+  const q = parse(duplicatesQuery, c.req.query())
+  const groups = await stash.findDuplicateScenes(q.distance, q.durationDiff)
+  return c.json<Duplicates>({ ...q, groups: groups.map(toGroup) })
+})
 
 // --- featured -------------------------------------------------------------------
 

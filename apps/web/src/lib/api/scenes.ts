@@ -1,5 +1,6 @@
 import type {
   DeleteResult,
+  Duplicates,
   HistoryEntry,
   HomeRow,
   JobStatus,
@@ -18,6 +19,15 @@ import { get, invalidateLists, qs, send } from './client'
 // hiding, edits, markers, history, deletion).
 
 // --- reads ----------------------------------------------------------------------
+
+// Phash duplicate groups for the workbench; durationDiff -1 means any length difference.
+export function useDuplicates(distance: number, durationDiff: number) {
+  return useQuery({
+    queryKey: ['duplicates', distance, durationDiff],
+    queryFn: () => get<Duplicates>(`/duplicates${qs({ distance, durationDiff })}`),
+    staleTime: 5 * 60_000,
+  })
+}
 
 export function useScenes(q: SceneQuery, perPage = 40) {
   return useInfiniteQuery({

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as CleanupRouteImport } from './routes/cleanup'
 import { Route as ContinueRouteImport } from './routes/continue'
+import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as PerformersRouteImport } from './routes/performers'
 import { Route as PlaylistsRouteImport } from './routes/playlists'
@@ -48,6 +49,11 @@ const CleanupRoute = CleanupRouteImport.update({
 const ContinueRoute = ContinueRouteImport.update({
   id: '/continue',
   path: '/continue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DuplicatesRoute = DuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRoute
   '/cleanup': typeof CleanupRoute
   '/continue': typeof ContinueRoute
+  '/duplicates': typeof DuplicatesRoute
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRoute
   '/cleanup': typeof CleanupRoute
   '/continue': typeof ContinueRoute
+  '/duplicates': typeof DuplicatesRoute
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRoute
   '/cleanup': typeof CleanupRoute
   '/continue': typeof ContinueRoute
+  '/duplicates': typeof DuplicatesRoute
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/cleanup'
     | '/continue'
+    | '/duplicates'
     | '/history'
     | '/performers'
     | '/playlists'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/cleanup'
     | '/continue'
+    | '/duplicates'
     | '/history'
     | '/performers'
     | '/playlists'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/cleanup'
     | '/continue'
+    | '/duplicates'
     | '/history'
     | '/performers'
     | '/playlists'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRoute
   CleanupRoute: typeof CleanupRoute
   ContinueRoute: typeof ContinueRoute
+  DuplicatesRoute: typeof DuplicatesRoute
   HistoryRoute: typeof HistoryRoute
   PerformersRoute: typeof PerformersRoute
   PlaylistsRoute: typeof PlaylistsRoute
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       path: '/continue'
       fullPath: '/continue'
       preLoaderRoute: typeof ContinueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/duplicates': {
+      id: '/duplicates'
+      path: '/duplicates'
+      fullPath: '/duplicates'
+      preLoaderRoute: typeof DuplicatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRoute,
   CleanupRoute: CleanupRoute,
   ContinueRoute: ContinueRoute,
+  DuplicatesRoute: DuplicatesRoute,
   HistoryRoute: HistoryRoute,
   PerformersRoute: PerformersRoute,
   PlaylistsRoute: PlaylistsRoute,

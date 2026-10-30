@@ -1,6 +1,7 @@
 // Stash GraphQL client and the mapping from Stash shapes to the flix API contract.
 // Everything Stash-specific stays in this file.
 import type {
+  DuplicateScene,
   HistoryEntry,
   JobStatus,
   PerformerCard,
@@ -526,6 +527,26 @@ export async function findScenes(filter: FindFilterType, sceneFilter: SceneFilte
     ['scene', ...activityTags(filter, sceneFilter)],
   )
   return { total: d.findScenes.count, items: d.findScenes.scenes.map(toSceneCard) }
+}
+
+// Perceptual-hash duplicates for the workbench, grouped as Stash groups them. Every scene is
+// included, blocked and hidden ones too: this is library hygiene, not browsing. Stash answers
+// in well under a second for 2.2k scenes, so the normal data TTL (dropped on any scene change)
+// is plenty.
+export async function findDuplicateScenes(distance: number, durationDiff: number): Promise<DuplicateScene[][]> {
+  const d = await query<Pick<Query, 'findDuplicateScenes'>>(
+    `query($d: Int, $t: Float) {
+      findDuplicateScenes(distance: $d, duration_diff: $t) { ${SCENE_CARD} files { video_codec bit_rate frame_rate } }
+    }`,
+    { d: distance, t: durationDiff },
+    ['scene'],
+  )
+  return d.findDuplicateScenes.map((group) =>
+    group.map((s) => {
+      const f = file(s)
+      return { ...toSceneCard(s), file: { path: f?.path ?? '', bitrate: f?.bit_rate ?? 0, videoCodec: f?.video_codec ?? '', framerate: f?.frame_rate ?? 0 } }
+    }),
+  )
 }
 
 export async function findScenesByIds(sceneIds: string[]): Promise<SceneCard[]> {

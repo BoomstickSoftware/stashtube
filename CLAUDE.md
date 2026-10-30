@@ -179,6 +179,16 @@ one positive integer (feature films too), and `whisparr.test.ts` pins the exact 
 come from `images[].remoteUrl` (StashDB's CDN); Whisparr's own `/MediaCover` needs its key.
 `scripts/mobile-check.mjs` blocks the get route, like plays and deletes.
 
+## Duplicates
+
+`/duplicates` (linked from Clean up) shows Stash's perceptual-hash groups side by side:
+`GET /api/duplicates?distance=&durationDiff=` runs `findDuplicateScenes` (every scene, blocked
+and hidden too; cached like any scene read) and `duplicates.ts` names the copy to keep: most
+pixels, then bit rate, then size, then the one already watched or rated, then the lowest id.
+The rest are pre-selected; ticks on the page override the suggestion until Delete (the normal
+`DeleteScenesDialog`, so Whisparr removes the file) or Reset. Distance 0 is exact, 4 "close",
+8 "loose"; the library had no groups at any of them on 2026-10-30, so the empty state matters.
+
 ## Playback
 
 The client checks `canPlayType` for the file's container and codecs: if the browser can play

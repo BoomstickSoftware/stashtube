@@ -209,6 +209,12 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    searches a performer or studio (library policy, known-issues #40). The 25 MB movie list is cached 2 min
    in memory only. Whisparr's calendar was empty even with `unmonitored=true` (nothing upcoming is ever added
    unmonitored), so the planned "Coming soon" row became the recent-releases row.
+2m. **Duplicates workbench (2026-10-30)**: `/duplicates` (from Clean up) lists Stash's `findDuplicateScenes`
+   groups side by side with resolution, bit rate, size, codec, plays and path; `duplicates.ts` names the copy to
+   keep (pixels, bit rate, size, then the watched or rated one, then the lowest id; tested) and pre-selects the
+   rest for the usual delete dialog. Distance chips Exact/Close/Loose (0/4/8) and a duration tolerance. The
+   library has 2,204 of 2,207 scenes hashed and no groups at any distance today, so the page was checked with
+   a stubbed response; it will fill as duplicates arrive.
 2n. **Private session (2026-10-30)**: the ghost in the header (and Settings → Privacy) records nothing for the rest
    of the visit: no plays, play time or resume points, no station spot, and the rating, O, marker and "Mark as
    watched" actions answer with a toast instead. It lives in sessionStorage, so it survives a reload and ends with
@@ -227,8 +233,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
 5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
    - Mini-player that persists across pages (picture in picture covers the 80/20 for now).
-   - Duplicates workbench: Stash's `findDuplicateScenes` groups side by side (resolution, bitrate, size),
-     the worse copy pre-selected.
+   - Done 2026-10-30: duplicates workbench (2m).
    - Done 2026-10-30: private session (2n).
    - PIN lock after idle.
    - Done 2026-10-30: Whisparr integration (2l). Not Chromecast: the user has AirPlay.
