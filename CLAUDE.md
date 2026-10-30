@@ -162,22 +162,31 @@ unsaved weights for Settings' live strip. Affinities come from `affinities()` (w
 rated and O'd), shared with For-you. New signal: add it to `FeaturedWeights` and `SIGNALS`,
 its raw value in `rawSignals`, its words in `phrase`, and a dial in `FeaturedDials.tsx`.
 
-## Whisparr
+## Whisparr and StashDB
 
-With `WHISPARR_URL` and `WHISPARR_API_KEY` set, `/api/features` says `whisparr: true` and
-`whisparr.ts` reads what Whisparr knows but has not downloaded: its whole movie list (~25 MB,
-cached 2 min, VOLATILE, tag `whisparr`) filtered by the Stash entity's StashDB ids
-(`stashIdsOf` in `stash.ts`; Whisparr's `performerForeignIds` / `studioForeignId` are the same
-uuids), plus the queue and the last grabs for each card's state. Routes:
-`/api/whisparr/performer/:id`, `/studio/:id` (the "Not in your library yet" shelf),
-`/new` (recent releases from favourite performers, Home's "not downloaded" row),
-`/activity`. The one write is `POST /api/whisparr/get/:id`: monitor that scene and run
-`MoviesSearch` for that id alone. The library policy (nas repo, "Media library policy" 4 and
-known-issues #40) is that nothing is monitored and downloads are chosen by hand, so there is
-no code path that monitors or searches a performer or studio, `getScene` refuses anything but
-one positive integer (feature films too), and `whisparr.test.ts` pins the exact requests. Covers
-come from `images[].remoteUrl` (StashDB's CDN); Whisparr's own `/MediaCover` needs its key.
-`scripts/mobile-check.mjs` blocks the get route, like plays and deletes.
+With `WHISPARR_URL` and `WHISPARR_API_KEY` set, `/api/features` says `whisparr: true`. StashDB is
+the catalogue and Whisparr the executor: `stashdb.ts` queries StashDB's `queryScenes` for a
+performer's or studio's scenes (by the Stash entity's StashDB ids, `stashIdsOf` in `stash.ts`;
+24 a page, newest first, cached 10 min, VOLATILE, tag `stashdb`) with Stash's own stash-box
+credentials, read from `configuration.general.stashBoxes` at first use (`STASHDB_URL` /
+`STASHDB_API_KEY` override; `features.stashdb` says whether it resolved). `whisparr.ts` labels
+each StashDB scene: already in Stash (dropped; `sceneStashIdMap`), in Whisparr's movie list
+(~25 MB, cached 2 min; state from the queue and the last grabs: available / grabbed /
+downloading / downloaded), or `remote` (only StashDB knows it). Without StashDB the shelf falls
+back to Whisparr's own list (`source: 'whisparr'`). Routes: `/api/whisparr/performer/:id?page=`,
+`/studio/:id?page=` (the "Not in your library yet" shelf, a `WantedList`), `/new` (recent
+releases from favourite performers, Home's "not downloaded" row, Whisparr list only),
+`/activity`. Two writes, each for ONE scene: `POST /api/whisparr/get/:id` monitors a scene
+Whisparr lists and runs `MoviesSearch` for that id alone; `POST /api/whisparr/get-remote/:uuid`
+looks the StashDB id up in Whisparr (`movie/lookup?term=stash:<uuid>`) and `POST movie`s that
+one scene, monitored, `addOptions.searchForMovie`, placed like its studio siblings (else
+Whisparr's first profile and root folder); a lookup that returns an existing id goes through the
+first path, so nothing is added twice. The library policy (nas repo, "Media library policy" 4
+and known-issues #40) is that nothing is monitored and downloads are chosen by hand, so there is
+no code path that monitors or searches a performer or studio; both writes refuse anything but a
+single id (films too), and `whisparr.test.ts` / `stashdb.test.ts` pin the exact requests. Covers
+come from StashDB (`images[].url`, or Whisparr's `images[].remoteUrl`, the same CDN).
+`scripts/mobile-check.mjs` blocks both get routes, like plays and deletes.
 
 ## Duplicates
 

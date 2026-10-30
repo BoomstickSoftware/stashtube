@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { dataCache } from './stash.ts'
-import { activityOf, assertSingleId, getScene, stateOf, toWanted, wanted, type Movie } from './whisparr.ts'
+import { activityOf, assertSingleId, getScene, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
 
 const movie = (over: Partial<Movie> & { id: number }): Movie => ({
   title: `Scene ${over.id}`,
@@ -82,6 +82,7 @@ describe('wanted scenes', () => {
     const w = toWanted(movie({ id: 1 }), activityOf([], []))
     assert.deepEqual(w, {
       whisparrId: 1,
+      stashdbId: null,
       title: 'Scene 1',
       date: '2026-01-01',
       studio: 'Studio A',
@@ -95,11 +96,16 @@ describe('wanted scenes', () => {
   })
 
   it('list a performer\'s or studio\'s scenes without a file, newest first, with their state', async () => {
-    const ann = await wanted({ performers: ['perf-ann'] })
+    const ann = await wantedInWhisparr({ performers: ['perf-ann'] })
     assert.deepEqual(ann.map((w) => [w.whisparrId, w.state]), [[4, 'grabbed'], [1, 'available']]) // 2 has a file
-    const b = await wanted({ studios: ['studio-b'] })
+    const b = await wantedInWhisparr({ studios: ['studio-b'] })
     assert.deepEqual(b.map((w) => [w.whisparrId, w.state]), [[3, 'downloading']])
-    assert.deepEqual(await wanted({}), [])
+    assert.deepEqual(await wantedInWhisparr({}), [])
+    // without StashDB (this fake Stash has no stash-box settings) the shelf is Whisparr's list
+    const page = await wanted({ performers: ['perf-ann'] })
+    assert.equal(page.source, 'whisparr')
+    assert.deepEqual(page.items.map((w) => w.whisparrId), [4, 1])
+    assert.equal(page.hasMore, false)
     // the 25 MB list is fetched once for both
     assert.equal(sent.filter((s) => s.path === '/movie').length, 1)
   })

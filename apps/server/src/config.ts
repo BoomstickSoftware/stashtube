@@ -42,6 +42,12 @@ export const config = {
           pathMap: pathMap(process.env.WHISPARR_PATH_MAP),
         }
       : null,
+  // StashDB is the catalogue behind the "not in your library" shelf. By default flix takes the
+  // endpoint and key from Stash's own stash-box configuration at run time; these override it.
+  stashdb: {
+    url: (process.env.STASHDB_URL || '').replace(/\/$/, '') || null,
+    apiKey: process.env.STASHDB_API_KEY || null,
+  },
   cache: {
     dir: process.env.CACHE_DIR || `${process.cwd()}/.cache`,
     assetMaxBytes: num('ASSET_CACHE_MAX_MB', 5120) * 1024 * 1024,

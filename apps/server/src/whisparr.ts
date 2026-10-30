@@ -1,7 +1,8 @@
-import type { WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
+import type { WantedList, WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
 import { VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
-import { dataCache } from './stash.ts'
+import { dataCache, sceneStashIdMap } from './stash.ts'
+import * as stashdb from './stashdb.ts'
 
 // Whisparr v3 (Radarr-based; scenes are "movies"). flix reads what it knows and has not
 // downloaded, and does exactly one kind of write besides deleting: fetch ONE scene the user
@@ -25,6 +26,8 @@ export interface Movie {
   performerNames?: string[]
   performerForeignIds?: string[]
   images?: { coverType: string; url?: string; remoteUrl?: string }[]
+  qualityProfileId?: number
+  rootFolderPath?: string
 }
 
 interface QueueRecord {
@@ -127,6 +130,7 @@ export function toWanted(m: Movie, a: Activity): WantedScene {
   const img = m.images?.find((i) => i.coverType === 'screenshot') ?? m.images?.find((i) => i.coverType === 'poster') ?? m.images?.[0]
   return {
     whisparrId: m.id,
+    stashdbId: m.stashId ?? null,
     title: m.title,
     date: m.releaseDate ? m.releaseDate.slice(0, 10) : null,
     studio: m.studioTitle || null,
@@ -146,7 +150,7 @@ async function activity(): Promise<Activity> {
 
 // Scenes Whisparr lists for a performer or studio (by StashDB id) that have no file, newest
 // release first. Either side may carry several StashDB ids (duplicates merged on StashDB).
-export async function wanted(by: { performers?: string[]; studios?: string[] }, limit = 60): Promise<WantedScene[]> {
+export async function wantedInWhisparr(by: { performers?: string[]; studios?: string[] }, limit = 60): Promise<WantedScene[]> {
   if (!config.whisparr) return []
   const perf = new Set(by.performers ?? [])
   const stud = new Set(by.studios ?? [])
@@ -157,6 +161,34 @@ export async function wanted(by: { performers?: string[]; studios?: string[] }, 
     .sort(byDateDesc)
     .slice(0, limit)
     .map((m) => toWanted(m, a))
+}
+
+// One page of StashDB's catalogue for the performer or studio, each scene labelled by where it
+// is: already in Stash (dropped: the shelf is what is missing), in Whisparr (its download
+// state), or only on StashDB (`remote`). Falls back to Whisparr's own list when StashDB is not
+// configured or does not answer.
+export async function wanted(by: { performers?: string[]; studios?: string[] }, page = 1): Promise<WantedList> {
+  if (!config.whisparr) return { source: 'whisparr', items: [], page, hasMore: false }
+  if (!(await stashdb.available())) return { source: 'whisparr', items: await wantedInWhisparr(by), page, hasMore: false }
+  try {
+    const [sdb, all, a, inStash] = await Promise.all([stashdb.scenesOf(by, page), movies(), activity(), sceneStashIdMap()])
+    const byStashId = new Map<string, Movie>()
+    for (const m of all) if (m.stashId) byStashId.set(m.stashId, m)
+    return { source: 'stashdb', items: mergeRemote(sdb.scenes, byStashId, a, inStash), page, hasMore: sdb.hasMore }
+  } catch (e) {
+    console.error('stashdb:', (e as Error).message)
+    return { source: 'whisparr', items: await wantedInWhisparr(by), page, hasMore: false }
+  }
+}
+
+export function mergeRemote(scenes: stashdb.SdbScene[], byStashId: Map<string, Movie>, a: Activity, inStash: Map<string, string>): WantedScene[] {
+  const out: WantedScene[] = []
+  for (const s of scenes) {
+    if (inStash.has(s.id)) continue
+    const m = byStashId.get(s.id)
+    out.push(m ? toWanted(m, a) : stashdb.toRemote(s))
+  }
+  return out
 }
 
 // Recent releases (last `days`) from these performers that are not downloaded: the Home row.
@@ -205,4 +237,45 @@ export async function getScene(whisparrId: unknown): Promise<WantedScene> {
   dataCache.invalidate('whisparr')
   const a = await activity()
   return { ...toWanted(m, a), state: m.hasFile ? 'downloaded' : 'grabbed' }
+}
+
+interface Lookup extends Movie {
+  qualityProfileId?: number
+  rootFolderPath?: string
+}
+
+// Where a new scene goes: the profile and root folder of a Whisparr scene from the same studio,
+// else Whisparr's first quality profile and root folder.
+async function placementFor(studioForeignId: string | null | undefined): Promise<{ qualityProfileId: number; rootFolderPath: string }> {
+  const all = await movies()
+  const sibling = (studioForeignId && all.find((m) => m.studioForeignId === studioForeignId && m.qualityProfileId && m.rootFolderPath)) || all.find((m) => m.qualityProfileId && m.rootFolderPath)
+  if (sibling) return { qualityProfileId: sibling.qualityProfileId!, rootFolderPath: sibling.rootFolderPath! }
+  const [profiles, roots] = await Promise.all([
+    cached('qualityprofile', LIST_TTL, () => call<{ id: number }[]>('GET', '/qualityprofile')),
+    cached('rootfolder', LIST_TTL, () => call<{ path: string }[]>('GET', '/rootfolder')),
+  ])
+  if (!profiles[0] || !roots[0]) throw new Error('Whisparr has no quality profile or root folder to add a scene to')
+  return { qualityProfileId: profiles[0].id, rootFolderPath: roots[0].path }
+}
+
+// The other write, for a scene only StashDB knows: look it up in Whisparr by StashDB id and add
+// that ONE scene, monitored, with a search. One uuid, one lookup, one POST; a scene Whisparr
+// already has goes through getScene instead, so nothing is ever added twice.
+export async function getRemote(stashdbId: unknown): Promise<WantedScene> {
+  if (!stashdb.isStashDbId(stashdbId)) throw new RangeError('one StashDB scene id is required')
+  const found = await call<Lookup[]>('GET', `/movie/lookup?term=${encodeURIComponent(`stash:${stashdbId}`)}`)
+  const hit = found.find((m) => m.stashId?.toLowerCase() === stashdbId.toLowerCase()) ?? found[0]
+  if (!hit) throw new RangeError('Whisparr does not know this scene')
+  if (hit.itemType && hit.itemType !== 'scene') throw new RangeError('only scenes can be fetched from flix')
+  if (hit.id > 0) return getScene(hit.id)
+  const placement = await placementFor(hit.studioForeignId)
+  const added = await call<Movie>('POST', '/movie', {
+    ...hit,
+    ...placement,
+    monitored: true,
+    addOptions: { searchForMovie: true, monitor: 'movieOnly' },
+  })
+  dataCache.invalidate('whisparr')
+  const a = await activity()
+  return { ...toWanted(added, a), state: 'grabbed' }
 }

@@ -233,6 +233,14 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    marker survived Home and back, time monotonic). Keys unbind while docked; stations stop it; Settings →
    Playback "Keep playing while browsing" turns it off. `FLIX_SERVER=http://flix.lan` lets Vite proxy to prod
    for UI checks when no dev BFF runs.
+2q. **StashDB catalogue behind the shelf (2026-10-30)**: `stashdb.ts` reads a performer's or studio's whole
+   scene list from StashDB (Stash's own stash-box key, read from Stash's configuration; `STASHDB_*` overrides),
+   24 a page with "Show more"; each scene is labelled already-in-Stash (dropped), in Whisparr (its state) or
+   remote. Get on a remote scene adds that one scene to Whisparr (`movie/lookup?term=stash:<uuid>` →
+   `POST movie` with `searchForMovie`), placed like its studio siblings; a scene Whisparr already lists takes the
+   old monitor-and-search path. Without StashDB the shelf is Whisparr's list as before (`source` says which).
+   Everything in Whisparr stays unmonitored (0/36 studios, 0/9,363 scenes on 2026-10-30); flix never monitors
+   a studio or performer.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -246,6 +254,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
 4. **Daily use**: the Stash UI becomes the admin console only (scans, Identify, settings).
 5. **Backlog** (brainstormed 2026-10-26; Round 4 took scrub, Not interested, blur, PWA and PiP):
    - Done 2026-10-30: mini-player (2p).
+   - Done 2026-10-30: on-demand scenes from StashDB through Whisparr (2q); TPDB as a second source is now optional.
    - Done 2026-10-30: duplicates workbench (2m).
    - Done 2026-10-30: private session (2n).
    - Done 2026-10-30: PIN lock after idle (2o).

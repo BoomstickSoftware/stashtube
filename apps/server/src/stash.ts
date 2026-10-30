@@ -1214,3 +1214,16 @@ export async function favoritePerformerStashIds(): Promise<string[]> {
   )
   return d.findPerformers.performers.flatMap((p) => p.stash_ids.map((s) => s.stash_id))
 }
+
+// Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
+// credentials unless flix has its own (config.stashdb). Uncached and never logged.
+export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes
+
+// Every library scene's StashDB id → Stash scene id, to tell "already here" from "missing"
+// when StashDB lists a performer's or studio's scenes.
+export async function sceneStashIdMap(): Promise<Map<string, string>> {
+  const d = await query<Pick<Query, 'findScenes'>>('{ findScenes(filter: { per_page: -1 }) { scenes { id stash_ids { stash_id } } } }', {}, ['scene', VOLATILE])
+  const map = new Map<string, string>()
+  for (const s of d.findScenes.scenes) for (const x of s.stash_ids) map.set(x.stash_id, s.id)
+  return map
+}

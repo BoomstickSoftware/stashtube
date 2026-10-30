@@ -430,14 +430,17 @@ export interface Duplicates {
 export interface Features {
   deleteScenes: boolean // Whisparr is configured, so a scene can be deleted with its file
   whisparr: boolean // and scenes it knows but has not downloaded can be listed and fetched one at a time
+  stashdb: boolean // StashDB answers too, so the shelf shows a performer's or studio's whole catalogue
 }
 
-// A scene Whisparr knows about that is not in the library (yet). `state` follows the download:
-// available (nothing happening), grabbed (sent to the download client in the last two days),
-// downloading (in Whisparr's queue), downloaded (has a file; shown only while the state settles).
-export type WantedState = 'available' | 'grabbed' | 'downloading' | 'downloaded'
+// A scene not in the library (yet). `state` follows the download: remote (only StashDB knows
+// it; Get adds it to Whisparr and searches), available (Whisparr lists it, nothing happening),
+// grabbed (sent to the download client in the last two days), downloading (in Whisparr's
+// queue), downloaded (has a file; shown only while the state settles).
+export type WantedState = 'remote' | 'available' | 'grabbed' | 'downloading' | 'downloaded'
 export interface WantedScene {
-  whisparrId: number
+  whisparrId: number | null // null for a remote scene
+  stashdbId: string | null // StashDB's uuid; Whisparr files scenes under it too
   title: string
   date: string | null // YYYY-MM-DD
   studio: string | null
@@ -445,6 +448,14 @@ export interface WantedScene {
   image: string | null // StashDB's cover, served from its CDN
   runtime: number | null // minutes
   state: WantedState
+}
+// A page of a performer's or studio's missing scenes: StashDB's catalogue when it answers,
+// otherwise only what Whisparr lists.
+export interface WantedList {
+  source: 'stashdb' | 'whisparr'
+  items: WantedScene[]
+  page: number
+  hasMore: boolean
 }
 export interface WhisparrActivity {
   downloading: WantedScene[]

@@ -1,5 +1,5 @@
 import type { DeleteResult, Duplicates, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
@@ -10,6 +10,7 @@ import { NO_AFFINITY, rankFeatured, sanitizeWeights, type Affinity, type Candida
 import * as pl from './playlists.ts'
 import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
+import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
 import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
@@ -390,7 +391,7 @@ api.post('/scenes/delete', async (c) => {
   return c.json(results)
 })
 
-api.get('/features', (c) => c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr } satisfies Features))
+api.get('/features', async (c) => c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: !!config.whisparr && (await stashdb.available()) } satisfies Features))
 
 api.post('/scenes/:id/identify', async (c) => c.json({ jobId: await stash.identifyScene(c.req.param('id')) }, 202))
 api.get('/jobs/:id', async (c) => c.json((await stash.jobStatus(c.req.param('id'))) ?? notFound()))
@@ -618,8 +619,12 @@ api.delete('/blocklist/:kind/:id', async (c) => {
 // --- Whisparr: scenes it knows but has not downloaded, and one explicit fetch at a time ----
 // Nothing here monitors or searches a performer or a studio (library policy; see whisparr.ts).
 
-api.get('/whisparr/performer/:id', async (c) => c.json(config.whisparr ? await whisparr.wanted({ performers: await stash.stashIdsOf('performer', c.req.param('id')) }) : []))
-api.get('/whisparr/studio/:id', async (c) => c.json(config.whisparr ? await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }) : []))
+const pageOf = (c: Context) => {
+  const n = Number(c.req.query('page') ?? 1)
+  return Number.isInteger(n) && n >= 1 && n <= 50 ? n : 1
+}
+api.get('/whisparr/performer/:id', async (c) => c.json(await whisparr.wanted({ performers: await stash.stashIdsOf('performer', c.req.param('id')) }, pageOf(c))))
+api.get('/whisparr/studio/:id', async (c) => c.json(await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }, pageOf(c))))
 api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await whisparr.recentWanted(await stash.favoritePerformerStashIds()) : []))
 api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
 
@@ -629,6 +634,19 @@ api.post('/whisparr/get/:id', async (c) => {
   if (!/^\d{1,9}$/.test(raw)) throw new HTTPException(400, { message: 'one Whisparr scene id is required' })
   try {
     return c.json(await whisparr.getScene(Number(raw)))
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
+    throw e
+  }
+})
+
+// A scene only StashDB lists: add that one scene to Whisparr and search for it.
+api.post('/whisparr/get-remote/:stashdbId', async (c) => {
+  if (!config.whisparr) throw new HTTPException(404, { message: 'Whisparr is not configured' })
+  const raw = c.req.param('stashdbId')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) throw new HTTPException(400, { message: 'one StashDB scene id is required' })
+  try {
+    return c.json(await whisparr.getRemote(raw))
   } catch (e) {
     if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
     throw e

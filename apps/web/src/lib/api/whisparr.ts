@@ -1,21 +1,26 @@
-import type { WantedScene, WhisparrActivity } from '@flix/shared'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { WantedList, WantedScene, WhisparrActivity } from '@flix/shared'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, send } from './client'
 import { useFeatures } from './settings'
 
-// Whisparr: the scenes it knows about but has not downloaded, and the one write flix makes to
-// it, fetching a single scene the user clicked. Everything is off unless the server has Whisparr.
+// Whisparr and StashDB: the scenes a performer or studio has that are not in the library, and the
+// one write flix makes, fetching a single scene the user clicked (through Whisparr, which adds it
+// first when only StashDB knew it). Everything is off unless the server has Whisparr.
 
 function useWhisparrOn() {
   const { data } = useFeatures()
   return !!data?.whisparr
 }
 
+// Pages of missing scenes, newest first: StashDB's catalogue when the server has it, else
+// Whisparr's list (one page).
 export function useWanted(kind: 'performer' | 'studio', id: string) {
   const on = useWhisparrOn()
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['whisparr', kind, id],
-    queryFn: () => get<WantedScene[]>(`/whisparr/${kind}/${id}`),
+    queryFn: ({ pageParam }) => get<WantedList>(`/whisparr/${kind}/${id}?page=${pageParam}`),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     enabled: on,
     staleTime: 30_000,
   })
@@ -38,11 +43,13 @@ export function useWhisparrActivity() {
   })
 }
 
-// Monitor and search one scene. The server refuses anything but a single id.
+// Fetch one scene. A scene Whisparr lists is monitored and searched; one only StashDB lists is
+// added to Whisparr first. The server refuses anything but a single id either way.
 export function useGetScene() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (whisparrId: number) => send<WantedScene>('POST', `/whisparr/get/${whisparrId}`),
+    mutationFn: (w: WantedScene) =>
+      w.whisparrId !== null ? send<WantedScene>('POST', `/whisparr/get/${w.whisparrId}`) : send<WantedScene>('POST', `/whisparr/get-remote/${w.stashdbId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['whisparr'] }),
   })
 }
