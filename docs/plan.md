@@ -220,6 +220,11 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    watched" actions answer with a toast instead. It lives in sessionStorage, so it survives a reload and ends with
    the tab. Deliberate acts (favourites, playlists, Not interested, deletes, edits) still go through. Verified
    headless: 30 s of playback attempted no write with it on, three (play, activity ×2) with it off.
+2o. **PIN lock (2026-10-30)**: Settings → Privacy sets a 4–6 digit PIN (salted SHA-256 in localStorage, hashed in
+   plain JS since flix.lan is http), an idle time (1/5/15/30 min or never; a playing video is not idle) and
+   whether coming back to the tab locks. `L` locks at once. The lock screen hides the app root outright, pauses
+   every video, takes the PIN from a keypad or the phone keyboard, shakes on a wrong try and waits 30 s after
+   five. A privacy screen, not security, and the copy says so.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The
@@ -235,7 +240,7 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    - Mini-player that persists across pages (picture in picture covers the 80/20 for now).
    - Done 2026-10-30: duplicates workbench (2m).
    - Done 2026-10-30: private session (2n).
-   - PIN lock after idle.
+   - Done 2026-10-30: PIN lock after idle (2o).
    - Done 2026-10-30: Whisparr integration (2l). Not Chromecast: the user has AirPlay.
    - Done 2026-10-29: typed Stash layer. `src/stash.schema.ts` is generated from Stash's schema
      (`stash.schema.graphql`, graphql-codegen); `Raw = any` is gone from `stash.ts`. Filter inputs are exact,

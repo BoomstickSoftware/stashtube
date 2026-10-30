@@ -9,6 +9,7 @@ const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
     keys: [
       ['/', 'Search'],
       ['?', 'These shortcuts'],
+      ['L', 'Lock flix (with a PIN set)'],
       ['Esc Esc', 'Panic: leave flix'],
     ],
   },

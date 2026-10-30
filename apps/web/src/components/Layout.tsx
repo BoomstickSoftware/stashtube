@@ -10,6 +10,7 @@ import { useMediaQuery } from '../lib/hooks'
 import { setPrivate, useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
 import { Login } from '../pages/Login'
+import { PinLock } from './PinLock'
 import { SearchBox } from './SearchBox'
 import { ShortcutsOverlay } from './Shortcuts'
 import { Spinner, Toaster } from './ui'
@@ -141,6 +142,7 @@ export function Layout(): JSX.Element {
         <Outlet />
         <Toaster />
         <ShortcutsOverlay />
+        <PinLock />
       </main>
 
       {/* mobile tab bar */}

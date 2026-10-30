@@ -250,6 +250,13 @@ Three layers, all browser-side, none needing a login:
   toast. Favourites, playlists, Not interested, deletes and metadata edits still go through: they
   are curation, not a trace of viewing. A new write that records what was watched must go through
   `guardWrite()` or check `isPrivate()`.
+- **PIN lock** (Settings → Privacy; `lib/lock.ts`, `components/PinLock.tsx`): a 4–6 digit PIN,
+  stored as a salted SHA-256 in localStorage (`flix.pin`; plain-JS SHA-256 because `crypto.subtle`
+  is absent on http origins such as flix.lan). Locks after the chosen idle time (a playing video
+  is not idle), when the tab comes back after a few seconds away, or on `L`. While locked the
+  app root is `visibility: hidden` (`html.locked`) under a full-screen keypad; videos pause and
+  nothing resumes on unlock. The locked flag is in sessionStorage so a reload stays locked. It is
+  a privacy screen, not security: clearing site data removes it, and the UI says so.
 
 ## Status and next steps
 
