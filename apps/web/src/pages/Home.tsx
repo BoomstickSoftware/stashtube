@@ -8,7 +8,7 @@ import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
-import { useHome, usePlaylists, useRowMutations, useStationResumes, useStations } from '../lib/api'
+import { useHome, useRowMutations, useStationResumes } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -79,11 +79,7 @@ const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0))
 // Stations left part-way, most recent first: tap one to pick it up where it was.
 function PickUpStations() {
   const { data: resumes } = useStationResumes()
-  const { data: stations } = useStations()
-  const { data: playlists } = usePlaylists()
   const recent = (resumes ?? []).slice(0, 6)
-  const nameOf = (key: string) =>
-    key.startsWith('pl:') ? playlists?.find((p) => `pl:${p.id}` === key)?.name : stations?.find((s) => `id:${s.id}` === key)?.name
   if (!recent.length) return null
   return (
     <section>
@@ -95,16 +91,16 @@ function PickUpStations() {
       </div>
       <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
         {recent.map((r) => (
-          <ResumeCard key={r.key} resume={r} name={nameOf(r.key)} />
+          <ResumeCard key={r.key} resume={r} />
         ))}
       </div>
     </section>
   )
 }
 
-function ResumeCard({ resume: r, name }: { resume: StationResume; name?: string }) {
+function ResumeCard({ resume: r }: { resume: StationResume }) {
   const search = stationSearchFor(r.key)
-  const label = name ?? (search.from ? 'Like a video' : <QuerySummary query={search} empty="Everything" />)
+  const label = r.name ?? (search.from ? 'Like a video' : <QuerySummary query={search} empty="Everything" />)
   return (
     <Link to="/station" search={{ ...search, start: 'resume' }} className="group w-[62vw] shrink-0 snap-start sm:w-[260px]">
       <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">

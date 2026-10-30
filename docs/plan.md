@@ -193,6 +193,11 @@ generation. So generation and transcoding stay on the NAS; flix itself is light.
    a click or a tap on the tick's 24 px pad seeks to the marker itself rather than where the pointer
    landed, and a drag that starts there still scrubs. `[` and `]` are unchanged and agree with the ticks.
    Verified with fake markers patched into the scene response (the library has none yet).
+2j. **One request for station previews (2026-10-30)**: `GET /api/stations/previews?day=&q=` answers every
+   station card at once (saved stations by id, quick-start queries by their JSON; `previews.ts` has the
+   per-station daily seed and the bounded fan-out, tested). The Stations page went from one request per card
+   (saved + 4 quick) to one; `/stations/resume` now names each station or playlist, so Home's pick-up shelf
+   no longer loads the station and playlist lists.
 3. **Deployed to k8s** (2026-10-26, flix.lan): a push to `main` runs `.forgejo/workflows/deploy.yml`, which
    builds the image, scans it with trivy, pushes it to the Forgejo registry and commits the tag@digest into
    `infra/flix/deployment.yaml` in `~/code/k8s`; ArgoCD (automated, prune, self-heal) rolls it out. The

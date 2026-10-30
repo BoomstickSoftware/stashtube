@@ -349,12 +349,27 @@ export interface SavedStation extends StationInput {
   cover: string | null // a screenshot from the station
 }
 
-// Where a station was left (`key`: `id:<n>` saved, `q:<filters>` ad hoc, `from:<scene>`).
+// Where a station was left (`key`: `id:<n>` saved, `q:<filters>` ad hoc, `from:<scene>`,
+// `pl:<n>` a playlist). `name` is the saved station's or playlist's; null for an ad hoc one.
 export interface StationResume {
   key: string
+  name: string | null
   scene: SceneCard
   seconds: number
   updatedAt: string
+}
+
+// A station card's picture and count: a few of the videos it plays (reshuffled daily) and how
+// many there are (null for a drifting station, whose videos are the starting one's relatives).
+export interface StationPreview {
+  total: number | null
+  items: SceneCard[]
+}
+
+// Previews for every saved station (by id) and for ad hoc queries (by the JSON the client sent).
+export interface StationPreviews {
+  stations: Record<number, StationPreview>
+  queries: Record<string, StationPreview>
 }
 
 export interface SavedRow {

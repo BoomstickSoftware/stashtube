@@ -177,6 +177,11 @@ The seek bar (`SeekBar.tsx`, both players) draws markers as ticks: `groupMarkers
 marks (title `O`) draw thin and white, named markers yellow. Hovering a tick shows its frame and
 `tickLabel` (title · tag); clicking or tapping a tick's 24 px pad seeks to the marker itself.
 
+The Stations page gets every card's pictures and count from one request, `GET /api/stations/previews?day=&q=`
+(`stations.previews`: saved stations by id, the quick-start queries under the JSON the client sent, each
+one cached Stash query, six in flight at once); `/stations/resume` carries each station's or playlist's
+`name`, so Home's pick-up shelf needs no other list.
+
 On touch screens (`Player.tsx`):
 - A tap shows or hides the controls; it does not pause. A double tap on the left or right
   third seeks 10 s. While the controls show, the middle has −10 / play-pause / +10 buttons.

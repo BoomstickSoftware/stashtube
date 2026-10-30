@@ -238,6 +238,20 @@ const stationBody = z.object({
 })
 
 api.get('/stations', async (c) => c.json(await stations.listStations()))
+// Every station card's pictures and count in one answer. `day` seeds the shuffle; each `q` is
+// an ad hoc query (the quick-start cards) as JSON, answered under that same string.
+api.get('/stations/previews', async (c) => {
+  const day = parse(z.coerce.number().int().nonnegative(), c.req.query('day') ?? 0)
+  const json = (s: string) => {
+    try {
+      return JSON.parse(s) as unknown
+    } catch {
+      return undefined
+    }
+  }
+  const queries = (c.req.queries('q') ?? []).slice(0, 12).map((key) => ({ key, query: parse(sceneQuery, json(key)) }))
+  return c.json(await stations.previews(day, queries))
+})
 api.get('/stations/resume', async (c) => c.json(await stations.listResume()))
 api.put('/stations/resume', async (c) => {
   const b = parse(

@@ -1,4 +1,4 @@
-import type { SavedStation, SceneQuery, StationResume } from '@flix/shared'
+import type { SavedStation, SceneQuery, StationPreview, StationResume } from '@flix/shared'
 import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { QuerySummary } from '../components/QuerySummary'
 import { ErrorBox, Spinner } from '../components/ui'
 import { useMediaQuery } from '../lib/hooks'
-import { useStationMutations, useStationPreview, useStationResumes, useStations } from '../lib/api'
+import { previewFor, useStationMutations, useStationPreviews, useStationResumes, useStations } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { stationKey } from '../lib/station'
 
@@ -18,12 +18,14 @@ const quick: { name: string; query: SceneQuery; icon: typeof Radio }[] = [
   { name: 'Favourite performers', query: { favorites: true }, icon: Users },
   { name: 'Top rated', query: { minRating: 4 }, icon: Star },
 ]
+const quickQueries = quick.map((q) => q.query)
 
 const ROTATE_MS = 4000
 
 export function Stations(): JSX.Element {
   const { data, error, isLoading } = useStations()
   const { data: resumes } = useStationResumes()
+  const { data: previews } = useStationPreviews(quickQueries)
   const resumeFor = (key: string) => resumes?.find((r) => r.key === key)
   return (
     <div className="space-y-10">
@@ -58,7 +60,7 @@ export function Stations(): JSX.Element {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {data.map((s, i) => (
-              <StationCard key={s.id} station={s} resume={resumeFor(stationKey(s))} offset={i} />
+              <StationCard key={s.id} station={s} preview={previewFor(previews, s)} resume={resumeFor(stationKey(s))} offset={i} />
             ))}
           </div>
         )}
@@ -68,7 +70,7 @@ export function Stations(): JSX.Element {
         <h2 className="mb-3 text-lg font-bold">Quick start</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {quick.map((q, i) => (
-            <QuickCard key={q.name} {...q} resume={resumeFor(stationKey({ query: q.query }))} offset={i + 1} />
+            <QuickCard key={q.name} {...q} preview={previewFor(previews, q)} resume={resumeFor(stationKey({ query: q.query }))} offset={i + 1} />
           ))}
         </div>
       </section>
@@ -79,23 +81,20 @@ export function Stations(): JSX.Element {
 // A station's picture: cycles through screenshots of what it plays, crossfading, with how many
 // videos it has. `offset` staggers the cards so they do not all change at once.
 function Preview({
-  query,
-  from,
+  data,
   cover,
   offset,
   className,
   children,
 }: {
-  query: SceneQuery
-  from?: string
+  data?: StationPreview
   cover?: string | null
   offset: number
   className?: string
   children?: React.ReactNode
 }) {
-  const { data } = useStationPreview(query, from)
   const still = useMediaQuery('(prefers-reduced-motion: reduce)')
-  const covers = [...new Set([...(cover ? [cover] : []), ...(data?.covers ?? [])])]
+  const covers = [...new Set([...(cover ? [cover] : []), ...(data?.items.map((s) => s.screenshot) ?? [])])]
   const [i, setI] = useState(0)
   useEffect(() => {
     if (still || covers.length < 2) return
@@ -159,7 +158,7 @@ const PlayBadge = () => (
 
 // Tap the picture to pick up where the station was left (or start it); the buttons start a
 // fresh shuffle or only unwatched videos.
-function StationCard({ station: s, resume, offset }: { station: SavedStation; resume?: StationResume; offset: number }) {
+function StationCard({ station: s, preview, resume, offset }: { station: SavedStation; preview?: StationPreview; resume?: StationResume; offset: number }) {
   const { update, remove } = useStationMutations()
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -167,7 +166,7 @@ function StationCard({ station: s, resume, offset }: { station: SavedStation; re
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Link to="/station" search={resume ? { id: s.id, start: 'resume' } : { id: s.id }} className="block">
-        <Preview query={s.query} from={s.from} cover={s.cover} offset={offset} className="aspect-video">
+        <Preview data={preview} cover={s.cover} offset={offset} className="aspect-video">
           <PlayBadge />
           <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold backdrop-blur">
             {s.mode === 'moments' ? `Moments · ${s.window}s` : 'Full videos'}
@@ -238,11 +237,25 @@ function StartButtons({ search }: { search: { id?: number } & SceneQuery }) {
   )
 }
 
-function QuickCard({ name, query, icon: Icon, resume, offset }: { name: string; query: SceneQuery; icon: typeof Radio; resume?: StationResume; offset: number }) {
+function QuickCard({
+  name,
+  query,
+  icon: Icon,
+  preview,
+  resume,
+  offset,
+}: {
+  name: string
+  query: SceneQuery
+  icon: typeof Radio
+  preview?: StationPreview
+  resume?: StationResume
+  offset: number
+}) {
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Link to="/station" search={resume ? { ...query, start: 'resume' } : query} className="block">
-        <Preview query={query} offset={offset} className="aspect-video">
+        <Preview data={preview} offset={offset} className="aspect-video">
           <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
           <span className="absolute bottom-2 left-2 flex min-w-0 items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/90 text-white">

@@ -26,7 +26,7 @@ import type {
   StudioDetail,
   TagCard,
   TagDetail,
-  TagTile, SavedStation, StationInput, StationResume, SceneFacets } from '@flix/shared'
+  TagTile, SavedStation, StationInput, StationPreview, StationPreviews, StationResume, SceneFacets } from '@flix/shared'
 import {
   keepPreviousData,
   type Query,
@@ -488,26 +488,21 @@ export const useStationResumes = () =>
 export const saveStationResume = (key: string, sceneId: string, seconds: number) =>
   send('PUT', '/stations/resume', { key, sceneId, seconds }).then(() => queryClient.invalidateQueries({ queryKey: ['station-resume'] }))
 
-// A station card's preview: how many videos it plays and a few screenshots to cycle through
-// (reshuffled daily). A drifting station has no count; its covers are the starting video's related ones.
+// Every station card's preview in one request: how many videos each plays and a few screenshots
+// to cycle through (reshuffled daily). Saved stations come by id; the ad hoc `queries` (the
+// quick-start cards) come back under `JSON.stringify(query)`, so look them up with `previewFor`.
 const today = () => Math.floor(Date.now() / 86_400_000)
-export function useStationPreview(query: SceneQuery, from?: string) {
-  const [day] = useState(today) // the day the card was first shown; a tab left open overnight keeps it
+export function useStationPreviews(queries: SceneQuery[] = []) {
+  const [day] = useState(today) // the day the page was first shown; a tab left open overnight keeps it
+  const keys = queries.map((q) => JSON.stringify(q))
   return useQuery({
-    queryKey: ['station-preview', query, from, day],
-    queryFn: async (): Promise<{ total: number | null; covers: string[] }> => {
-      if (from) {
-        const related = await get<SceneCard[]>(`/scenes/${from}/related`)
-        return { total: null, covers: related.slice(0, 8).map((s) => s.screenshot) }
-      }
-      // a seed per station, so stations that overlap do not open on the same picture
-      const seed = day + [...JSON.stringify(query)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100_000, 7)
-      const r = await get<Page<SceneCard>>(`/scenes${qs({ ...query, sort: 'random', seed, perPage: 8 })}`)
-      return { total: r.total, covers: r.items.map((s) => s.screenshot) }
-    },
+    queryKey: ['station-previews', day, keys],
+    queryFn: () => get<StationPreviews>(`/stations/previews?day=${day}${keys.map((k) => `&q=${encodeURIComponent(k)}`).join('')}`),
     staleTime: 10 * 60_000,
   })
 }
+export const previewFor = (p: StationPreviews | undefined, s: { id?: number; query: SceneQuery }): StationPreview | undefined =>
+  s.id ? p?.stations[s.id] : p?.queries[JSON.stringify(s.query)]
 
 // --- history and stats -------------------------------------------------------------
 
