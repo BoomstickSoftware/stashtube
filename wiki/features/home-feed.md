@@ -31,7 +31,7 @@ show, even empty, so they can be managed):
 | **Because you watched …** | [[related-videos]] of the last played scene, unwatched first, up to 24 |
 | Pinned rows | Browse filters saved as rows (`saved_rows` table): rename, reorder, unpin |
 | **More with <performer>** | one row per favourite performer, random with the day's seed |
-| **New from your favourites** | favourite performers, newest first |
+| **New from performers you follow** | favourite (followed) performers, newest first; _titled "New from your favourites" until 2026-10-31_ ([[categories-and-us-spelling]]) |
 | Recently added, Discover (random, unwatched), Top rated (★4+), Latest releases, Most watched | plain filtered lists |
 | **New from your favourites, not downloaded** | Whisparr's recent releases from favourite performers, from 3 items; see [[whisparr-shelf]] |
 | **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]] |

@@ -9,7 +9,7 @@ import { useFeatures } from '../lib/api'
 const route = getRouteApi('/cleanup')
 
 // Ready-made lists of likely deletions. Each sets cleanup filters on the list below; the
-// filter bar narrows further (search by performer, studio or tag). Cards select on tap.
+// filter bar narrows further (search by performer, studio or tag). Cards select on click or tap.
 const lists: { label: string; hint: string; query: SceneQuery }[] = [
   { label: 'Below 720p', hint: 'SD and low-resolution files', query: { maxHeight: 720 } },
   { label: 'Never watched', hint: 'added 30+ days ago, never played', query: { unwatched: true, olderDays: 30 } },
@@ -32,7 +32,7 @@ export function Cleanup(): JSX.Element {
           <Trash2 size={26} className="text-red-400" /> Clean up
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Pick a list or filter, tap videos to select them, then Delete. Blocked videos are included.
+          Pick a list or filter, select videos, then Delete. Blocked videos are included.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {lists.map((l, i) => (

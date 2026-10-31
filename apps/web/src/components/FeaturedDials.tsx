@@ -3,6 +3,7 @@ import { Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useFeaturedPreview, useSettings, useUpdateSettings } from '../lib/api'
 import { useDebounced } from '../lib/hooks'
+import { showToast } from '../lib/toast'
 import { SceneCard } from './SceneCard'
 import { Button } from './ui'
 
@@ -12,10 +13,10 @@ const DIALS: { key: keyof FeaturedWeights; label: string; hint: string }[] = [
   { key: 'dormant', label: 'Not seen for a long time', hint: 'Since the last play; since it was added if never played' },
   { key: 'shelfAge', label: 'Downloaded long ago', hint: 'Older additions first' },
   { key: 'fresh', label: 'Newly added', hint: 'The opposite: recent additions first' },
-  { key: 'performer', label: 'Favourite performers', hint: 'Hearted in Stash, and the ones you watch most' },
-  { key: 'tag', label: 'Favourite tags', hint: 'Hearted tags, and the ones your plays share' },
-  { key: 'studio', label: 'Favourite studios', hint: 'Hearted studios, and the ones you watch most' },
-  { key: 'watched', label: 'Watched a lot', hint: 'Left of centre prefers rarely watched videos' },
+  { key: 'performer', label: 'Performers you follow', hint: 'Followed performers, and the ones you watch most' },
+  { key: 'tag', label: 'Pinned categories', hint: 'Pinned categories, and the ones your plays share' },
+  { key: 'studio', label: 'Studios you follow', hint: 'Followed studios, and the ones you watch most' },
+  { key: 'watched', label: 'Watched a lot', hint: 'Left of center prefers rarely watched videos' },
   { key: 'marked', label: 'Many markers', hint: 'Videos you have marked moments in' },
   { key: 'rated', label: 'Highly rated', hint: 'Your star ratings' },
   { key: 'oCount', label: 'O-counter', hint: 'The ones that worked' },
@@ -33,12 +34,12 @@ export function FeaturedDials() {
 
   return (
     <section>
-      <h2 className="flex items-center gap-2 text-lg font-bold">
+      <h3 className="flex items-center gap-2 text-lg font-bold">
         <Sparkles size={18} className="text-accent" /> Featured
-      </h2>
+      </h3>
       <p className="mt-1 max-w-xl text-sm text-muted">
         How the Featured row and Tonight’s pick choose. Each dial says how much a signal counts, from avoid (left) through
-        ignore (centre) to prefer (right). The picks below follow as you drag; Save makes them the Home page’s.
+        ignore (center) to prefer (right). The picks below update as you drag; Save applies them to Home.
       </p>
       <div className="mt-4 grid max-w-xl gap-x-8 gap-y-3 sm:grid-cols-2">
         {DIALS.map(({ key, label, hint }) => (
@@ -64,8 +65,8 @@ export function FeaturedDials() {
         ))}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button variant="accent" disabled={!dirty || save.isPending} onClick={() => draft && save.mutate({ featured: draft }, { onSuccess: () => setDraft(null) })}>
-          {save.isPending ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+        <Button variant="accent" disabled={!dirty || save.isPending} onClick={() => draft && save.mutate({ featured: draft }, { onSuccess: () => (setDraft(null), showToast('Saved')) })}>
+          {save.isPending ? 'Saving…' : 'Save'}
         </Button>
         <Button onClick={() => setDraft({ ...FEATURED_DEFAULTS })} disabled={JSON.stringify(value) === JSON.stringify(FEATURED_DEFAULTS)}>
           Reset to defaults

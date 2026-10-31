@@ -40,10 +40,10 @@ Entering a station stops the [[mini-player]].
 
 ## Saved stations and resume
 
-- **Save** (with a name) on a playing station keeps it in the `stations` table: filters or
+- **Save station** (with a name; _"Save" until 2026-10-31_) on a playing station keeps it in the `stations` table: filters or
   starting scene, mode, window. Changing mode or window on a saved station updates it.
 - `/stations` lists them as cards (desktop nav, phone header icon) plus quick starts
-  (Everything, Unwatched, Favourite performers, Top rated). Each card cycles through screenshots
+  (Everything, Unwatched, Performers I follow, Top rated). Each card cycles through screenshots
   of what it plays (4 s, crossfade, staggered, still under reduced motion) and shows its count.
   All cards come from **one request**, `GET /api/stations/previews?day=&q=` (saved stations by
   id, quick starts by their JSON; six Stash queries in flight at once; `previews.ts` has the

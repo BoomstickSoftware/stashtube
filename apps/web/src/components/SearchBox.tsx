@@ -43,7 +43,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
       { kind: 'query', id: dq, label: `Search “${dq}”`, sub: 'All videos', image: null },
       ...data.performers.map((p) => ({ kind: 'performer' as const, id: p.id, label: p.name, sub: `Performer · ${p.sceneCount} videos`, image: p.image })),
       ...data.studios.map((s) => ({ kind: 'studio' as const, id: s.id, label: s.name, sub: `Studio · ${s.sceneCount} videos`, image: s.image })),
-      ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, label: t.name, sub: `Tag · ${t.sceneCount} videos`, image: null })),
+      ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, label: t.name, sub: `Category · ${t.sceneCount} videos`, image: null })),
       ...data.scenes.map((s) => ({ kind: 'scene' as const, id: s.id, label: s.title, sub: [s.studio?.name, duration(s.durationSec)].filter(Boolean).join(' · '), image: s.screenshot })),
     ]
   }, [data, dq])
@@ -93,7 +93,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
               input.current?.blur()
             }
           }}
-          placeholder="Search videos, performers, studios, tags"
+          placeholder="Search videos, performers, studios, categories"
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
         />
         {q && (

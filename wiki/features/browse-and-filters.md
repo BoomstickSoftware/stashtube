@@ -27,7 +27,10 @@ words, with popular tags before typing; then Watched, Rating, Quality, Length, f
 performers, age and ethnicity, and Show blocked. It edits a copy and applies on
 "Show N videos" (a live count). The station editor shows the same panel inline, applying as you
 go ([[stations]]). It replaced a strip of chip popovers that clipped their results
-([[filter-popovers-clipped-in-scroll-row]]).
+([[filter-popovers-clipped-in-scroll-row]]). In the UI tags are **Categories** (the group,
+the hint "Pick one to require it; search a category to exclude it", the placeholder, Show
+blocked) and the follow toggle's chip reads "Performers I follow" (`describe.ts`); the code
+and this wiki keep `tag` ([[categories-and-us-spelling]], since 2026-10-31).
 
 ## Live counts
 

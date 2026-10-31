@@ -174,11 +174,11 @@ function phrase(k: Signal, neg: boolean, c: Candidate, raw: Record<Signal, numbe
     case 'fresh':
       return neg ? `added ${span(raw.shelfAge)} ago` : 'newly added'
     case 'performer':
-      return neg ? 'new faces' : c.favPerformer ? 'favourite performer' : 'a performer you watch'
+      return neg ? 'new faces' : c.favPerformer ? 'a performer you follow' : 'a performer you watch'
     case 'tag':
-      return neg ? 'different tags' : c.favTag ? 'favourite tag' : 'tags you watch'
+      return neg ? 'different categories' : c.favTag ? 'a pinned category' : 'categories you watch'
     case 'studio':
-      return neg ? 'a studio you rarely watch' : c.favStudio ? 'favourite studio' : 'a studio you watch'
+      return neg ? 'a studio you rarely watch' : c.favStudio ? 'a studio you follow' : 'a studio you watch'
     case 'watched':
       if (neg) return c.card.playCount ? `only ${plural(c.card.playCount, 'view')}` : 'never watched'
       return c.card.playCount ? `watched ${c.card.playCount}×` : null

@@ -10,7 +10,7 @@ const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
       ['/', 'Search'],
       ['?', 'These shortcuts'],
       ['L', 'Lock flix (with a PIN set)'],
-      ['Esc Esc', 'Panic: leave flix'],
+      ['Esc Esc', 'Panic: leave flix for the page in Settings'],
     ],
   },
   {
@@ -19,7 +19,7 @@ const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
       ['Space / k', 'Play / pause'],
       ['← →', '±5 s'],
       ['j / l', '±10 s'],
-      ['0–9', 'Jump to %'],
+      ['0–9', 'Jump to 0–90 %'],
       ['↑ ↓', 'Volume'],
       ['m', 'Mute'],
       ['< >', 'Speed'],
@@ -35,7 +35,7 @@ const SHORTCUTS: { title: string; keys: [string, string][] }[] = [
     title: 'On a station',
     keys: [
       ['n / p', 'Next / previous video'],
-      ['q', 'The station list'],
+      ['q', 'Show the station list'],
       ['Esc', 'Leave the station'],
     ],
   },

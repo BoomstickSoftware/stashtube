@@ -30,7 +30,7 @@ app keeps a little of what a console would show and lets the user copy it.
 
 ## Where it shows
 
-Settings → **Diagnostics**, below Keyboard: a header line (build from the `flix-version` meta,
+Settings → Advanced → **Diagnostics**, below Cache ([[settings-page]]): a header line (build from the `flix-version` meta,
 `installed app` or `browser tab` from `display-mode: standalone`, the user agent), then the
 entries newest first with a time. **Copy** puts the header and the entries, oldest first, on
 the clipboard (toast "Copied"); **Clear** empties the list.

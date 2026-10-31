@@ -121,9 +121,9 @@ describe('rankFeatured', () => {
       NOW,
     )
     assert.deepEqual(ids(r).slice(0, 2).sort(), ['a', 'b'])
-    assert.equal(r.find((x) => x.card.id === 'b')!.why, 'Favourite performer')
+    assert.equal(r.find((x) => x.card.id === 'b')!.why, 'A performer you follow')
     assert.equal(r.find((x) => x.card.id === 'a')!.why, 'A performer you watch')
-    assert.equal(r.find((x) => x.card.id === 'c')!.why, 'Tags you watch')
+    assert.equal(r.find((x) => x.card.id === 'c')!.why, 'Categories you watch')
   })
 
   it('returns nothing for an empty pool and respects the limit', () => {

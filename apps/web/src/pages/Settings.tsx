@@ -1,8 +1,8 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Ban, ChevronRight, Search, Trash2, X } from 'lucide-react'
+import { Ban, ChevronRight, Copy, Search, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
@@ -18,88 +18,157 @@ import { asBool, useStored } from '../lib/storage'
 import { showToast } from '../lib/toast'
 import { sized } from '@flix/shared'
 
+// One page in five headed groups, with a strip of in-page links that stays under the header:
+// Library (the tools and the lists that shape it), Feed, Playback, Privacy, Advanced. Device-only
+// settings (Keep playing, Discreet, the PIN) sit beside the shared ones; what a setting changes
+// elsewhere stays next to that page (the player's gear menu, the Performers switch).
+const GROUPS = [
+  ['library', 'Library'],
+  ['feed', 'Feed'],
+  ['playback', 'Playback'],
+  ['privacy', 'Privacy'],
+  ['advanced', 'Advanced'],
+] as const
+
 export function Settings(): JSX.Element {
-  const { data } = useBlocklist()
-  const block = useBlock()
   const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: Infinity })
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
-      <Link to="/cleanup" className="flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line hover:bg-raised">
+    <div className="mx-auto max-w-3xl">
+      <h1 className="text-2xl font-black">Settings</h1>
+      <nav
+        aria-label="Settings sections"
+        className="no-scrollbar sticky top-16 z-10 -mx-4 mt-3 flex gap-2 overflow-x-auto bg-bg/85 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6"
+      >
+        {GROUPS.map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="inline-flex shrink-0 items-center rounded-full bg-raised px-3 py-1 text-[13px] whitespace-nowrap text-fg/90 hover:bg-line touch:min-h-11"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      <div className="mt-6 space-y-14">
+        <Group id="library" title="Library">
+          <LibraryTools />
+          <BlocklistSetting />
+          <HiddenSetting />
+        </Group>
+        <Group id="feed" title="Feed">
+          <PeopleSetting />
+          <FeaturedDials />
+        </Group>
+        <Group id="playback" title="Playback">
+          <PlaybackSetting />
+        </Group>
+        <Group id="privacy" title="Privacy">
+          <PrivacySetting />
+        </Group>
+        <Group id="advanced" title="Advanced">
+          <PanicSetting />
+          <section className="touch:hidden">
+            <h3 className="text-lg font-bold">Keyboard</h3>
+            <p className="mt-1 text-sm text-muted">
+              Press <kbd className="rounded bg-raised px-1">?</kbd> anywhere to see these.
+            </p>
+            <div className="mt-3">
+              <ShortcutList />
+            </div>
+          </section>
+          <section>
+            <h3 className="mb-3 text-lg font-bold">Cache</h3>
+            <CachePanel />
+          </section>
+          <Diagnostics />
+          {session.data?.required && <Button onClick={() => authApi.logout().then(() => location.reload())}>Sign out</Button>}
+        </Group>
+      </div>
+    </div>
+  )
+}
+
+// A headed group the strip links to; `scroll-mt` keeps the heading clear of the header and strip.
+function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-heading`} className="scroll-mt-32 space-y-10">
+      <h2 id={`${id}-heading`} className="border-b border-line pb-2 text-xl font-black">
+        {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+// The two pages that only live here: Clean up and Duplicates.
+function LibraryTools() {
+  const card = 'flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line hover:bg-raised'
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Link to="/cleanup" className={card}>
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-400">
           <Trash2 size={18} />
         </span>
         <span className="min-w-0">
-          <span className="block font-semibold">Clean up the library</span>
-          <span className="block text-sm text-muted">Low resolution, never watched, low rated, unmatched, duplicates: select and delete</span>
+          <span className="block font-semibold">Clean up</span>
+          <span className="block text-sm text-muted">
+            Find low-resolution, never-watched, low-rated, unmatched or duplicate videos and delete them
+          </span>
         </span>
         <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
       </Link>
-      <section>
-        <h1 className="flex items-center gap-2 text-2xl font-black">
-          <Ban size={22} className="text-accent" /> Blocklist
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Anything here is hidden from the home feed, browsing, search and related videos. A blocked performer, studio or tag
-          still has its own page, and “Show blocked” on any list brings everything back for that list.
-        </p>
-        <BlockSearch />
-        <div className="mt-6 space-y-5">
-          {(
-            [
-              ['tag', 'Tags', data?.tags],
-              ['performer', 'Performers', data?.performers],
-              ['studio', 'Studios', data?.studios],
-            ] as [BlockKind, string, Ref[] | undefined][]
-          ).map(([kind, label, items]) => (
-            <div key={kind}>
-              <h2 className="mb-2 text-sm font-semibold text-muted">
-                {label} <span className="font-normal">({items?.length ?? 0})</span>
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {items?.map((x) => (
-                  <Chip key={x.id} tone="exclude" onClick={() => block.mutate({ kind, id: x.id, blocked: false })}>
-                    {x.name} <X size={13} />
-                  </Chip>
-                ))}
-                {!items?.length && <span className="text-sm text-muted/70">None</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <HiddenSetting />
-
-      <PeopleSetting />
-
-      <FeaturedDials />
-
-      <PlaybackSetting />
-
-      <PanicSetting />
-
-      <PrivacySetting />
-
-      <section>
-        <h2 className="mb-3 text-lg font-bold">Cache</h2>
-        <CachePanel />
-      </section>
-
-      <section className="touch:hidden">
-        <h2 className="text-lg font-bold">Keyboard</h2>
-        <p className="mt-1 text-sm text-muted">Press <kbd className="rounded bg-raised px-1">?</kbd> anywhere to see these.</p>
-        <div className="mt-3">
-          <ShortcutList />
-        </div>
-      </section>
-
-      <Diagnostics />
-
-      {session.data?.required && (
-        <Button onClick={() => authApi.logout().then(() => location.reload())}>Sign out</Button>
-      )}
+      <Link to="/duplicates" className={card}>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
+          <Copy size={18} />
+        </span>
+        <span className="min-w-0">
+          <span className="block font-semibold">Duplicates</span>
+          <span className="block text-sm text-muted">The same video more than once, side by side, the worse copy pre-selected</span>
+        </span>
+        <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
+      </Link>
     </div>
+  )
+}
+
+function BlocklistSetting() {
+  const { data } = useBlocklist()
+  const block = useBlock()
+  return (
+    <section>
+      <h3 className="flex items-center gap-2 text-lg font-bold">
+        <Ban size={20} className="text-accent" /> Blocklist
+      </h3>
+      <p className="mt-1 text-sm text-muted">
+        Anything here is hidden from the home feed, browsing, search and related videos. A blocked performer, studio or
+        category still has its own page, and “Show blocked” on any list brings everything back for that list.
+      </p>
+      <BlockSearch />
+      <div className="mt-6 space-y-5">
+        {(
+          [
+            ['tag', 'Categories', data?.tags],
+            ['performer', 'Performers', data?.performers],
+            ['studio', 'Studios', data?.studios],
+          ] as [BlockKind, string, Ref[] | undefined][]
+        ).map(([kind, label, items]) => (
+          <div key={kind}>
+            <h4 className="mb-2 text-sm font-semibold text-muted">
+              {label} <span className="font-normal">({items?.length ?? 0})</span>
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {items?.map((x) => (
+                <Chip key={x.id} tone="exclude" onClick={() => block.mutate({ kind, id: x.id, blocked: false })}>
+                  {x.name} <X size={13} />
+                </Chip>
+              ))}
+              {!items?.length && <span className="text-sm text-muted/70">None</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -112,7 +181,7 @@ function BlockSearch() {
   const blocked = new Set([...(list?.tags ?? []), ...(list?.performers ?? []), ...(list?.studios ?? [])].map((x) => x.id))
   const hits: { kind: BlockKind; id: string; name: string; sub: string }[] = data
     ? [
-        ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, name: t.name, sub: 'Tag' })),
+        ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, name: t.name, sub: 'Category' })),
         ...data.performers.map((p) => ({ kind: 'performer' as const, id: p.id, name: p.name, sub: 'Performer' })),
         ...data.studios.map((s) => ({ kind: 'studio' as const, id: s.id, name: s.name, sub: 'Studio' })),
       ]
@@ -121,7 +190,12 @@ function BlockSearch() {
     <div className="mt-4">
       <label className="flex h-10 items-center gap-2 rounded-full bg-raised px-4 ring-1 ring-white/5 focus-within:ring-accent/60">
         <Search size={16} className="text-muted" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a tag, performer or studio to block" className="w-full bg-transparent text-sm outline-none placeholder:text-muted" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Find a category, performer or studio to block"
+          className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
+        />
       </label>
       {dq.length >= 2 && (
         <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
@@ -154,7 +228,7 @@ function HiddenSetting() {
   if (!data?.length) return null
   return (
     <section>
-      <h2 className="text-lg font-bold">Not interested</h2>
+      <h3 className="text-lg font-bold">Not interested</h3>
       <p className="mt-1 max-w-xl text-sm text-muted">
         Videos you marked “Not interested” (the tag <i>Not interested</i> in Stash). They stay out of every list until shown again.
       </p>
@@ -183,10 +257,10 @@ function PeopleSetting() {
   const save = useUpdateSettings()
   return (
     <section>
-      <h2 className="text-lg font-bold">Performer preferences</h2>
+      <h3 className="text-lg font-bold">Performer preferences</h3>
       <p className="mt-1 mb-4 max-w-xl text-sm text-muted">
-        Every list, the home feed and related videos keep to these: a video needs one performer (of your performer gender) who
-        matches. A list’s own People filter replaces them, and “Show blocked” turns them off.
+        Every list, the home feed and related videos keep to these: a video needs one performer who matches. A list’s own
+        People filter replaces them, and “Show blocked” turns them off.
       </p>
       {settings && <PeopleControls value={settings.people ?? {}} onChange={(people) => save.mutate({ people })} />}
     </section>
@@ -200,8 +274,7 @@ function PlaybackSetting() {
   const [keep, setKeep] = useStored(KEEP_PLAYING_KEY, asBool(true)) // per browser, like the other player prefs
   return (
     <section>
-      <h2 className="text-lg font-bold">Playback</h2>
-      <label className="mt-3 flex max-w-xl cursor-pointer items-start justify-between gap-4">
+      <label className="flex max-w-xl cursor-pointer items-start justify-between gap-4">
         <span>
           <span className="block text-sm font-medium">Start playing when I open a video</span>
           <span className="mt-0.5 block text-sm text-muted">
@@ -215,15 +288,17 @@ function PlaybackSetting() {
         <span>
           <span className="block text-sm font-medium">Keep playing while browsing</span>
           <span className="mt-0.5 block text-sm text-muted">
-            Leaving a video’s page docks it in a corner, still playing; tap it to go back. Off: leaving the page stops it.
+            Leaving a video’s page docks it in a corner, still playing; click or tap it to go back. Off: leaving the page stops it.
           </span>
         </span>
         <Switch on={keep} onChange={setKeep} className="mt-0.5" />
       </label>
+      <p className="mt-4 max-w-xl text-sm text-muted">Quality, speed and a studio’s intro skip are in the player’s gear menu.</p>
     </section>
   )
 }
 
+// Desktop only (touch:hidden): Esc twice has no touch equivalent.
 function PanicSetting() {
   const { data: settings } = useSettings()
   const save = useUpdateSettings()
@@ -231,28 +306,35 @@ function PanicSetting() {
   const value = url ?? settings?.panicUrl ?? ''
   return (
     <section className="touch:hidden">
-      <h2 className="text-lg font-bold">Panic key</h2>
+      <h3 className="text-lg font-bold">Panic key</h3>
       <p className="mt-1 text-sm text-muted">
         Press <kbd className="rounded bg-raised px-1">Esc</kbd> twice quickly anywhere in flix: video stops and the tab jumps to
         this page, replacing flix in the tab’s history.
       </p>
       <form
-        className="mt-3 flex max-w-xl gap-2"
+        className="mt-3 max-w-xl"
         onSubmit={(e) => {
           e.preventDefault()
           save.mutate({ panicUrl: value }, { onSuccess: () => setUrl(null) })
         }}
       >
-        <input
-          type="url"
-          required
-          value={value}
-          onChange={(e) => setUrl(e.target.value)}
-          className="min-w-0 flex-1 rounded-full bg-raised px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
-        />
-        <Button type="submit" disabled={url === null || save.isPending}>
-          {save.isSuccess && url === null ? 'Saved' : 'Save'}
-        </Button>
+        <label htmlFor="panic-url" className="block text-sm font-medium">
+          Go to
+        </label>
+        <div className="mt-1.5 flex gap-2">
+          <input
+            id="panic-url"
+            type="url"
+            required
+            value={value}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://"
+            className="min-w-0 flex-1 rounded-full bg-raised px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
+          />
+          <Button type="submit" disabled={url === null || save.isPending}>
+            {save.isSuccess && url === null ? 'Saved' : 'Save'}
+          </Button>
+        </div>
       </form>
       {save.isError && <div className="mt-2 text-sm text-red-400">{(save.error as Error).message}</div>}
     </section>
@@ -272,7 +354,7 @@ function Diagnostics() {
       .catch(() => showToast('Could not copy'))
   return (
     <section>
-      <h2 className="text-lg font-bold">Diagnostics</h2>
+      <h3 className="text-lg font-bold">Diagnostics</h3>
       <p className="mt-1 text-sm text-muted">
         What a desktop console would show: errors, page changes and where the player is, newest first. Kept in memory for this
         visit only. For a bug on the phone: make it happen, come here, Copy.

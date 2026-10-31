@@ -25,7 +25,8 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
 
 ## Behaviour
 
-- **Title and tags** edit in place (`SceneEditor`): `PATCH /api/scenes/:id`.
+- **Title and categories** (tags; "Edit categories" in the UI, [[categories-and-us-spelling]])
+  edit in place (`SceneEditor`): `PATCH /api/scenes/:id`.
 - **Identify on StashDB** for this one scene: `POST /api/scenes/:id/identify` queues a Stash
   job; `GET /api/jobs/:id` follows it ([[stashdb]]).
 - **Rating** (stars, half steps), **O** counter, **Favorite** heart (the built-in Favorites
@@ -38,10 +39,12 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
   **Mark as watched** is not on this page: it lives in the card's long-press / right-click
   menu (`CardMenu.tsx`); _the page listed it until 2026-10-31_ (UX audit, F14 in
   `docs/audits/2026-10-31-ux/ia.md`).
+- **Playlist** opens the save-to-playlist menu (_the button said "Save" until 2026-10-31_).
 - **Station** by Related starts a drifting station from this scene ([[stations]]).
 - **+** next to each performer, the studio and each tag adds it to the stacked filters
   ([[browse-and-filters]]).
-- The full description shows; file path, format, size and links fold under the tags.
+- The full description shows; file path, format, size and links fold under the categories
+  behind "Show file and links".
 - **Moments** lists every marker below the video ([[moments]]).
 - **Related videos** at the bottom ([[related-videos]]).
 - Play buttons from elsewhere pass `?play=1` so the video starts at once; otherwise it opens

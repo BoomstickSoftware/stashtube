@@ -1,31 +1,55 @@
-import { Ghost, LockKeyhole } from 'lucide-react'
+import { Eye, Ghost, LockKeyhole } from 'lucide-react'
 import { useState } from 'react'
 import { checkPin, IDLE_CHOICES, lock, newPinSettings, savePinSettings, usePinSettings } from '../lib/lock'
 import { setPrivate, useIsPrivate } from '../lib/privacy'
+import { asBool, useStored } from '../lib/storage'
 import { Button, Switch } from './ui'
 
-// Settings → Privacy: the private session switch (the ghost in the header is the same switch)
-// and the PIN lock.
+// Settings → Privacy: the private session switch (the ghost in the header is the same switch),
+// the discreet switch (the eye in the header, same key in storage) and the PIN lock.
 export function PrivacySetting() {
   const priv = useIsPrivate()
   return (
-    <section>
-      <h2 className="flex items-center gap-2 text-lg font-bold">
-        <Ghost size={20} className="text-violet-300" /> Privacy
-      </h2>
-      <label className="mt-3 flex max-w-xl cursor-pointer items-start justify-between gap-4">
+    <section className="max-w-xl">
+      <h4 className="flex items-center gap-2 text-sm font-medium">
+        <Ghost size={15} className="text-violet-300" /> Private session
+      </h4>
+      <label className="mt-2 flex cursor-pointer items-start justify-between gap-4">
         <span>
-          <span className="block text-sm font-medium">Private session</span>
+          <span className="block text-sm font-medium">Record nothing I watch</span>
           <span className="mt-0.5 block text-sm text-muted">
             Nothing you watch is recorded until you close flix: no plays, history or resume points, no station spots, and the
-            rating, O and marker buttons do nothing. Favourites, playlists and Not interested still work. The ghost in the
+            rating, O and marker buttons do nothing. Favorites, follows, playlists and Not interested still work. The ghost in the
             header turns it on and off too.
           </span>
         </span>
         <Switch on={priv} onChange={setPrivate} className="mt-0.5" />
       </label>
+      <DiscreetSetting />
       <PinSetting />
     </section>
+  )
+}
+
+// The same per-browser flag as the eye in the header (`flix.discreet`, see Layout).
+function DiscreetSetting() {
+  const [discreet, setDiscreet] = useStored('flix.discreet', asBool(false))
+  return (
+    <div className="mt-6">
+      <h4 className="flex items-center gap-2 text-sm font-medium">
+        <Eye size={15} className="text-muted" /> Discreet
+      </h4>
+      <label className="mt-2 flex cursor-pointer items-start justify-between gap-4">
+        <span>
+          <span className="block text-sm font-medium">Blur pictures until hovered or focused</span>
+          <span className="mt-0.5 block text-sm text-muted">
+            Every thumbnail, poster and preview is blurred until you point at it (or touch its card). Kept on this device only;
+            the eye in the header is the same switch.
+          </span>
+        </span>
+        <Switch on={discreet} onChange={setDiscreet} className="mt-0.5" />
+      </label>
+    </div>
   )
 }
 
@@ -34,10 +58,10 @@ const PIN_OK = /^\d{4,6}$/
 function PinSetting() {
   const settings = usePinSettings()
   return (
-    <div className="mt-6 max-w-xl">
-      <h3 className="flex items-center gap-2 text-sm font-medium">
+    <div className="mt-6">
+      <h4 className="flex items-center gap-2 text-sm font-medium">
         <LockKeyhole size={15} className="text-muted" /> PIN lock
-      </h3>
+      </h4>
       <p className="mt-0.5 text-sm text-muted">
         A screen over flix after a while without a touch, or when you come back to it, until a 4–6 digit PIN is entered.
         Press <kbd className="rounded bg-raised px-1">L</kbd> to lock at once. This is a privacy screen, not a login: the PIN
@@ -106,7 +130,7 @@ function SetPin() {
       }}
     >
       {pinInput(pin, setPin, 'New PIN')}
-      {pinInput(again, setAgain, 'Again')}
+      {pinInput(again, setAgain, 'Repeat PIN')}
       <Button type="submit" disabled={!ready}>
         Set PIN
       </Button>
@@ -137,7 +161,7 @@ function ChangePin() {
     >
       {pinInput(current, (v) => (setCurrent(v), setWrong(false)), 'Current', true)}
       {pinInput(pin, setPin, 'New PIN')}
-      {pinInput(again, setAgain, 'Again')}
+      {pinInput(again, setAgain, 'Repeat PIN')}
       <Button type="submit" disabled={!ready}>
         Save
       </Button>

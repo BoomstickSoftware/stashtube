@@ -30,7 +30,8 @@ Done, by date (each page says what changed and how it was verified):
   [[2026-10-30-hold-to-mark-and-moments]], [[2026-10-30-wiki-created]],
   [[2026-10-30-relative-scrubbing]], [[2026-10-30-app-follows-deploys]]
 - [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]],
-  [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]]
+  [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]],
+  [[2026-10-31-ux-copy-settings-errors]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 
@@ -129,9 +130,10 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 ### Phase 4: desktop polish and accessibility (S–M)
 
-- Settings: an `h1`, a sticky section list, Clean up moved to a "Library tools" group near
+- ~~Settings: an `h1`, a sticky section list, Clean up moved to a "Library tools" group near
   Cache (desktop 11, IA F9); copy table in `desktop.md` §4 applied (device-neutral verbs, one
-  spelling, "Save" vs "Saved", PIN placeholders, labelled panic URL field).
+  spelling, "Save" vs "Saved", PIN placeholders, labelled panic URL field).~~ Done:
+  [[2026-10-31-ux-copy-settings-errors]] ([[settings-page]]).
 - Related sidebar capped with a "More like this" grid below, or sticky with its own scroll
   (desktop 10); "Pick up a station" below Featured or beside the hero at `xl` (13); About as
   a real button with inline facts and a deduped "Links (27)" disclosure (14).
@@ -144,24 +146,32 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 ### Phase 5: vocabulary, freshness and errors (IA, S–M, several need a decision)
 
-- One vocabulary: Follow / Following for everything derived from Stash's performer favourite
+- ~~One vocabulary: Follow / Following for everything derived from Stash's performer favourite
   ("Performers I follow" filter, "New from performers you follow" rows, the station quick
   start); Favorites for the video heart; Pin for tags; one spelling in the UI (IA F2,
   desktop 8); Categories or Tags everywhere (IA F12, desktop 8); "Playlist" instead of a
-  third "Save"; "Save station" (IA F19).
+  third "Save"; "Save station" (IA F19).~~ Done: [[2026-10-31-ux-copy-settings-errors]], except the
+  strings in files other initiatives own: `Home.tsx` "New from your favourites, not
+  downloaded" → "New from performers you follow, not downloaded" and its hint "Get fetches
+  one scene" → "Get downloads one scene" (also `WantedRow.tsx`); `Tag.tsx` eyebrow "#" →
+  "Category"; `Player.tsx` O button title → "Count an O here (adds a marker)";
+  `Directories.tsx` Studios table header "Network" in title case.
 - Optimistic rollbacks on error for rating, follow, pin and performer rating; Moments' Undo
   toast on success only (IA F1); progress and Continue badge patched after `saveActivity`
   (IA F3); Identify polled server-side until finished (IA F6); ~~Playlist Shuffle plays
   shuffled without rewriting the order (IA F5)~~ done in Phase 0; a "Requested" state on wanted cards between
   Get and the grab (IA row 18).
-- Actionable errors: map "Stash: …" 502s to "Stash is busy or down (a scan locks it for a
+- ~~Actionable errors: map "Stash: …" 502s to "Stash is busy or down (a scan locks it for a
   few minutes). Cached pages still work.", network failures to "No connection to flix"; client
-  timeout below the server's so the server's reason wins (IA F15); an HLS error state in the
-  player instead of an endless spinner (IA F16, verify with a renamed file); a dim "Your
-  performer defaults" chip when Settings' people filter shortens a list (IA F18).
-- Settings in five groups (Library, Feed, Playback, Privacy, Advanced) with an anchor strip,
+  timeout below the server's so the server's reason wins (IA F15)~~ done in [[2026-10-31-ux-copy-settings-errors]]
+  (the client timeout went above the server's instead, 65 s, so the server's reason arrives);
+  an HLS error state in the player instead of an endless spinner (IA F16, verify with a renamed
+  file); a dim "Your performer defaults" chip when Settings' people filter shortens a list
+  (IA F18).
+- ~~Settings in five groups (Library, Feed, Playback, Privacy, Advanced) with an anchor strip,
   one page ([[settings-next-to-page]] kept) (IA F9); fix `CachePanel`'s "within 60 s" to
-  mention the 10-minute idle gate; remove or wire `useWhisparrActivity`.
+  mention the 10-minute idle gate; remove or wire `useWhisparrActivity`.~~ Done:
+  [[2026-10-31-ux-copy-settings-errors]] (the hook was removed).
 
 ### Decisions the user owns (each becomes a `decisions/` page)
 

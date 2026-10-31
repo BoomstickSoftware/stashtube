@@ -42,7 +42,7 @@ export function describeQuery(q: SceneQuery, names: Names): QueryPart[] {
   for (const id of idList(q.xtags)) out.push({ key: `x${id}`, label: names.tag(id) ?? '…', tone: 'exclude', clear: { xtags: toggleId(q.xtags, id) } })
   if (q.unwatched) plain('unwatched', 'Unwatched', { unwatched: undefined })
   if (q.inProgress) plain('inProgress', 'In progress', { inProgress: undefined })
-  if (q.favorites) plain('favorites', 'Favourite performers', { favorites: undefined })
+  if (q.favorites) plain('favorites', 'Performers I follow', { favorites: undefined })
   if (q.minRating) plain('minRating', `★ ${q.minRating}+`, { minRating: undefined })
   if (q.minHeight) plain('minHeight', q.minHeight >= 2160 ? '4K' : `${q.minHeight}p+`, { minHeight: undefined })
   if (q.minDuration || q.maxDuration)

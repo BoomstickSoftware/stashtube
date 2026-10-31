@@ -39,7 +39,7 @@ One module per domain, re-exported by `index.ts`, so pages import from `'../lib/
 | `stations.ts` | stations, resume, previews |
 | `home.ts` | home rows, Featured preview, pinned rows |
 | `settings.ts` | settings, features, admin cache, login |
-| `whisparr.ts` | `useWanted`, `useWhisparrNew`, `useWhisparrActivity`, `useGetScene` |
+| `whisparr.ts` | `useWanted`, `useWhisparrNew`, `useGetScene` (_`useWhisparrActivity`, which nothing rendered, was removed 2026-10-31_) |
 
 ## Helpers (`src/lib/`)
 
@@ -74,8 +74,8 @@ card a list already holds while the full record loads ([[scene-page]]). React Qu
 ## Writes and freshness
 
 Every mutation that fails shows a toast, once, from the `MutationCache` in `lib/api/client.ts`:
-the `ApiError` message when the server passed a reason on ("Stash: database is locked"),
-"Couldn't save that" otherwise. The cache's `onError` runs even for hooks with their own
+the `ApiError` message when the server passed a reason on, reworded by `describeError` for a
+Stash 502 (see Errors below), "Couldn't save that" otherwise. The cache's `onError` runs even for hooks with their own
 `onError` (a per-hook `onError` would *replace* a `defaultOptions.mutations.onError`, which is
 why the cache hook is used); a hook whose UI renders the error itself opts out with
 `meta: { silent: true }` (`useDeleteScenes`). _Until 2026-10-31_ only Get, Delete, Settings and
@@ -94,6 +94,23 @@ What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
 
 The server side is in [[caching]]; the per-action freshness table from the 2026-10-31 audit is
 `docs/audits/2026-10-31-ux/ia.md` §3.
+
+## Errors
+
+`describeError(error, 'read' | 'write')` in `lib/api/client.ts` is the one place an error
+becomes words, used by `ErrorBox` (`ui.tsx`) and the failed-write toast (since 2026-10-31,
+[[failed-writes-toast-only]]):
+
+| Error | Shown |
+|---|---|
+| `ApiError` 502 whose message starts `Stash:` (the server's `StashError` handler) | "Stash is busy or down (a scan locks it for a few minutes). Cached pages still work." (writes: "… Nothing was saved; try again later."), the raw message in a smaller line under it ([[stash-database-locked]]) |
+| `TypeError` from `fetch` ("Failed to fetch", Safari's "Load failed") or an `AbortError` | "No connection to flix. Check Wi-Fi, then try again." |
+| `TimeoutError` (the client's own abort) | "flix took more than 65 s to answer. Try again in a moment." |
+| any other `ApiError` (401 included; the login sheet opens from the `flix:login-required` event the client raises) | its message |
+
+The client aborts a request after **65 s** (`TIMEOUT`; _45 s until 2026-10-31_), longer than
+the server's 60 s Stash budget, so a slow Stash reaches the page as the server's "Stash: no
+answer in 60 s" 502 and gets the Stash wording rather than a bare timeout.
 
 ## Checks
 

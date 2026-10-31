@@ -57,7 +57,10 @@ planned but Whisparr's calendar is empty ([[whisparr-calendar-empty]]).
 Both writes refuse anything but a single scene id (feature films too). There is **no code path
 that monitors or searches a performer or studio**: [[whisparr-nothing-monitored]].
 `whisparr.test.ts` and `stashdb.test.ts` pin the exact requests; `scripts/mobile-check.mjs`
-blocks both routes ([[prod-checks-read-only]]). `/api/whisparr/activity` shows the queue.
+blocks both routes ([[prod-checks-read-only]]). `GET /api/whisparr/activity` returns the queue
+and recent grabs but nothing in the web app calls it (the `useWhisparrActivity` hook was dead
+code and was removed 2026-10-31); a "Requested" state on wanted cards would be its first user
+([[roadmap]]).
 
 ## Numbers
 

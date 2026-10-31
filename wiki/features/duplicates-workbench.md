@@ -5,7 +5,7 @@ summary: Stash's perceptual-hash groups side by side, with the copy to keep chos
 tags: [duplicates, cleanup, delete, phash]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 routes: [/duplicates]
 api: [GET /api/duplicates?distance=&durationDiff=]
 code: [apps/web/src/pages/Duplicates.tsx, apps/server/src/duplicates.ts, apps/server/src/duplicates.test.ts, apps/server/src/stash.ts]
@@ -14,7 +14,7 @@ related: [cleanup-page, delete-via-whisparr, stash-api]
 
 # Duplicates workbench
 
-`/duplicates` (from Clean up) shows every group Stash's `findDuplicateScenes` returns, side by
+`/duplicates` (from Clean up, or its own card in Settings → Library since 2026-10-31) shows every group Stash's `findDuplicateScenes` returns, side by
 side with resolution, bit rate, size, codec, plays and path.
 
 ## Behaviour

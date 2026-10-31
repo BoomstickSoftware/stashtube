@@ -57,8 +57,8 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
           <ListPlus size={18} />
         </button>
       ) : (
-        <Button onClick={() => setOpen((v) => !v)} active={open}>
-          <ListPlus size={18} /> Save
+        <Button onClick={() => setOpen((v) => !v)} active={open} title="Save to playlist">
+          <ListPlus size={18} /> Playlist
         </Button>
       )}
       {open && sheet && <PlaylistSheet sceneId={sceneId} onClose={close} />}

@@ -13,11 +13,11 @@ import { stationKey } from '../lib/station'
 import { sized, srcSet } from '@flix/shared'
 import { CARD_SIZES } from '../lib/media'
 
-// Ready-made stations: one tap, nothing to set up.
+// Ready-made stations: one click or tap, nothing to set up.
 const quick: { name: string; query: SceneQuery; icon: typeof Radio }[] = [
   { name: 'Everything', query: {}, icon: Radio },
   { name: 'Unwatched', query: { unwatched: true }, icon: Sparkles },
-  { name: 'Favourite performers', query: { favorites: true }, icon: Users },
+  { name: 'Performers I follow', query: { favorites: true }, icon: Users },
   { name: 'Top rated', query: { minRating: 4 }, icon: Star },
 ]
 const quickQueries = quick.map((q) => q.query)
@@ -57,7 +57,7 @@ export function Stations(): JSX.Element {
           <Spinner className="mx-auto my-12" />
         ) : !data?.length ? (
           <div className="rounded-2xl bg-surface p-6 text-sm text-muted ring-1 ring-line">
-            None saved yet. Tap <b>New station</b>, or open a station and tap <b>Save</b> next to its name.
+            None saved yet. Choose <b>New station</b>, or open a station and choose <b>Save station</b> next to its name.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">

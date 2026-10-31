@@ -144,3 +144,11 @@ skips hidden elements → [[player]], [[2026-10-31-ux-phase2-3-web]].
 Quick choices above the tag cloud; Shift+click range and Cmd/Ctrl+A in select mode; Shift+right-click
 keeps the browser's menu; reduced-motion CSS and no hover previews. desktop-check takes
 `shift`/`cmd`/`ctrl` → [[browse-and-filters]], [[mobile-first-ui]], [[2026-10-31-ux-phase2-3-web]].
+## [2026-10-31] ingest | Copy pass, Settings in five groups, actionable errors
+Categories, US spelling and Follow applied across the web and the server row titles; Settings
+regrouped (Library, Feed, Playback, Privacy, Advanced) under a sticky anchor strip with a
+Discreet switch; `describeError` rewords Stash 502s, network failures and timeouts in ErrorBox
+and the write toast (client timeout 45 s → 65 s); `useWhisparrActivity` removed →
+[[2026-10-31-ux-copy-settings-errors]], [[settings-page]], [[web-app]], [[home-feed]],
+[[browse-and-filters]], [[whisparr-shelf]], [[stations]], [[featured-ranking]],
+[[discreet-mode]], [[scene-page]], [[roadmap]].

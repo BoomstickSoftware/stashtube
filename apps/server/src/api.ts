@@ -198,7 +198,7 @@ export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]
     return null
   }
   // The groups that do not depend on each other run together (a cold feed waited on each in
-  // turn); only "More with" needs the recommendations' favourite performers.
+  // turn); only "More with" needs the recommendations' followed (Stash-favourite) performers.
   const recsP = stash.recommendations(blocked, (g) => genderAllows(settings.performerGender, g)).catch(failed('recommendations'))
   const [recs, picks, because, pinnedRows, moreWith, rows] = await Promise.all([
     recsP,
@@ -209,7 +209,7 @@ export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]
       Promise.all((r?.favPerformers ?? []).map((p) => row(`more-${p.id}`, `More with ${p.name}`, { performers: p.id, sort: 'random', seed }))),
     ),
     Promise.all([
-      row('favorites', 'New from your favourites', { favorites: true, sort: 'date' }),
+      row('favorites', 'New from performers you follow', { favorites: true, sort: 'date' }),
       row('recent', 'Recently added', { sort: 'created_at' }),
       row('discover', 'Discover', { sort: 'random', seed, unwatched: true }),
       row('top', 'Top rated', { sort: 'rating', minRating: 4 }),
