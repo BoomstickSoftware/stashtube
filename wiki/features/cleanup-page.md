@@ -4,8 +4,8 @@ kind: feature
 summary: Ready-made lists of likely deletions (low resolution, never watched, low rated, not on StashDB) with selection always on and a link to the duplicates workbench.
 tags: [cleanup, delete, library]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-10-31
+updated: 2026-10-31
 routes: [/cleanup]
 api: [GET /api/scenes]
 code: [apps/web/src/pages/Cleanup.tsx]
@@ -14,7 +14,7 @@ related: [duplicates-workbench, delete-via-whisparr, browse-and-filters]
 
 # Clean up page
 
-`/cleanup`, linked from Settings, is the shared scene list with selection always on and
+`/cleanup`, a card in the Library group of Settings ([[settings-page]]), is the shared scene list with selection always on and
 blocked videos included, so a pass over the library can end in one Delete
 ([[delete-via-whisparr]]).
 

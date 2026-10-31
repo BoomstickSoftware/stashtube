@@ -39,7 +39,8 @@ hard-coded sort on 2026-10-30 at the user's request.
 - **Defaults** (`FEATURED_DEFAULTS` in `@flix/shared`): dormant 0.4, shelfAge 0.2,
   performer 0.5, tag 0.3, rated 0.3, watched −0.2, surprise 0.3, the rest 0.
 - **Caps**: at most two picks per performer and three per studio. Every pick carries a `why`
-  line in words ("Favourite performer · not seen in 7 months").
+  line in words ("A performer you follow · not seen in 7 months"; _"Favourite performer" until
+  2026-10-31_, [[categories-and-us-spelling]]).
 - **Seed**: the page's (made at load; Shuffle draws another); without one, the day's.
 - **Weights** are saved under the `featured` key of the `settings` table, so they are shared
   across devices ([[single-user-no-login]]). Settings previews the top 12 live while dragging

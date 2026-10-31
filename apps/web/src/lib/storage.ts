@@ -1,7 +1,7 @@
 // The one place that touches localStorage. It can be missing or throw (private mode, blocked
 // site data), so every read falls back to a default and every write is best effort. Values are
 // JSON; a value written before this existed (a bare "auto" or "1") comes back as that string.
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export function readStored<T>(key: string, parse: (raw: unknown) => T): T {
   try {
@@ -17,6 +17,10 @@ export function readStored<T>(key: string, parse: (raw: unknown) => T): T {
   }
 }
 
+// Every write is announced on `window`, so two components holding the same key (the header's
+// eye and Settings → Privacy → Discreet) stay in step without a store of their own.
+const CHANGED = 'flix:stored'
+
 export function writeStored(key: string, value: unknown) {
   try {
     if (value === undefined) localStorage.removeItem(key)
@@ -24,11 +28,15 @@ export function writeStored(key: string, value: unknown) {
   } catch {
     /* storage unavailable */
   }
+  // after the current render: a write can come from inside a state updater
+  queueMicrotask(() => window.dispatchEvent(new CustomEvent(CHANGED, { detail: key })))
 }
 
 // State that survives reloads: `parse` turns whatever is stored (or nothing) into a value.
+// Another `useStored` of the same key, anywhere on the page, sees a change at once.
 export function useStored<T>(key: string, parse: (raw: unknown) => T): [T, (v: T | ((prev: T) => T)) => void] {
   const [v, setV] = useState(() => readStored(key, parse))
+  const parser = useRef(parse) // callers pass a fresh closure each render; the first one is kept
   const set = useCallback(
     (next: T | ((prev: T) => T)) =>
       setV((prev) => {
@@ -38,6 +46,13 @@ export function useStored<T>(key: string, parse: (raw: unknown) => T): [T, (v: T
       }),
     [key],
   )
+  useEffect(() => {
+    const h = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === key) setV(readStored(key, parser.current))
+    }
+    window.addEventListener(CHANGED, h)
+    return () => window.removeEventListener(CHANGED, h)
+  }, [key])
   return [v, set]
 }
 

@@ -26,8 +26,9 @@ export function CachePanel() {
     <div className="space-y-4">
       <p className="text-sm text-muted">
         flix answers from its own cache whenever it can, so Stash only does real work: new data, writes, and video. Query
-        results are dropped when you change something in flix, and within {s.changePollSeconds}s of a change made in Stash
-        itself (scans, Identify, edits). Counters reset when the server restarts, last {ago(s.since)}.
+        results are dropped when you change something in flix, and within {s.changePollSeconds} s of a change made in Stash
+        itself (scans, Identify, edits) while flix is in use; after 10 idle minutes the check pauses until the next request.
+        Counters reset when the server restarts, last {ago(s.since)}.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Card icon={<Database size={16} />} title="Query results" sub={`memory · TTL ${s.data.ttlMinutes} min`}>
@@ -88,7 +89,7 @@ export function CachePanel() {
           <HardDrive size={15} /> Clear images & previews
         </Button>
         <Button variant="danger" onClick={() => run('all', 'every cache')} disabled={clear.isPending}>
-          Clear everything
+          Clear all caches…
         </Button>
       </div>
     </div>

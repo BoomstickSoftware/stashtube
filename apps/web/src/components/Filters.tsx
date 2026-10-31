@@ -128,13 +128,13 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
             onChange={(v) => onChange({ minAge: v.minAge, maxAge: v.maxAge, ethnicities: v.ethnicities?.join(',') || undefined })}
           />
           <p className="mt-2 text-xs text-muted">
-            Age and ethnicity apply to one performer of your Settings gender, and replace your Settings defaults here.
+            Age and ethnicity need one performer who matches both, and replace your Settings defaults here.
           </p>
         </div>
       </Section>
       <Section title="Blocked">
         <Toggle on={!!q.unblocked} onChange={(v) => onChange({ unblocked: v || undefined })}>
-          <EyeOff size={14} className="inline align-[-2px]" /> Include videos from blocked performers, studios and tags
+          <EyeOff size={14} className="inline align-[-2px]" /> Include videos from blocked performers, studios and categories
         </Toggle>
       </Section>
     </div>
@@ -190,7 +190,7 @@ function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean
   )
 }
 
-// One search box for everything that can be a filter. Before typing: popular tags to tap.
+// One search box for everything that can be a filter. Before typing: popular tags to pick.
 // With facets, each result says how many of the videos already selected it covers ("12 here"), the
 // ones that cover some come first, and the rest are dimmed: adding them would leave nothing. Studios
 // are any-of, so once one is picked another widens the set, and they keep their library counts.
@@ -242,7 +242,7 @@ function FinderSection({ query: q, onChange, facets }: { query: SceneQuery; onCh
               setText('')
             }
           }}
-          placeholder="Performer, studio, tag or words in the title"
+          placeholder="Performer, studio, category or words in the title"
           className="w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted sm:text-sm"
         />
         {isFetching && searching && <Spinner className="size-4 border-2" />}
@@ -292,7 +292,7 @@ function FinderSection({ query: q, onChange, facets }: { query: SceneQuery; onCh
             </Group>
           )}
           {tags.length > 0 && (
-            <Group label="Tags">
+            <Group label="Categories">
               {tags.map((t) => {
                 const inc = idList(q.tags).includes(t.id)
                 const exc = idList(q.xtags).includes(t.id)
@@ -309,14 +309,14 @@ function FinderSection({ query: q, onChange, facets }: { query: SceneQuery; onCh
             </Group>
           )}
           {found && !performers.length && !studios.length && !tags.length && (
-            <p className="px-2 text-sm text-muted">No performers, studios or tags match. Search titles instead.</p>
+            <p className="px-2 text-sm text-muted">No performers, studios or categories match. Search titles instead.</p>
           )}
         </div>
       ) : (
         <div className="mt-3">
           <div className="mb-2 text-xs text-muted">
-            {facets ? `Most common tags in these ${videos(facets.total)}.` : 'Popular tags.'} Tap to require one; search a tag to
-            exclude it.
+            {facets ? `Most common categories in these ${videos(facets.total)}.` : 'Popular categories.'} Pick one to require it; search a
+            category to exclude it.
           </div>
           <div className="flex flex-wrap gap-1.5">
             {suggested.map((t) => {

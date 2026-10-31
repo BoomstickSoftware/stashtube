@@ -26,7 +26,7 @@ export interface SceneCard {
   screenshot: string
   preview: string | null
   vtt: string | null
-  why?: string // Featured only: the signals that put it there, in words ("Favourite performer · not seen in 7 months")
+  why?: string // Featured only: the signals that put it there, in words ("A performer you follow · not seen in 7 months")
 }
 
 // The Featured engine's dials: how much each signal counts, -1 (avoid) to 1 (prefer).
@@ -285,7 +285,7 @@ export const ethnicities = ['Caucasian', 'Latin', 'Black', 'Asian', 'Mixed', 'Mi
 
 export const performerSorts = {
   name: 'Name',
-  scenes_count: 'Most scenes',
+  scenes_count: 'Most videos',
   rating: 'Rating',
   created_at: 'Recently added',
   random: 'Random',

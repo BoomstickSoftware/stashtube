@@ -1,4 +1,4 @@
-import type { WantedList, WantedScene, WhisparrActivity } from '@flix/shared'
+import type { WantedList, WantedScene } from '@flix/shared'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, send } from './client'
 import { useFeatures } from './settings'
@@ -26,21 +26,10 @@ export function useWanted(kind: 'performer' | 'studio', id: string) {
   })
 }
 
-// Recent releases from favourite performers that are not in the library.
+// Recent releases from followed (Stash-favourite) performers that are not in the library.
 export function useWhisparrNew() {
   const on = useWhisparrOn()
   return useQuery({ queryKey: ['whisparr', 'new'], queryFn: () => get<WantedScene[]>('/whisparr/new'), enabled: on, staleTime: 60_000 })
-}
-
-export function useWhisparrActivity() {
-  const on = useWhisparrOn()
-  return useQuery({
-    queryKey: ['whisparr', 'activity'],
-    queryFn: () => get<WhisparrActivity>('/whisparr/activity'),
-    enabled: on,
-    staleTime: 20_000,
-    refetchInterval: 30_000,
-  })
 }
 
 // Fetch one scene. A scene Whisparr lists is monitored and searched; one only StashDB lists is

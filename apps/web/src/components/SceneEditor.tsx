@@ -82,7 +82,7 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
           onClick={() => setEditing((v) => !v)}
           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-muted hover:bg-raised hover:text-fg"
         >
-          {editing ? <Check size={12} /> : <Pencil size={12} />} {editing ? 'Done' : 'Edit tags'}
+          {editing ? <Check size={12} /> : <Pencil size={12} />} {editing ? 'Done' : 'Edit categories'}
         </button>
         {update.isPending && <Spinner className="size-3 border" />}
       </div>
@@ -90,7 +90,7 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
         <div className="mt-2 max-w-sm">
           <label className="flex items-center gap-2 rounded-lg bg-raised px-3 py-1.5">
             <Search size={14} className="text-muted" />
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Add a tag…" className="w-full bg-transparent text-sm outline-none" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Add a category…" className="w-full bg-transparent text-sm outline-none" />
           </label>
           {dq.length >= 2 && (
             <div className="mt-1 max-h-56 overflow-y-auto rounded-lg bg-surface py-1 ring-1 ring-line">
@@ -136,7 +136,7 @@ export function IdentifyButton({ scene }: { scene: SceneDetail }) {
     <button
       disabled={!!running}
       onClick={() => identify.mutate(undefined, { onSuccess: (r) => setJobId(r.jobId) })}
-      title="Look this video up on StashDB and fill in title, date, studio, performers and tags"
+      title="Look this video up on StashDB and fill in title, date, studio, performers and categories"
       className="inline-flex items-center gap-1.5 rounded-full bg-raised px-3 py-1 text-xs hover:bg-line disabled:opacity-60"
     >
       {running ? <Spinner className="size-3 border" /> : <Sparkles size={13} className="text-accent" />}

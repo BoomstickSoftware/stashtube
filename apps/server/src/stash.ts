@@ -773,7 +773,7 @@ export async function getPerformer(id: string): Promise<PerformerDetail | null> 
 }
 
 // Drops the performer; the performer lists and the scene rows a favourite drives ("New from
-// your favourites") are served once more while they refresh.
+// performers you follow") are served once more while they refresh.
 export async function setPerformerFavorite(id: string, favorite: boolean) {
   await mutate(`mutation($id: ID!, $f: Boolean) { performerUpdate(input: { id: $id, favorite: $f }) { id } }`, {
     id,

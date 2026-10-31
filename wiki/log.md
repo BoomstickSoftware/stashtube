@@ -128,3 +128,12 @@ Settings, gender switch page-only, home rows 24 lazy, toast-only errors →
 [[library-before-wanted-shelf]], [[categories-and-us-spelling]], [[panic-key-desktop-only]],
 [[library-tools-group-in-settings]], [[gender-switch-performers-page-only]],
 [[home-rows-stay-24-render-lazily]], [[failed-writes-toast-only]].
+
+## [2026-10-31] ingest | Copy pass, Settings in five groups, actionable errors
+Categories, US spelling and Follow applied across the web and the server row titles; Settings
+regrouped (Library, Feed, Playback, Privacy, Advanced) under a sticky anchor strip with a
+Discreet switch; `describeError` rewords Stash 502s, network failures and timeouts in ErrorBox
+and the write toast (client timeout 45 s → 65 s); `useWhisparrActivity` removed →
+[[2026-10-31-ux-copy-settings-errors]], [[settings-page]], [[web-app]], [[home-feed]],
+[[browse-and-filters]], [[whisparr-shelf]], [[stations]], [[featured-ranking]],
+[[discreet-mode]], [[scene-page]], [[roadmap]].

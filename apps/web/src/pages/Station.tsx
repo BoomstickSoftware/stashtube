@@ -519,7 +519,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                     onClick={() => setNaming(true)}
                     className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tracking-normal text-white normal-case hover:bg-white/25"
                   >
-                    <Save size={11} /> Save
+                    <Save size={11} /> Save station
                   </button>
                 )}
               </div>

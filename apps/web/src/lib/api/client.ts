@@ -14,7 +14,35 @@ export class ApiError extends Error {
   }
 }
 
-const TIMEOUT = 45_000 // ms; a request that never answers is retried instead of spinning forever
+// A request that never answers is retried instead of spinning forever. Longer than the server's
+// 60 s Stash budget, so a slow Stash arrives as the server's own "Stash: no answer in 60 s" 502
+// (which describeError explains) rather than as a bare client timeout.
+const TIMEOUT = 65_000 // ms
+
+// One sentence a person can act on, for ErrorBox and the failed-write toast, with the raw
+// message kept as `detail` when it was replaced. Only Stash's 502s are reworded for reads:
+// Stash's SQLite locks for minutes during a scan and cached pages keep working meanwhile.
+export function describeError(error: unknown, kind: 'read' | 'write' = 'read'): { text: string; detail?: string } {
+  if (error instanceof ApiError) {
+    if (error.status === 502 && error.message.startsWith('Stash:')) {
+      return {
+        text:
+          kind === 'read'
+            ? 'Stash is busy or down (a scan locks it for a few minutes). Cached pages still work.'
+            : 'Stash is busy or down (a scan locks it for a few minutes). Nothing was saved; try again later.',
+        detail: error.message,
+      }
+    }
+    return { text: error.message }
+  }
+  if (error instanceof Error) {
+    // fetch itself failed: Chrome says "Failed to fetch", Safari "Load failed"; an abort is ours
+    if (error instanceof TypeError || error.name === 'AbortError') return { text: 'No connection to flix. Check Wi-Fi, then try again.', detail: error.message }
+    if (error.name === 'TimeoutError') return { text: `flix took more than ${TIMEOUT / 1000} s to answer. Try again in a moment.` }
+    return { text: error.message }
+  }
+  return { text: 'Something went wrong' }
+}
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -47,15 +75,16 @@ export function qs(params: object): string {
   return s ? `?${s}` : ''
 }
 
-// Every failed write says so, once, in the toast: Stash's reason when the server passed one on
-// ("Stash: database is locked"), a short generic line otherwise. The cache's handler runs for
-// every mutation, including those with their own onError (a per-hook onError would replace a
-// defaultOptions one). A hook that renders the error itself opts out with `meta: { silent: true }`.
+// Every failed write says so, once, in the toast: the server's reason when it passed one on
+// (a Stash 502 reworded by describeError), a short generic line otherwise. The cache's handler
+// runs for every mutation, including those with their own onError (a per-hook onError would
+// replace a defaultOptions one). A hook that renders the error itself opts out with
+// `meta: { silent: true }`.
 export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (e, _vars, _ctx, mutation) => {
       if (mutation.meta?.silent) return
-      showToast(e instanceof ApiError ? e.message : "Couldn't save that")
+      showToast(e instanceof ApiError ? describeError(e, 'write').text : "Couldn't save that")
     },
   }),
   defaultOptions: {

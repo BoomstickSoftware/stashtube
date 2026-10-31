@@ -142,7 +142,7 @@ function SceneView({ id }: { id: string }) {
                 if (t > 3) edits.addMarker.mutate({ seconds: Math.round(t * 10) / 10, title: 'O' })
               })
             }
-            title="O counter (also marks this moment)"
+            title="Count an O here (adds a marker)"
             className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
           >
             <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}
@@ -213,7 +213,7 @@ function SceneView({ id }: { id: string }) {
         {(scene.file || scene.urls.length > 0) && (
           <>
             <button onClick={() => setShowDetails((v) => !v)} className="mt-3 text-xs font-semibold text-muted hover:text-fg">
-              {showDetails ? 'Hide file and links' : 'File and links'}
+              {showDetails ? 'Hide file and links' : 'Show file and links'}
             </button>
             {showDetails && (
               <div className="mt-2 space-y-1 text-xs text-muted">
