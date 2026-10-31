@@ -45,7 +45,8 @@ address and the dind bridge has no IPv6 route (Flannel is IPv4-only; whether din
 Go's dialer should have fallen back to IPv4 is a question for the k8s repo's runner set-up,
 `infra/forgejo-runner/statefulset.yaml`). It also logged `Need to update DB`: the three runner
 replicas each have their own dind and so their own `trivy-cache`, which fills one replica at
-a time. `deploy.yml` now retries the scan up to three times, 30 s apart.
+a time. `deploy.yml` now retries the scan up to three times, 30 s apart. Run 83 (ade2ca5, the retry
+itself) passed first time in 2 min 46 s: a warm cache plus a recovered network.
 
 ## Reading the log
 
