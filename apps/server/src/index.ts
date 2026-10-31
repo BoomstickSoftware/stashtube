@@ -10,6 +10,7 @@ import { admin } from './admin.ts'
 import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { exclusions } from './blocklist.ts'
+import { hostGuard, playbackOrigin, sameOriginWrites, securityHeaders } from './guard.ts'
 import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
@@ -19,6 +20,10 @@ import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetecti
 
 const app = new Hono()
 const VERSION = process.env.FLIX_VERSION ?? 'dev'
+
+app.use('*', securityHeaders, hostGuard) // guard.ts: what keeps other web pages away
+app.use('/api/*', sameOriginWrites)
+app.use('/media/*', sameOriginWrites)
 
 app.use('/api/*', logger())
 app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
@@ -38,18 +43,23 @@ app.get('/readyz', async (c) => {
 
 // Playback may come from MEDIA_ORIGIN while the page is on another host (flix.lan vs the IP);
 // hls.js then fetches playlists and segments cross-origin. They are authorised by their
-// signed token, not cookies, so any origin may read them.
+// signed token, not cookies; only local origins may read them (a site on the internet may not).
 app.use('/media/*', async (c, next) => {
   if (!playbackScene(c.req.path)) return next()
+  const origin = playbackOrigin(c.req.header('origin'))
   if (c.req.method === 'OPTIONS') {
+    if (!origin) return c.body(null, 204)
     return c.body(null, 204, {
-      'access-control-allow-origin': '*',
+      'access-control-allow-origin': origin,
       'access-control-allow-headers': 'range',
       'access-control-max-age': '86400',
+      vary: 'origin',
     })
   }
   await next()
-  c.header('access-control-allow-origin', '*')
+  c.header('vary', 'origin')
+  if (!origin) return
+  c.header('access-control-allow-origin', origin)
   c.header('access-control-expose-headers', 'content-length, content-range, accept-ranges')
 })
 
