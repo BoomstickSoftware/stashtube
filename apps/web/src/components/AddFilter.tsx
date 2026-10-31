@@ -17,10 +17,13 @@ export function AddFilterButton({
   id: string
   name: string
   className?: string
-  variant?: 'icon' | 'button' // button: a labelled pill for page headers
+  // button: a labelled pill for page headers; chip: a small labelled chip ("Filter") for touch
+  // screens, where a bare "+" reads as "follow" and `title` never shows
+  variant?: 'icon' | 'button' | 'chip'
 }) {
   const filters = useBrowseFilters()
   const on = hasFilter(filters, kind, id)
+  const icon = variant === 'icon' ? 13 : variant === 'chip' ? 12 : 16
   return (
     <button
       type="button"
@@ -47,17 +50,20 @@ export function AddFilterButton({
       }}
       className={clsx(
         'inline-flex shrink-0 items-center justify-center rounded-full transition-colors',
-        variant === 'icon' ? 'size-6 ring-1 touch:size-10' : 'gap-2 px-4 py-2 text-sm font-medium',
+        variant === 'icon' && 'size-6 ring-1 touch:size-10',
+        variant === 'button' && 'gap-2 px-4 py-2 text-sm font-medium',
+        variant === 'chip' && 'gap-1 px-2.5 py-1 text-xs font-medium ring-1 touch:min-h-11',
         on
           ? 'bg-accent text-white ring-accent'
-          : variant === 'icon'
-            ? 'bg-raised text-muted ring-line hover:bg-line hover:text-fg'
-            : 'bg-raised text-fg hover:bg-line',
+          : variant === 'button'
+            ? 'bg-raised text-fg hover:bg-line'
+            : 'bg-raised text-muted ring-line hover:bg-line hover:text-fg',
         className,
       )}
     >
-      {on ? <Check size={variant === 'icon' ? 13 : 16} strokeWidth={3} /> : <Plus size={variant === 'icon' ? 14 : 16} strokeWidth={2.5} />}
+      {on ? <Check size={icon} strokeWidth={3} /> : <Plus size={icon + 1} strokeWidth={2.5} />}
       {variant === 'button' && (on ? 'In filters' : 'Add to filters')}
+      {variant === 'chip' && (on ? 'In filters' : 'Filter')}
     </button>
   )
 }

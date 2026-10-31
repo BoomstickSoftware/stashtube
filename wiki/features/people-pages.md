@@ -37,6 +37,13 @@ The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" unt
   2026-10-31_), **Add to
   filters** (stacks it, [[browse-and-filters]]), **Station** from this entity's videos
   ([[stations]]).
+- **About** (performers): a ghost `Button` like its neighbours, with the number of facts and
+  `aria-expanded` (_muted text that read as a label until 2026-10-31_). Open, it shows the
+  facts grid (born, ethnicity, hair, eyes, height, measurements, breasts, tattoos, piercings),
+  the biography and a **Links (N)** disclosure. The links are Stash's URL list deduped by host
+  and path (`www.`, trailing slash and case ignored), labelled by host and numbered when a host
+  has several pages ("iafd.com (2)"); a malformed URL is dropped. Hidden when there is nothing
+  to show.
 - Studios: **intro skip** in seconds, honoured by every player and by Start over
   (`PUT /api/studios/:id/intro`, 0–600). It is set from the player's gear menu ("Skip to
   here") while one of the studio's videos plays (`Player.tsx`, `useIntroSkip`); the studio
@@ -59,6 +66,10 @@ The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" unt
   views; sort by Most videos or Name; Following. Kept per browser. Counts include sub-studios
   (`scene_count(depth: -1)`). Studio tiles are transparent logos.
 - **Categories** (tags): tag tiles with a picture, warmed at boot ([[caching]]); pinned first.
+- While a directory's first page loads it shows **tile skeletons** in its own grid (12
+  portraits; 10 studio tiles, or 10 table rows in Table view; 12 big and 16 small category
+  tiles), `role="status"`, pulsing, still under reduced motion (since 2026-10-31, _a lone
+  spinner before_). The shared `Bone` lives in `components/ui.tsx`.
 
 ## Where
 

@@ -3,7 +3,8 @@
 // save screenshots along the way. Modelled on scripts/mobile-check.mjs; the Stash-write block is
 // kept verbatim so nothing is recorded.
 // usage: node scripts/desktop-check.mjs <outdir> <base> <scenario.json>
-// env: W, H (viewport; default 1440x900)
+// env: W, H (viewport; default 1440x900); LATENCY=<ms> added to every /api and /media answer,
+//   to catch loading states (skeletons, placeholders) that the LAN answers before the first shot
 // scenario.json: [{ name, path, steps: [ {wait:ms} | {mouse:[x,y]} | {click:[x,y]} | {rclick:[x,y]}
 //   | {key:'t'} | {tab:n} | {type:'text'} | {scroll:y} | {eval:'expr'} | {shot:'suffix'} ] }]
 //   click and rclick take shift:true (modifier held) and key takes cmd:true / ctrl:true.
@@ -60,6 +61,22 @@ ws.addEventListener('message', (e) => {
 })
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false })
 await send('Page.enable')
+// LATENCY delays the BFF's answers only (/api and /media), not Vite's own modules: a global
+// Network.emulateNetworkConditions stalled the dev server's module chain for longer than any
+// scenario waited, and the pages never painted at all.
+const latency = Number(process.env.LATENCY ?? 0)
+if (latency > 0) {
+  // every request is paused and the path decides: a CDP glob like `*/api/*` also matches
+  // Vite's `/src/lib/api/*.ts` modules
+  ws.addEventListener('message', (e) => {
+    const m = JSON.parse(e.data)
+    if (m.method !== 'Fetch.requestPaused') return
+    const path = new URL(m.params.request.url).pathname
+    const wait = path.startsWith('/api/') || path.startsWith('/media/') ? latency : 0
+    setTimeout(() => send('Fetch.continueRequest', { requestId: m.params.requestId }), wait)
+  })
+  await send('Fetch.enable', { patterns: [{ urlPattern: '*' }] })
+}
 
 const KEYS = {
   t: { key: 't', code: 'KeyT', text: 't', vk: 84 },

@@ -172,3 +172,10 @@ the Women/Men/Everyone switch decoupled from Home, Stats, search and the People 
 Build 1c7f070: home 17 ms, tiles 9 ms, facets 7 ms on a fresh process; 304 on a matching ETag;
 proxied cover 19 KB, 5 ms warm; phone performer page 254 KB (was 679) → [[caching]],
 [[2026-10-31-ux-phase1-server-caching]], [[roadmap]].
+## [2026-10-31] ingest | UX audit Phase 4: desktop polish and loading states
+Related sidebar capped at 8 with a "More like this" grid, "Pick up a station" after Featured,
+About as a real button with a deduped Links disclosure, station cover placeholders, directory
+and playlist skeletons (`Bone` in `ui.tsx`), "Filter" chips on touch, `LATENCY` for
+`desktop-check` → [[scene-page]], [[related-videos]], [[home-feed]], [[people-pages]],
+[[stations]], [[playlists-and-favorites]], [[mobile-first-ui]], [[mobile-checks]], [[roadmap]],
+[[2026-10-31-ux-phase4-desktop-polish]].

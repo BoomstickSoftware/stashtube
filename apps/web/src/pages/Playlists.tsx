@@ -2,7 +2,8 @@ import type { JSX } from 'react'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, GripVertical, ListVideo, Play, Plus, Radio, Shuffle, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
-import { Button, Empty, ErrorBox, Spinner } from '../components/ui'
+import { HeaderSkeleton } from '../components/EntityHeader'
+import { Bone, Button, Empty, ErrorBox, Spinner } from '../components/ui'
 import { usePlaylist, usePlaylistMutations, usePlaylists } from '../lib/api'
 import { ago, duration } from '../lib/format'
 import { sized, srcSet } from '@flix/shared'
@@ -68,6 +69,33 @@ export function Playlists(): JSX.Element {
 
 const route = getRouteApi('/playlist/$id')
 
+const PLAYLIST_GRID = 'mx-auto grid max-w-[1600px] grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)]'
+
+// The page's frame while the list loads: the cover card's skeleton on the left, a few row
+// bones on the right, in the same grid, so nothing moves when the playlist arrives
+// (_a bare spinner for over 3 s until 2026-10-31_, phone audit item 11).
+function PlaylistSkeleton() {
+  return (
+    <div className={PLAYLIST_GRID}>
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <HeaderSkeleton shape="playlist" />
+      </aside>
+      <ol role="status" aria-label="Loading" className="space-y-1">
+        {Array.from({ length: 6 }, (_, i) => (
+          <li key={i} className="flex items-center gap-3 p-2">
+            <Bone className="h-4 w-6" />
+            <Bone className="aspect-video w-24 shrink-0 rounded-lg sm:w-44" />
+            <div className="min-w-0 flex-1">
+              <Bone className="h-4 w-3/4" />
+              <Bone className="mt-2 h-3 w-1/2" />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function PlaylistPage(): JSX.Element {
   const id = Number(route.useParams().id)
   const { data: p, error, isLoading } = usePlaylist(id)
@@ -78,7 +106,7 @@ export function PlaylistPage(): JSX.Element {
   const [drag, setDrag] = useState<number | null>(null)
 
   if (error) return <ErrorBox error={error} />
-  if (isLoading || !p) return <Spinner className="mx-auto mt-32" />
+  if (isLoading || !p) return <PlaylistSkeleton />
 
   const ids = p.items.map((s) => s.id)
   const move = (from: number, to: number) => {
@@ -91,7 +119,7 @@ export function PlaylistPage(): JSX.Element {
   const play = (sceneId?: string) => sceneId && navigate({ to: '/scene/$id', params: { id: sceneId }, search: { playlist: id, play: true } })
 
   return (
-    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
+    <div className={PLAYLIST_GRID}>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-accent/30 to-surface p-5">
           {p.cover && <img src={sized(p.cover, 640)} alt="" className="aspect-video w-full rounded-xl object-cover" />}

@@ -46,6 +46,10 @@ STEPS='[{"goto":"/browse","targets":true},{"tapText":"Filters","shot":"sheet"}]'
 
 # a scripted desktop session: real mouse/keyboard via a scenario file (see scripts/examples/)
 DESKTOP=1 node scripts/desktop-check.mjs /tmp/dc http://localhost:5174 scripts/examples/desktop-scenario.json
+# loading states: LATENCY adds ms to every /api and /media answer (not Vite's modules: delaying
+# those stalled the page past any wait), so a scenario whose "wait" is under it shoots the
+# skeletons and placeholders the LAN would otherwise answer before the first shot (since 2026-10-31)
+LATENCY=1500 node scripts/desktop-check.mjs /tmp/dc http://localhost:5174 phase4.json
 ```
 
 `phone-flow` and `desktop-check` drive the app like a user (added 2026-10-31,

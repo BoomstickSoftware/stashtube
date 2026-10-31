@@ -138,14 +138,18 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
   Cache (desktop 11, IA F9); copy table in `desktop.md` §4 applied (device-neutral verbs, one
   spelling, "Save" vs "Saved", PIN placeholders, labelled panic URL field).~~ Done:
   [[2026-10-31-ux-copy-settings-errors]] ([[settings-page]]).
-- Related sidebar capped with a "More like this" grid below, or sticky with its own scroll
+- ~~Related sidebar capped with a "More like this" grid below, or sticky with its own scroll
   (desktop 10); "Pick up a station" below Featured or beside the hero at `xl` (13); About as
-  a real button with inline facts and a deduped "Links (27)" disclosure (14).
+  a real button with inline facts and a deduped "Links (27)" disclosure (14).~~ Done
+  2026-10-31: capped at 8 with the grid, below Featured, a real button with a Links
+  disclosure ([[2026-10-31-ux-phase4-desktop-polish]]).
 - ~~Right-click: skip `preventDefault` with Shift (12); Shift+click range select and
   Cmd/Ctrl+A in select mode (24); NEW badge always visible at low opacity (18);
   `prefers-reduced-motion` for the card zoom and previews (19); card meta contrast (21).~~
   Done 2026-10-31 ([[browse-and-filters]], [[mobile-first-ui]]), the hero included.
-  Station cover placeholders (26); tile skeletons for directories (27).
+- ~~Station cover placeholders (26); tile skeletons for directories (27).~~ Done 2026-10-31,
+  with the playlist page frame and the "Filter" chips on touch (phone 7, 11)
+  ([[2026-10-31-ux-phase4-desktop-polish]]).
 
 ### Phase 5: vocabulary, freshness and errors (IA, S–M, several need a decision)
 

@@ -4,9 +4,7 @@ import { Ban, Heart } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useBlock, useIsBlocked } from '../lib/api'
 import { showToast } from '../lib/toast'
-import { Button } from './ui'
-
-const bone = 'animate-pulse rounded-md bg-raised motion-reduce:animate-none'
+import { bone, Button } from './ui'
 
 // A row of button-shaped bones, the size of the real Follow / filter / Block pills.
 function ButtonBones({ className }: { className?: string }) {
@@ -21,8 +19,19 @@ function ButtonBones({ className }: { className?: string }) {
 
 // The header's shape while the record loads: the same blocks as the real one (picture, name,
 // facts line, button row) so the grid underneath starts at once and nothing moves when the name
-// arrives. `performer` is the hero with a portrait; `studio` the logo tile; `tag` the eyebrow.
-export function HeaderSkeleton({ shape }: { shape: 'performer' | 'studio' | 'tag' }) {
+// arrives. `performer` is the hero with a portrait; `studio` the logo tile; `tag` the eyebrow;
+// `playlist` the cover card that is the playlist page's left column.
+export function HeaderSkeleton({ shape }: { shape: 'performer' | 'studio' | 'tag' | 'playlist' }) {
+  if (shape === 'playlist') {
+    return (
+      <section role="status" aria-label="Loading" className="rounded-3xl bg-gradient-to-b from-accent/30 to-surface p-5">
+        <div className={clsx(bone, 'aspect-video w-full rounded-xl')} />
+        <div className={clsx(bone, 'mt-4 h-8 w-48 max-w-full')} />
+        <div className={clsx(bone, 'mt-2 h-4 w-32')} />
+        <ButtonBones className="mt-5" />
+      </section>
+    )
+  }
   if (shape === 'performer') {
     return (
       <section role="status" aria-label="Loading" className="relative -mx-4 -mt-6 mb-6 overflow-hidden sm:-mx-6">

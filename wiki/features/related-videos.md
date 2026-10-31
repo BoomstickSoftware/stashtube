@@ -13,7 +13,8 @@ related: [scene-page, home-feed, stations, blocklist-and-exclusions]
 
 # Related videos
 
-The scene page's bottom row and the seed of a drifting station ([[stations]]) and of Home's
+The scene page's Related sidebar and "More like this" grid (8 + 16 from `lg`, all 24 as rows on
+a phone; [[scene-page]]), and the seed of a drifting station ([[stations]]) and of Home's
 "Because you watched" row ([[home-feed]]).
 
 ## Behaviour

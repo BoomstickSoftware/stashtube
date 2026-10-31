@@ -82,6 +82,7 @@ export function Button({
   title,
   disabled,
   type = 'button',
+  'aria-expanded': expanded,
 }: {
   children: ReactNode
   onClick?: () => void
@@ -91,12 +92,14 @@ export function Button({
   title?: string
   disabled?: boolean
   type?: 'button' | 'submit'
+  'aria-expanded'?: boolean // for a disclosure button (About, Links)
 }) {
   return (
     <button
       type={type}
       title={title}
       disabled={disabled}
+      aria-expanded={expanded}
       onClick={onClick}
       className={clsx(
         'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50',
@@ -139,6 +142,14 @@ export function Chip({
       {children}
     </button>
   )
+}
+
+// A loading placeholder the size of what it stands for. `bone` for an element that is one;
+// `Bone` for a block in a skeleton. Pulses, still under reduced motion. The skeleton's root
+// carries `role="status" aria-label="Loading"` and the bones are `aria-hidden`.
+export const bone = 'animate-pulse rounded-md bg-raised motion-reduce:animate-none'
+export function Bone({ className }: { className?: string }) {
+  return <div aria-hidden className={clsx(bone, className)} />
 }
 
 export function Spinner({ className }: { className?: string }) {
