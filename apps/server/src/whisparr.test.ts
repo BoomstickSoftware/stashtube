@@ -120,9 +120,9 @@ describe('wanted scenes', () => {
     assert.equal(all.length, library.length)
     for (const m of all) {
       assert.ok(Object.keys(m).every((k) => (PROJECTED as readonly string[]).includes(k)), `unexpected field in ${Object.keys(m)}`)
-      assert.deepEqual(m.images, [{ coverType: 'screenshot', remoteUrl: 'https://img/shot' }])
+      assert.deepEqual(m.images, [{ coverType: 'screenshot', remoteUrl: 'https://stashdb.org/images/shot' }])
     }
-    assert.equal(toWanted(all[0]!, activityOf([], [])).image, 'https://img/shot')
+    assert.equal(toWanted(all[0]!, activityOf([], [])).image, remoteImageUrl('https://stashdb.org/images/shot'))
     const bare = project(movie({ id: 9, images: undefined, movieFile: { relativePath: 'f.mp4' } }))
     assert.deepEqual([bare.images, bare.movieFile], [[], { relativePath: 'f.mp4' }])
   })
