@@ -152,12 +152,10 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
   ("Performers I follow" filter, "New from performers you follow" rows, the station quick
   start); Favorites for the video heart; Pin for tags; one spelling in the UI (IA F2,
   desktop 8); Categories or Tags everywhere (IA F12, desktop 8); "Playlist" instead of a
-  third "Save"; "Save station" (IA F19).~~ Done: [[2026-10-31-ux-copy-settings-errors]], except the
-  strings in files other initiatives own: `Home.tsx` "New from your favourites, not
-  downloaded" → "New from performers you follow, not downloaded" and its hint "Get fetches
-  one scene" → "Get downloads one scene" (also `WantedRow.tsx`); `Tag.tsx` eyebrow "#" →
-  "Category"; `Player.tsx` O button title → "Count an O here (adds a marker)";
-  `Directories.tsx` Studios table header "Network" in title case.
+  third "Save"; "Save station" (IA F19).~~ Done: [[2026-10-31-ux-copy-settings-errors]]; the
+  strings in files other initiatives owned (Home/WantedRow hint, Tag eyebrow, Player O title)
+  followed the same day. The Studios table header stays an uppercase eyebrow row like every
+  other small heading, so "Network" renders as NETWORK by design.
 - Optimistic rollbacks on error for rating, follow, pin and performer rating; Moments' Undo
   toast on success only (IA F1); progress and Continue badge patched after `saveActivity`
   (IA F3); Identify polled server-side until finished (IA F6); ~~Playlist Shuffle plays
