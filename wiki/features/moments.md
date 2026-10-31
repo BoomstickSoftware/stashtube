@@ -4,8 +4,8 @@ kind: feature
 summary: Marking a moment with a hold, b or the gear menu, the Undo/O banner, and the Moments list under the video where markers are retitled, retagged and deleted.
 tags: [markers, moments, player, touch, stash]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-10-31
+updated: 2026-10-31
 api: [POST /api/scenes/:id/markers, PUT /api/scenes/:id/markers/:marker, DELETE /api/scenes/:id/markers/:marker]
 code: [apps/web/src/components/Moments.tsx, apps/web/src/components/Player.tsx, apps/web/src/lib/hooks.ts, apps/web/src/lib/playback.ts, apps/server/src/api.ts, apps/server/src/markers.test.ts]
 related: [long-press-to-mark, seek-bar-markers, player, stations, private-session, stash-owns-activity]
@@ -38,7 +38,9 @@ the tag **Highlight**, created on first use.
 `components/Moments.tsx`, below the video on the [[scene-page]]: every marker with its sprite
 frame, time, title and primary tag. Title edits in place (blur or Enter); the tag is picked
 from a search over Stash's tags; `PUT …/markers/:marker` takes `title` and/or `tagId`. Delete
-shows an Undo toast that recreates it (`POST` takes an optional `tagId`). O markers show a
+shows an Undo toast that recreates it (`POST` takes an optional `tagId`) once Stash has
+answered; a refused delete shows the failed-write toast instead (since 2026-10-31, _before, the
+Undo toast showed before the answer_, [[failed-writes-toast-only]]). O markers show a
 droplet; an untitled marker displays its tag's name. Full-width rows on phones, two columns on
 desktop. The seek-bar ticks ([[seek-bar-markers]]) and a station's Moments mode follow edits at
 once.

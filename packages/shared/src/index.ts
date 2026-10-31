@@ -452,9 +452,11 @@ export interface Features {
 
 // A scene not in the library (yet). `state` follows the download: remote (only StashDB knows
 // it; Get adds it to Whisparr and searches), available (Whisparr lists it, nothing happening),
-// grabbed (sent to the download client in the last two days), downloading (in Whisparr's
-// queue), downloaded (has a file; shown only while the state settles).
-export type WantedState = 'remote' | 'available' | 'grabbed' | 'downloading' | 'downloaded'
+// requested (Get was pressed in the last while and Whisparr has not grabbed it yet: the search
+// may still be running, or found nothing), grabbed (sent to the download client in the last two
+// days), downloading (in Whisparr's queue), downloaded (has a file; shown only while the state
+// settles).
+export type WantedState = 'remote' | 'available' | 'requested' | 'grabbed' | 'downloading' | 'downloaded'
 export interface WantedScene {
   whisparrId: number | null // null for a remote scene
   stashdbId: string | null // StashDB's uuid; Whisparr files scenes under it too

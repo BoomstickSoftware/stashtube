@@ -167,3 +167,12 @@ the Women/Men/Everyone switch decoupled from Home, Stats, search and the People 
 [[caching]], [[whisparr-shelf]], [[whisparr-api]], [[home-feed]], [[stash-layer]],
 [[people-pages]], [[data-model]], [[continue-history-stats]], [[browse-and-filters]],
 [[gender-switch-performers-page-only]], [[roadmap]], [[2026-10-31-ux-phase1-server-caching]].
+
+## [2026-10-31] ingest | UX audit Phase 5: freshness and errors
+Rollbacks on failed ratings, follows and pins, progress and the Continue badge patched after
+each save, Identify waited for and followed on the server, a "Requested" wanted state, the
+player's "Can't play this video" state and the "Your performer defaults" chip; phone-flow
+gained `STUB` → [[web-app]], [[caching]], [[player]], [[whisparr-shelf]], [[moments]],
+[[continue-history-stats]], [[browse-and-filters]], [[scene-page]], [[stash-api]],
+[[mobile-checks]], [[phone-flow-tap-below-infinite-grid-lands-on-a-card]], [[roadmap]],
+[[2026-10-31-ux-phase5-freshness]].

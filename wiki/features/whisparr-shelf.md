@@ -42,7 +42,11 @@ Each scene is labelled:
 
 - **already in Stash**: dropped from the shelf (`sceneStashIdMap`);
 - **in Whisparr's movie list**: state from the queue and the last grabs: available / grabbed /
-  downloading / downloaded;
+  downloading / downloaded, plus flix's own **requested** (since 2026-10-31): Get was pressed
+  and Whisparr shows neither a grab nor a queue entry yet, so the card says "Requested" instead
+  of offering Get again. The server keeps the requested ids in memory (`requested` in
+  `whisparr.ts`, movie id → time) for an hour, so it outlives the 15 min list refresh and is
+  gone after a restart; Whisparr's own evidence always wins over it (`stateOf`);
 - **remote**: only StashDB knows it.
 
 Without StashDB the shelf falls back to Whisparr's own list (`source: 'whisparr'`). Covers are
@@ -65,13 +69,17 @@ planned but Whisparr's calendar is empty ([[whisparr-calendar-empty]]).
   and root folder). A lookup that returns an existing id goes through the first path, so nothing
   is added twice.
 
+Both answer with the card as the server now sees it (state `requested`), which the web puts
+into every cached shelf page and the Home row at once (`patchWanted` in `lib/api/whisparr.ts`)
+before refetching `['whisparr']` (_until 2026-10-31 the answer said `grabbed` and the refetch
+then showed Get again until Whisparr had grabbed_).
+
 Both writes refuse anything but a single scene id (feature films too). There is **no code path
 that monitors or searches a performer or studio**: [[whisparr-nothing-monitored]].
-`whisparr.test.ts` and `stashdb.test.ts` pin the exact requests; `scripts/mobile-check.mjs`
-blocks both routes ([[prod-checks-read-only]]). `GET /api/whisparr/activity` returns the queue
-and recent grabs but nothing in the web app calls it (the `useWhisparrActivity` hook was dead
-code and was removed 2026-10-31); a "Requested" state on wanted cards would be its first user
-([[roadmap]]).
+`whisparr.test.ts` and `stashdb.test.ts` pin the exact requests and the requested state;
+`scripts/mobile-check.mjs` blocks both routes ([[prod-checks-read-only]]).
+`GET /api/whisparr/activity` returns the queue and recent grabs but nothing in the web app calls
+it (the `useWhisparrActivity` hook was dead code and was removed 2026-10-31).
 
 ## Numbers
 

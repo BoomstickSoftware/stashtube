@@ -52,6 +52,11 @@ const TIMEOUT = 60_000 // ms
 const LIST_TTL = 15 * 60_000
 const ACTIVITY_TTL = 30_000 // queue and grabs move faster, and the cards show them
 const GRABBED_FOR = 48 * 3_600_000 // a grab older than this with no download is treated as gone
+// A Get the user pressed, until Whisparr's queue or grabs show it (or this long has passed with
+// nothing: the search found no release). Kept in memory, movie id → ms; it outlives the 15 min
+// list refresh and is gone after a restart, when the cards fall back to Whisparr's own states.
+const REQUESTED_FOR = 60 * 60_000
+export const requested = new Map<number, number>()
 
 async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, body?: unknown): Promise<T> {
   const w = config.whisparr
@@ -142,19 +147,27 @@ export async function deleteMovie(id: number) {
 export interface Activity {
   downloading: Set<number>
   grabbedAt: Map<number, number> // movie id → ms of the latest grab
+  requestedAt: Map<number, number> // movie id → ms of the Get from flix, while recent (REQUESTED_FOR)
 }
 
-export const activityOf = (q: QueueRecord[], h: HistoryRecord[], now = Date.now()): Activity => {
+export const activityOf = (q: QueueRecord[], h: HistoryRecord[], now = Date.now(), asked: Map<number, number> = requested): Activity => {
   const grabbedAt = new Map<number, number>()
   for (const r of h) {
     const t = Date.parse(r.date)
     if (now - t <= GRABBED_FOR && t > (grabbedAt.get(r.movieId) ?? 0)) grabbedAt.set(r.movieId, t)
   }
-  return { downloading: new Set(q.map((r) => r.movieId)), grabbedAt }
+  const requestedAt = new Map<number, number>()
+  for (const [id, t] of asked) {
+    if (now - t > REQUESTED_FOR) asked.delete(id)
+    else requestedAt.set(id, t)
+  }
+  return { downloading: new Set(q.map((r) => r.movieId)), grabbedAt, requestedAt }
 }
 
+// Whisparr's own evidence first (a file, the queue, a grab); "requested" only fills the gap
+// between flix's Get and the grab, which the user otherwise saw as a Get button again.
 export const stateOf = (m: Movie, a: Activity): WantedState =>
-  m.hasFile ? 'downloaded' : a.downloading.has(m.id) ? 'downloading' : a.grabbedAt.has(m.id) ? 'grabbed' : 'available'
+  m.hasFile ? 'downloaded' : a.downloading.has(m.id) ? 'downloading' : a.grabbedAt.has(m.id) ? 'grabbed' : a.requestedAt.has(m.id) ? 'requested' : 'available'
 
 const cover = (m: Movie) => m.images?.find((i) => i.coverType === 'screenshot') ?? m.images?.find((i) => i.coverType === 'poster') ?? m.images?.[0]
 
@@ -267,8 +280,9 @@ export async function getScene(whisparrId: unknown): Promise<WantedScene> {
   if (!m.monitored) await call('PUT', `/movie/${id}`, { ...m, monitored: true })
   await call('POST', '/command', { name: 'MoviesSearch', movieIds: [id] })
   listChanged((all) => all.map((x) => (x.id === id ? { ...x, monitored: true } : x)))
+  requested.set(id, Date.now())
   const a = await activity()
-  return { ...toWanted(m, a), state: m.hasFile ? 'downloaded' : 'grabbed' }
+  return toWanted({ ...m, monitored: true }, a) // 'requested' until the queue or a grab shows it
 }
 
 interface Lookup extends Movie {
@@ -308,6 +322,7 @@ export async function getRemote(stashdbId: unknown): Promise<WantedScene> {
     addOptions: { searchForMovie: true, monitor: 'movieOnly' },
   })
   listChanged((all) => [...all.filter((m) => m.id !== added.id), project(added)])
+  requested.set(added.id, Date.now())
   const a = await activity()
-  return { ...toWanted(added, a), state: 'grabbed' }
+  return toWanted(added, a)
 }

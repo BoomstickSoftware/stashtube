@@ -7,7 +7,7 @@
       "does": "Lists, searches and lints this manifest: the way to find out whether a script already exists before doing a thing by hand.",
       "usage": [
         "node scripts/scripts.mjs list",
-        "node scripts/scripts.mjs search <words\u2026>",
+        "node scripts/scripts.mjs search <words…>",
         "node scripts/scripts.mjs show <name>",
         "node scripts/scripts.mjs lint"
       ],
@@ -23,7 +23,7 @@
       "file": "scripts/wiki.mjs",
       "does": "Searches, indexes and lints the wiki/ knowledge base; run `search` before reading pages by hand, `index` then `lint` after any wiki edit.",
       "usage": [
-        "node scripts/wiki.mjs search <words\u2026> [--kind k] [--tag t] [-n 10]",
+        "node scripts/wiki.mjs search <words…> [--kind k] [--tag t] [-n 10]",
         "node scripts/wiki.mjs index",
         "node scripts/wiki.mjs lint",
         "node scripts/wiki.mjs tags",
@@ -164,7 +164,7 @@
       "file": "scripts/stash-schema.mjs",
       "does": "Refreshes apps/server/stash.schema.graphql from a running Stash (or a saved introspection JSON) so codegen can regenerate stash.schema.ts after a Stash upgrade.",
       "usage": [
-        "STASH_URL=http://stash:9999 STASH_API_KEY=\u2026 node scripts/stash-schema.mjs",
+        "STASH_URL=http://stash:9999 STASH_API_KEY=… node scripts/stash-schema.mjs",
         "node scripts/stash-schema.mjs introspection.json"
       ],
       "env": {
@@ -230,14 +230,15 @@
     {
       "name": "phone-flow",
       "file": "scripts/phone-flow.mjs",
-      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked.",
+      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked; STUB answers chosen GET API paths with given JSON, to show a state production lacks.",
       "usage": [
         "STEPS='[{\"goto\":\"/browse\",\"targets\":true},{\"tapText\":\"Filters\",\"shot\":\"sheet\"}]' node scripts/phone-flow.mjs <outdir> http://localhost:5174"
       ],
       "env": {
         "STEPS": "JSON array of steps",
         "W": "viewport width (440)",
-        "H": "viewport height (956)"
+        "H": "viewport height (956)",
+        "STUB": "JSON map of GET API pathname → JSON answer, stubbed in the browser (reads only)"
       },
       "writes": "screenshots under <outdir>",
       "tags": [

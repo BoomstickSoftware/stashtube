@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Check, Pencil, Plus, Search, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useJob, useSceneEdits, useTags } from '../lib/api'
+import { identifyFinished, jobDone, pendingIdentify, useJob, useSceneEdits, useTags } from '../lib/api'
 import { AddFilterButton } from './AddFilter'
 import { Chip, Spinner } from './ui'
 import { useDebounced } from '../lib/hooks'
@@ -117,31 +117,29 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
   )
 }
 
-// Runs Stash's Identify against StashDB for this one scene and refreshes when it finishes.
+// Runs Stash's Identify against StashDB for this one scene. The server waits for the job and
+// answers with its result (the hook refreshes the scene, even if this page is gone by then); a
+// job that outlived the wait is polled from here, and picked up again on the next visit.
 export function IdentifyButton({ scene }: { scene: SceneDetail }) {
   const { identify } = useSceneEdits(scene.id)
-  const [jobId, setJobId] = useState<string | null>(null)
-  const { data: job } = useJob(jobId)
+  const [jobId, setJobId] = useState<string | null>(() => pendingIdentify.get(scene.id) ?? null)
+  const { data: polled } = useJob(jobId)
+  const job = identify.data && jobDone(identify.data) ? identify.data : polled
   const qc = useQueryClient()
-  const finished = job && ['FINISHED', 'FAILED', 'CANCELLED'].includes(job.status)
   useEffect(() => {
-    if (job?.status === 'FINISHED') {
-      qc.invalidateQueries({ queryKey: ['scene', scene.id] })
-      qc.invalidateQueries({ queryKey: ['scenes'] })
-      qc.invalidateQueries({ queryKey: ['home'] })
-    }
-  }, [job?.status, qc, scene.id])
-  const running = identify.isPending || (jobId && !finished)
+    if (jobId && polled?.status === 'FINISHED') identifyFinished(qc, scene.id)
+  }, [jobId, polled?.status, qc, scene.id])
+  const running = identify.isPending || (!!jobId && !jobDone(polled))
   return (
     <button
-      disabled={!!running}
-      onClick={() => identify.mutate(undefined, { onSuccess: (r) => setJobId(r.jobId) })}
+      disabled={running}
+      onClick={() => identify.mutate(undefined, { onSuccess: (r) => setJobId(jobDone(r) ? null : r.id) })}
       title="Look this video up on StashDB and fill in title, date, studio, performers and categories"
       className="inline-flex items-center gap-1.5 rounded-full bg-raised px-3 py-1 text-xs hover:bg-line disabled:opacity-60"
     >
       {running ? <Spinner className="size-3 border" /> : <Sparkles size={13} className="text-accent" />}
       {running
-        ? `Identifying${job?.progress != null ? ` ${Math.round(job.progress * 100)}%` : '…'}`
+        ? `Identifying${polled?.progress != null ? ` ${Math.round(polled.progress * 100)}%` : '…'}`
         : job?.status === 'FINISHED'
           ? 'Identified (no change means no StashDB match)'
           : job?.status === 'FAILED'

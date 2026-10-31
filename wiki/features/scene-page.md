@@ -28,7 +28,12 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
 - **Title and categories** (tags; "Edit categories" in the UI, [[categories-and-us-spelling]])
   edit in place (`SceneEditor`): `PATCH /api/scenes/:id`.
 - **Identify on StashDB** for this one scene: `POST /api/scenes/:id/identify` queues a Stash
-  job; `GET /api/jobs/:id` follows it ([[stashdb]]).
+  job and **waits for it** (up to 40 s, well under the client's 65 s), answering 200 with the
+  finished job, or 202 with the running one, which `GET /api/jobs/:id` then follows from the
+  page; the server keeps following it too, so its caches are dropped even if you leave the page
+  (since 2026-10-31, audit F6; _before, leaving the page lost the result for a minute or two_).
+  The button says "Identified (no change means no StashDB match)" or "Identify failed: …"
+  ([[stashdb]], [[caching]]).
 - **Rating** (stars, half steps), **O** counter, **Favorite** heart (the built-in Favorites
   playlist, [[playlists-and-favorites]]), **Not interested** (hides it everywhere,
   [[blocklist-and-exclusions]]; pressed it reads "Not interested ✓" and the toast says "Marked

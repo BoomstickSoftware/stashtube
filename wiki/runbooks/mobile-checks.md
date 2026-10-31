@@ -51,6 +51,11 @@ DESKTOP=1 node scripts/desktop-check.mjs /tmp/dc http://localhost:5174 scripts/e
 `phone-flow` and `desktop-check` drive the app like a user (added 2026-10-31,
 [[2026-10-31-ux-audit]]); they block the Stash writes but **not** the app's own database, so a
 step must never confirm a playlist, block, favourite, rating, pin, station or settings change.
+`phone-flow` also takes `STUB='{"/api/settings": {...}}'`: those GET API paths are answered
+from the JSON given instead of the server (CDP `Fetch.fulfillRequest`), to show a state
+production does not have, such as a Settings value or a wanted card's `requested` state; writes
+are never stubbed. The wanted shelf sits below an infinite grid, so open it by script rather
+than a tap ([[phone-flow-tap-below-infinite-grid-lands-on-a-card]]).
 Performance numbers come from `scripts/perf-check.mjs` ([[perf-checks]]).
 
 `webkit-mini-check` is the closest thing to an iPhone a session can drive: Playwright's WebKit

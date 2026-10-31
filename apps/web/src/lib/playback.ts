@@ -14,7 +14,10 @@ const RESUME_AFTER = 30 // seconds in before a resume point is kept
 const isHls = (src: string) => /\.m3u8(\?|$)/.test(src)
 
 // Point the element at `src`, through hls.js when the browser cannot play HLS itself (anything
-// but Safari). Returns the teardown; call it before attaching the next source.
+// but Safari). Returns the teardown; call it before attaching the next source. A fatal hls.js
+// error (the playlist 404s, no segment ever arrives) is raised as the element's own `error`
+// event, so both players handle a failed source in one place, their `onError`; until 2026-10-31
+// it only ever showed as a spinner that never stopped.
 export function attachSource(v: HTMLVideoElement, src: string, startAt: number | null): () => void {
   let hls: Hls | null = null
   let cancelled = false
@@ -24,6 +27,12 @@ export function attachSource(v: HTMLVideoElement, src: string, startAt: number |
     import('hls.js').then(({ default: H }) => {
       if (cancelled) return
       hls = new H({ maxBufferLength: 30, startPosition: startAt ?? -1 })
+      hls.on(H.Events.ERROR, (_e, data) => {
+        if (!data.fatal || cancelled) return
+        hls?.destroy()
+        hls = null
+        v.dispatchEvent(new Event('error'))
+      })
       hls.loadSource(src)
       hls.attachMedia(v)
     })

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { remoteImageUrl } from './remote.ts'
 import { dataCache } from './stash.ts'
-import { activityOf, assertSingleId, getScene, movies, project, PROJECTED, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
+import { activityOf, assertSingleId, getScene, movies, project, PROJECTED, requested, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
 
 const movie = (over: Partial<Movie> & { id: number }): Movie => ({
   title: `Scene ${over.id}`,
@@ -61,6 +61,7 @@ after(() => {
 })
 beforeEach(() => {
   sent.length = 0
+  requested.clear()
   dataCache.invalidate('whisparr')
 })
 
@@ -77,6 +78,20 @@ describe('wanted scenes', () => {
     assert.equal(stateOf(movie({ id: 4 }), a), 'grabbed')
     assert.equal(stateOf(movie({ id: 5 }), a), 'available')
     assert.equal(stateOf(movie({ id: 6 }), a), 'available')
+  })
+
+  it('show a scene flix asked for as requested until Whisparr grabs it, then forget the request', () => {
+    const now = Date.parse('2026-06-01T12:00:00Z')
+    const asked = new Map([
+      [5, now - 5 * 60_000], // five minutes ago
+      [4, now - 60_000], // grabbed since: Whisparr's state wins
+      [6, now - 2 * 3_600_000], // two hours ago with nothing to show: the search found no release
+    ])
+    const a = activityOf([], [{ movieId: 4, date: '2026-06-01T11:59:30Z', eventType: 'grabbed' }], now, asked)
+    assert.equal(stateOf(movie({ id: 5 }), a), 'requested')
+    assert.equal(stateOf(movie({ id: 4 }), a), 'grabbed')
+    assert.equal(stateOf(movie({ id: 6 }), a), 'available')
+    assert.deepEqual([...asked.keys()], [5, 4], 'the stale request is pruned')
   })
 
   it('map a movie to a card, preferring the screenshot and a plain date', () => {
@@ -136,14 +151,16 @@ describe('getScene, the one write', () => {
     assert.equal((writes[0]!.body as Movie).monitored, true)
     assert.equal((writes[0]!.body as Movie).id, 1)
     assert.deepEqual(writes[1]!.body, { name: 'MoviesSearch', movieIds: [1] })
-    assert.equal(w.state, 'grabbed')
+    assert.equal(w.state, 'requested')
+    const shelf = await wantedInWhisparr({ performers: ['perf-ann'] })
+    assert.equal(shelf.find((x) => x.whisparrId === 1)?.state, 'requested', 'the shelf shows the request until a grab appears')
   })
 
   it('patches the cached list and drops only the queue and grabs, instead of refetching 41 MB', async () => {
     await wantedInWhisparr({ performers: ['perf-ann'] }) // list, queue and grabs cached
     const before = sent.length
     const w = await getScene(1)
-    assert.equal(w.state, 'grabbed')
+    assert.equal(w.state, 'requested')
     const after = await wantedInWhisparr({ performers: ['perf-ann'] })
     const paths = sent.slice(before).map((s) => s.path.split('?')[0])
     assert.ok(!paths.includes('/movie'), `the list was refetched: ${paths}`)

@@ -53,19 +53,23 @@ function MomentRow({ scene, marker, sprites, onSeek }: { scene: SceneDetail; mar
     if (t === (marker.title === marker.tag ? '' : marker.title)) return
     guardWrite(() => updateMarker.mutate({ marker: marker.id, title: t }))
   }
+  // The Undo toast waits for Stash's answer: a failed delete is toasted by the client instead
+  // (until 2026-10-31 "Removed" showed before the delete had answered).
   const remove = () =>
-    guardWrite(() => {
-      deleteMarker.mutate(marker.id)
-      showToast(
-        `Removed the moment at ${duration(marker.seconds)}`,
-        <button
-          onClick={() => addMarker.mutate({ seconds: marker.seconds, title: marker.title === marker.tag ? '' : marker.title, tagId: marker.tagId || undefined })}
-          className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line"
-        >
-          Undo
-        </button>,
-      )
-    })
+    guardWrite(() =>
+      deleteMarker.mutate(marker.id, {
+        onSuccess: () =>
+          showToast(
+            `Removed the moment at ${duration(marker.seconds)}`,
+            <button
+              onClick={() => addMarker.mutate({ seconds: marker.seconds, title: marker.title === marker.tag ? '' : marker.title, tagId: marker.tagId || undefined })}
+              className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line"
+            >
+              Undo
+            </button>,
+          ),
+      }),
+    )
 
   return (
     <div className="flex gap-3 rounded-xl bg-surface p-2 ring-1 ring-white/5">

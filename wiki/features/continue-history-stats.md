@@ -22,7 +22,12 @@ History and Stats as tabs (`WatchTabs` in `pages/History.tsx`).
 - **Continue**: scenes with a resume point, from Stash ([[stash-owns-activity]]). Resume points
   are saved by the [[player]] and by a station in Full mode ([[stations]]); none is kept in the
   first 30 s or past 95% (or the last 15 s), so end credits and a two-second look do not sit in
-  Continue. _Until 2026-10-31_ only the last 15 s counted as finished: on that day 13 of the 49
+  Continue. Every successful save patches the scene's `resumeTime` into every cached card and
+  the detail (`saveActivity` → `noteResume` in `lib/api/scenes.ts`), and a resume point that
+  appears or goes nudges the nav badge's count (`['scenes','continue-count']`) and refetches it
+  and the Continue list; a counted play bumps `playCount` the same way (`addPlay`). So the card
+  you go Back to shows its progress bar and the Continue dot moves at once (since 2026-10-31;
+  _before, both waited for a refetch that the server answered stale once more_, audit F3). _Until 2026-10-31_ only the last 15 s counted as finished: on that day 13 of the 49
   videos in Continue were past 90% and 14 under 3%. At the user's word the 13 were cleared the same
 day (resume point 0 through `POST /api/scenes/:id/activity`; plays untouched): 49 → 36.
 - History and Stats leave out blocked and "Not interested" videos

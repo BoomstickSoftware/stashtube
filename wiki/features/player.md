@@ -24,7 +24,15 @@ The client checks `canPlayType` for the file's container and codecs. If the brow
 the file it streams the original, `/media/play/:id` (byte ranges; from the NFS mount when
 `MEDIA_PATH_MAP` resolves it, else Stash's direct stream). Otherwise, and on any media error,
 it uses Stash's HLS transcode (`stream.m3u8`, hls.js outside Safari) through the
-[[media-proxy]]. Quality menu: **Auto** plays the original and drops to a 720p transcode after
+[[media-proxy]]. When the transcode errors too, or a forced transcode quality errors (a missing
+or unreadable file; `/media/play/:id` answers 502 and the playlist 404s), the picture shows
+**"Can't play this video · The file may be missing or Stash could not transcode it · Try
+again"** over the controls; Try again reattaches the same source (since 2026-10-31; _before,
+an HLS failure spun forever_, audit F16). hls.js's fatal errors reach the player as the
+element's own `error` event (`attachSource` in `lib/playback.ts` dispatches one), so the
+station player's fallback-then-skip handles them too. In development `?src=missing` on a scene
+URL points both sources at nothing to show the state (`MISSING_SRC`, compiled out of production
+builds). Quality menu: **Auto** plays the original and drops to a 720p transcode after
 3 stalls within 30 s ("Switched to 720p"); **Original** never drops; 1080/720/480/240
 force Stash's transcode. Stored per browser as `flix.quality`.
 

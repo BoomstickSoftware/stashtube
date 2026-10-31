@@ -151,7 +151,7 @@ describe('getRemote', () => {
     assert.equal(post.rootFolderPath, '/data/adult')
     assert.deepEqual(post.addOptions, { searchForMovie: true, monitor: 'movieOnly' })
     assert.equal(post.stashId, S1)
-    assert.equal(w.state, 'grabbed')
+    assert.equal(w.state, 'requested') // until Whisparr's queue or grabs show it
     assert.equal(w.whisparrId, 99)
   })
 
