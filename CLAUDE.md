@@ -81,7 +81,7 @@ Record only the flix-facing fact in `wiki/integrations/`; link the source. Detai
 | Stash config, library layout, scans, NFS export | nas repo | `nas:docs/services.md` stash row, `nas:docs/network.md`, `nas:docs/operations.md` |
 | How is flix deployed, which secrets, which IP, backups | k8s repo (its clone may be on a side branch) | `cd ~/code/k8s && git show origin/main:infra/flix/deployment.yaml`, `git show origin/main:docs/flix.md` |
 | What is running right now | the cluster | `kubectl -n flix get deploy flix -o wide`, `kubectl -n flix logs deploy/flix --since=5m`, `curl -s http://192.168.1.152/healthz` |
-| Did the last push deploy | Forgejo | the run of `.forgejo/workflows/deploy.yml` at git.lan:3000/zbmowrey/flix/actions; a failure is posted to the forge Discord channel |
+| Did the last push deploy | Forgejo | `tea actions runs` (status per run, newest first); the run of `.forgejo/workflows/deploy.yml` at git.lan:3000/zbmowrey/flix/actions; a failure is posted to the forge Discord channel |
 
 ## Rules that must be in every session
 

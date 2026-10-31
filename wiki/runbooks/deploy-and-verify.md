@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-10-31
 code: [scripts/deploy-check.mjs]
-related: [forgejo-ci, kubernetes-deployment, run-checks, caching, one-commit-per-initiative, scripts-library]
+related: [forgejo-ci, kubernetes-deployment, run-checks, caching, one-commit-per-initiative, scripts-library, trivy-db-download-timed-out]
 ---
 
 # Deploy and verify a change
@@ -17,7 +17,9 @@ Every push to `main` goes live within minutes ([[forgejo-ci]]). Push only after
 
 ## Steps
 
-1. `git push`. Open the run: Forgejo → `zbmowrey/flix` → Actions. The build step ends with
+1. `git push`. `tea actions runs` (the tea CLI, logged in to git.lan; `-o json` for scripts)
+   lists the runs newest first with their status: `running` until the deploy step ends. The
+   web view: Forgejo → `zbmowrey/flix` → Actions. The build step ends with
    `image: git.lan:3000/zbmowrey/flix:<sha>@sha256:…`; the smoke step with `running <sha>
    after N s` and `ok 200 <path>` for each route.
 2. Confirm the cluster runs it, scripted ([[scripts-library]]):
@@ -46,6 +48,15 @@ kubectl -n flix logs deploy/flix --since=5m | grep -i warming   # only assets it
 4. Expect the first requests after a rollout to be slower: the query cache snapshot restores
    from `/cache/data.json`, but VOLATILE sets (facets, tiles, the featured pool) are rebuilt
    ([[caching]]).
+
+## If the run fails before anything is deployed
+
+`deploy-check` waits out its limit and `tea actions runs` shows `failure`; the registry has
+no image for the sha. Read the build step's log (Forgejo run page, expand the step; tea's
+`logs` is 404 on this Forgejo). Seen once: trivy's vulnerability DB download timing out
+([[trivy-db-download-timed-out]]); **Re-run all jobs** on the run page, then
+`TIMEOUT=1200 node scripts/deploy-check.mjs` (the default 600 s wait is too short for a
+re-run started by hand after the push).
 
 ## If the smoke test fails
 

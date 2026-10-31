@@ -31,15 +31,23 @@ jobs:
           # GIT_SHA is what /healthz reports, which the smoke step below waits for.
           docker build --pull --build-arg "GIT_SHA=$SHA" -t "$IMAGE:$SHA" .
           # Scan before pushing, so a failed scan publishes nothing.
+          # The vulnerability DB (131 MB, refreshed every 6 h) is kept in a named volume on
+          # dind, so most runs download nothing. When it does download: Docker Hub first;
+          # trivy's default mirrors (mirror.gcr.io, ghcr.io) crawled at 15-200 KiB/s from
+          # this ISP on 2026-10-31 and the default 5 min timeout failed two runs in a row,
+          # while Docker Hub served it in 33 s. The timeout covers the download.
           docker run --rm -i \
             --add-host=git.lan:192.168.1.151 \
             -v /dind-sock/docker.sock:/var/run/docker.sock \
+            -v trivy-cache:/root/.cache/trivy \
             -e IMAGE_REF="$IMAGE:$SHA" \
             --entrypoint sh \
             aquasec/trivy:0.71.1 -c \
               'cat > /tmp/trivyignore.yaml; exec trivy image \
                  --image-src docker \
                  --ignorefile /tmp/trivyignore.yaml \
+                 --db-repository docker.io/aquasec/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2 \
+                 --timeout 15m \
                  --exit-code 1 \
                  --severity CRITICAL,HIGH \
                  --ignore-unfixed \

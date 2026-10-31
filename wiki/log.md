@@ -68,3 +68,17 @@ Expand/title/picture are `<Link>`s; `lib/diag.ts` + Settings → Diagnostics; ne
 `scripts/webkit-mini-check.mjs` (real WebKit, iPhone emulation) also passes, so the phone's
 failure is still unexplained → [[mini-player]], [[diagnostics]], [[mobile-checks]],
 [[2026-10-31-mini-player-expand]], [[playwright-webkit-install-hangs]].
+
+## [2026-10-31] ingest | tea actions runs lists the Forgejo runs
+`tea actions runs` answers "did the push deploy" from the shell (status `running`/`success`);
+a slow run today took over 10 min, past deploy-check's default wait → [[deploy-and-verify]].
+
+## [2026-10-31] ingest | Deploy run 80 failed on trivy's DB download, re-run by hand
+Build and tests green, trivy timed out on mirror.gcr.io after 5 min, nothing pushed; re-run
+from the run page; tea cannot read logs on this Forgejo → [[trivy-db-download-timed-out]],
+[[forgejo-ci]], [[deploy-and-verify]].
+
+## [2026-10-31] correct | Trivy's DB comes from Docker Hub first, cached on dind, 15 min timeout
+Re-run failed the same way; every default registry crawled from this ISP while Docker Hub did
+131 MB in 33 s → deploy.yml changed; [[trivy-db-download-timed-out]] rewritten with the
+measurements, [[forgejo-ci]].

@@ -4,10 +4,10 @@ kind: integration
 summary: Every push to main builds, trivy-scans and pushes the image, pins its digest into the k8s repo, waits for the rollout and smoke-tests the first-paint routes, posting failures to Discord.
 tags: [ci, forgejo, trivy, deploy, docker]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-10-31
+updated: 2026-10-31
 code: [.forgejo/workflows/deploy.yml, .trivyignore.yaml, Dockerfile]
-related: [deploy-and-verify, kubernetes-deployment, server-bff, shared-package-missing-from-image]
+related: [deploy-and-verify, kubernetes-deployment, server-bff, shared-package-missing-from-image, trivy-db-download-timed-out]
 ---
 
 # Forgejo CI (`deploy.yml`)
@@ -26,6 +26,9 @@ queue, none is cancelled). **Every push goes live.** Source of the pattern: the 
    --ignore-unfixed --exit-code 1`, using `.trivyignore.yaml`. That file is a risk register, not
    a mute button: each entry must say why it is not exploitable and carry `expired_at`. Empty on
    2026-10-30.
+   Since 2026-10-31 the vulnerability DB sits in a dind named volume (`trivy-cache`), is
+   fetched from Docker Hub first (`--db-repository docker.io/aquasec/trivy-db:2,…`) and the
+   step has `--timeout 15m` ([[trivy-db-download-timed-out]]).
 4. Push `git.lan:3000/zbmowrey/flix:$SHA`, read its `sha256:` digest (refuse to continue
    without one), clone the k8s repo and `sed` the `image:` line of `infra/flix/deployment.yaml`
    to `tag@digest`, commit as `forgejo-actions` and push. ArgoCD picks it up on its next poll
@@ -54,3 +57,10 @@ or the rollout never came up). Silent when the secret is unset.
 
 Forgejo → repo → Actions → the run; the build step logs `image: …@sha256:…`, the smoke step
 `running <sha> after N s` then `ok 200 <path>` per route. Operator steps: [[deploy-and-verify]].
+
+From the shell: `tea actions runs` (status per run; the `tea` CLI is logged in to git.lan) and
+`tea api "/repos/zbmowrey/flix/actions/tasks?limit=1"` (name, head_sha, status, run_number,
+timestamps). Logs are not reachable that way on Forgejo 15.0.10 (`tea actions runs logs` and
+`…/actions/jobs/<id>/logs` answer 404): open the run page in a signed-in browser and expand
+the step. A run that fails in the build step with the tests green was trivy's DB download
+timing out ([[trivy-db-download-timed-out]]); re-run it from the run page.
