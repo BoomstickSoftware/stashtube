@@ -11,13 +11,13 @@ import { Moments } from '../components/Moments'
 import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
+import { cachedCard, useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { nowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
-import { sized } from '@flix/shared'
+import { sized, srcSet } from '@flix/shared'
 
 const route = getRouteApi('/scene/$id')
 
@@ -88,7 +88,7 @@ function SceneView({ id }: { id: string }) {
 
   if (error) return <ErrorBox error={error} />
   // settings first: whether the video starts by itself depends on them
-  if (isLoading || !scene || settingsLoading) return <Spinner className="mx-auto mt-32" />
+  if (isLoading || !scene || settingsLoading) return <ScenePlaceholder id={id} theater={theater} />
 
   const player = (
     <PlayerSlot theater={theater}>
@@ -333,5 +333,40 @@ function UpNextItem({ scene, playlist }: { scene: Scene; playlist?: number }) {
         <div className="truncate text-xs text-muted">{scene.performers.map((p) => p.name).slice(0, 3).join(', ')}</div>
       </div>
     </Link>
+  )
+}
+
+// While the full record loads: the card a list already had (screenshot, title, who), in the
+// player's place, so a tap shows the video's picture at once rather than a blank spinner.
+function ScenePlaceholder({ id, theater }: { id: string; theater: boolean }): JSX.Element {
+  const card = cachedCard(id)
+  if (!card) return <Spinner className="mx-auto mt-32" />
+  const picture = (
+    <div className={clsx('relative aspect-video overflow-hidden bg-black', theater ? 'max-h-[calc(100dvh-8rem)] w-full' : 'rounded-2xl')}>
+      <img src={sized(card.screenshot, 960)} srcSet={srcSet(card.screenshot)} sizes="(min-width: 1024px) 70vw, 100vw" alt="" className="size-full object-contain opacity-80" />
+      <Spinner className="absolute inset-0 m-auto size-10" />
+    </div>
+  )
+  const info = (
+    <div className="mt-4 min-w-0">
+      <h1 className="text-xl font-bold sm:text-2xl">{card.title}</h1>
+      {card.performers.length > 0 && <div className="mt-1 text-muted">{card.performers.map((p) => p.name).join(', ')}</div>}
+    </div>
+  )
+  // the same frames as the page itself, so nothing moves when the video arrives
+  if (theater)
+    return (
+      <div>
+        <div className="-mx-4 -mt-6 bg-black sm:-mx-6">{picture}</div>
+        <div className="mx-auto max-w-[1700px]">{info}</div>
+      </div>
+    )
+  return (
+    <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="min-w-0">
+        {picture}
+        {info}
+      </div>
+    </div>
   )
 }

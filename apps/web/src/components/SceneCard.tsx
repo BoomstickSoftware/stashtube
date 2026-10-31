@@ -134,9 +134,13 @@ export function SceneCard({
         onTouchMove={(e) => {
           const from = touchStart.current
           const t = e.touches[0]
-          if (!from || !t || hovering || select) return
-          if (Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX) {
-            clearTimeout(pressTimer.current)
+          if (!from || !t) return
+          const moved = Math.hypot(t.clientX - from.x, t.clientY - from.y) >= DRAG_START_PX
+          // any real movement is a scroll or a drag, never the long press (also while this
+          // card's preview already plays, or the menu would open mid-scroll)
+          if (moved) clearTimeout(pressTimer.current)
+          if (hovering || select) return
+          if (moved) {
             touchStart.current = undefined
             dragged.current = true
             start()

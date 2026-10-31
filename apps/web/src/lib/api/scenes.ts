@@ -14,7 +14,7 @@ import type {
   Stats,
 } from '@flix/shared'
 import { keepPreviousData, type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, invalidateLists, qs, send } from './client'
+import { get, invalidateLists, qs, queryClient, send } from './client'
 
 // Videos: lists, one scene, search, and everything written about a scene (rating, O, plays,
 // hiding, edits, markers, history, deletion).
@@ -70,8 +70,22 @@ export const useContinueCount = () =>
     staleTime: 60_000,
   })
 
-export const useScene = (id: string) =>
-  useQuery({ queryKey: ['scene', id], queryFn: () => get<SceneDetail>(`/scenes/${id}`) })
+export const sceneQuery = (id: string) => ({ queryKey: ['scene', id], queryFn: () => get<SceneDetail>(`/scenes/${id}`) })
+export const useScene = (id: string) => useQuery(sceneQuery(id))
+// Fetched as soon as a card is touched or hovered (the route's loader on intent), so the page
+// usually has it before the tap has finished.
+export const prefetchScene = (id: string) => queryClient.prefetchQuery({ ...sceneQuery(id), staleTime: 30_000 })
+
+// The card a list already holds for this scene (any list, Home rows included): what the page
+// shows while the full record loads.
+export function cachedCard(id: string): SceneCard | undefined {
+  for (const [, d] of queryClient.getQueriesData<{ pages?: Page<SceneCard>[] } | HomeRow[] | SceneCard[]>({ predicate: (q) => ['scenes', 'home', 'related'].includes(q.queryKey[0] as string) })) {
+    const cards = Array.isArray(d) ? d.flatMap((x) => ('items' in x ? x.items : [x])) : (d?.pages?.flatMap((p) => p.items) ?? [])
+    const hit = cards.find((s) => s.id === id)
+    if (hit) return hit
+  }
+  return undefined
+}
 
 export const useRelated = (id: string) =>
   useQuery({ queryKey: ['related', id], queryFn: () => get<SceneCard[]>(`/scenes/${id}/related`), staleTime: 5 * 60_000 })

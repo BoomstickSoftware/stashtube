@@ -16,6 +16,13 @@ export function PreviewVideo({ src, ready, onReady, className }: { src: string; 
       v.disableRemotePlayback = true
       v.src = src
       v.play().catch(() => {})
+      // removed (the card scrolled away, the preview ended): stop the download too, or WebKit
+      // keeps buffering a detached clip and the previews pile up against the player
+      return () => {
+        v.pause()
+        v.removeAttribute('src')
+        v.load()
+      }
     },
     [src],
   )
