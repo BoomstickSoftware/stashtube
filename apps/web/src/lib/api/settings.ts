@@ -13,10 +13,10 @@ export function useUpdateSettings() {
     onMutate: (patch) => qc.setQueryData<Settings>(['settings'], (d) => d && { ...d, ...patch }),
     onSuccess: (s, patch) => {
       qc.setQueryData(['settings'], s)
-      // performer defaults change every list
+      // performer defaults change every list; the Featured dials only Home. (The gender switch
+      // is the Performers page's own since 2026-10-31 and no longer reaches search.)
       if (patch.people) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'settings' })
       else if (patch.featured) qc.invalidateQueries({ queryKey: ['home'] })
-      else qc.invalidateQueries({ queryKey: ['search'] })
     },
   })
 }

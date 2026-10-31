@@ -16,7 +16,7 @@ import type {
   TagCard,
   TagDetail,
   TagTile, SceneFacets, Marker } from '@flix/shared'
-import { MemoryCache, VOLATILE } from './cache/memory.ts'
+import { MemoryCache, PINNED, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
 // Generated from stash.schema.graphql (Stash's own schema; see codegen.ts). Filter inputs are
@@ -58,10 +58,16 @@ export const upstream = { queries: 0, mutations: 0, assets: 0, streams: 0, chang
 export const dataCache = new MemoryCache({
   maxEntries: config.cache.dataMaxEntries,
   staleFor: config.cache.dataStaleFor,
-  // Facet and tile working sets, sceneStashIdMap and Whisparr's lists share this cap; 30 let a
-  // long shelf session evict the facets (2026-10-31). A stopgap until each family has its own cap.
+  // The per-filter facet working sets share this cap (30 let a long shelf session evict the
+  // facets, 2026-10-31); the sets every page leans on (the unfiltered facets, the tiles,
+  // sceneStashIdMap, Whisparr's list) are PINNED and never swept.
   maxVolatile: 60,
 })
+
+// The finished home feed (api.ts homeRows), one entry per visit seed: dropped by a pinned-row,
+// settings or blocklist write, left stale by what its rows carry.
+export const HOME = 'home-rows'
+export const HOME_TTL = 5 * 60_000
 
 const TIMEOUT = 60_000 // ms; a hung Stash request must not hold a page (or a shared in-flight read) forever
 
@@ -122,6 +128,13 @@ function dropBlocked<T extends { id: string }>(r: { total: number; items: T[] },
 // 'activity:resume' mark results that depend on play counts or resume points.
 function query<T>(q: string, variables: Record<string, unknown>, tags: string[], ttl = config.cache.dataTtl): Promise<T> {
   return dataCache.get(JSON.stringify([q, variables]), ttl, tags, () => gql<T>(q, variables))
+}
+
+// A computed answer (facets, tiles) cached over cached reads: its loader's reads wait for
+// their refresh instead of being served stale (memory.ts `freshInputs`). Not VOLATILE: the
+// answers are small and go into the snapshot, so a restart answers them without Stash.
+function computed<T>(key: unknown[], tags: string[], load: () => Promise<T>, ttl = config.cache.dataTtl): Promise<T> {
+  return dataCache.get(JSON.stringify(key), ttl, tags, load, { freshInputs: true })
 }
 
 // Write, then drop the cached results it changes. `expires` names results that it changes
@@ -268,17 +281,20 @@ export const rating100 = (s: number | null) => (s == null || s <= 0 ? null : Mat
 
 // --- fragments ------------------------------------------------------------------
 
+// A card's performers carry no image: no card renders one (a quarter of a list's raw bytes,
+// 2026-10-31); the scene page's avatars come from SCENE_DETAIL, which selects it.
 const SCENE_CARD = `
   id title date created_at rating100 play_count o_counter resume_time last_played_at
   files { path duration width height size }
   paths { screenshot preview vtt }
   studio { id name image_path }
-  performers { id name image_path }
+  performers { id name }
 `
 
 const SCENE_DETAIL = `
   ${SCENE_CARD}
   details code director urls
+  performers { image_path }
   tags { id name }
   files { size format video_codec audio_codec bit_rate frame_rate }
   scene_markers { id seconds end_seconds title primary_tag { id name } }
@@ -325,7 +341,7 @@ export function toSceneCard(s: Scene): SceneCard {
     lastPlayedAt: s.last_played_at ?? null,
     createdAt: s.created_at,
     studio: s.studio ? ref(s.studio) : null,
-    performers: (s.performers ?? []).map((p) => ref(p)),
+    performers: (s.performers ?? []).map((p) => ({ id: p.id, name: p.name })),
     screenshot: mediaUrl(s.paths?.screenshot)!,
     preview: mediaUrl(s.paths?.preview),
     vtt: mediaUrl(s.paths?.vtt),
@@ -337,6 +353,7 @@ function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden'> {
   const f = file(s)
   return {
     ...toSceneCard(s),
+    performers: (s.performers ?? []).map((p) => ref(p)), // with avatars
     details: s.details || null,
     code: s.code || null,
     director: s.director || null,
@@ -400,10 +417,11 @@ export interface Exclusions {
   people?: People
 }
 
-// Performer attributes a scene must have: one performer of `gender` (the Settings gender)
+// Performer attributes a scene must have: one performer (of `gender`, when one is given; the
+// Settings gender switch no longer feeds it, decisions/gender-switch-performers-page-only)
 // matching the age at filming and any of the ethnicities. `firstYear` is the earliest scene date.
 export interface People {
-  gender: GenderCriterionInput | null
+  gender?: GenderCriterionInput | null
   firstYear: number
   minAge?: number
   maxAge?: number
@@ -1058,15 +1076,28 @@ const passes = (s: Scene, q: Local, except?: Group) => groups.every((g) => g ===
 
 // Counts inside the set a query selects: per tag, performer and studio (a studio also counts its
 // sub-studios' videos, as its filter does), and per quick choice.
+//
+// The answer (2–25 KB) is cached per filter set and exclusions under `facets` and snapshotted,
+// so a deploy or an evicted working set no longer costs the 1–2 s rebuild on Filters; the raw
+// scene dump behind it stays memory-only: PINNED for the unfiltered set every Browse opens,
+// VOLATILE (capped) for the rest. Sort and paging do not change the counts and are left out of
+// the key.
 export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
+  const { sort: _sort, dir: _dir, page: _page, perPage: _perPage, seed: _seed, ...counted } = q
+  return computed(['facets', counted, blocked], ['scene', 'activity:play', 'activity:resume'], () => buildFacets(counted, blocked))
+}
+
+async function buildFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
   const rest: SceneQuery = { ...q }
   for (const k of LOCAL_KEYS) delete rest[k]
+  const s = sceneFilter(rest, blocked)
+  const unfiltered = !q.q && JSON.stringify(s) === JSON.stringify(sceneFilter({}, blocked))
   const d = await query<Pick<Query, 'findScenes'>>(
     `query($f: FindFilterType, $s: SceneFilterType) { findScenes(filter: $f, scene_filter: $s) { scenes {
       play_count resume_time rating100 files { width height duration } tags { id } performers { id } studio { id parent_studio { id } }
     } } }`,
-    { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s: sceneFilter(rest, blocked) },
-    ['scene', 'activity:play', 'activity:resume', VOLATILE], // one per filter set, hundreds of KB each: not worth the disk
+    { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s },
+    ['scene', 'activity:play', 'activity:resume', unfiltered ? PINNED : VOLATILE], // hundreds of KB each: not worth the disk
   )
   const all = d.findScenes.scenes
   const inSet = all.filter((s) => passes(s, q))
@@ -1108,7 +1139,7 @@ async function activityScenes(): Promise<Scene[]> {
         play_count: { value: 0, modifier: GREATER_THAN },
         OR: { rating100: { value: 0, modifier: GREATER_THAN }, OR: { o_counter: { value: 0, modifier: GREATER_THAN } } }
       }
-    ) { scenes { ${SCENE_CARD} ${BLOCK_FIELDS} play_duration play_history performers { gender } tags { id name } } } }`,
+    ) { scenes { ${SCENE_CARD} ${BLOCK_FIELDS} play_duration play_history performers { gender image_path } tags { id name } } } }`,
     {},
     ['scene', 'activity:play'],
   )
@@ -1146,7 +1177,7 @@ export async function removeFromHistory(id: string) {
   await mutate(`mutation($id: ID!) { sceneResetActivity(id: $id, reset_resume: true, reset_duration: true) }`, { id }, ['scene'])
 }
 
-export async function stats(showGender: (g: string | null) => boolean, blocked?: Exclusions): Promise<Stats> {
+export async function stats(blocked?: Exclusions): Promise<Stats> {
   const scenes = (await activityScenes()).filter((s) => !blocked || !isBlocked(s, blocked))
   const tally = () => new Map<string, { ref: Ref; plays: number }>()
   const perf = tally()
@@ -1170,7 +1201,7 @@ export async function stats(showGender: (g: string | null) => boolean, blocked?:
     o += s.o_counter ?? 0
     if (n) watched++
     if (!n) continue
-    s.performers.forEach((p) => showGender(p.gender) && add(perf, ref(p), n))
+    s.performers.forEach((p) => add(perf, ref(p), n))
     if (s.studio) add(studios, ref(s.studio), n)
     s.tags.forEach((t) => add(tags, { id: t.id, name: t.name }, n))
     for (const t of s.play_history ?? []) {
@@ -1235,7 +1266,7 @@ export async function affinities(): Promise<Affinities | null> {
   return { performers: pAff, studios: sAff, tags: tAff }
 }
 
-export async function recommendations(blocked: Exclusions, showGender: (g: string | null) => boolean) {
+export async function recommendations(blocked: Exclusions) {
   const aff = await affinities()
   if (!aff) return null
   const { performers: pAff, studios: sAff, tags: tAff } = aff
@@ -1265,10 +1296,10 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
     s.tags.reduce((a, t) => a + (tAff.get(t.id) ?? 0) * 0.1, 0)
   const forYou = [...cands.values()].sort((a, b) => score(b) - score(a)).slice(0, 24).map(toSceneCard)
 
-  // "More with …" for the two performers you return to most (gender switch applies).
+  // "More with …" for the two performers you return to most.
   const favPerformers = topPerf
     .map((id) => pAff.get(id)!)
-    .filter((p) => showGender(p.gender) && !blocked.performers.includes(p.ref.id))
+    .filter((p) => !blocked.performers.includes(p.ref.id))
     .slice(0, 2)
     .map((p) => p.ref)
   return { forYou, favPerformers }
@@ -1302,13 +1333,18 @@ export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
 // --- tag tiles ------------------------------------------------------------------------
 
 // One representative screenshot per tag, from one query over the library: the best-rated,
-// most-played scene carrying the tag that no bigger tag already used.
+// most-played scene carrying the tag that no bigger tag already used. The tiles (21 KB gz) are
+// cached and snapshotted like the facets; the 3,000-scene dump behind them is PINNED in memory.
 export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
+  return computed(['tiles', blocked], ['scene', 'tag'], () => buildTiles(blocked))
+}
+
+async function buildTiles(blocked: Exclusions): Promise<TagTile[]> {
   const [scenesRaw, tagsRaw] = await Promise.all([
     query<Pick<Query, 'findScenes'>>(
       `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } tags { id } } } }`,
       { s: withExclusions({}, { ...blocked }) },
-      ['scene', VOLATILE],
+      ['scene', PINNED],
     ),
     findTags({ per_page: 2000, sort: 'scenes_count', direction: 'DESC' }, blocked),
   ])
@@ -1372,9 +1408,9 @@ export async function favoritePerformerStashIds(): Promise<string[]> {
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes
 
 // Every library scene's StashDB id → Stash scene id, to tell "already here" from "missing"
-// when StashDB lists a performer's or studio's scenes.
+// when StashDB lists a performer's or studio's scenes. PINNED: every shelf page reads it.
 export async function sceneStashIdMap(): Promise<Map<string, string>> {
-  const d = await query<Pick<Query, 'findScenes'>>('{ findScenes(filter: { per_page: -1 }) { scenes { id stash_ids { stash_id } } } }', {}, ['scene', VOLATILE])
+  const d = await query<Pick<Query, 'findScenes'>>('{ findScenes(filter: { per_page: -1 }) { scenes { id stash_ids { stash_id } } } }', {}, ['scene', PINNED])
   const map = new Map<string, string>()
   for (const s of d.findScenes.scenes) for (const x of s.stash_ids) map.set(x.stash_id, s.id)
   return map

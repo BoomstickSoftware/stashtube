@@ -15,9 +15,13 @@ related: [featured-ranking, caching, whisparr-shelf, stations, related-videos, b
 # Home feed
 
 Home is one request, `GET /api/home?seed=`, answered from the query cache and built in the
-background at boot and after every Stash change, so the first visit is warm. The browser keeps
-the last answer in localStorage (`flix.queries`) and paints it at once on a cold open, then
-refetches.
+background at boot and after every Stash change, so the first visit is warm. The **finished rows
+are cached per visit seed** (`home-rows`, 5 min, then served stale while they rebuild, snapshotted
+across deploys; since 2026-10-31, _before, the rows were assembled from their cached pieces on
+every call, 41 ms_): a pinned-row, Settings or blocklist write drops them, a play or an edit
+leaves them stale like any list, and the rebuild waits for fresh pieces ([[caching]]). The
+browser keeps the last answer in localStorage (`flix.queries`) and paints it at once on a cold
+open, then refetches, which the weak ETag turns into a 304 when nothing moved.
 
 ## Behaviour
 
@@ -37,8 +41,9 @@ show, even empty, so they can be managed):
 | **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]] |
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
-The blocklist and the Settings performer-gender choice apply to every row
-([[blocklist-and-exclusions]]).
+The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]);
+the Performers page's Women / Men / Everyone switch does not (_it steered "For you" and "More
+with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
 
 ## Seeds
 

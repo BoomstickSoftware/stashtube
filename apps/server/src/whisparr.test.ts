@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { dataCache } from './stash.ts'
-import { activityOf, assertSingleId, getScene, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
+import { activityOf, assertSingleId, getScene, movies, project, PROJECTED, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
 
 const movie = (over: Partial<Movie> & { id: number }): Movie => ({
   title: `Scene ${over.id}`,
@@ -39,7 +39,7 @@ const fakeWhisparr: typeof fetch = async (url, init) => {
   const method = init?.method ?? 'GET'
   sent.push({ method, path, body: init?.body ? JSON.parse(String(init.body)) : undefined })
   const json = (v: unknown) => Response.json(v)
-  if (path === '/movie') return json(library)
+  if (path === '/movie') return json(library.map((m) => ({ ...m, overview: 'x'.repeat(2000), genres: ['a', 'b'], ratings: { value: 1 } }))) // the fields flix never reads
   if (path.startsWith('/movie/')) {
     const id = Number(path.slice(7))
     const m = library.find((x) => x.id === id)
@@ -106,8 +106,20 @@ describe('wanted scenes', () => {
     assert.equal(page.source, 'whisparr')
     assert.deepEqual(page.items.map((w) => w.whisparrId), [4, 1])
     assert.equal(page.hasMore, false)
-    // the 25 MB list is fetched once for both
+    // the 41 MB list is fetched once for both
     assert.equal(sent.filter((s) => s.path === '/movie').length, 1)
+  })
+
+  it('cache only the projection of the list: the fields flix reads, one cover each', async () => {
+    const all = await movies()
+    assert.equal(all.length, library.length)
+    for (const m of all) {
+      assert.ok(Object.keys(m).every((k) => (PROJECTED as readonly string[]).includes(k)), `unexpected field in ${Object.keys(m)}`)
+      assert.deepEqual(m.images, [{ coverType: 'screenshot', remoteUrl: 'https://img/shot' }])
+    }
+    assert.equal(toWanted(all[0]!, activityOf([], [])).image, 'https://img/shot')
+    const bare = project(movie({ id: 9, images: undefined, movieFile: { relativePath: 'f.mp4' } }))
+    assert.deepEqual([bare.images, bare.movieFile], [[], { relativePath: 'f.mp4' }])
   })
 })
 
@@ -120,6 +132,19 @@ describe('getScene, the one write', () => {
     assert.equal((writes[0]!.body as Movie).id, 1)
     assert.deepEqual(writes[1]!.body, { name: 'MoviesSearch', movieIds: [1] })
     assert.equal(w.state, 'grabbed')
+  })
+
+  it('patches the cached list and drops only the queue and grabs, instead of refetching 41 MB', async () => {
+    await wantedInWhisparr({ performers: ['perf-ann'] }) // list, queue and grabs cached
+    const before = sent.length
+    const w = await getScene(1)
+    assert.equal(w.state, 'grabbed')
+    const after = await wantedInWhisparr({ performers: ['perf-ann'] })
+    const paths = sent.slice(before).map((s) => s.path.split('?')[0])
+    assert.ok(!paths.includes('/movie'), `the list was refetched: ${paths}`)
+    assert.ok(paths.includes('/queue') && paths.includes('/history'), `the activity was not: ${paths}`)
+    assert.equal((await movies()).find((m) => m.id === 1)?.monitored, true, 'patched in place')
+    assert.deepEqual(after.map((x) => x.whisparrId), [4, 1])
   })
 
   it('skips the monitor call when the scene already is', async () => {

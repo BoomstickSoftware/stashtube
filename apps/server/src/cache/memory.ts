@@ -9,8 +9,15 @@
 //   a progress save every 15 s does not throw away a whole-library query in flight.
 // - LRU: Map insertion order, re-inserted on every hit.
 // - save()/load() keep entries across restarts, so a new process does not start cold. Entries
-//   tagged VOLATILE (large raw working sets that are cheap to rebuild) stay in memory only.
+//   tagged VOLATILE (large raw working sets that are cheap to rebuild) stay in memory only and
+//   are capped on their own; entries tagged PINNED stay in memory only too but are never swept
+//   by that cap (the few expensive working sets every page leans on).
+// - A computed answer cached over other cached reads (the facets over their raw scene set, the
+//   home feed over its rows) asks for `freshInputs`: while its loader runs, the reads it makes
+//   are not served stale but wait for their refresh, so a stale input cannot be re-stored as a
+//   fresh answer. Carried by AsyncLocalStorage, so nothing has to be threaded through.
 
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
@@ -32,6 +39,10 @@ export interface MemoryStats {
 }
 
 export const VOLATILE = 'volatile'
+export const PINNED = 'pinned'
+
+// Set while a `freshInputs` loader runs: nested reads must not answer with a stale entry.
+const wantFresh = new AsyncLocalStorage<true>()
 
 export class MemoryCache {
   private entries = new Map<string, Entry<unknown>>()
@@ -53,22 +64,35 @@ export class MemoryCache {
     this.staleFor = opts.staleFor
   }
 
-  async get<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>): Promise<T> {
+  async get<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>, opts: { freshInputs?: boolean } = {}): Promise<T> {
     const now = Date.now()
     const e = this.entries.get(key) as Entry<T> | undefined
+    const run = opts.freshInputs ? () => wantFresh.run(true, load) : load
     if (e && now < e.stale) {
       this.entries.delete(key)
       this.entries.set(key, e)
       if (now < e.fresh) {
         this.s.hits++
-      } else {
-        this.s.staleHits++
-        this.fetch(key, ttl, tags, load).catch(() => {}) // keep serving stale if Stash is down
+        return e.value
       }
-      return e.value
+      if (!wantFresh.getStore()) {
+        this.s.staleHits++
+        this.fetch(key, ttl, tags, run).catch(() => {}) // keep serving stale if Stash is down
+        return e.value
+      }
+      // an input of a computed answer: wait for the refresh rather than hand back the old value
     }
     this.s.misses++
-    return this.fetch(key, ttl, tags, load)
+    return this.fetch(key, ttl, tags, run)
+  }
+
+  // Replace a live entry's value in place (a list patched after a write instead of refetched);
+  // its age and tags stay. Nothing happens when the entry is gone.
+  patch<T>(key: string, fn: (value: T) => T) {
+    const e = this.entries.get(key) as Entry<T> | undefined
+    if (!e || Date.now() >= e.stale) return
+    e.value = fn(e.value)
+    this.dirty = true
   }
 
   private fetch<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>): Promise<T> {
@@ -111,8 +135,8 @@ export class MemoryCache {
       this.entries.delete(this.entries.keys().next().value!)
       this.s.evictions++
     }
-    if (tags.includes(VOLATILE)) {
-      const volatile = [...this.entries].filter(([, e]) => e.tags.includes(VOLATILE)) // oldest first
+    if (tags.includes(VOLATILE) && !tags.includes(PINNED)) {
+      const volatile = [...this.entries].filter(([, e]) => e.tags.includes(VOLATILE) && !e.tags.includes(PINNED)) // oldest first
       for (const [k] of volatile.slice(0, Math.max(0, volatile.length - this.maxVolatile))) {
         this.entries.delete(k)
         this.s.evictions++
@@ -154,7 +178,7 @@ export class MemoryCache {
     if (!this.dirty) return
     this.dirty = false
     const now = Date.now()
-    const live = [...this.entries].filter(([, e]) => e.stale > now && !e.tags.includes(VOLATILE))
+    const live = [...this.entries].filter(([, e]) => e.stale > now && !e.tags.includes(VOLATILE) && !e.tags.includes(PINNED))
     await mkdir(dirname(file), { recursive: true })
     await writeFile(`${file}.tmp`, JSON.stringify(live))
     await rename(`${file}.tmp`, file)

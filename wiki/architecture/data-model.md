@@ -5,7 +5,7 @@ summary: The six Postgres tables and what each holds, against the rule that Stas
 tags: [postgres, drizzle, schema, data]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 code: [apps/server/src/db/schema.ts, apps/server/drizzle]
 related: [stash-owns-activity, postgres-cnpg, database-migrations, playlists-and-favorites, stations, blocklist-and-exclusions]
 ---
@@ -24,7 +24,7 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
 | `playlists` | ordered lists | `kind = 'favorites'` marks the built-in Favorites list behind the heart on videos (Stash scenes have no favourite flag); unique on `kind` |
 | `playlist_items` | `(playlist_id, scene_id)` with `position` | `scene_id` is Stash's id as text; cascade on playlist delete |
 | `blocks` | the blocklist: `(kind ∈ tag/performer/studio, stash_id)` plus `name` at block time | the name lets Settings render the list without Stash ([[blocklist-and-exclusions]]) |
-| `settings` | `key → jsonb value` | small preferences shared across devices: performer gender switch, per-studio intro skip, panic URL, `featured` weights ([[settings-next-to-page]]) |
+| `settings` | `key → jsonb value` | small preferences shared across devices: per-studio intro skip, panic URL, `playOnOpen`, `people` defaults, `featured` weights ([[settings-next-to-page]]); `performerGender` is still stored and accepted but read by nothing since 2026-10-31 (the switch is per browser, [[gender-switch-performers-page-only]]) |
 | `saved_rows` | Browse filters pinned to Home as rows: `title`, `query` jsonb, `position` | [[home-feed]] |
 | `stations` | named stations: `query` jsonb or `from_scene`, `mode` full/moments, `window` seconds, `position` | [[stations]] |
 | `station_resume` | where a station was left: `key → scene_id, seconds` | key `id:<n>` (saved), `q:<filters>` (ad hoc), `from:<scene>` (drifting); newest 50 kept |

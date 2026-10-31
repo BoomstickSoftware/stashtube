@@ -25,7 +25,14 @@ The switch is **page-local**: it filters the Performers page only. Every other c
 
 ## Consequences
 
-An initiative decouples the setting: the Performers page keeps `?gender=` (or a per-browser preference); `blocklist.ts` people criteria, `recommendations`, `stats` and `findPerformers` for search drop the gender criterion. Stats and Home then include everyone unless the People preferences say otherwise.
+Done 2026-10-31 ([[2026-10-31-ux-phase1-server-caching]]): the Performers page keeps the choice
+per browser (`flix.performers.gender`, `useStored`) and sends `GET /api/performers?gender=`
+(`all` when absent), captioned "Only this page"; `blocklist.ts` people criteria,
+`recommendations`, `stats` and search's `findPerformers` no longer apply a gender criterion, so
+Stats and Home include everyone unless the People preferences say otherwise. `performerGender`
+is still accepted by `PUT /api/settings` and stored, but **nothing reads it**; it can be dropped
+from the type and the table whenever a migration is convenient. Copy that still says "of your
+Settings gender" (Filters, People, Settings) is to follow in the copy initiative.
 
 ## Revisit if
 

@@ -128,3 +128,11 @@ Settings, gender switch page-only, home rows 24 lazy, toast-only errors →
 [[library-before-wanted-shelf]], [[categories-and-us-spelling]], [[panic-key-desktop-only]],
 [[library-tools-group-in-settings]], [[gender-switch-performers-page-only]],
 [[home-rows-stay-24-render-lazily]], [[failed-writes-toast-only]].
+
+## [2026-10-31] ingest | UX audit Phase 1: server caching and the page-local gender switch
+PINNED working sets, computed facets/tiles/home-rows cached with `freshInputs`, Whisparr's list
+as a patched 16-field projection, weak ETags on `/api`, cards without performer images, and
+the Women/Men/Everyone switch decoupled from Home, Stats, search and the People filters →
+[[caching]], [[whisparr-shelf]], [[whisparr-api]], [[home-feed]], [[stash-layer]],
+[[people-pages]], [[data-model]], [[continue-history-stats]], [[browse-and-filters]],
+[[gender-switch-performers-page-only]], [[roadmap]], [[2026-10-31-ux-phase1-server-caching]].
