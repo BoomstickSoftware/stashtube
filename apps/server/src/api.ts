@@ -149,7 +149,13 @@ async function featured(weights: FeaturedWeights, seed: string, limit: number): 
   const affinity: Affinity = aff
     ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
     : NO_AFFINITY
-  return rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit).map((r) => ({ ...r.card, why: r.why }))
+  const ranked = rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit)
+  // the pool carries only what scoring needs; the winners get their full cards
+  const cards = new Map((await stash.findScenesByIds(ranked.map((r) => r.card.id))).map((s) => [s.id, s]))
+  return ranked.flatMap((r) => {
+    const card = cards.get(r.card.id)
+    return card ? [{ ...card, why: r.why }] : []
+  })
 }
 
 api.get('/featured', async (c) =>

@@ -127,6 +127,8 @@ async function mutate<T = unknown>(q: string, variables: Record<string, unknown>
   const d = await gql<T>(q, variables)
   dataCache.invalidate(...invalidates)
   if (expires.length) dataCache.expire(...expires)
+  // anything that can move a Featured score leaves the pool stale, served while it refreshes
+  if ([...invalidates, ...expires].some((t) => t.startsWith('scene') || t.startsWith('activity'))) dataCache.expire(POOL)
   return d
 }
 
@@ -1217,13 +1219,21 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
 // Everything the Featured engine scores: the whole library (minus exclusions) with the card
 // fields plus what the signals read. One query, cached like the rest but kept out of the
 // saved cache (it is the biggest result flix holds and is cheap to refetch).
+// Only what the Featured scoring reads, for the whole library: with the card fields (files,
+// paths, names) it took 2.3 s and ~7 MB on the N5105, without them 0.8 s and 2.3 MB
+// (2026-10-31); the 24 that win get their cards from findScenesByIds.
+//
+// Tagged POOL rather than 'scene' / 'activity:play': a play or an edit marks it stale instead
+// of dropping it (see mutate), so Home after watching something answers from the old pool at
+// once while it refreshes, instead of waiting for a whole-library query.
+export const POOL = 'featured-pool'
 export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
   const d = await query<Pick<Query, 'findScenes'>>(
     `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: -1, sort: "created_at", direction: DESC }) {
-      scenes { ${SCENE_CARD} tags { id favorite } scene_markers { id } performers { favorite } studio { favorite } }
+      scenes { id created_at last_played_at play_count o_counter rating100 tags { id favorite } scene_markers { id } performers { id favorite } studio { id favorite } }
     } }`,
     { s: withExclusions({}, { ...blocked }) },
-    ['scene', 'activity:play', VOLATILE],
+    [POOL, VOLATILE],
   )
   return d.findScenes.scenes
 }
