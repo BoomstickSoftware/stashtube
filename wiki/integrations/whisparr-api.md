@@ -5,7 +5,7 @@ summary: The Whisparr v3 endpoints and fields flix uses (movie list, queue and h
 tags: [whisparr, api, downloads, policy]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 sources: [nas:docs/services.md, nas:docs/known-issues.md]
 code: [apps/server/src/whisparr.ts, apps/server/src/whisparr.test.ts, apps/server/src/delete.ts]
 related: [whisparr-nothing-monitored, whisparr-shelf, delete-via-whisparr, whisparr-calendar-empty, stashdb, config-env]
@@ -31,7 +31,7 @@ exactly one scene id and refuse anything else, feature films included.
 
 | Call | Facts |
 |---|---|
-| `GET /api/v3/movie` | the **whole** list (9,384 entries, ~25 MB); ignores `performerId`, `studioId` and `*ForeignId` params; only `?stashId=<uuid>` filters. flix caches it 2 min in memory only |
+| `GET /api/v3/movie` | the **whole** list (13,079 entries, 41 MB JSON on 2026-10-31; _9,384 entries, ~25 MB on 2026-10-30_); ignores `performerId`, `studioId` and `*ForeignId` params; only `?stashId=<uuid>` filters. flix caches it 2 min in memory only |
 | movie fields | `stashId`/`foreignId` (StashDB scene uuid), `studioForeignId`, `studioTitle`, `performerForeignIds`, `performerNames`, `hasFile`, `monitored`, `itemType` (`scene`/`movie`), `releaseDate`, `runtime`, `images[]` (`url` is `/MediaCover/…` needing the key; `remoteUrl` is the StashDB CDN), `movieFile.path` |
 | `GET /api/v3/queue` | records carry `movieId` and `trackedDownloadState` → shelf state downloading |
 | `GET /api/v3/history?eventType=1` | grabs → shelf state grabbed |

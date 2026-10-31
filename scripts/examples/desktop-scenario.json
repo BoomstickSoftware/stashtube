@@ -1,0 +1,59 @@
+[
+ {"name":"home","path":"/","steps":[
+   {"scroll":850},{"wait":1500},{"shot":"s850"},
+   {"mouse":[300,300]},{"wait":400},{"shot":"rowhover"},
+   {"scroll":1700},{"wait":1500},{"shot":"s1700"},
+   {"scroll":2600},{"wait":1500},{"shot":"s2600"},
+   {"scroll":3600},{"wait":1500},{"shot":"s3600"}
+ ]},
+ {"name":"browse","path":"/browse","steps":[
+   {"mouse":[190,286]},{"wait":300},{"shot":"hover300"},{"wait":1500},{"shot":"hover1800"},
+   {"mouse":[280,290]},{"wait":200},{"shot":"scrub"},
+   {"rclick":[190,286]},{"wait":500},{"shot":"rclick"},{"key":"Escape"},{"wait":300},
+   {"mouse":[900,120]},{"wait":200},
+   {"click":[72,116]},{"wait":1500},{"shot":"filters"},{"key":"Escape"},{"wait":300},
+   {"click":[1140,116]},{"wait":500},{"shot":"select"},{"click":[1140,116]},{"wait":300}
+ ]},
+ {"name":"tabs","path":"/browse","steps":[
+   {"tab":1},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))+'|outline:'+getComputedStyle(e).outlineStyle+' '+getComputedStyle(e).outlineWidth})()"},
+   {"tab":1},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))})()"},
+   {"tab":1},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))})()"},
+   {"tab":5},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))})()"},
+   {"tab":4},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))+'|outline:'+getComputedStyle(e).outlineStyle+' '+getComputedStyle(e).outlineWidth})()"},
+   {"shot":"tab13"},
+   {"tab":4},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))})()"},
+   {"tab":4},{"eval":"(()=>{const e=document.activeElement;return e.tagName+'|'+(e.getAttribute('aria-label')||e.textContent.trim().slice(0,30))})()"},
+   {"shot":"tab21"}
+ ]},
+ {"name":"scene","path":"/scene/2775","steps":[
+   {"mouse":[500,350]},{"wait":300},{"shot":"hover"},
+   {"mouse":[500,562]},{"wait":600},{"shot":"seekhover"},
+   {"click":[764,594]},{"wait":500},{"shot":"gear"},{"key":"Escape"},{"wait":300},{"mouse":[1200,500]},{"wait":300},
+   {"key":"t"},{"wait":800},{"shot":"theater"},
+   {"scroll":800},{"wait":800},{"shot":"theater_s800"},
+   {"key":"t"},{"wait":500},{"scroll":0},{"wait":300},
+   {"key":"?"},{"wait":500},{"shot":"help"},{"key":"Escape"},{"wait":300},
+   {"scroll":700},{"wait":800},{"shot":"s700"},
+   {"scroll":1400},{"wait":800},{"shot":"s1400"}
+ ]},
+ {"name":"search","path":"/","steps":[
+   {"key":"/"},{"wait":200},{"type":"cory"},{"wait":1200},{"shot":"cory"},
+   {"key":"ArrowDown"},{"key":"ArrowDown"},{"wait":200},{"shot":"arrow"},{"key":"Escape"}
+ ]},
+ {"name":"performer","path":"/performer/447","steps":[
+   {"click":[773,355]},{"wait":600},{"shot":"about"},
+   {"mouse":[130,546]},{"wait":1500},{"shot":"shelfhover"},
+   {"click":[1363,445]},{"wait":1500},{"shot":"grid"},{"click":[1294,445]},{"wait":300}
+ ]},
+ {"name":"studios","path":"/studios","steps":[
+   {"click":[612,108]},{"wait":1200},{"shot":"grid"},
+   {"click":[686,108]},{"wait":1200},{"shot":"table"},
+   {"click":[527,108]},{"wait":300}
+ ]},
+ {"name":"playlist","path":"/playlists","steps":[
+   {"click":[189,245]},{"wait":2500},{"shot":"favorites"}
+ ]},
+ {"name":"continue","path":"/continue","steps":[
+   {"mouse":[190,340]},{"wait":1800},{"shot":"hover"}
+ ]}
+]

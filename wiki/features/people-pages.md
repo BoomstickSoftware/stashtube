@@ -5,7 +5,7 @@ summary: The entity pages and directories, what follow, pin and block mean on ea
 tags: [performers, studios, tags, directories, favorites]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
 code: [apps/web/src/pages/Directories.tsx, apps/web/src/pages/Performer.tsx, apps/web/src/pages/Studio.tsx, apps/web/src/pages/Tag.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/components/People.tsx, apps/server/src/api.ts]
@@ -27,7 +27,10 @@ Each entity page is a header, actions, the entity's videos through the shared li
   filters** (stacks it, [[browse-and-filters]]), **Station** from this entity's videos
   ([[stations]]).
 - Studios: **intro skip** in seconds, honoured by every player and by Start over
-  (`PUT /api/studios/:id/intro`, 0–600). A studio page includes its sub-studios.
+  (`PUT /api/studios/:id/intro`, 0–600). It is set from the player's gear menu ("Skip to
+  here") while one of the studio's videos plays (`Player.tsx`, `useIntroSkip`); the studio
+  page itself has no control for it (_this page said it did until 2026-10-31_). A studio page
+  includes its sub-studios.
 - Tags: **Pin** = Stash's tag favourite; pinned tags head the Categories page.
 
 ## Directories

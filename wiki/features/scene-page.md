@@ -29,9 +29,11 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
 - **Identify on StashDB** for this one scene: `POST /api/scenes/:id/identify` queues a Stash
   job; `GET /api/jobs/:id` follows it ([[stashdb]]).
 - **Rating** (stars, half steps), **O** counter, **Favorite** heart (the built-in Favorites
-  playlist, [[playlists-and-favorites]]), **Mark as watched**, **Not interested** (hides it
-  everywhere, [[blocklist-and-exclusions]]), **Delete** next to Favorite
-  ([[delete-via-whisparr]]).
+  playlist, [[playlists-and-favorites]]), **Not interested** (hides it everywhere,
+  [[blocklist-and-exclusions]]), **Delete** next to Favorite ([[delete-via-whisparr]]).
+  **Mark as watched** is not on this page: it lives in the card's long-press / right-click
+  menu (`CardMenu.tsx`); _the page listed it until 2026-10-31_ (UX audit, F14 in
+  `docs/audits/2026-10-31-ux/ia.md`).
 - **Station** by Related starts a drifting station from this scene ([[stations]]).
 - **+** next to each performer, the studio and each tag adds it to the stacked filters
   ([[browse-and-filters]]).

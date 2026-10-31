@@ -1,12 +1,12 @@
 ---
 title: Run the headless mobile checks
 kind: runbook
-summary: The headless check scripts (overflow and screenshots, touch-driven player, drag-to-preview, mini-player round trip in Chrome and in real WebKit), their commands, what they block, and the cleanup after a station run.
+summary: The headless check scripts (overflow, touch player, drag-to-preview, mini-player round trip in Chrome and WebKit, scripted phone and desktop sessions), what they block, and the cleanup after a station run.
 tags: [mobile, testing, headless, chrome, scripts]
 status: current
 verified: 2026-10-31
 updated: 2026-10-31
-code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs, scripts/webkit-mini-check.mjs]
+code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs, scripts/webkit-mini-check.mjs, scripts/phone-flow.mjs, scripts/desktop-check.mjs]
 related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs]
 ---
 
@@ -38,6 +38,20 @@ node scripts/mini-check.mjs /tmp/mp http://localhost:5174 /scene/<id>
 # console, page errors and failed requests printed; needs Playwright, see below
 node scripts/webkit-mini-check.mjs /tmp/wk http://localhost:5174 /scene/<id>
 ```
+
+```sh
+# a scripted phone session: steps as JSON (goto, tap, tapText, longpress, type, scroll, shot,
+# full-page shot, targets = every control under 44 px); the UX audit's driver
+STEPS='[{"goto":"/browse","targets":true},{"tapText":"Filters","shot":"sheet"}]' node scripts/phone-flow.mjs /tmp/pf http://localhost:5174
+
+# a scripted desktop session: real mouse/keyboard via a scenario file (see scripts/examples/)
+DESKTOP=1 node scripts/desktop-check.mjs /tmp/dc http://localhost:5174 scripts/examples/desktop-scenario.json
+```
+
+`phone-flow` and `desktop-check` drive the app like a user (added 2026-10-31,
+[[2026-10-31-ux-audit]]); they block the Stash writes but **not** the app's own database, so a
+step must never confirm a playlist, block, favourite, rating, pin, station or settings change.
+Performance numbers come from `scripts/perf-check.mjs` ([[perf-checks]]).
 
 `webkit-mini-check` is the closest thing to an iPhone a session can drive: Playwright's WebKit
 build, installed globally (`npm i -g playwright`, 1.58.2 at `/opt/homebrew/lib/node_modules/

@@ -199,6 +199,108 @@
         "checks"
       ],
       "wiki": "mobile-checks"
+    },
+    {
+      "name": "perf-check",
+      "file": "scripts/perf-check.mjs",
+      "does": "Client performance per route in headless Chrome (phone or desktop): cold-load timing, requests and bytes by type, API call sequence, largest responses, first-screen image variant fit, CLS/LCP/long tasks, optional page-by-page scroll cost, then a second load for HTTP-cache hits; writes result.json; writes are blocked.",
+      "usage": [
+        "node scripts/perf-check.mjs <outdir> http://localhost:5174 / /browse /scene/<id>",
+        "DESKTOP=1 W=1440 H=900 node scripts/perf-check.mjs <outdir> http://localhost:5174 /browse",
+        "SCROLL=5 SCROLL_ROUTES=/browse node scripts/perf-check.mjs <outdir> http://localhost:5174 /browse"
+      ],
+      "env": {
+        "W": "viewport width (440)",
+        "H": "viewport height (956)",
+        "DESKTOP": "1 = mouse, no touch",
+        "WAIT": "settle ms after load (4000)",
+        "SCROLL": "pages to scroll on SCROLL_ROUTES",
+        "SCROLL_ROUTES": "comma-separated routes to scroll (/browse)"
+      },
+      "writes": "result.json and screenshots under <outdir>",
+      "tags": [
+        "perf",
+        "headless",
+        "mobile",
+        "desktop",
+        "checks"
+      ],
+      "wiki": "perf-checks"
+    },
+    {
+      "name": "phone-flow",
+      "file": "scripts/phone-flow.mjs",
+      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked.",
+      "usage": [
+        "STEPS='[{\"goto\":\"/browse\",\"targets\":true},{\"tapText\":\"Filters\",\"shot\":\"sheet\"}]' node scripts/phone-flow.mjs <outdir> http://localhost:5174"
+      ],
+      "env": {
+        "STEPS": "JSON array of steps",
+        "W": "viewport width (440)",
+        "H": "viewport height (956)"
+      },
+      "writes": "screenshots under <outdir>",
+      "tags": [
+        "mobile",
+        "headless",
+        "ux",
+        "checks"
+      ],
+      "wiki": "mobile-checks"
+    },
+    {
+      "name": "desktop-check",
+      "file": "scripts/desktop-check.mjs",
+      "does": "Scenario-driven headless Chrome at desktop size: real mouse moves, clicks, right-clicks, key presses, Tab, typing, scroll, eval and screenshots per scenario; writes are blocked. Example scenario: scripts/examples/desktop-scenario.json.",
+      "usage": [
+        "node scripts/desktop-check.mjs <outdir> http://localhost:5174 scripts/examples/desktop-scenario.json",
+        "W=1920 H=1080 node scripts/desktop-check.mjs <outdir> http://localhost:5174 <scenario.json>"
+      ],
+      "env": {
+        "W": "viewport width (1440)",
+        "H": "viewport height (900)"
+      },
+      "writes": "screenshots under <outdir>",
+      "tags": [
+        "desktop",
+        "headless",
+        "ux",
+        "checks"
+      ],
+      "wiki": "mobile-checks"
+    },
+    {
+      "name": "api-latency",
+      "file": "scripts/api-latency.sh",
+      "does": "Times GET API routes (read-only) N times with the browser's Accept-Encoding: ms, gzip and raw bytes, Content-Encoding, Cache-Control, ETag, status and the Stash queries / asset fetches each sample caused (from GET /api/admin/cache); TSV on stdout. Built-in route list, or pass a file.",
+      "usage": [
+        "scripts/api-latency.sh http://flix.lan 4 > routes.tsv",
+        "scripts/api-latency.sh http://flix.lan 3 my-routes.txt > routes.tsv"
+      ],
+      "writes": "nothing (stdout)",
+      "tags": [
+        "perf",
+        "api",
+        "read-only",
+        "checks"
+      ],
+      "wiki": "perf-checks"
+    },
+    {
+      "name": "media-probe",
+      "file": "scripts/media-probe.sh",
+      "does": "Probes media proxy URLs twice each (read-only): status, ms, bytes, type, Cache-Control, ETag, Content-Length and whether the BFF went to Stash (asset counter delta); TSV on stdout.",
+      "usage": [
+        "scripts/media-probe.sh http://flix.lan '/media/stash/scene/2775/screenshot?w=640' /media/stash/scene/2775/preview"
+      ],
+      "writes": "nothing (stdout)",
+      "tags": [
+        "perf",
+        "media",
+        "read-only",
+        "checks"
+      ],
+      "wiki": "perf-checks"
     }
   ],
   "external": [

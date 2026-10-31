@@ -90,3 +90,13 @@ Diagnostics copy after a tap on Expand is the next evidence → [[mini-player]],
 ## [2026-10-31] correct | The scan step retries: run 82 died on an unreachable IPv6 CDN address
 Docker Hub's CDN resolved to IPv6 inside the job network; three replicas, three caches →
 [[trivy-db-download-timed-out]].
+
+## [2026-10-31] query | UX audit by five auditor agents, roadmap written
+Server caching, client loading, phone, desktop and IA lenses, all read-only; raw reports in
+`docs/audits/2026-10-31-ux/`; five scripts promoted (perf-check, phone-flow, desktop-check,
+api-latency, media-probe) → [[2026-10-31-ux-audit]], [[roadmap]], [[perf-checks]], [[mobile-checks]].
+
+## [2026-10-31] correct | Audit evidence against the wiki
+Whisparr list 41 MB / 13k (was ~25 MB); the shared VOLATILE cap is the dominant miss cause;
+Mark as watched is in the card menu; intro skip is set from the player, not the studio page →
+[[caching]], [[whisparr-api]], [[scene-page]], [[people-pages]], [[settings-next-to-page]].

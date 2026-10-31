@@ -45,7 +45,7 @@ interface Paged<T> {
 }
 
 const TIMEOUT = 60_000 // ms
-const LIST_TTL = 2 * 60_000 // the movie list is ~25 MB and changes only when Whisparr imports or adds
+const LIST_TTL = 2 * 60_000 // the movie list is ~41 MB (13k entries, 2026-10-31) and changes only when Whisparr imports or adds
 const ACTIVITY_TTL = 30_000 // queue and grabs move faster, and the cards show them
 const GRABBED_FOR = 48 * 3_600_000 // a grab older than this with no download is treated as gone
 
