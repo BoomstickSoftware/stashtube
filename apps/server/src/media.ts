@@ -1,12 +1,14 @@
 // Media endpoints. The browser never talks to Stash: generated assets come from the disk
 // cache (filled from Stash with the API key), transcodes are proxied, and original files
-// are served straight from the NFS mount when MEDIA_PATH_MAP resolves them.
+// are served straight from the NFS mount when MEDIA_PATH_MAP resolves them. Nor does it talk
+// to StashDB: its covers come through `/media/remote/<token>` and the same cache.
 import { IMAGE_WIDTHS } from '@flix/shared'
 import { Hono } from 'hono'
 import { stat } from 'node:fs/promises'
 import { AssetCache } from './cache/assets.ts'
 import { config } from './config.ts'
 import { serveFile } from './files.ts'
+import { fetchRemote, remoteUpstream } from './remote.ts'
 import { sceneFilePath, stashFetch } from './stash.ts'
 
 export const media = new Hono()
@@ -19,8 +21,9 @@ export const assetCache = new AssetCache({
   missTtl: 60_000,
   maxBytes: config.cache.assetMaxBytes,
   // a hung Stash (it stalls during scans) must not hold a card, or the nightly warm, forever;
-  // the signal also ends the body download
-  upstream: (path, headers) => stashFetch(path, headers, AbortSignal.timeout(ASSET_TIMEOUT)),
+  // the signal also ends the body download. A full URL is a remote cover (remote.ts), a path
+  // is Stash's.
+  upstream: (path, headers) => (path.startsWith('https://') ? fetchRemote(path, headers) : stashFetch(path, headers, AbortSignal.timeout(ASSET_TIMEOUT))),
 })
 
 const ALLOWED = /^\/(scene|performer|studio|tag|group)\//
@@ -83,6 +86,18 @@ media.get('/stash/*', async (c) => {
   url.searchParams.delete('w')
   if (WIDTHS.has(w)) return assetCache.serveResized(path + url.search, w, c.req.raw, cacheControl)
   return assetCache.serve(path + url.search, c.req.raw, cacheControl)
+})
+
+// A cover from StashDB (or another allowlisted host), by the token the API handed out
+// (remote.ts). Cached and resized like a Stash image; the URL has no version stamp, so the
+// browser keeps it a week and the cache revalidates it after its TTL.
+media.get('/remote/:token', async (c) => {
+  const upstream = remoteUpstream(c.req.param('token'))
+  if (!upstream) return c.notFound()
+  const w = Number(c.req.query('w'))
+  const cacheControl = 'private, max-age=604800'
+  if (WIDTHS.has(w)) return assetCache.serveResized(upstream, w, c.req.raw, cacheControl)
+  return assetCache.serve(upstream, c.req.raw, cacheControl)
 })
 
 // The file on this host's media mount (MEDIA_PATH_MAP), or null when it is not mounted here.

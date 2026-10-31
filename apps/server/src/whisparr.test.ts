@@ -3,6 +3,7 @@
 // searched studio- or performer-wide; a bulk MoviesSearch once held imports up for hours).
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
+import { remoteImageUrl } from './remote.ts'
 import { dataCache } from './stash.ts'
 import { activityOf, assertSingleId, getScene, stateOf, toWanted, wanted, wantedInWhisparr, type Movie } from './whisparr.ts'
 
@@ -19,8 +20,8 @@ const movie = (over: Partial<Movie> & { id: number }): Movie => ({
   performerNames: ['Ann'],
   performerForeignIds: ['perf-ann'],
   images: [
-    { coverType: 'poster', remoteUrl: 'https://img/poster' },
-    { coverType: 'screenshot', remoteUrl: 'https://img/shot' },
+    { coverType: 'poster', remoteUrl: 'https://stashdb.org/images/poster' },
+    { coverType: 'screenshot', remoteUrl: 'https://stashdb.org/images/shot' },
   ],
   ...over,
 })
@@ -87,12 +88,16 @@ describe('wanted scenes', () => {
       date: '2026-01-01',
       studio: 'Studio A',
       performers: ['Ann'],
-      image: 'https://img/shot',
+      image: remoteImageUrl('https://stashdb.org/images/shot'), // proxied, never the StashDB URL itself
       runtime: 30,
       state: 'available',
     })
+    assert.match(w.image!, /^\/media\/remote\/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
     const bare = toWanted(movie({ id: 9, releaseDate: null, images: [], studioTitle: '', runtime: 0, performerNames: undefined }), activityOf([], []))
     assert.deepEqual([bare.date, bare.image, bare.studio, bare.runtime, bare.performers], [null, null, null, null, []])
+    // a cover on a host the proxy does not fetch is dropped rather than hotlinked
+    const elsewhere = toWanted(movie({ id: 10, images: [{ coverType: 'screenshot', remoteUrl: 'https://cdn.example.com/x.jpg' }] }), activityOf([], []))
+    assert.equal(elsewhere.image, null)
   })
 
   it('list a performer\'s or studio\'s scenes without a file, newest first, with their state', async () => {

@@ -88,7 +88,8 @@ Record only the flix-facing fact in `wiki/integrations/`; link the source. Detai
 Each has a wiki page with the full story; these are the one-line versions.
 
 1. **The browser never talks to Stash or sees the API key.** Stash URLs go through `mediaUrl()` →
-   `/media/stash/...` (`wiki/architecture/media-proxy.md`).
+   `/media/stash/...`; StashDB covers through `/media/remote/<token>`, never hotlinked
+   (`wiki/architecture/media-proxy.md`).
 2. **Stash owns ratings, play counts, resume points, O-counts, markers, favourites, titles and tags.**
    Postgres holds only what Stash cannot: playlists, blocklist, pinned rows, stations, settings
    (`wiki/architecture/data-model.md`, `wiki/decisions/stash-owns-activity.md`).

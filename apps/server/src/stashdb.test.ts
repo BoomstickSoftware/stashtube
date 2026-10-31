@@ -10,6 +10,7 @@ import type { Movie } from './whisparr.ts'
 process.env.STASHDB_URL = 'https://stashdb.test/graphql'
 process.env.STASHDB_API_KEY = 'sdb-test'
 const { dataCache } = await import('./stash.ts')
+const { remoteImageUrl } = await import('./remote.ts')
 const stashdb = await import('./stashdb.ts')
 const { getRemote, mergeRemote, wanted, activityOf } = await import('./whisparr.ts')
 
@@ -29,8 +30,8 @@ const sdbScene = (id: string, date: string, title = `Scene ${id.slice(0, 2)}`): 
     { performer: { id: 'b', name: 'Bob' }, as: 'Robert' },
   ],
   images: [
-    { url: 'https://img/small', width: 320, height: 180 },
-    { url: 'https://img/big', width: 1280, height: 720 },
+    { url: 'https://stashdb.org/images/small', width: 320, height: 180 },
+    { url: 'https://stashdb.org/images/big', width: 1280, height: 720 },
   ],
 })
 const catalogue = [sdbScene(S1, '2026-06-01'), sdbScene(S2, '2026-05-01'), sdbScene(S3, '2026-04-01')]
@@ -108,10 +109,11 @@ describe('StashDB catalogue', () => {
       date: '2026-06-01',
       studio: 'Studio A',
       performers: ['Ann', 'Robert'],
-      image: 'https://img/big',
+      image: remoteImageUrl('https://stashdb.org/images/big'), // the widest, through the proxy
       runtime: 25,
       state: 'remote',
     })
+    assert.ok(w.image!.startsWith('/media/remote/'))
   })
 
   it('merges: drops what Stash has, keeps Whisparr state, marks the rest remote', () => {

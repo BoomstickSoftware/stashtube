@@ -50,15 +50,17 @@ export interface FeaturedWeights {
 // for these instead of Stash's full-size screenshots.
 export const IMAGE_WIDTHS = [320, 640, 960] as const
 
-// An image URL from the API at `w` px wide; anything that is not a /media/stash URL is left alone.
+// The proxy paths that resize: Stash's assets and remote (StashDB) covers.
+const RESIZABLE = /^\/media\/(stash|remote)\//
+
+// An image URL from the API at `w` px wide; anything the proxy does not resize is left alone.
 export function sized(url: string, w: (typeof IMAGE_WIDTHS)[number]): string {
-  if (!url.startsWith('/media/stash/')) return url
+  if (!RESIZABLE.test(url)) return url
   return `${url}${url.includes('?') ? '&' : '?'}w=${w}`
 }
 
 // `srcset` over every width, for an <img> whose `sizes` says how wide it shows.
-export const srcSet = (url: string): string | undefined =>
-  url.startsWith('/media/stash/') ? IMAGE_WIDTHS.map((w) => `${sized(url, w)} ${w}w`).join(', ') : undefined
+export const srcSet = (url: string): string | undefined => (RESIZABLE.test(url) ? IMAGE_WIDTHS.map((w) => `${sized(url, w)} ${w}w`).join(', ') : undefined)
 
 export const FEATURED_DEFAULTS: FeaturedWeights = {
   dormant: 0.4,
@@ -460,7 +462,7 @@ export interface WantedScene {
   date: string | null // YYYY-MM-DD
   studio: string | null
   performers: string[]
-  image: string | null // StashDB's cover, served from its CDN
+  image: string | null // StashDB's cover through the proxy (/media/remote/<token>, resizable with ?w=)
   runtime: number | null // minutes
   state: WantedState
 }

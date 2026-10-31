@@ -128,3 +128,12 @@ Settings, gender switch page-only, home rows 24 lazy, toast-only errors →
 [[library-before-wanted-shelf]], [[categories-and-us-spelling]], [[panic-key-desktop-only]],
 [[library-tools-group-in-settings]], [[gender-switch-performers-page-only]],
 [[home-rows-stay-24-render-lazily]], [[failed-writes-toast-only]].
+
+## [2026-10-31] ingest | StashDB covers proxied, shelf below the library, entity header skeletons
+`/media/remote/<token>` (HMAC-signed URL, allowlist `stashdb.org`, same asset cache, `?w=`
+resize: 280 KB → 19 KB at 640); `WantedShelf` after `SceneBrowser`, collapsed to its heading and
+count (`flix.wanted.open`); `HeaderSkeleton` on performer/studio/tag pages with the grid
+fetching from the first paint; tag eyebrow "Category" →
+[[media-proxy]], [[whisparr-shelf]], [[people-pages]], [[library-before-wanted-shelf]],
+[[stashdb]], [[request-guard]], [[server-bff]], [[caching]], [[roadmap]],
+[[2026-10-31-covers-shelf-skeletons]].

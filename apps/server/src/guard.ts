@@ -4,8 +4,8 @@
 //   preflight), e.g. /api/scenes/delete; state-changing requests from another site are refused;
 // - a public domain re-pointed at flix's address (DNS rebinding) would make flix same-origin to
 //   that site; only requests addressed to an IP, localhost or a local-only name are served;
-// - framing (click-jacking a Delete), MIME sniffing and Referer leaks (the StashDB covers are
-//   hotlinked) are switched off by headers.
+// - framing (click-jacking a Delete), MIME sniffing and Referer leaks are switched off by
+//   headers.
 import type { MiddlewareHandler } from 'hono'
 
 // Names that cannot be registered on the public internet, so no outside site can own them.
