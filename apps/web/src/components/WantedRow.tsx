@@ -22,7 +22,7 @@ export function WantedRow({ title, items, hint, more, right }: { title: ReactNod
     <section className="group/row">
       <Heading title={title} hint={hint} right={right} />
       <div className="relative -mx-4 sm:-mx-6">
-        <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 sm:px-6">
+        <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 scroll-pl-4 sm:px-6 sm:scroll-pl-6">
           {items.map((w) => (
             <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} className="w-[66vw] shrink-0 snap-start sm:w-[260px]" />
           ))}
@@ -49,9 +49,9 @@ export function WantedRow({ title, items, hint, more, right }: { title: ReactNod
 
 function Heading({ title, hint, right }: { title: ReactNode; hint?: string; right?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center gap-3">
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
       <h2 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h2>
-      {hint && <span className="hidden text-sm text-muted sm:inline">{hint}</span>}
+      {hint && <span className="min-w-0 truncate text-sm text-muted">{hint}</span>}
       {right && <div className="ml-auto shrink-0">{right}</div>}
     </div>
   )
@@ -132,11 +132,11 @@ function ViewToggle({ view, onChange }: { view: WantedView; onChange: (v: Wanted
           title={label}
           onClick={() => onChange(v)}
           className={clsx(
-            'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors touch:py-1.5 sm:px-3',
+            'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors touch:py-2.5 sm:px-3',
             view === v ? 'bg-white text-black' : 'text-muted hover:text-fg',
           )}
         >
-          <Icon size={14} /> <span className="hidden sm:inline">{label}</span>
+          <Icon size={14} /> <span>{label}</span>
         </button>
       ))}
     </div>

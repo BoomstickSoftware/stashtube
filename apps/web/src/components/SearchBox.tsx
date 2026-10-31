@@ -97,7 +97,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
         />
         {q && (
-          <button onClick={() => setQ('')} className="text-muted hover:text-fg" aria-label="Clear">
+          <button onClick={() => setQ('')} className="-m-2 rounded-full p-2 text-muted hover:text-fg touch:-m-3 touch:p-3" aria-label="Clear">
             <X size={16} />
           </button>
         )}
@@ -119,7 +119,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
               ) : h.kind === 'performer' ? (
                 <Avatar src={h.image} name={h.label} className="size-9 shrink-0 rounded-full" />
               ) : h.kind === 'studio' ? (
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white p-1">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-raised p-1 ring-1 ring-white/10">
                   {h.image ? <img src={sized(h.image, 320)} alt="" className="max-h-full max-w-full object-contain" /> : null}
                 </div>
               ) : (

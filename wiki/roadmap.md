@@ -48,6 +48,9 @@ message; every control on the phone at least 44 px; one word per concept.
 
 ### Phase 0: quick wins (one initiative, S each)
 
+_Phone, desktop and client items shipped 2026-10-31 ([[2026-10-31-ux-phase0-web]]); server and
+freshness items in their own initiatives the same day._
+
 - Phone: collapse the desktop nav below `lg` so landscape keeps the phone header
   (`Layout.tsx`); portal the Pin popover to a bottom sheet on touch (`SceneBrowser.tsx`);
   `touch:` padding on icon buttons, chips, stars, the sort label; 44 px hit areas for the

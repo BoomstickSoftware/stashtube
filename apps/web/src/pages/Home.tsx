@@ -31,10 +31,6 @@ export function Home(): JSX.Element {
     const rank = (id: string) => Math.sin(Number(id) * 12.9898 + hash(seed) * 78.233) // seeded shuffle
     return unique.sort((a, b) => rank(a.id) - rank(b.id))
   }, [data, seed])
-  const [heroId, setHeroId] = useState<string>()
-  const at = Math.max(0, order.findIndex((s) => s.id === heroId))
-  const hero = order[at]
-  const step = useCallback((d: number) => setHeroId(order[(at + d + order.length) % order.length]?.id), [order, at])
   if (error) return <ErrorBox error={error} />
   if (isLoading)
     return (
@@ -48,7 +44,7 @@ export function Home(): JSX.Element {
 
   return (
     <div className="space-y-10">
-      {hero && <Hero scene={hero} count={order.length} onStep={step} />}
+      <Hero order={order} />
       <PickUpStations />
       {data.map((r) =>
         r.savedId ? (
@@ -136,7 +132,13 @@ function ResumeCard({ resume: r }: { resume: StationResume }) {
 
 // The hero carousel: arrows, a sideways swipe, or the timer move it. The timer waits while
 // the pointer is over it, a preview is playing, or the tab is in the background.
-function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onStep: (d: number) => void }) {
+// Owns which pick is up, so its timer re-renders nothing but itself (Home holds ~260 cards).
+function Hero({ order }: { order: SceneCard[] }) {
+  const [heroId, setHeroId] = useState<string>()
+  const at = Math.max(0, order.findIndex((s) => s.id === heroId))
+  const scene = order[at]
+  const count = order.length
+  const onStep = useCallback((d: number) => setHeroId(order[(at + d + order.length) % order.length]?.id), [order, at])
   const [hovering, setHovering] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const paused = hovering || previewing || count < 2
@@ -144,8 +146,9 @@ function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onSte
     if (paused) return
     const t = setTimeout(() => document.visibilityState === 'visible' && onStep(1), HERO_EVERY)
     return () => clearTimeout(t)
-  }, [paused, scene.id, onStep])
+  }, [paused, scene?.id, onStep])
   const swipe = useRef<{ x: number; y: number } | null>(null)
+  if (!scene) return null
   const arrow =
     'absolute top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white ring-1 ring-white/10 backdrop-blur transition hover:bg-accent [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/hero:opacity-100'
   return (

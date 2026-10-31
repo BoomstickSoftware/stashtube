@@ -26,7 +26,7 @@ export function TagPage(): JSX.Element {
         <div className="text-sm font-semibold text-accent">#</div>
         <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{t.name}</h1>
         <div className="mt-1 text-sm text-muted">
-          {t.sceneCount} videos{t.aliases.length > 0 && ` · also ${t.aliases.join(', ')}`}
+          {t.sceneCount.toLocaleString()} videos{t.aliases.length > 0 && ` · also ${t.aliases.join(', ')}`}
         </div>
         {t.description && <p className="mt-2 max-w-3xl text-sm text-white/70">{t.description}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">

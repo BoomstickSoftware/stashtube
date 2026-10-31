@@ -1,11 +1,13 @@
 import type { SceneCard as Scene, SceneQuery } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Radio } from 'lucide-react'
-import { useRef, type ReactNode } from 'react'
+import { memo, useRef, type ReactNode } from 'react'
 import { SceneCard } from './SceneCard'
 
-// Horizontal shelf of scenes, Netflix-style.
-export function Row({ title, browse, from, items, actions }: { title: ReactNode; browse?: SceneQuery; from?: string; items: Scene[]; actions?: ReactNode }) {
+// Horizontal shelf of scenes, Netflix-style. Memoised: Home holds a dozen of these and must
+// not re-render them all when something unrelated (the hero) ticks.
+const ROW_SIZES = '(min-width: 1280px) 320px, (min-width: 640px) 300px, 78vw' // the card widths below
+export const Row = memo(function Row({ title, browse, from, items, actions }: { title: ReactNode; browse?: SceneQuery; from?: string; items: Scene[]; actions?: ReactNode }) {
   const scroller = useRef<HTMLDivElement>(null)
   const page = (dir: number) => {
     const el = scroller.current
@@ -29,9 +31,9 @@ export function Row({ title, browse, from, items, actions }: { title: ReactNode;
       </div>
       {!items.length && <div className="rounded-xl bg-surface px-4 py-6 text-sm text-muted">Nothing matches this row right now.</div>}
       <div className="relative -mx-4 sm:-mx-6">
-        <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 sm:px-6">
+        <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 scroll-pl-4 sm:px-6 sm:scroll-pl-6">
           {items.map((s) => (
-            <SceneCard key={s.id} scene={s} className="w-[78vw] shrink-0 snap-start sm:w-[300px] xl:w-[320px]" />
+            <SceneCard key={s.id} scene={s} sizes={ROW_SIZES} className="w-[78vw] shrink-0 snap-start sm:w-[300px] xl:w-[320px]" />
           ))}
         </div>
         <button
@@ -51,4 +53,4 @@ export function Row({ title, browse, from, items, actions }: { title: ReactNode;
       </div>
     </section>
   )
-}
+})

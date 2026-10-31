@@ -11,7 +11,6 @@ import { useDebounced } from '../lib/hooks'
 import { useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useSettings, useStudios, useTagTiles, useUpdateSettings } from '../lib/api'
 import { sized, srcSet } from '@flix/shared'
-import { CARD_SIZES } from '../lib/media'
 
 function Filter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -51,7 +50,7 @@ export function Performers(): JSX.Element {
         <h1 className="mr-4 text-2xl font-black">Performers</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter performers" />
         <GenderSwitch value={gender} onChange={(g) => saveSettings.mutate({ performerGender: g })} />
-        <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
           {Object.entries(performerSorts).map(([k, label]) => (
             <Chip key={k} tone={sort === k ? 'active' : 'default'} onClick={() => navigate({ to: ".", search: (s: PerfSearch) => ({ ...s, sort: k }), replace: true })}>
               {label}
@@ -411,13 +410,15 @@ export function Tags(): JSX.Element {
     <div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="mr-4 text-2xl font-black">Categories</h1>
-        <Filter value={q} onChange={setQ} placeholder="Filter tags" />
-        <Chip tone={sort === 'popular' ? 'active' : 'default'} onClick={() => setSort('popular')}>
-          Popular
-        </Chip>
-        <Chip tone={sort === 'name' ? 'active' : 'default'} onClick={() => setSort('name')}>
-          A–Z
-        </Chip>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Filter value={q} onChange={setQ} placeholder="Filter categories" />
+          <Chip tone={sort === 'popular' ? 'active' : 'default'} onClick={() => setSort('popular')}>
+            Popular
+          </Chip>
+          <Chip tone={sort === 'name' ? 'active' : 'default'} onClick={() => setSort('name')}>
+            A–Z
+          </Chip>
+        </div>
       </div>
       {error ? (
         <ErrorBox error={error} />
@@ -468,7 +469,7 @@ function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin
         <img
           src={sized(tile.image, 640)}
           srcSet={srcSet(tile.image)}
-          sizes={CARD_SIZES}
+          sizes={big ? '(min-width: 1536px) 16vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw' : '(min-width: 1536px) 12.5vw, (min-width: 1024px) 16vw, (min-width: 640px) 25vw, 50vw'}
           alt=""
           loading="lazy"
           className="absolute inset-0 size-full object-cover opacity-70 transition duration-500 group-hover:scale-105 group-hover:opacity-90"

@@ -86,7 +86,7 @@ export function Settings(): JSX.Element {
         <CachePanel />
       </section>
 
-      <section>
+      <section className="touch:hidden">
         <h2 className="text-lg font-bold">Keyboard</h2>
         <p className="mt-1 text-sm text-muted">Press <kbd className="rounded bg-raised px-1">?</kbd> anywhere to see these.</p>
         <div className="mt-3">
@@ -230,7 +230,7 @@ function PanicSetting() {
   const [url, setUrl] = useState<string | null>(null)
   const value = url ?? settings?.panicUrl ?? ''
   return (
-    <section>
+    <section className="touch:hidden">
       <h2 className="text-lg font-bold">Panic key</h2>
       <p className="mt-1 text-sm text-muted">
         Press <kbd className="rounded bg-raised px-1">Esc</kbd> twice quickly anywhere in flix: video stops and the tab jumps to

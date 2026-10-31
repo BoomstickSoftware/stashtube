@@ -20,7 +20,7 @@ export function Moments({ scene, onSeek }: { scene: SceneDetail; onSeek: (t: num
   }, [scene.vtt, scene.markers.length])
   if (!scene.markers.length) {
     return (
-      <div className="mt-4 text-xs text-muted">
+      <div className="mt-4 text-xs text-muted touch:hidden">
         <span className="touch:hidden">
           Press <kbd className="rounded bg-raised px-1">b</kbd> while watching
         </span>

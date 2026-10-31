@@ -55,7 +55,7 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
           onClick={() => setOpen((v) => !v)}
           title="Save to playlist"
           aria-label="Save to playlist"
-          className={clsx('rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg', open && 'bg-raised text-fg')}
+          className={clsx('rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg touch:p-2.5', open && 'bg-raised text-fg')}
         >
           <ListPlus size={18} />
         </button>

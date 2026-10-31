@@ -22,8 +22,9 @@ same `<video>` node is used wherever it shows, so nothing reloads.
 - `NowPlayingHost`, mounted once in `Layout`, renders the one `Player` and lays it over that
   slot: absolute within the layout, re-measured by a ResizeObserver, so it scrolls with the
   page.
-- On any other page it docks the player: a strip above the phone tab bar, or a card
-  bottom-right on desktop (`mini` prop: picture and progress line only, keys unbound), with
+- On any other page it docks the player: a strip above the phone tab bar (up to `lg`, with
+  the tab bar), or a card bottom-right from `lg` (`mini` prop: picture and progress line
+  only, keys unbound), with
   title, time, Expand, play/pause and Stop.
 - **Back to the full player**: the Expand button, the title, or a tap on the picture. All
   three are router `<Link>`s to the scene page (since 2026-10-31 evening; _until then_ buttons

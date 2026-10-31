@@ -22,7 +22,7 @@ export function EditableTitle({ scene }: { scene: SceneDetail }) {
             setTitle(scene.title)
             setEditing(true)
           }}
-          className="ml-2 inline-flex align-middle text-muted hover:text-fg [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/title:opacity-100"
+          className="ml-2 inline-flex align-middle text-muted hover:text-fg touch:-my-3 touch:p-3 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/title:opacity-100"
           aria-label="Edit title"
         >
           <Pencil size={16} />

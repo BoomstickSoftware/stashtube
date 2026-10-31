@@ -4,15 +4,17 @@ import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useMediaQuery } from '../lib/hooks'
 import { useRowMutations, useScenes } from '../lib/api'
 import { rowTitle, useQueryParts } from '../lib/describe'
 import { withBase } from '../lib/query'
 import { stationQuery } from '../lib/station'
 import { ActiveFilters, FilterDialog } from './Filters'
-import { filterTotal } from '../lib/filters'
+import { clearAll, filterTotal } from '../lib/filters'
 import { BulkBar } from './Bulk'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
-import { Chip, Empty, ErrorBox, Sentinel, Spinner } from './ui'
+import { Button, Chip, Empty, ErrorBox, Sentinel, Spinner } from './ui'
 import { useClickOutside } from '../lib/hooks'
 
 type Patch = Partial<SceneQuery>
@@ -27,6 +29,7 @@ export function SceneBrowser({
   alwaysSelecting = false,
   forStation = false,
   cardMeta,
+  omitPerformer,
 }: {
   query: SceneQuery
   onChange: (patch: Patch) => void
@@ -35,6 +38,7 @@ export function SceneBrowser({
   alwaysSelecting?: boolean // cleanup: cards toggle selection from the start, and stay selectable after a bulk action
   forStation?: boolean // the station editor: just the grid (its filters are edited above it)
   cardMeta?: (s: SceneCardType) => string | null // one more fact per card, e.g. a performer's age at filming
+  omitPerformer?: string // a performer page: leave its own name off every card
 }) {
   const effective = useMemo(() => withBase(query, base, defaultSort), [query, base, defaultSort])
 
@@ -43,16 +47,20 @@ export function SceneBrowser({
     if (hasNextPage && !isFetchingNextPage) fetchNextPage()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const scenes = data?.pages.flatMap((p) => p.items) ?? []
+  // memoised, and the card props below are stable, so a page append re-renders only the new cards
+  const scenes = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])
   const total = data?.pages[0]?.total
   const [selecting, setSelecting] = useState(alwaysSelecting)
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
-  const toggle = (id: string) =>
-    setSelected((s) => {
-      const n = new Set(s)
-      if (!n.delete(id)) n.add(id)
-      return n
-    })
+  const toggle = useCallback(
+    (id: string) =>
+      setSelected((s) => {
+        const n = new Set(s)
+        if (!n.delete(id)) n.add(id)
+        return n
+      }),
+    [],
+  )
   const stopSelecting = () => {
     setSelecting(alwaysSelecting)
     setSelected(new Set())
@@ -88,7 +96,14 @@ export function SceneBrowser({
           ))}
         </Grid>
       ) : scenes.length === 0 ? (
-        <Empty>Nothing matches these filters.</Empty>
+        <Empty>
+          Nothing matches these filters.
+          {filterTotal(query) > 0 && (
+            <div className="mt-4">
+              <Button onClick={() => onChange(clearAll)}>Clear filters</Button>
+            </div>
+          )}
+        </Empty>
       ) : (
         <>
           <Grid>
@@ -96,8 +111,11 @@ export function SceneBrowser({
               <SceneCard
                 key={s.id}
                 scene={s}
-                select={selecting ? { selected: selected.has(s.id), onToggle: () => toggle(s.id) } : undefined}
+                selecting={selecting}
+                selected={selecting ? selected.has(s.id) : undefined}
+                onToggle={toggle}
                 extra={cardMeta?.(s)}
+                omitPerformer={omitPerformer}
               />
             ))}
           </Grid>
@@ -164,14 +182,14 @@ function FilterBar({
           type="button"
           onClick={() => setOpen(true)}
           className={clsx(
-            'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+            'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors touch:py-2.5',
             n ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-white text-black hover:bg-white/90',
           )}
         >
           <SlidersHorizontal size={15} /> Filters
           {n > 0 && <span className="rounded-full bg-white/25 px-1.5 text-xs tabular-nums">{n}</span>}
         </button>
-        <label className="relative flex items-center gap-2 rounded-full bg-raised py-1.5 pr-3 pl-3 text-[13px] hover:bg-line">
+        <label className="relative flex items-center gap-2 rounded-full bg-raised py-1.5 pr-3 pl-3 text-[13px] hover:bg-line focus-within:ring-1 focus-within:ring-accent touch:py-2.5">
           <ArrowDownWideNarrow size={15} className="text-muted" />
           <select
             value={sort}
@@ -227,6 +245,9 @@ function FilterBar({
 }
 
 function PinButton({ query }: { query: SceneQuery }) {
+  // On touch the form is a bottom sheet on <body>: inside the filter bar, whose backdrop-filter
+  // makes `fixed` relative to it, it painted behind the first card.
+  const sheet = useMediaQuery('(pointer: coarse)')
   const parts = useQueryParts(query)
   const describe = () => rowTitle(query, parts)
   const [open, setOpen] = useState(false)
@@ -247,9 +268,16 @@ function PinButton({ query }: { query: SceneQuery }) {
       >
         <Pin size={14} /> Pin to home
       </Chip>
-      {open && (
+      {open &&
+        (sheet ? (
+          createPortal(
+            <>
+              <div className="fixed inset-0 z-[65] bg-black/50" onClick={() => setOpen(false)} />
         <form
-          className="fixed top-32 right-4 z-50 w-80 rounded-2xl bg-surface p-3 shadow-2xl ring-1 ring-line sm:absolute sm:top-10 sm:right-0"
+          className={clsx(
+            'bg-surface shadow-2xl ring-1 ring-line',
+            sheet ? 'fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]' : 'absolute top-10 right-0 z-50 w-80 rounded-2xl p-3',
+          )}
           onSubmit={(e) => {
             e.preventDefault()
             const { seed: _seed, ...q } = query // pinned random rows reshuffle daily
@@ -268,7 +296,34 @@ function PinButton({ query }: { query: SceneQuery }) {
             {pinned ? 'Pinned ✓' : 'Pin row'}
           </button>
         </form>
-      )}
+            </>,
+            document.body,
+          )
+        ) : (
+        <form
+          className={clsx(
+            'bg-surface shadow-2xl ring-1 ring-line',
+            sheet ? 'fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]' : 'absolute top-10 right-0 z-50 w-80 rounded-2xl p-3',
+          )}
+          onSubmit={(e) => {
+            e.preventDefault()
+            const { seed: _seed, ...q } = query // pinned random rows reshuffle daily
+            pin.mutate({ title: title.trim() || describe(), query: q }, { onSuccess: () => setPinned(true) })
+          }}
+        >
+          <div className="mb-2 text-xs text-muted">Show these filters as a row on the home page</div>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={80}
+            className="w-full rounded-lg bg-raised px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
+          />
+          <button type="submit" disabled={pinned} className="mt-2 w-full rounded-lg bg-accent py-2 text-sm font-semibold hover:bg-accent-hover disabled:bg-raised">
+            {pinned ? 'Pinned ✓' : 'Pin row'}
+          </button>
+        </form>
+        ))}
     </div>
   )
 }

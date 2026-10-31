@@ -76,9 +76,9 @@ export function FeaturedDials() {
       </div>
       <div className="mt-4">
         <div className="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">Top picks with these dials</div>
-        <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+        <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6">
           {(preview.data ?? []).map((s) => (
-            <SceneCard key={s.id} scene={s} compact className="w-[58vw] shrink-0 snap-start sm:w-[220px]" />
+            <SceneCard key={s.id} scene={s} compact sizes="(min-width: 640px) 220px, 58vw" className="w-[58vw] shrink-0 snap-start sm:w-[220px]" />
           ))}
           {preview.isPending && !preview.data && <div className="py-6 text-sm text-muted">Scoring the library…</div>}
           {preview.data && !preview.data.length && <div className="py-6 text-sm text-muted">Nothing to feature yet.</div>}

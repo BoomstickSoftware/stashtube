@@ -30,7 +30,7 @@ export function PreviewVideo({ src, ready, onReady, className }: { src: string; 
     <video
       ref={ref}
       loop
-      preload="auto"
+      preload="metadata"
       disablePictureInPicture
       onPlaying={onReady}
       className={clsx('pointer-events-none absolute inset-0 size-full object-cover transition-opacity', ready ? 'opacity-100' : 'opacity-0', className)}

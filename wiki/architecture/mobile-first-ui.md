@@ -5,7 +5,7 @@ summary: Phones (an iPhone in particular) are the first-class client; the touch 
 tags: [mobile, touch, ios, css, ux]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 code: [apps/web/src/index.css, apps/web/src/components/SceneCard.tsx, apps/web/src/components/Layout.tsx]
 related: [player, installable-app, mobile-checks, safari-address-bar-needs-page-scroll, grid-column-overflow]
 ---
@@ -17,6 +17,14 @@ Every change is checked headless at that size ([[mobile-checks]]).
 
 ## Variants
 
+- **Every control is at least 44 px on touch** (since 2026-10-31, UX audit): `touch:p-3` on
+  icon buttons (header, card heart and save), `touch:min-h-11` on `Chip`, `touch:p-2.5` on
+  `Stars`, `touch:py-2.5` on the Filters button and the sort pill, `touch:size-10` on the
+  "+" filter badges, a padded hit area on the title pencil and the search Clear.
+- **The phone layout (icon header, bottom tab bar, docked strip) holds up to `lg`** (1024 px),
+  not `md`: a phone in landscape (932 px) hit the desktop breakpoint and the header's Settings
+  gear was clipped off-screen by the layout root's `overflow-x-clip`. Tablets in portrait get
+  the phone layout too.
 - `touch:` (`(pointer: coarse)`, defined in `index.css`) for finger-sized targets and
   touch-only UI.
 - `[@media(hover:hover)]:` for anything that may hide until hover. **Never rely on hover to

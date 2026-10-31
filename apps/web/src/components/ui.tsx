@@ -56,7 +56,7 @@ export function Stars({
             type="button"
             disabled={readOnly}
             aria-label={`${n} star${n > 1 ? 's' : ''}`}
-            className={clsx('relative p-0.5', !readOnly && 'cursor-pointer transition-transform hover:scale-110')}
+            className={clsx('relative p-0.5 touch:p-2.5', !readOnly && 'cursor-pointer transition-transform hover:scale-110')}
             onMouseEnter={() => !readOnly && setHover(n)}
             onClick={() => onChange?.(value === n ? null : n)}
           >
@@ -128,7 +128,7 @@ export function Chip({
       type="button"
       onClick={onClick}
       className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] whitespace-nowrap transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] whitespace-nowrap transition-colors touch:min-h-11',
         tone === 'default' && 'bg-raised text-fg/90 hover:bg-line',
         tone === 'include' && 'bg-accent/15 text-accent ring-1 ring-accent/40 hover:bg-accent/25',
         tone === 'exclude' && 'bg-red-500/10 text-red-400 line-through decoration-red-400/60 ring-1 ring-red-500/30 hover:bg-red-500/20',

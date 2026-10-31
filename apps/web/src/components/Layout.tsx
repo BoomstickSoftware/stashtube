@@ -71,11 +71,11 @@ export function Layout(): JSX.Element {
   return (
     // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
     // hidden, keeps the sticky header working)
-    <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
       <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
           {canGoBack && (
-            <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" aria-label="Back">
+            <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Back">
               <ChevronLeft size={22} />
             </button>
           )}
@@ -88,7 +88,7 @@ export function Layout(): JSX.Element {
             flix
           </Link>
           {priv && <span className="hidden rounded-full bg-violet-400/15 px-2 text-[11px] leading-5 font-semibold text-violet-300 sm:inline">Private</span>}
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {nav.slice(1).map((n) => (
               <Link
                 key={n.to}
@@ -104,16 +104,16 @@ export function Layout(): JSX.Element {
               </Link>
             ))}
           </nav>
-          <SearchBox className="ml-auto hidden w-full max-w-md sm:block" />
-          <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto p-2 text-muted sm:hidden" aria-label="Search">
+          <SearchBox className="ml-auto hidden w-full max-w-md lg:block" />
+          <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Search">
             <Search size={20} />
           </button>
-          <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg md:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
+          <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
             <Radio size={20} />
           </Link>
           <button
             onClick={() => setDiscreet(!discreet)}
-            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg', discreet ? 'text-accent' : 'text-muted')}
+            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', discreet ? 'text-accent' : 'text-muted')}
             aria-pressed={discreet}
             aria-label={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
             title={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
@@ -122,19 +122,19 @@ export function Layout(): JSX.Element {
           </button>
           <button
             onClick={() => setPrivate(!priv)}
-            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg', priv ? 'text-violet-300' : 'text-muted')}
+            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', priv ? 'text-violet-300' : 'text-muted')}
             aria-pressed={priv}
             aria-label={priv ? 'End the private session' : 'Private session: record nothing this visit'}
             title={priv ? 'Private session on: nothing is recorded. Click to end it' : 'Private session: record nothing this visit'}
           >
             <Ghost size={20} />
           </button>
-          <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" activeProps={{ className: '!text-fg' }} aria-label="Settings">
+          <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />
           </Link>
         </div>
         {mobileSearch && (
-          <div className="border-b border-white/5 bg-bg px-4 py-2 sm:hidden">
+          <div className="border-b border-white/5 bg-bg px-4 py-2 lg:hidden">
             <SearchBox autoFocus onDone={() => setMobileSearch(false)} />
           </div>
         )}
@@ -149,7 +149,7 @@ export function Layout(): JSX.Element {
       <NowPlayingHost root={root} />
 
       {/* mobile tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         {nav.filter((n) => !('desktopOnly' in n)).map((n) => (
           <Link
             key={n.to}

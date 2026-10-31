@@ -100,3 +100,7 @@ api-latency, media-probe) → [[2026-10-31-ux-audit]], [[roadmap]], [[perf-check
 Whisparr list 41 MB / 13k (was ~25 MB); the shared VOLATILE cap is the dominant miss cause;
 Mark as watched is in the card menu; intro skip is set from the player, not the studio page →
 [[caching]], [[whisparr-api]], [[scene-page]], [[people-pages]], [[settings-next-to-page]].
+
+## [2026-10-31] ingest | UX Phase 0 web quick wins shipped
+Landscape header, Pin sheet, 44 px targets, gutters, labels, memoised cards/rows, hero state,
+image sizes, poster, hover cost → [[2026-10-31-ux-phase0-web]], [[mobile-first-ui]], [[mini-player]].

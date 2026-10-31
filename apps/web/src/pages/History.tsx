@@ -52,7 +52,7 @@ export function History(): JSX.Element {
     days.set(k, [...(days.get(k) ?? []), e])
   }
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="[&>*:not(:first-child)]:max-w-4xl">
       <WatchTabs />
       {error ? (
         <ErrorBox error={error} />
@@ -107,7 +107,7 @@ export function History(): JSX.Element {
 export function Stats(): JSX.Element {
   const { data: s, error, isLoading } = useStats()
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="[&>*:not(:first-child)]:max-w-5xl">
       <WatchTabs />
       {error ? (
         <ErrorBox error={error} />

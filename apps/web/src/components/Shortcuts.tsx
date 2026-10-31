@@ -50,7 +50,7 @@ export function ShortcutList({ compact }: { compact?: boolean }) {
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             {g.keys.map(([k, v]) => (
               <div key={k} className="contents">
-                <kbd className="justify-self-start rounded bg-raised px-1.5 text-xs leading-5 whitespace-nowrap">{k}</kbd>
+                <kbd className="self-start justify-self-start rounded bg-raised px-1.5 text-xs leading-5 whitespace-nowrap">{k}</kbd>
                 <span className="text-muted">{v}</span>
               </div>
             ))}

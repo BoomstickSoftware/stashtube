@@ -2,7 +2,7 @@ import type { SceneCard as Scene } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Check, Star } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
 import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
@@ -12,7 +12,7 @@ import { SpriteThumb } from './SpriteThumb'
 import { sized, srcSet } from '@flix/shared'
 import { CARD_SIZES } from '../lib/media'
 
-const HOVER_DELAY = 350
+const HOVER_DELAY = 500
 const SCRUB_REST = 700 // ms the mouse rests before the scrubbed frame gives way to the preview clip again
 const LONG_PRESS = 500 // ms a finger holds still on a card before its menu opens
 // Touch screens have no hover: a slight drag on the thumbnail starts the preview instead, so a tap still opens the video.
@@ -21,21 +21,33 @@ const DRAG_START_PX = 10
 // Only one card previews at a time; starting another stops the current one.
 let stopActive: (() => void) | undefined
 
-export function SceneCard({
+// Memoised: a grid of hundreds re-renders on every page append otherwise. Callers pass stable
+// props (`onToggle` takes the id, `sizes` is a constant string).
+export const SceneCard = memo(function SceneCard({
   scene,
   playlist,
   className,
   compact,
-  select,
+  selecting,
+  selected,
+  onToggle,
   extra,
+  sizes,
+  omitPerformer,
 }: {
   scene: Scene
   playlist?: number
   className?: string
   compact?: boolean
-  select?: { selected: boolean; onToggle: () => void } // multi-select mode: clicks toggle instead of opening
+  selecting?: boolean // multi-select mode: clicks toggle instead of opening
+  selected?: boolean
+  onToggle?: (id: string) => void
   extra?: string | null // one more fact for the meta line
+  sizes?: string // how wide the card shows (srcset `sizes`); the grid's by default
+  omitPerformer?: string // leave this performer off the names line (their own page)
 }) {
+  const select = selecting ? { selected: !!selected, onToggle: () => onToggle?.(scene.id) } : undefined
+  const people = omitPerformer ? scene.performers.filter((p) => p.id !== omitPerformer) : scene.performers
   const [hovering, setHovering] = useState(false)
   const [previewReady, setPreviewReady] = useState(false)
   // Moving the mouse across the thumbnail scrubs through the sprite frames (the tube-site
@@ -61,15 +73,15 @@ export function SceneCard({
     setPreviewReady(false)
     setScrub(null)
     if (stopActive === stop) stopActive = undefined
-  }, [])
+  }, [setHovering, setPreviewReady, setScrub])
   const start = () => {
     if (stopActive && stopActive !== leave) stopActive()
     stopActive = leave
     setHovering(true)
+    if (scene.vtt) loadSprites(scene.vtt).then(setSprites) // only once the hover is meant
   }
   const enter = () => {
     timer.current = window.setTimeout(start, HOVER_DELAY)
-    if (scene.vtt) loadSprites(scene.vtt).then(setSprites)
   }
   const onScrub = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse' || select || !sprites.length || !scene.durationSec) return
@@ -114,6 +126,7 @@ export function SceneCard({
         to="/scene/$id"
         params={{ id: scene.id }}
         search={playlist ? { playlist } : {}}
+        aria-label={scene.title}
         className={clsx(
           'relative block aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5',
           select?.selected && 'ring-4 !ring-accent',
@@ -172,11 +185,11 @@ export function SceneCard({
         <img
           src={sized(scene.screenshot, 640)}
           srcSet={srcSet(scene.screenshot)}
-          sizes={CARD_SIZES}
+          sizes={sizes ?? CARD_SIZES}
           alt=""
           loading="lazy"
           decoding="async"
-          className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
         />
         {hovering && scene.preview && (
           <PreviewVideo src={scene.preview} ready={previewReady && !scrub} onReady={() => setPreviewReady(true)} className="duration-200" />
@@ -214,7 +227,7 @@ export function SceneCard({
           </span>
         )}
         {scene.playCount === 0 && !progress && (
-          <span className="absolute top-1.5 right-1.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="absolute top-1.5 right-1.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase opacity-80 transition-opacity group-hover:opacity-100">
             New
           </span>
         )}
@@ -226,12 +239,12 @@ export function SceneCard({
       </Link>
       <div className="mt-2.5 flex gap-2.5">
         {!compact && scene.studio && (
-          <Link to="/studio/$id" params={{ id: scene.studio.id }} className="shrink-0">
-            <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-white p-1">
+          <Link to="/studio/$id" params={{ id: scene.studio.id }} className="shrink-0" aria-label={scene.studio.name}>
+            <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-raised p-1 ring-1 ring-white/10">
               {scene.studio.image ? (
                 <img src={sized(scene.studio.image, 320)} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
               ) : (
-                <span className="text-xs font-bold text-black">{scene.studio.name[0]}</span>
+                <span className="text-xs font-bold text-fg">{scene.studio.name[0]}</span>
               )}
             </div>
           </Link>
@@ -246,9 +259,9 @@ export function SceneCard({
           >
             {scene.title}
           </Link>
-          {scene.performers.length > 0 && (
+          {people.length > 0 && (
             <div className="mt-0.5 truncate text-[13px] text-muted">
-              {scene.performers.slice(0, 4).map((p, i) => (
+              {people.slice(0, 4).map((p, i) => (
                 <span key={p.id}>
                   {i > 0 && ', '}
                   <Link to="/performer/$id" params={{ id: p.id }} className="hover:text-fg">
@@ -256,10 +269,10 @@ export function SceneCard({
                   </Link>
                 </span>
               ))}
-              {scene.performers.length > 4 && ` +${scene.performers.length - 4}`}
+              {people.length > 4 && ` +${people.length - 4}`}
             </div>
           )}
-          <div className="mt-0.5 truncate text-[12px] text-muted/80">
+          <div className="mt-0.5 truncate text-[12px] text-muted">
             {[scene.studio && compact ? scene.studio.name : null, date(scene.date) ?? ago(scene.createdAt), extra, scene.playCount ? `${scene.playCount} view${scene.playCount > 1 ? 's' : ''}` : null]
               .filter(Boolean)
               .join(' · ')}
@@ -267,7 +280,7 @@ export function SceneCard({
           {/* a Featured pick says why it is here, on its own line so it is not cut off */}
           {scene.why && <div className="mt-0.5 truncate text-[11px] text-accent/90">{scene.why}</div>}
         </div>
-        <div className="-mr-1.5 flex shrink-0 flex-col items-center opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:has-[[aria-pressed=true]]:opacity-100">
+        <div className="-mr-1.5 flex shrink-0 flex-col items-center opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:has-[[aria-pressed=true]]:opacity-100">
           <FavoriteSceneButton sceneId={scene.id} />
           <PlaylistMenu sceneId={scene.id} variant="icon" />
         </div>
@@ -275,7 +288,7 @@ export function SceneCard({
       {menu && <CardMenu scene={scene} at={menu} onClose={() => setMenu(null)} />}
     </div>
   )
-}
+})
 
 export function SceneCardSkeleton() {
   return (

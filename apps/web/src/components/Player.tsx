@@ -1,4 +1,5 @@
 import type { SceneDetail } from '@flix/shared'
+import { sized } from '@flix/shared'
 import clsx from 'clsx'
 import {
   Airplay,
@@ -537,7 +538,7 @@ export function Player({
         className="size-full"
         playsInline
         x-webkit-airplay="allow"
-        poster={scene.screenshot}
+        poster={sized(scene.screenshot, 960)}
         muted={muted}
         onPlay={() => {
           setPlaying(true)
@@ -624,12 +625,12 @@ export function Player({
       ) : (
         !playing &&
         !waiting && (
-          <button onClick={toggle} className="absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:scale-105 hover:bg-accent">
+          <button onClick={toggle} aria-label="Play" className="absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:scale-105 hover:bg-accent">
             <Play size={36} className="ml-1 fill-white" />
           </button>
         )
       )}
-      {touch && !mini && hintEligible && !hintDone && showControls && !point && !marked && !waiting && (
+      {touch && !mini && hintEligible && !hintDone && showControls && !point && !marked && !waiting && time > 3 && (
         <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
           Hold the picture to mark a moment
         </div>

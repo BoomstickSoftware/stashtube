@@ -47,7 +47,7 @@ export function AddFilterButton({
       }}
       className={clsx(
         'inline-flex shrink-0 items-center justify-center rounded-full transition-colors',
-        variant === 'icon' ? 'size-6 ring-1' : 'gap-2 px-4 py-2 text-sm font-medium',
+        variant === 'icon' ? 'size-6 ring-1 touch:size-10' : 'gap-2 px-4 py-2 text-sm font-medium',
         on
           ? 'bg-accent text-white ring-accent'
           : variant === 'icon'

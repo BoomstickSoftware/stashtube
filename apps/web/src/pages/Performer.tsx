@@ -40,7 +40,7 @@ export function PerformerPage(): JSX.Element {
             {p.disambiguation && <div className="mt-1 text-muted">{p.disambiguation}</div>}
             {p.aliases.length > 0 && <div className="mt-1 line-clamp-1 text-sm text-muted">aka {p.aliases.join(', ')}</div>}
             <div className="mt-3 text-sm text-white/80">
-              {[`${p.sceneCount} videos`, age(p.birthdate) && `${age(p.birthdate)} years old`, p.country, years].filter(Boolean).join(' · ')}
+              {[`${p.sceneCount.toLocaleString()} videos`, age(p.birthdate) && `${age(p.birthdate)} years old`, p.country, years].filter(Boolean).join(' · ')}
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <FollowButton favorite={p.favorite} onToggle={() => fav.mutate({ id, favorite: !p.favorite })} />
@@ -84,6 +84,7 @@ export function PerformerPage(): JSX.Element {
       <BlockedNotice kind="performer" id={id} />
       <WantedShelf kind="performer" id={id} />
       <SceneBrowser
+        omitPerformer={id}
         query={query}
         base={{ performers: id, unblocked: undefined }}
         onChange={(patch) => navigate({ to: ".", search: (prev: SceneQuery) => ({ ...prev, ...patch }), replace: true })}

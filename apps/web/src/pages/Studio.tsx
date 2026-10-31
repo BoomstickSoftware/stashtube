@@ -34,7 +34,7 @@ export function StudioPage(): JSX.Element {
             </Link>
           )}
           <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{s.name}</h1>
-          <div className="mt-1 text-sm text-muted">{s.sceneCount} videos</div>
+          <div className="mt-1 text-sm text-muted">{s.sceneCount.toLocaleString()} videos</div>
           <div className="mt-4 flex flex-wrap gap-2">
             <FollowButton favorite={s.favorite} onToggle={() => fav.mutate({ id, favorite: !s.favorite })} />
             <AddFilterButton kind="studio" id={id} name={s.name} variant="button" />

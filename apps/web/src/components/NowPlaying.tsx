@@ -82,7 +82,7 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
           ? clsx(
               'fixed z-[60] flex overflow-hidden rounded-xl bg-surface shadow-2xl ring-1 ring-white/10',
               'inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.5rem)]',
-              'md:inset-x-auto md:right-4 md:bottom-4 md:w-80 md:flex-col',
+              'lg:inset-x-auto lg:right-4 lg:bottom-4 lg:w-80 lg:flex-col',
             )
           : 'absolute'
       }
@@ -90,7 +90,7 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
       role={docked ? 'region' : undefined}
       aria-label={docked ? 'Now playing' : undefined}
     >
-      <div className={docked ? 'relative w-32 shrink-0 bg-black md:w-full' : undefined}>
+      <div className={docked ? 'relative w-32 shrink-0 bg-black lg:w-full' : undefined}>
         {player}
         {docked && <BackToVideo id={scene.id} />}
       </div>
@@ -117,9 +117,9 @@ function MiniBar({ scene }: { scene: { id: string; title: string } }) {
   const status = useNowPlayingStatus()
   return (
     <>
-      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 md:px-3 md:py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 lg:px-3 lg:py-2">
         <Link to="/scene/$id" params={{ id: scene.id }} onClick={() => log('dock: tap title')} className="block min-w-0 flex-1 text-left">
-          <div className="line-clamp-2 text-xs leading-snug font-semibold md:text-sm">{scene.title}</div>
+          <div className="line-clamp-2 text-xs leading-snug font-semibold lg:text-sm">{scene.title}</div>
           <div className="text-[11px] text-muted tabular-nums">
             {fmt(status.time)} / {fmt(status.dur)}
           </div>
