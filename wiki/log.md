@@ -121,3 +121,10 @@ pressed label is "Not interested ✓"; Shuffle plays a shuffled playlist station
 and never rewrites the order. The gender-switch item was dropped by the owner →
 [[web-app]], [[stations]], [[playlists-and-favorites]], [[people-pages]], [[scene-page]],
 [[playlist-shuffle-plays-shuffled]], [[roadmap]].
+
+## [2026-10-31] decide | Seven more audit decisions recorded
+Shelf below the library, Categories + US spelling, panic key desktop-only, library tools in
+Settings, gender switch page-only, home rows 24 lazy, toast-only errors →
+[[library-before-wanted-shelf]], [[categories-and-us-spelling]], [[panic-key-desktop-only]],
+[[library-tools-group-in-settings]], [[gender-switch-performers-page-only]],
+[[home-rows-stay-24-render-lazily]], [[failed-writes-toast-only]].

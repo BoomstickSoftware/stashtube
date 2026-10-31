@@ -157,20 +157,20 @@ freshness items in their own initiatives the same day._
 
 1. ~~Is one stale refresh of rating-sorted lists acceptable after rating, so ratings can
    `expire` instead of `invalidate` (server F4)?~~ Yes: [[ratings-expire-lists]] (2026-10-31).
-2. Does the wanted shelf lead a performer page, or follow the library / collapse to a heading
-   (phone 3, desktop 1, client F4)?
-3. "Categories" or "Tags"; US spelling in the UI with the wiki staying UK (IA F2, F12)?
+2. ~~Does the wanted shelf lead a performer page, or follow the library / collapse to a heading~~
+   Decided: library first, shelf collapsed below ([[library-before-wanted-shelf]]).
+3. ~~"Categories" or "Tags"; US spelling~~ Decided: Categories, US spelling in the UI
+   ([[categories-and-us-spelling]]).
 4. ~~Playlist Shuffle: play shuffled only, never rewrite the stored order (IA F5)?~~ Decided
    2026-10-31: [[playlist-shuffle-plays-shuffled]].
-5. Ad hoc Station entry points: keep the list/entity "Station" chip, drop the card-sheet
-   duplicate (open since [[stations-only-user-made]])?
-6. Panic key on phones: a touch gesture, or desktop-only and hidden on touch (IA F10)?
-7. Library tools: a group at the top of Settings, or their own page (IA F9)?
-8. Gender switch: stays on the Performers page with a caption, or moves to Settings → Feed
-   (IA F7)?
-9. Home rows: 24 cards each, or 12 with "See all" (client F2)?
-10. A persistent "Stash is busy" header pill during scans, or only the toast on a failed
-    write (IA F15)?
+5. ~~Ad hoc Station entry points~~ Decided: keep the list/entity "Station" chip, drop the
+   card-sheet "Station from here" (Phase 3).
+6. ~~Panic key on phones~~ Decided: desktop-only ([[panic-key-desktop-only]]).
+7. ~~Library tools~~ Decided: a group in Settings ([[library-tools-group-in-settings]]).
+8. ~~Gender switch~~ Decided: stays on the Performers page and affects nothing else
+   ([[gender-switch-performers-page-only]]); an initiative decouples it.
+9. ~~Home rows~~ Decided: keep 24, render lazily ([[home-rows-stay-24-render-lazily]]).
+10. ~~A persistent "Stash is busy" pill~~ Decided: the toast only ([[failed-writes-toast-only]]).
 11. A 480-px image variant for desktop grids (one more WebP per scene, ~50 MB) (client Q3)?
 12. Browse on the phone: one column or two (phone 10)?
 
