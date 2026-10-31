@@ -8,8 +8,8 @@ import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Pin, Sea
 import { useCallback, useMemo, useState } from 'react'
 import { Avatar, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
-import { useStored } from '../lib/storage'
-import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useSettings, useStudios, useTagTiles, useUpdateSettings } from '../lib/api'
+import { oneOf, useStored } from '../lib/storage'
+import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useStudios, useTagTiles } from '../lib/api'
 import { sized, srcSet } from '@flix/shared'
 
 function Filter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
@@ -30,9 +30,8 @@ export function Performers(): JSX.Element {
   const [q, setQ] = useState(search.q ?? '')
   const dq = useDebounced(q, 200)
   const sort = (search.sort ?? 'scenes_count') as PerformerSort
-  const { data: settings } = useSettings()
-  const saveSettings = useUpdateSettings()
-  const gender = settings?.performerGender ?? 'women'
+  // This page's own choice, kept per browser; it steers nothing else (gender-switch-performers-page-only)
+  const [gender, setGender] = useStored<PerformerGender>('flix.performers.gender', oneOf(['women', 'men', 'all'], 'women'))
   const fav = useFavoritePerformer()
   const { data, error, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = usePerformers({
     q: dq || undefined,
@@ -49,7 +48,7 @@ export function Performers(): JSX.Element {
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <h1 className="mr-4 text-2xl font-black">Performers</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter performers" />
-        <GenderSwitch value={gender} onChange={(g) => saveSettings.mutate({ performerGender: g })} />
+        <GenderSwitch value={gender} onChange={setGender} />
         <div className="no-scrollbar flex gap-2 overflow-x-auto pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
           {Object.entries(performerSorts).map(([k, label]) => (
             <Chip key={k} tone={sort === k ? 'active' : 'default'} onClick={() => navigate({ to: ".", search: (s: PerfSearch) => ({ ...s, sort: k }), replace: true })}>
@@ -116,22 +115,26 @@ const genders: [PerformerGender, string][] = [
   ['all', 'Everyone'],
 ]
 
-// Remembered by flix (settings), so the list opens the same way next time; search
-// suggestions follow it too.
+// Remembered by this browser (localStorage), so the list opens the same way next time. It
+// filters this directory only: Home, Stats, search and the People filters show everyone
+// (_until 2026-10-31 it was a flix setting they all followed_).
 function GenderSwitch({ value, onChange }: { value: PerformerGender; onChange: (g: PerformerGender) => void }) {
   return (
-    <div role="radiogroup" aria-label="Show performers" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-      {genders.map(([g, label]) => (
-        <button
-          key={g}
-          role="radio"
-          aria-checked={value === g}
-          onClick={() => onChange(g)}
-          className={clsx('rounded-full px-3 py-1 transition-colors', value === g ? 'bg-white text-black' : 'text-muted hover:text-fg')}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="flex flex-col items-center gap-0.5">
+      <div role="radiogroup" aria-label="Show performers" className="flex rounded-full bg-raised p-0.5 text-[13px]">
+        {genders.map(([g, label]) => (
+          <button
+            key={g}
+            role="radio"
+            aria-checked={value === g}
+            onClick={() => onChange(g)}
+            className={clsx('rounded-full px-3 py-1 transition-colors', value === g ? 'bg-white text-black' : 'text-muted hover:text-fg')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <span className="text-[11px] leading-none text-muted">Only this page</span>
     </div>
   )
 }

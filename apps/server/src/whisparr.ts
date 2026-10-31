@@ -1,5 +1,5 @@
 import type { WantedList, WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
-import { VOLATILE } from './cache/memory.ts'
+import { PINNED, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
 import { dataCache, sceneStashIdMap } from './stash.ts'
@@ -47,7 +47,8 @@ interface Paged<T> {
 
 const TIMEOUT = 60_000 // ms
 // The movie list is ~41 MB (13,079 entries, 2026-10-31) and changes only when Whisparr imports or
-// adds; flix's own writes drop it, and the 30 s activity reads show what moved meanwhile.
+// adds; flix's own writes patch the cached copy, and the 30 s activity reads show what moved
+// meanwhile.
 const LIST_TTL = 15 * 60_000
 const ACTIVITY_TTL = 30_000 // queue and grabs move faster, and the cards show them
 const GRABBED_FOR = 48 * 3_600_000 // a grab older than this with no download is treated as gone
@@ -67,14 +68,40 @@ async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, 
   return (method === 'DELETE' ? undefined : await res.json()) as T
 }
 
-// Cached reads. VOLATILE keeps the 41 MB list out of the on-disk cache; 'whisparr' lets a
-// write drop them all.
-const cached = <T>(key: string, ttl: number, load: () => Promise<T>) => dataCache.get(`whisparr:${key}`, ttl, ['whisparr', VOLATILE], load)
+// Cached reads, all memory-only ('whisparr' lets a delete drop them all). The movie list is
+// PINNED: every shelf page, the Home row and a delete read it, and the volatile cap must never
+// sweep it (a long shelf session did, 2026-10-31). Queue and grabs ('whisparr:activity') are
+// what a Get changes, so a Get drops only those.
+const LIST = 'whisparr:list'
+const ACTIVITY = 'whisparr:activity'
+const cached = <T>(key: string, ttl: number, tags: string[], load: () => Promise<T>) => dataCache.get(`whisparr:${key}`, ttl, ['whisparr', ...tags], load)
 
-export const movies = () => cached('movies', LIST_TTL, () => call<Movie[]>('GET', '/movie'))
-const queue = () => cached('queue', ACTIVITY_TTL, async () => (await call<Paged<QueueRecord>>('GET', '/queue?pageSize=500')).records)
+// Only what flix reads of a movie (toWanted, stateOf, the shelf filters, movieForFile,
+// placementFor): the cache holds this projection, about a quarter of the 41 MB answer, and far
+// fewer objects; `images` is cut to the one cover toWanted picks.
+export const PROJECTED = ['id', 'title', 'path', 'movieFile', 'hasFile', 'monitored', 'releaseDate', 'runtime', 'stashId', 'studioTitle', 'studioForeignId', 'performerNames', 'performerForeignIds', 'images', 'qualityProfileId', 'rootFolderPath'] as const satisfies readonly (keyof Movie)[]
+export function project(m: Movie): Movie {
+  const out: Partial<Movie> = {}
+  for (const k of PROJECTED) if (m[k] !== undefined) (out as Record<string, unknown>)[k] = m[k]
+  out.movieFile = m.movieFile ? { relativePath: m.movieFile.relativePath } : undefined
+  const img = cover(m)
+  out.images = img ? [{ coverType: img.coverType, remoteUrl: img.remoteUrl }] : []
+  return out as Movie
+}
+
+export const movies = () => cached('movies', LIST_TTL, [LIST, PINNED], async () => (await call<Movie[]>('GET', '/movie')).map(project))
+const queue = () => cached('queue', ACTIVITY_TTL, [ACTIVITY, VOLATILE], async () => (await call<Paged<QueueRecord>>('GET', '/queue?pageSize=500')).records)
 const grabbed = () =>
-  cached('grabbed', ACTIVITY_TTL, async () => (await call<Paged<HistoryRecord>>('GET', '/history?pageSize=200&eventType=1&sortKey=date&sortDirection=descending')).records)
+  cached('grabbed', ACTIVITY_TTL, [ACTIVITY, VOLATILE], async () =>
+    (await call<Paged<HistoryRecord>>('GET', '/history?pageSize=200&eventType=1&sortKey=date&sortDirection=descending')).records,
+  )
+
+// After a write: the cached list patched in place (no 41 MB refetch), the queue and grabs
+// dropped so the new state shows within the request that follows.
+function listChanged(patch: (all: Movie[]) => Movie[]) {
+  dataCache.patch<Movie[]>('whisparr:movies', patch)
+  dataCache.invalidate(ACTIVITY)
+}
 
 // --- the delete flow -------------------------------------------------------------------
 
@@ -107,7 +134,7 @@ export async function movieForFile(stashPath: string, stashIds: string[]): Promi
 // grabs it again.
 export async function deleteMovie(id: number) {
   await call('DELETE', `/movie/${id}?deleteFiles=true&addImportExclusion=true`)
-  dataCache.invalidate('whisparr')
+  listChanged((all) => all.filter((m) => m.id !== id))
 }
 
 // --- wanted scenes ---------------------------------------------------------------------
@@ -129,8 +156,10 @@ export const activityOf = (q: QueueRecord[], h: HistoryRecord[], now = Date.now(
 export const stateOf = (m: Movie, a: Activity): WantedState =>
   m.hasFile ? 'downloaded' : a.downloading.has(m.id) ? 'downloading' : a.grabbedAt.has(m.id) ? 'grabbed' : 'available'
 
+const cover = (m: Movie) => m.images?.find((i) => i.coverType === 'screenshot') ?? m.images?.find((i) => i.coverType === 'poster') ?? m.images?.[0]
+
 export function toWanted(m: Movie, a: Activity): WantedScene {
-  const img = m.images?.find((i) => i.coverType === 'screenshot') ?? m.images?.find((i) => i.coverType === 'poster') ?? m.images?.[0]
+  const img = cover(m)
   return {
     whisparrId: m.id,
     stashdbId: m.stashId ?? null,
@@ -237,7 +266,7 @@ export async function getScene(whisparrId: unknown): Promise<WantedScene> {
   if (m.itemType && m.itemType !== 'scene') throw new RangeError('only scenes can be fetched from flix')
   if (!m.monitored) await call('PUT', `/movie/${id}`, { ...m, monitored: true })
   await call('POST', '/command', { name: 'MoviesSearch', movieIds: [id] })
-  dataCache.invalidate('whisparr')
+  listChanged((all) => all.map((x) => (x.id === id ? { ...x, monitored: true } : x)))
   const a = await activity()
   return { ...toWanted(m, a), state: m.hasFile ? 'downloaded' : 'grabbed' }
 }
@@ -254,8 +283,8 @@ async function placementFor(studioForeignId: string | null | undefined): Promise
   const sibling = (studioForeignId && all.find((m) => m.studioForeignId === studioForeignId && m.qualityProfileId && m.rootFolderPath)) || all.find((m) => m.qualityProfileId && m.rootFolderPath)
   if (sibling) return { qualityProfileId: sibling.qualityProfileId!, rootFolderPath: sibling.rootFolderPath! }
   const [profiles, roots] = await Promise.all([
-    cached('qualityprofile', LIST_TTL, () => call<{ id: number }[]>('GET', '/qualityprofile')),
-    cached('rootfolder', LIST_TTL, () => call<{ path: string }[]>('GET', '/rootfolder')),
+    cached('qualityprofile', LIST_TTL, [LIST, VOLATILE], () => call<{ id: number }[]>('GET', '/qualityprofile')),
+    cached('rootfolder', LIST_TTL, [LIST, VOLATILE], () => call<{ path: string }[]>('GET', '/rootfolder')),
   ])
   if (!profiles[0] || !roots[0]) throw new Error('Whisparr has no quality profile or root folder to add a scene to')
   return { qualityProfileId: profiles[0].id, rootFolderPath: roots[0].path }
@@ -278,7 +307,7 @@ export async function getRemote(stashdbId: unknown): Promise<WantedScene> {
     monitored: true,
     addOptions: { searchForMovie: true, monitor: 'movieOnly' },
   })
-  dataCache.invalidate('whisparr')
+  listChanged((all) => [...all.filter((m) => m.id !== added.id), project(added)])
   const a = await activity()
   return { ...toWanted(added, a), state: 'grabbed' }
 }

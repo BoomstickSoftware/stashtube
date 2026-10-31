@@ -33,7 +33,8 @@ day (resume point 0 through `POST /api/scenes/:id/activity`; plays untouched): 4
 - **History**: Stash's play history (`GET /api/history`). An entry can be removed with
   `DELETE /api/history/:id` (`removeFromHistory`); the check scripts never call it, and an
   accidental real play once had to be reset by hand ([[check-scripts-wrote-plays-to-stash]]).
-- **Stats**: `GET /api/stats`, limited to the Settings performer gender.
+- **Stats**: `GET /api/stats`; top performers count everyone (_limited to the Settings performer
+  gender until 2026-10-31_, [[gender-switch-performers-page-only]]).
 - A play counts after 20 s watched; "Mark as watched" on a scene counts one at once. Nothing is
   recorded in a [[private-session]].
 - "Pick up a station" on Home is the station equivalent ([[home-feed]]).

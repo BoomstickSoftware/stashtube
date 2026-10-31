@@ -2,8 +2,8 @@ import type { BlockKind, Blocklist } from '@flix/shared'
 import { and, eq } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { blocks } from './db/schema.ts'
-import { genderCriterion, getSettings } from './settings.ts'
-import { type Exclusions, firstSceneYear, hiddenTag } from './stash.ts'
+import { getSettings } from './settings.ts'
+import { dataCache, type Exclusions, firstSceneYear, hiddenTag, HOME } from './stash.ts'
 
 // Read on every listing; cached in memory and invalidated on write (single replica).
 let cache: Exclusions | null = null
@@ -23,7 +23,8 @@ export async function exclusions(): Promise<Exclusions> {
   return {
     ...cache,
     tags: hidden ? [...cache.tags, hidden] : cache.tags,
-    people: { gender: genderCriterion(settings.performerGender), firstYear, ...settings.people },
+    // no gender: the Performers page's switch is that page's alone (gender-switch-performers-page-only)
+    people: { firstYear, ...settings.people },
   }
 }
 
@@ -33,12 +34,15 @@ export async function blocklist(): Promise<Blocklist> {
   return { tags: of('tag'), performers: of('performer'), studios: of('studio') }
 }
 
+// Lists are keyed by their exclusions, so they miss on their own; the cached home feed is not.
 export async function block(kind: BlockKind, stashId: string, name: string) {
   await db.insert(blocks).values({ kind, stashId, name }).onConflictDoNothing()
   cache = null
+  dataCache.invalidate(HOME)
 }
 
 export async function unblock(kind: BlockKind, stashId: string) {
   await db.delete(blocks).where(and(eq(blocks.kind, kind), eq(blocks.stashId, stashId)))
   cache = null
+  dataCache.invalidate(HOME)
 }

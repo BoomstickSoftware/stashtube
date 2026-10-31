@@ -83,16 +83,18 @@ freshness items in their own initiatives the same day._
 
 ### Phase 1: the cold paths (server caching, M)
 
-- Per-family VOLATILE caps or a PINNED tag for the Whisparr list, the unfiltered facets and
-  tiles working sets and `sceneStashIdMap` (F1); cache the computed facets and tiles under
-  non-volatile, snapshotted keys so a deploy no longer costs 1–2 s on Filters (F6).
-- The Whisparr list: store a 15-field projection, not the 41 MB array; patch it after a Get
-  instead of dropping it; check whether Whisparr v3 can filter `/movie` by performer or studio
-  (nas repo, `arr.py`) (F2).
+_Shipped 2026-10-31 ([[2026-10-31-ux-phase1-server-caching]], covers in
+[[2026-10-31-covers-shelf-skeletons]]); the gender switch decoupling went with it._
+
+- ~~A PINNED tag for the Whisparr list, the unfiltered facets and tiles working sets and
+  `sceneStashIdMap` (F1); the computed facets and tiles cached under snapshotted keys (F6)~~.
+- ~~The Whisparr list as a 16-field projection, patched after a Get (F2)~~; Whisparr v3 cannot
+  filter `/movie` by performer or studio ([[whisparr-api]]), so the list stays.
 - ~~StashDB covers through the media proxy (server F3, client F5)~~ done:
   [[2026-10-31-covers-shelf-skeletons]].
-- Cache the finished `HomeRow[]` per visit seed (F7); `hono/etag` on `/api/*` so background
-  refetches become 304s (client F10); drop `performers[].image` from `SCENE_CARD` (F9).
+- ~~The finished `HomeRow[]` cached per visit seed (F7); weak ETags on `/api/*` (client F10);
+  `performers[].image` out of `SCENE_CARD` (F9)~~. Still to measure on the live app with
+  [[perf-checks]]: warm `/api/home`, facets and tiles after a deploy, the 304 share.
 
 ### Phase 2: rendering and layout stability (client, M)
 

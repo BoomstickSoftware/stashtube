@@ -75,8 +75,13 @@ code and was removed 2026-10-31); a "Requested" state on wanted cards would be i
 
 ## Numbers
 
-Whisparr's movie list is ~41 MB / 13,079 entries (2026-10-31) and is cached 15 min in memory
-only (`LIST_TTL`; _2 min until 2026-10-31_; a Get drops it, the 30 s queue and grab reads show
-what moved meanwhile); StashDB pages are cached 10 min (tag `stashdb`, ~8 KB each, in the
-snapshot since 2026-10-31) ([[caching]]). 0/36 studios and 0/9,363 scenes were
+Whisparr's movie list is ~41 MB / 13,079 entries (2026-10-31). flix keeps only a **projection**
+of it in memory, `PINNED` so the volatile cap never sweeps it: the 16 fields `toWanted`,
+`stateOf`, the shelf filters, `movieForFile` and `placementFor` read (`PROJECTED` in
+`whisparr.ts`; `images` cut to the one cover shown), about a quarter of the bytes and far fewer
+objects. Cached 15 min (`LIST_TTL`; _2 min until 2026-10-31_); a Get or a delete **patches** the
+cached copy (monitored / added / removed) and drops only the queue and grabs, so the next shelf
+page does not wait for a 41 MB download (_it did until 2026-10-31: 1.3–4 s after every Get_).
+The 30 s queue and grab reads show what moved meanwhile. StashDB pages are cached 10 min (tag
+`stashdb`, ~8 KB each, in the snapshot) ([[caching]]). 0/36 studios and 0/9,363 scenes were
 monitored on 2026-10-30.

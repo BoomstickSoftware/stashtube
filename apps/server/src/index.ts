@@ -3,6 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { type Context, Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { compress } from 'hono/compress'
+import { conditional } from './conditional.ts'
 import { logger } from 'hono/logger'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -28,6 +29,7 @@ app.use('/media/*', sameOriginWrites)
 
 app.use('/api/*', logger())
 app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
+app.use('/api/*', ...conditional) // inside compress: the ETag is of the JSON, a 304 has no body to compress
 // Liveness, and which build this is: the deploy workflow waits for its commit to appear here
 // before smoke-testing the rollout.
 app.get('/healthz', (c) => c.json({ ok: true, version: VERSION }))

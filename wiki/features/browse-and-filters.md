@@ -50,7 +50,8 @@ tags must all match, studios are any-of. Browse's nav item shows how many are st
 
 ## People filter
 
-Age at filming and ethnicity are matched on **one performer of the Settings gender**: Stash's
+Age at filming and ethnicity are matched on **one performer, of any gender** (_of the Settings
+gender until 2026-10-31_, [[gender-switch-performers-page-only]]): Stash's
 own `performer_age` would match any performer, so a 40+ male co-star would count. Stash has no
 age-at-filming field, so scenes are matched in yearly release-date buckets (right to about six
 months), two-year buckets once the library spans more than 16 years

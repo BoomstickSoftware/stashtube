@@ -9,7 +9,7 @@ updated: 2026-10-31
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
 code: [apps/web/src/pages/Directories.tsx, apps/web/src/pages/Performer.tsx, apps/web/src/pages/Studio.tsx, apps/web/src/pages/Tag.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/components/People.tsx, apps/server/src/api.ts]
-related: [browse-and-filters, whisparr-shelf, library-before-wanted-shelf, categories-and-us-spelling, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations]
+related: [browse-and-filters, whisparr-shelf, library-before-wanted-shelf, categories-and-us-spelling, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations, gender-switch-performers-page-only]
 ---
 
 # Performer, studio and tag pages
@@ -46,10 +46,14 @@ The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" unt
 
 ## Directories
 
-- **Performers**: sort by videos, name or random; **Following** filter; the Settings gender
-  switch (Women / Men / Everyone, `performerGender` in the settings table) applies here, to
-  search, stats and every people filter. A performer's page shows her age at filming on each
-  card (`ageAt` from birthdate and scene date).
+- **Performers**: sort by videos, name or random; **Following** filter; the Women / Men /
+  Everyone switch, captioned "Only this page": it filters **this directory alone**
+  (`GET /api/performers?gender=`, `all` when absent) and is kept per browser
+  (`flix.performers.gender` through `useStored`), per [[gender-switch-performers-page-only]].
+  _Until 2026-10-31_ it was the `performerGender` setting and also steered Home's "For you" and
+  "More with", Stats, search suggestions and the People filters; the setting is still accepted
+  by `PUT /api/settings` and stored, but nothing reads it. A performer's page shows her age at
+  filming on each card (`ageAt` from birthdate and scene date).
 - **Studios**: **Networks** (each network heads its sub-studios with an "All of …" tile for the
   combined feed; independents last; a text filter shows the flat grid), **Grid** and **Table**
   views; sort by Most videos or Name; Following. Kept per browser. Counts include sub-studios

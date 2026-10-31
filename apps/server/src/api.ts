@@ -12,9 +12,9 @@ import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
-import { genderCriterion, genderAllows, getSettings, setSetting } from './settings.ts'
+import { genderCriterion, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
-import { daySeed } from './stash.ts'
+import { dataCache, daySeed, HOME, HOME_TTL, POOL } from './stash.ts'
 import type { Scene } from './stash.schema.ts'
 
 export const api = new Hono()
@@ -73,7 +73,7 @@ const listQuery = z.object({
   seed: num,
   favorites: flag,
   unblocked: flag,
-  gender: z.enum(['women', 'men', 'all']).optional(), // performers only; default from settings
+  gender: z.enum(['women', 'men', 'all']).optional(), // the Performers page only; everyone when absent
 })
 
 const parse = <T extends z.ZodType>(schema: T, data: unknown): z.infer<T> => {
@@ -183,8 +183,19 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
   return { key: 'because', title: `Because you watched ${title}`, from: last.id, items }
 }
 
-// The home feed. Also run at startup and after Stash changes, so the first visit is warm.
-export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
+// The home feed. Also run at startup and after Stash changes, so the first visit is warm. The
+// finished rows are cached per visit seed (5 min, then served stale while they rebuild), so the
+// refetch the page makes on every return to the foreground is a lookup, not a 40 ms assembly
+// (2026-10-31); the rows' own tags leave it stale after a play or an edit, and a pinned-row,
+// settings or blocklist write drops it (HOME). Its loader's reads wait for their refresh
+// (`freshInputs`), so a stale row is never re-stored as a fresh feed.
+export function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
+  return dataCache.get(JSON.stringify([HOME, visitSeed]), HOME_TTL, [HOME, 'scene', 'activity:play', 'activity:resume', 'performer', 'studio', POOL], () => buildHomeRows(visitSeed), {
+    freshInputs: true,
+  })
+}
+
+async function buildHomeRows(visitSeed: string): Promise<HomeRow[]> {
   const blocked = await exclusions()
   const row = async (key: string, title: string, query: SceneQuery): Promise<HomeRow> => {
     const f = query.sort === 'random' && !query.seed ? { ...query, seed: daySeed() } : query
@@ -198,8 +209,8 @@ export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]
     return null
   }
   // The groups that do not depend on each other run together (a cold feed waited on each in
-  // turn); only "More with" needs the recommendations' followed (Stash-favourite) performers.
-  const recsP = stash.recommendations(blocked, (g) => genderAllows(settings.performerGender, g)).catch(failed('recommendations'))
+  // turn); only "More with" needs the recommendations' favourite performers.
+  const recsP = stash.recommendations(blocked).catch(failed('recommendations'))
   const [recs, picks, because, pinnedRows, moreWith, rows] = await Promise.all([
     recsP,
     featured(settings.featured, visitSeed, 24).catch(failed('featured')),
@@ -229,24 +240,31 @@ export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]
 
 const rowBody = z.object({ title: z.string().trim().min(1).max(80), query: sceneQuery })
 const rid = (s: string) => parse(z.coerce.number().int().positive(), s)
+// Pinned rows are part of the cached feed; every change to them drops it.
+const homeChanged = () => dataCache.invalidate(HOME)
 
 api.get('/rows', async (c) => c.json(await savedRows.listRows()))
 api.post('/rows', async (c) => {
   const b = parse(rowBody, await c.req.json())
-  return c.json({ id: await savedRows.addRow(b.title, b.query) }, 201)
+  const id = await savedRows.addRow(b.title, b.query)
+  homeChanged()
+  return c.json({ id }, 201)
 })
 api.put('/rows/order', async (c) => {
   const { ids } = parse(z.object({ ids: z.array(z.number().int()).max(100) }), await c.req.json())
   await savedRows.reorderRows(ids)
+  homeChanged()
   return c.body(null, 204)
 })
 api.put('/rows/:id', async (c) => {
   const { title } = parse(rowBody.pick({ title: true }), await c.req.json())
   await savedRows.renameRow(rid(c.req.param('id')), title)
+  homeChanged()
   return c.body(null, 204)
 })
 api.delete('/rows/:id', async (c) => {
   await savedRows.deleteRow(rid(c.req.param('id')))
+  homeChanged()
   return c.body(null, 204)
 })
 
@@ -310,10 +328,7 @@ api.delete('/history/:id', async (c) => {
   await stash.removeFromHistory(sceneId(c.req.param('id')))
   return c.body(null, 204)
 })
-api.get('/stats', async (c) => {
-  const g = (await getSettings()).performerGender
-  return c.json(await stash.stats((x) => genderAllows(g, x), await exclusions()))
-})
+api.get('/stats', async (c) => c.json(await stash.stats(await exclusions())))
 
 api.get('/scenes/:id', async (c) => {
   const id = c.req.param('id')
@@ -411,7 +426,7 @@ api.get('/performers', async (c) => {
     stash.findFilter({ ...q, sort: q.sort ?? 'scenes_count', dir: q.dir ?? (q.sort === 'name' ? 'asc' : 'desc'), page, perPage }),
     await exclusions(),
     q.favorites ? { filter_favorites: true } : { scene_count: { value: 0, modifier: 'GREATER_THAN' } },
-    genderCriterion(q.gender ?? (await getSettings()).performerGender),
+    genderCriterion(q.gender ?? 'all'), // the page's own switch, kept per browser (gender-switch-performers-page-only)
   )
   return c.json({ ...r, page, perPage })
 })
@@ -478,7 +493,7 @@ api.get('/search', async (c) => {
   const f = { q, perPage: 6 }
   const [scenes, performers, studios, tags] = await Promise.all([
     stash.findScenes(stash.findFilter(f), stash.sceneFilter({}, blocked)),
-    stash.findPerformers(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked, {}, genderCriterion((await getSettings()).performerGender)),
+    stash.findPerformers(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
     stash.findStudios(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
     stash.findTags(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
   ])
@@ -501,11 +516,13 @@ api.put('/settings', async (c) => {
       .partial(),
     await c.req.json(),
   )
+  // still accepted and stored, read by nothing since 2026-10-31 (gender-switch-performers-page-only)
   if (b.performerGender) await setSetting('performerGender', b.performerGender)
   if (b.panicUrl) await setSetting('panicUrl', b.panicUrl)
   if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
   if (b.people) await setSetting('people', b.people)
   if (b.featured) await setSetting('featured', sanitizeWeights(b.featured, (await getSettings()).featured))
+  if (b.people || b.featured) homeChanged() // the feed was built with the old defaults or dials
   return c.json(await getSettings())
 })
 
