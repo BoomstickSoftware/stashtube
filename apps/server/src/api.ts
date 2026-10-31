@@ -329,7 +329,7 @@ api.get('/scenes/:id/related', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, await exclusions()))
+  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, await exclusions(), r.group))
 })
 
 const ratingBody = z.object({ rating: z.number().min(0).max(5).nullable() })

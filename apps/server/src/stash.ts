@@ -580,10 +580,20 @@ export async function getScene(id: string) {
   if (!d.findScene) return null
   return {
     scene: toSceneDetail(d.findScene),
+    group: groupFolder(file(d.findScene)?.path), // the studio's (or uploader's) folder, for related videos
     performerIds: d.findScene.performers.map((p) => p.id),
     studioId: d.findScene.studio?.id ?? null,
     tagIds: d.findScene.tags.map((t) => t.id),
   }
+}
+
+// Files are laid out <library>/<network>/<studio>/<date - title>/<file> (stash-library in the
+// wiki), or <library>/<uploader>/<title>/<file> for a pack: a scene's own folder holds only it,
+// the one above is its studio or uploader. That folder, or null when it would be the library
+// itself (a file only two levels down).
+export function groupFolder(path: string | undefined): string | null {
+  const parts = path?.split('/').filter(Boolean) ?? []
+  return parts.length >= 6 ? `/${parts.slice(0, -2).join('/')}` : null
 }
 
 // Stash path of a scene's primary file, for direct play from the NFS mount.
@@ -593,13 +603,18 @@ export async function sceneFilePath(id: string): Promise<string | null> {
 }
 
 // Candidates share a performer or the studio; score favours performers, then studio,
-// then tag overlap, then rating.
+// then tag overlap, then rating. A video with too few of those (nothing identified yet, a
+// pack from one folder) is topped up from its own folder, then with unwatched videos, so
+// the row is never empty.
+const RELATED_MIN = 8 // fewer related videos than this and the row is topped up
+
 export async function relatedScenes(
   id: string,
   performerIds: string[],
   studioId: string | null,
   tagIds: string[],
   blocked: Exclusions,
+  group: string | null = null,
 ): Promise<SceneCard[]> {
   const fields = `${SCENE_CARD} tags { id }`
   const queries: Promise<Pick<Query, 'findScenes'>>[] = []
@@ -621,10 +636,20 @@ export async function relatedScenes(
     (studioId && s.studio?.id === studioId ? 4 : 0) +
     s.tags.filter((t) => tagSet.has(t.id)).length * 0.25 +
     (s.rating100 ?? 50) / 100
-  return [...seen.values()]
-    .sort((a, b) => score(b) - score(a))
-    .slice(0, 24)
-    .map(toSceneCard)
+  const ranked = [...seen.values()].sort((a, b) => score(b) - score(a)).slice(0, 24)
+  for (const fallback of [
+    // a regex: Stash's INCLUDES on a path matches loosely by words, almost the whole library
+    group ? { path: { value: `^${group.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')}/`, modifier: 'MATCHES_REGEX' } } : null,
+    { play_count: { value: 0, modifier: 'EQUALS' } },
+  ] as (SceneFilterType | null)[]) {
+    if (ranked.length >= RELATED_MIN || !fallback) continue
+    for (const s of (await run(fallback)).findScenes.scenes) {
+      if (seen.has(s.id) || ranked.length >= 24) continue
+      seen.set(s.id, s)
+      ranked.push(s)
+    }
+  }
+  return ranked.map(toSceneCard)
 }
 
 export async function updateSceneRating(id: string, stars: number | null) {

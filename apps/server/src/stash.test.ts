@@ -3,7 +3,7 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter, isBlocked } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked, groupFolder } from './stash.ts'
 
 const none: Exclusions = { tags: [], performers: [], studios: [] }
 
@@ -96,6 +96,16 @@ describe('isBlocked', () => {
     assert.equal(isBlocked(scene({ studio: { id: '7' } }), ex), true)
     assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '7' } } }), ex), true)
     assert.equal(isBlocked(scene({ tags: [{ id: '1' }], performers: [{ id: '2' }], studio: { id: '3' } }), ex), false)
+  })
+})
+
+describe('groupFolder', () => {
+  it('is the folder above the scene\'s own folder, never the library itself', () => {
+    assert.equal(groupFolder('/data/adult/scenes/Net/Studio/2023 - Title [id]/f.mp4'), '/data/adult/scenes/Net/Studio')
+    assert.equal(groupFolder('/data/adult/scenes/Serenity Cox/2023-08-05 - Wife [6719]/clip.mp4'), '/data/adult/scenes/Serenity Cox') // a pack
+    assert.equal(groupFolder('/data/adult/scenes/loose/f.mp4'), null) // would be the library
+    assert.equal(groupFolder('/data/adult/scenes/f.mp4'), null)
+    assert.equal(groupFolder(undefined), null)
   })
 })
 })
