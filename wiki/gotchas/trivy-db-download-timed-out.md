@@ -38,7 +38,14 @@ reach with the cache. To re-run a failed job by hand: Forgejo → the run → **
 jobs**, then `TIMEOUT=1200 node scripts/deploy-check.mjs`.
 
 Outcome: run 81 (aed32a9, the fix itself) passed first time, 29 min end to end on that
-evening's network (job set-up alone 5 min); the next runs fill and then reuse `trivy-cache`.
+evening's network (job set-up alone 5 min). Run 82 then failed in 18 s on a different error
+from the same step: `failed to fetch the layer: Get "<cloudfront url>": dial tcp [2600:…]:443:
+connect: network is unreachable`. The job container resolved Docker Hub's CDN to an IPv6
+address and the dind bridge has no IPv6 route (Flannel is IPv4-only; whether dind's DNS or
+Go's dialer should have fallen back to IPv4 is a question for the k8s repo's runner set-up,
+`infra/forgejo-runner/statefulset.yaml`). It also logged `Need to update DB`: the three runner
+replicas each have their own dind and so their own `trivy-cache`, which fills one replica at
+a time. `deploy.yml` now retries the scan up to three times, 30 s apart.
 
 ## Reading the log
 

@@ -86,3 +86,7 @@ measurements, [[forgejo-ci]].
 ## [2026-10-31] ingest | aed32a9 live: mini-player links + diagnostics, trivy from Docker Hub
 Run 81 passed with the new scan step (29 min on a slow evening); deploy-check 9/9. The phone's
 Diagnostics copy after a tap on Expand is the next evidence → [[mini-player]], [[diagnostics]].
+
+## [2026-10-31] correct | The scan step retries: run 82 died on an unreachable IPv6 CDN address
+Docker Hub's CDN resolved to IPv6 inside the job network; three replicas, three caches →
+[[trivy-db-download-timed-out]].
