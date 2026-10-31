@@ -1,5 +1,4 @@
 import type { WantedScene } from '@flix/shared'
-import { VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { dataCache, stashBoxes } from './stash.ts'
 
@@ -72,7 +71,9 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
   return body.data as T
 }
 
-const cached = <T>(key: string, load: () => Promise<T>) => dataCache.get(`stashdb:${key}`, TTL, ['stashdb', VOLATILE], load)
+// A page is ~8 KB, so it goes into the snapshot like any query; as VOLATILE (_until
+// 2026-10-31_) the pages competed with the facets and tiles for the volatile cap.
+const cached = <T>(key: string, load: () => Promise<T>) => dataCache.get(`stashdb:${key}`, TTL, ['stashdb'], load)
 
 export interface ScenePage {
   scenes: SdbScene[]

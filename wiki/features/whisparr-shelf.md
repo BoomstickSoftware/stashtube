@@ -61,6 +61,8 @@ blocks both routes ([[prod-checks-read-only]]). `/api/whisparr/activity` shows t
 
 ## Numbers
 
-Whisparr's movie list is ~25 MB and is cached 2 min in memory only; StashDB pages are cached
-10 min (VOLATILE, tag `stashdb`) ([[caching]]). 0/36 studios and 0/9,363 scenes were
+Whisparr's movie list is ~41 MB / 13,079 entries (2026-10-31) and is cached 15 min in memory
+only (`LIST_TTL`; _2 min until 2026-10-31_; a Get drops it, the 30 s queue and grab reads show
+what moved meanwhile); StashDB pages are cached 10 min (tag `stashdb`, ~8 KB each, in the
+snapshot since 2026-10-31) ([[caching]]). 0/36 studios and 0/9,363 scenes were
 monitored on 2026-10-30.

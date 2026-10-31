@@ -100,3 +100,9 @@ api-latency, media-probe) → [[2026-10-31-ux-audit]], [[roadmap]], [[perf-check
 Whisparr list 41 MB / 13k (was ~25 MB); the shared VOLATILE cap is the dominant miss cause;
 Mark as watched is in the card menu; intro skip is set from the player, not the studio page →
 [[caching]], [[whisparr-api]], [[scene-page]], [[people-pages]], [[settings-next-to-page]].
+
+## [2026-10-31] ingest | Phase 0 server quick wins: softer write invalidation, volatile cap, Whisparr TTL, warm debounce, asset ETags
+Ratings, O, edits and favourites drop one entity and expire lists ([[ratings-expire-lists]]);
+`maxVolatile` 60 and StashDB pages out of VOLATILE; `LIST_TTL` 15 min; the re-warm waits for two
+quiet polls and 5 min; resized and generated assets get a weak ETag → [[caching]], [[whisparr-shelf]],
+[[stashdb]], [[whisparr-api]], [[stash-layer]].

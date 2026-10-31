@@ -150,8 +150,8 @@ message; every control on the phone at least 44 px; one word per concept.
 
 ### Decisions the user owns (each becomes a `decisions/` page)
 
-1. Is one stale refresh of rating-sorted lists acceptable after rating, so ratings can
-   `expire` instead of `invalidate` (server F4)?
+1. ~~Is one stale refresh of rating-sorted lists acceptable after rating, so ratings can
+   `expire` instead of `invalidate` (server F4)?~~ Yes: [[ratings-expire-lists]] (2026-10-31).
 2. Does the wanted shelf lead a performer page, or follow the library / collapse to a heading
    (phone 3, desktop 1, client F4)?
 3. "Categories" or "Tags"; US spelling in the UI with the wiki staying UK (IA F2, F12)?

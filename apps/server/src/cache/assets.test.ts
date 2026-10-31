@@ -56,6 +56,24 @@ describe('AssetCache', () => {
       assert.equal(notModified.status, 304)
     }))
 
+  it('gives a file Stash sent without a validator its own weak ETag, and answers 304 on it', () =>
+    withDir(async (dir) => {
+      const stash = fakeStash({ '/scene/1/preview': { body: 'clip' } })
+      const c = new AssetCache({ dir, ttl: 1000, missTtl: 1000, maxBytes: 1 << 20, upstream: stash.upstream })
+      const first = await c.serve('/scene/1/preview', get('/x'), 'public')
+      await first.text()
+      const etag = first.headers.get('etag')
+      assert.match(etag ?? '', /^W\/"flix-/)
+      const again = await c.serve('/scene/1/preview', get('/x', { 'if-none-match': etag! }), 'public')
+      assert.equal(again.status, 304)
+      assert.equal(stash.calls.length, 1)
+      // past the TTL the file is refetched outright: our tag means nothing to Stash
+      const expired = new AssetCache({ dir, ttl: 0, missTtl: 1000, maxBytes: 1 << 20, upstream: stash.upstream })
+      await (await expired.serve('/scene/1/preview', get('/x'), 'public')).text()
+      assert.equal(stash.calls.length, 2)
+      assert.equal(stash.calls[1]?.headers['if-none-match'], undefined)
+    }))
+
   it('serves the old copy when Stash fails or answers 404', () =>
     withDir(async (dir) => {
       const table: Record<string, { body?: string }> = { '/scene/1/preview': { body: 'clip' } }
@@ -107,6 +125,7 @@ describe('AssetCache', () => {
       const c = new AssetCache({ dir, ttl: 1000, missTtl: 1000, maxBytes: 1 << 24, upstream })
       const small = await c.serveResized('/scene/1/screenshot?t=1', 640, get('/x'), 'public')
       assert.equal(small.headers.get('content-type'), 'image/webp')
+      assert.match(small.headers.get('etag') ?? '', /^W\/"flix-/, 'a resized copy carries its own ETag')
       const img = sharp(Buffer.from(await small.arrayBuffer()))
       assert.equal((await img.metadata()).width, 640)
       await (await c.serveResized('/scene/1/screenshot?t=1', 640, get('/x'), 'public')).arrayBuffer()

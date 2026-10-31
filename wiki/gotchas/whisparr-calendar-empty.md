@@ -35,4 +35,4 @@ See [[home-feed]] and [[whisparr-shelf]].
 ## Avoid
 
 Do not build on Whisparr's calendar while the policy stands. The movie list
-(`GET /api/v3/movie`, ~25 MB) is the source of what exists; see [[whisparr-api]].
+(`GET /api/v3/movie`, 41 MB on 2026-10-31) is the source of what exists; see [[whisparr-api]].

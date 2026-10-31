@@ -3,7 +3,20 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter, isBlocked, groupFolder } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked, groupFolder, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
+
+const tick = () => new Promise((r) => setTimeout(r, 5))
+
+// Stash answering every mutation with an empty object; nothing leaves the process.
+async function withStash<T>(fn: () => Promise<T>): Promise<T> {
+  const real = globalThis.fetch
+  globalThis.fetch = async () => Response.json({ data: { sceneUpdate: { id: '1' }, sceneAddO: { count: 1 }, performerUpdate: { id: '1' } } })
+  try {
+    return await fn()
+  } finally {
+    globalThis.fetch = real
+  }
+}
 
 const none: Exclusions = { tags: [], performers: [], studios: [] }
 
@@ -96,6 +109,88 @@ describe('isBlocked', () => {
     assert.equal(isBlocked(scene({ studio: { id: '7' } }), ex), true)
     assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '7' } } }), ex), true)
     assert.equal(isBlocked(scene({ tags: [{ id: '1' }], performers: [{ id: '2' }], studio: { id: '3' } }), ex), false)
+  })
+})
+
+// A rating, O, edit or favourite drops only its own entity and leaves lists stale (served once
+// more while they refresh); until 2026-10-31 they dropped every 'scene' entry, so Home rebuilt cold.
+describe('writes and the query cache', () => {
+  const seed = async (key: string, tags: string[]) => dataCache.get(key, 60_000, tags, async () => 'old')
+  const read = (key: string, tags: string[]) => dataCache.get(key, 60_000, tags, async () => 'new')
+
+  it('a rating or an O drops the scene and only marks the lists stale', () =>
+    withStash(async () => {
+      await seed('list', ['scene'])
+      await seed('one', ['scene', 'scene:1'])
+      await seed('other', ['scene', 'scene:2'])
+      await updateSceneRating('1', 4)
+      assert.equal(await read('one', ['scene', 'scene:1']), 'new', 'the rated scene is refetched')
+      assert.equal(await read('list', ['scene']), 'old', 'the list is served stale')
+      assert.equal(await read('other', ['scene', 'scene:2']), 'old')
+      await tick()
+      assert.equal(await read('list', ['scene']), 'new', 'and refreshed behind it')
+      await seed('two', ['scene', 'scene:2'])
+      await addSceneO('2')
+      assert.equal(await read('two', ['scene', 'scene:2']), 'new')
+    }))
+
+  it('a tag edit also marks the tag lists stale; a title edit leaves them fresh', () =>
+    withStash(async () => {
+      await seed('tags', ['tag'])
+      await seed('one', ['scene', 'scene:1'])
+      await updateScene('1', { title: 'x' })
+      assert.equal(await read('one', ['scene', 'scene:1']), 'new')
+      const before = dataCache.stats().staleHits
+      assert.equal(await read('tags', ['tag']), 'old')
+      assert.equal(dataCache.stats().staleHits, before, 'still fresh')
+      await updateScene('1', { tagIds: ['5'] })
+      await read('tags', ['tag'])
+      assert.equal(dataCache.stats().staleHits, before + 1, 'stale now')
+    }))
+
+  it('a performer favourite drops the performer and leaves performer and scene lists stale', () =>
+    withStash(async () => {
+      await seed('perf', ['performer', 'performer:7'])
+      await seed('perfs', ['performer'])
+      await seed('rows', ['scene'])
+      await setPerformerFavorite('7', true)
+      assert.equal(await read('perf', ['performer', 'performer:7']), 'new')
+      const before = dataCache.stats().staleHits
+      assert.equal(await read('perfs', ['performer']), 'old')
+      assert.equal(await read('rows', ['scene']), 'old')
+      assert.equal(dataCache.stats().staleHits, before + 2)
+    }))
+})
+
+// After Stash's fingerprint moves the cache is expired at once, but the re-warm waits until it
+// has held still for two polls and runs at most every 5 min: a scan moves it on every poll.
+describe('WarmDebounce', () => {
+  it('warms after two unchanged polls, not while the fingerprint keeps moving', () => {
+    const d = new WarmDebounce({ stablePolls: 2, minGap: 300_000 })
+    let t = 0
+    const poll = (changed: boolean) => d.poll(changed, (t += 60_000))
+    assert.equal(poll(false), false, 'nothing changed yet')
+    assert.equal(poll(true), false)
+    assert.equal(poll(true), false, 'still moving')
+    assert.equal(poll(false), false, 'one quiet poll')
+    assert.equal(poll(true), false, 'moved again: start over')
+    assert.equal(poll(false), false)
+    assert.equal(poll(false), true, 'two quiet polls: warm')
+    assert.equal(poll(false), false, 'once')
+  })
+
+  it('holds a second warm until 5 min have passed since the last', () => {
+    const d = new WarmDebounce({ stablePolls: 2, minGap: 300_000 })
+    let t = 0
+    const poll = (changed: boolean) => d.poll(changed, (t += 60_000))
+    poll(true)
+    poll(false)
+    assert.equal(poll(false), true) // t = 3 min
+    poll(true) // 4 min
+    poll(false) // 5
+    assert.equal(poll(false), false, 'stable, but only 3 min since the last warm') // 6
+    assert.equal(poll(false), false) // 7
+    assert.equal(poll(false), true, '5 min passed') // 8
   })
 })
 
