@@ -100,3 +100,10 @@ neither. Pinned by `conditional.test.ts`; _before, 0 of N `/api` requests were c
   `/api/scenes/facets` 16–24 ms warm and 1.2–2.2 s after a deploy or an eviction,
   `/api/tags/tiles` 19 ms warm. To re-measure after the change: `scripts/api-latency.sh`
   ([[perf-checks]]).
+- 2026-10-31 evening, build 1c7f070 live (the computed answers, PINNED, ETags, cover proxy):
+  right after the deploy `/api/home` 17 ms, `/api/tags/tiles` 9 ms, `/api/scenes/facets`
+  7 ms and `/api/search?q=a` 25 ms, all cold for the process (served from the snapshot); the
+  slowest warm route is `/api/featured` at 31–39 ms, everything else ≤ 20 ms. A matching
+  `If-None-Match` on `/api/home` answers 304 with 0 bytes (142 KB otherwise). A StashDB cover
+  through `/media/remote/...?w=640` is 19 KB WebP: 0.96 s the first time, 4–5 ms after. A
+  performer page on the phone is now 254 KB (was 679 KB, 568 KB of it from stashdb.org).

@@ -50,8 +50,9 @@ in `docs/audits/2026-10-31-ux/` ([[2026-10-31-ux-audit]]), plus the decision
   `freshInputs` loader waiting for its stale input, `patch`), `whisparr.test.ts` (the projection's
   fields and single cover; a Get patches the list and refetches only queue and grabs),
   `conditional.test.ts` (weak ETag, 304 on a match, gzip kept, writes and errors untouched).
-- Not yet measured on the live app (no deploy from this worktree): the warm `/api/home`,
-  facets and tiles after a deploy, and the share of 304s. [[perf-checks]] has the scripts.
+- Measured live after the deploy (build 1c7f070): `/api/home` 17 ms, tiles 9 ms, facets 7 ms
+  on a fresh process; a matching `If-None-Match` gives a 304 with no body. Numbers in
+  [[caching]] under Measurements.
 
 ## Snags
 

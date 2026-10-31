@@ -93,8 +93,9 @@ _Shipped 2026-10-31 ([[2026-10-31-ux-phase1-server-caching]], covers in
 - ~~StashDB covers through the media proxy (server F3, client F5)~~ done:
   [[2026-10-31-covers-shelf-skeletons]].
 - ~~The finished `HomeRow[]` cached per visit seed (F7); weak ETags on `/api/*` (client F10);
-  `performers[].image` out of `SCENE_CARD` (F9)~~. Still to measure on the live app with
-  [[perf-checks]]: warm `/api/home`, facets and tiles after a deploy, the 304 share.
+  `performers[].image` out of `SCENE_CARD` (F9)~~. Measured live 2026-10-31: `/api/home`
+  17 ms, tiles 9 ms, facets 7 ms right after the deploy; 304 on a matching ETag; a phone
+  performer page 254 KB (was 679) ([[caching]] Measurements).
 
 ### Phase 2: rendering and layout stability (client, M)
 

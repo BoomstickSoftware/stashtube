@@ -167,3 +167,8 @@ the Women/Men/Everyone switch decoupled from Home, Stats, search and the People 
 [[caching]], [[whisparr-shelf]], [[whisparr-api]], [[home-feed]], [[stash-layer]],
 [[people-pages]], [[data-model]], [[continue-history-stats]], [[browse-and-filters]],
 [[gender-switch-performers-page-only]], [[roadmap]], [[2026-10-31-ux-phase1-server-caching]].
+
+## [2026-10-31] ingest | Phase 1 and the cover proxy measured live
+Build 1c7f070: home 17 ms, tiles 9 ms, facets 7 ms on a fresh process; 304 on a matching ETag;
+proxied cover 19 KB, 5 ms warm; phone performer page 254 KB (was 679) → [[caching]],
+[[2026-10-31-ux-phase1-server-caching]], [[roadmap]].
