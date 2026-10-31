@@ -1,0 +1,71 @@
+---
+title: Home feed
+kind: feature
+summary: The rows the Home page shows, in order, where each comes from, and how the feed is seeded, warmed and persisted so a cold open paints at once.
+tags: [home, rows, recommendations, caching]
+status: current
+verified: 2026-10-31
+updated: 2026-10-31
+routes: [/]
+api: [GET /api/home?seed=, GET /api/rows, POST /api/rows, PUT /api/rows/order, PUT /api/rows/:id, DELETE /api/rows/:id]
+code: [apps/server/src/api.ts, apps/server/src/rows.ts, apps/server/src/stash.ts, apps/web/src/pages/Home.tsx, apps/web/src/lib/api/home.ts]
+related: [featured-ranking, caching, whisparr-shelf, stations, related-videos, blocklist-and-exclusions]
+---
+
+# Home feed
+
+Home is one request, `GET /api/home?seed=`, answered from the query cache and built in the
+background at boot and after every Stash change, so the first visit is warm. The browser keeps
+the last answer in localStorage (`flix.queries`) and paints it at once on a cold open, then
+refetches.
+
+## Behaviour
+
+Rows, in the order `homeRows()` assembles them (a row needs 3 items to show; pinned rows always
+show, even empty, so they can be managed):
+
+| Row | Source |
+|---|---|
+| Hero carousel + **Featured** | the top of [[featured-ranking]]; the hero is shuffled per visit, advances every 12 s, arrows and swipe; a slight drag previews on touch |
+| **For you** | `recommendations()`: watch, rating and O affinity, tags weighted by rarity; unwatched |
+| **Because you watched …** | [[related-videos]] of the last played scene, unwatched first, up to 24 |
+| Pinned rows | Browse filters saved as rows (`saved_rows` table): rename, reorder, unpin |
+| **More with <performer>** | one row per favourite performer, random with the day's seed |
+| **New from your favourites** | favourite performers, newest first |
+| Recently added, Discover (random, unwatched), Top rated (★4+), Latest releases, Most watched | plain filtered lists |
+| **New from your favourites, not downloaded** | Whisparr's recent releases from favourite performers, from 3 items; see [[whisparr-shelf]] |
+| **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]] |
+
+Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
+The blocklist and the Settings performer-gender choice apply to every row
+([[blocklist-and-exclusions]]).
+
+## Seeds
+
+Random rows use `daySeed()` (the day number), so they are stable through a day. Featured takes
+the browser's seed: `homeSeed()` in `lib/api/home.ts` keeps one in localStorage `flix.homeSeed`
+for 6 hours, so returning to Home or a cold open finds its feed already cached (painted at once,
+at the same scroll position); Shuffle on the Featured row rolls a new one, and after 6 hours it
+rolls by itself, with the newest cached feed standing in until the new one arrives. A request
+without a seed (the warm, curl) gets the day's. _Until 2026-10-31_ every visit made a new seed,
+so the cached feed was never used and Back to Home lost its place.
+
+The BFF builds the rows' groups at once (Featured, For you, Because you watched, pinned rows,
+the fixed rows); only "More with" waits for the recommendations. A cold feed (query cache
+cleared) took 2.7–3.4 s, 2.5–2.9 s with the rows in parallel, 1.3–1.6 s once the Featured
+pool was slimmed and 1.0–1.2 s once the activity query stopped counting tags (2026-10-31,
+[[featured-ranking]]); the rest is the pool's 0.8 s, which the snapshot keeps across restarts.
+With the pool cached, Featured for a new seed answers in 0.04 s.
+
+## Where
+
+- Server: `homeRows()` in `api.ts`; pinned rows in `rows.ts`; recommendations and
+  `becauseYouWatched` lean on `stash.ts`.
+- Web: `pages/Home.tsx`, hooks in `lib/api/home.ts`; the persisted keys are listed in
+  `PERSISTED` in `lib/api/client.ts` ([[caching]]).
+
+## Limits and numbers
+
+- Cold `/api/home` cost Stash 7 queries and 79 asset fetches on 2026-10-26; warm, nothing.
+- Cold 0.7–1.9 s, warm 4–8 ms, after a restart 10 ms from the restored cache (2026-10-27).
+- The home body is 108 KB → 17 KB gzip'd (2026-10-29).

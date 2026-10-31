@@ -1,0 +1,122 @@
+{
+  "$comment": "The registry of scripts (CLAUDE.md 'Scripts are the hands'). Every file in scripts/ is listed here; `node scripts/scripts.mjs lint` enforces it. `node scripts/scripts.mjs search <words>` finds one by what it does. `external` lists scripts in the other repos that flix sessions use read-only.",
+  "scripts": [
+    {
+      "name": "scripts",
+      "file": "scripts/scripts.mjs",
+      "does": "Lists, searches and lints this manifest: the way to find out whether a script already exists before doing a thing by hand.",
+      "usage": [
+        "node scripts/scripts.mjs list",
+        "node scripts/scripts.mjs search <words…>",
+        "node scripts/scripts.mjs show <name>",
+        "node scripts/scripts.mjs lint"
+      ],
+      "writes": "nothing",
+      "tags": ["meta", "scripts"],
+      "wiki": "scripts-library"
+    },
+    {
+      "name": "wiki",
+      "file": "scripts/wiki.mjs",
+      "does": "Searches, indexes and lints the wiki/ knowledge base; run `search` before reading pages by hand, `index` then `lint` after any wiki edit.",
+      "usage": [
+        "node scripts/wiki.mjs search <words…> [--kind k] [--tag t] [-n 10]",
+        "node scripts/wiki.mjs index",
+        "node scripts/wiki.mjs lint",
+        "node scripts/wiki.mjs tags",
+        "node scripts/wiki.mjs stale [days]",
+        "node scripts/wiki.mjs show <slug>"
+      ],
+      "writes": "wiki/index.md (index only)",
+      "tags": ["wiki", "meta"],
+      "wiki": "CONVENTIONS"
+    },
+    {
+      "name": "check",
+      "file": "scripts/check.mjs",
+      "does": "Runs the pre-commit checks in order (typecheck, the web's tsc, lint with the known-warning baseline, tests, optionally the image build) and stops at the first failure.",
+      "usage": [
+        "node scripts/check.mjs            # typecheck, web tsc, lint, test",
+        "node scripts/check.mjs --docker   # plus docker build -t flix ."
+      ],
+      "writes": "nothing (docker build writes the local image flix)",
+      "tags": ["checks", "ci", "lint", "tests"],
+      "wiki": "run-checks"
+    },
+    {
+      "name": "deploy-check",
+      "file": "scripts/deploy-check.mjs",
+      "does": "After a push: waits for /healthz on the cluster to report the pushed sha, then GETs the smoke routes and prints each status; shows the deployment's image when kubectl is present. Read-only.",
+      "usage": [
+        "node scripts/deploy-check.mjs             # waits for HEAD, up to 10 min",
+        "node scripts/deploy-check.mjs <sha>       # a specific commit",
+        "node scripts/deploy-check.mjs --no-wait   # report what runs now, no waiting"
+      ],
+      "env": { "FLIX": "base URL, default http://192.168.1.152 (flix.lan's address)", "TIMEOUT": "seconds to wait, default 600" },
+      "writes": "nothing",
+      "tags": ["deploy", "k8s", "verify"],
+      "wiki": "deploy-and-verify"
+    },
+    {
+      "name": "mobile-check",
+      "file": "scripts/mobile-check.mjs",
+      "does": "Headless Chrome at iPhone size: per page, reports horizontal overflow and saves a screenshot; blocks every write that would record viewing.",
+      "usage": ["node scripts/mobile-check.mjs <outdir> http://localhost:5174 / /browse /scene/<id>"],
+      "env": { "W": "viewport width (440)", "H": "viewport height (956); W=932 H=430 is landscape", "DESKTOP": "1 for no touch", "WAIT": "ms per page", "EVAL": "an expression printed per page" },
+      "writes": "<outdir>/<page>.png and a Chrome profile under <outdir>",
+      "tags": ["mobile", "headless", "chrome", "checks"],
+      "wiki": "mobile-checks"
+    },
+    {
+      "name": "touch-check",
+      "file": "scripts/touch-check.mjs",
+      "does": "Drives the player with real touch events in headless Chrome (tap, seek drag, bar tap, double tap, sideways swipe, centre play/pause) and prints the player state after each step; writes are blocked.",
+      "usage": ["node scripts/touch-check.mjs <outdir> http://localhost:5174 /scene/<id>"],
+      "env": { "W": "viewport width (440)", "H": "viewport height (956); W=932 H=430 is landscape" },
+      "writes": "screenshots under <outdir>",
+      "tags": ["mobile", "headless", "player", "checks"],
+      "wiki": "mobile-checks"
+    },
+    {
+      "name": "card-check",
+      "file": "scripts/card-check.mjs",
+      "does": "Checks drag-to-preview on scene cards in headless Chrome (a 25 px drag starts the preview without opening the video, a tap still opens it); writes are blocked.",
+      "usage": ["node scripts/card-check.mjs <outdir> http://localhost:5174 /browse"],
+      "env": { "W": "viewport width (440)", "H": "viewport height (956)" },
+      "writes": "screenshots under <outdir>",
+      "tags": ["mobile", "headless", "cards", "checks"],
+      "wiki": "mobile-checks"
+    },
+    {
+      "name": "stash-schema",
+      "file": "scripts/stash-schema.mjs",
+      "does": "Refreshes apps/server/stash.schema.graphql from a running Stash (or a saved introspection JSON) so codegen can regenerate stash.schema.ts after a Stash upgrade.",
+      "usage": [
+        "STASH_URL=http://stash:9999 STASH_API_KEY=… node scripts/stash-schema.mjs",
+        "node scripts/stash-schema.mjs introspection.json"
+      ],
+      "env": { "STASH_URL": "Stash base URL", "STASH_API_KEY": "never printed; the user sets it" },
+      "writes": "apps/server/stash.schema.graphql",
+      "tags": ["stash", "schema", "codegen"],
+      "wiki": "regenerate-stash-schema"
+    }
+  ],
+  "external": [
+    {
+      "name": "stash.py",
+      "repo": "nas",
+      "file": "~/code/nas/scripts/stash.py",
+      "does": "Runs a GraphQL query against the real Stash with the real key (never printed). Read-only use from flix: schema introspection, 'why did this query fail'.",
+      "usage": ["~/code/nas/scripts/stash.py q '{ __type(name:\"TagFilterType\"){ inputFields { name } } }'"],
+      "wiki": "gather-context"
+    },
+    {
+      "name": "arr.py",
+      "repo": "nas",
+      "file": "~/code/nas/scripts/arr.py",
+      "does": "Reads a Servarr API. From flix only `get` on whisparr3 (movie, studio, queue); never add, monitor or search.",
+      "usage": ["~/code/nas/scripts/arr.py whisparr3 get movie|studio|queue --json"],
+      "wiki": "gather-context"
+    }
+  ]
+}

@@ -1,313 +1,139 @@
 # flix
 
-A tube-style web front end for the adult library on the NAS. **Stash is the headless
-backend**: it scans, fingerprints, scrapes StashDB, generates sprites and previews, and
-hardware-transcodes (VAAPI on the NAS's N5105). flix adds the UI and what Stash lacks:
-playlists, a global blocklist, a home feed, related videos. Single user, LAN only for now.
+A tube-style web front end for the adult library on the NAS. **Stash is the headless backend**
+(scans, fingerprints, StashDB metadata, sprites and previews, VAAPI transcodes on the NAS's
+N5105); flix is a Hono BFF plus a React web app that add what Stash lacks: a home feed,
+ranking, playlists, a blocklist, stations, a phone-first player. Single user, LAN only, live at
+http://flix.lan on the k8s cluster. **Everything known about flix is in `wiki/`**; this file
+tells you how to use it and the few rules that must be in every session.
 
 | Repo | Owns |
 |------|------|
-| this | flix code, Dockerfile, design notes |
-| `~/code/nas` | Stash's config and the NAS side: the NFS export flix reads, Stash API facts (`docs/services.md`) |
-| `~/code/flotilla` | The compose stack that runs Stash |
-| `~/code/k8s` | Where flix runs, as flix.lan (`infra/flix/`: namespace, CNPG, NFS PV, ingress, secrets). A push to `main` here builds the image in Forgejo CI and commits its digest there; ArgoCD rolls it out. `docs/plan.md` phase 3 has the details |
+| this (`~/code/flix`) | flix code, Dockerfile, CI workflow, **`wiki/`** (the knowledge base) |
+| `~/code/nas` | Stash and Whisparr themselves (config, library operations, API facts about the NAS side), the NFS export flix reads. `docs/services.md`, `docs/known-issues.md` |
+| `~/code/flotilla` | The compose stack that runs Stash and Whisparr on the NAS |
+| `~/code/k8s` | Where flix runs: `infra/flix/` manifests, secrets script, CNPG database, `docs/flix.md` |
 
-## Layout
+## The wiki is the memory: use it first, keep it true
 
-```
-apps/server     Hono BFF on Node 26 (runs .ts natively, no build step)
-  src/stash.ts    every Stash GraphQL call and the Stash→flix mapping; nothing else knows Stash's schema
-  src/stash.schema.ts  generated (graphql-codegen) from stash.schema.graphql, Stash v0.31.1's own schema:
-                  filter inputs are exact types (an unknown criterion is a compile error, not a 400),
-                  object types describe responses whole though each query selects a subset. After a
-                  Stash upgrade: `pnpm --filter @flix/server schema` (STASH_URL + STASH_API_KEY in the
-                  env, or a saved introspection JSON as the argument), then `codegen`; commit both files.
-  src/media.ts    /media/stash/* proxy (adds ApiKey, rewrites HLS), /media/play/:id direct file
-  src/api.ts      /api routes (zod-validated)
-  src/db/         Drizzle schema + migrations (drizzle/), migrate on boot
-apps/web        Vite + React 19 + Tailwind 4 + TanStack Router/Query
-  src/routes/     one file per path (TanStack file routing: `scene.$id.tsx`, `stations_.new.tsx` is
-                  /stations/new outside /stations); search validation lives here, the page in src/pages/.
-                  The Vite plugin writes src/routeTree.gen.ts (committed) and splits every page into
-                  its own chunk, loaded on intent.
-  src/lib/api/    the API hooks, one module per domain, re-exported by index.ts (pages import '../lib/api'):
-                  client.ts (fetch, ApiError, qs, the QueryClient and PERSISTED keys; imports no domain module),
-                  scenes.ts (lists, one scene, search, rating/O/plays, hiding, edits, markers, history, delete),
-                  people.ts (performers, studios, tags, tiles, their favourites, blocklist, intro skip),
-                  playlists.ts (playlists, the Favorites heart, bulk actions), stations.ts (stations, resume,
-                  previews), home.ts (home rows, Featured preview, pinned rows), settings.ts (settings,
-                  features, admin cache, login)
-packages/shared API contract types and the few values both sides need (Featured defaults); shipped in the image
-```
+`wiki/` is a Karpathy-style LLM wiki: small pages, one question each, YAML frontmatter, `[[slug]]`
+links, a generated `index.md`, an append-only `log.md`. Conventions (schema, templates, naming,
+kinds) are in `wiki/CONVENTIONS.md`: read it before writing a page. Tooling: `node scripts/wiki.mjs`.
 
-## Rules
+**Before** answering a question, planning a change or touching code:
 
-1. **The browser never talks to Stash and never sees the API key.** All Stash URLs go
-   through `mediaUrl()` → `/media/stash/...`. The proxy allowlists `/scene|performer|studio|tag|group/`.
-2. **Stash owns ratings, play counts, resume points, O-counts, markers, performer/studio
-   favourites, titles and tags** (so its UI stays consistent). Postgres holds only what Stash
-   cannot: playlists (including the built-in Favorites list behind the heart on videos; Stash
-   scenes have no favourite flag), the blocklist, pinned home rows, saved stations and where each station was left (`station_resume`), and settings (performer
-   gender switch, per-studio intro skip, panic URL). Settings live next to the page they
-   affect, not on the Settings page, unless they are global.
-   Markers created in flix use the Stash tag "Highlight" (created on first use). "Not interested"
-   on a video adds the Stash tag "Not interested" (also created on first use); `exclusions()` treats
-   that tag as blocked, so the video leaves every list, and Settings lists them to undo.
-3. **The web app only knows `@flix/shared` types**, never Stash shapes, so the backend can
-   be replaced piece by piece later.
-4. **Blocklist** applies to every list, search, feed and related query unless `unblocked=1`.
-   An id the query explicitly includes (a performer page, a tag filter) overrides its block.
-5. Server code must be erasable TypeScript (`erasableSyntaxOnly`): no enums, namespaces or
-   parameter properties; relative imports end in `.ts`; type-only imports use `import type`.
-6. Page components that use `getRouteApi` declare `: JSX.Element` return types; without it the
-   router's types go circular. A `navigate({ to: '.' })` reducer gets the union of every route's
-   search, so cast `prev` (`(prev) => ({ ...(prev as SceneQuery), ...patch })`).
-7. **Browser-side preferences go through `lib/storage.ts`** (`useStored`, `readStored`, `writeStored`):
-   localStorage can be missing or throw (private mode, blocked site data), and the helper is the
-   one place that handles it. On/off settings render with `Switch` from `components/ui.tsx`.
-8. `useEffect` callbacks must not return a value: Chrome's `window.scrollTo` returns a Promise,
-   which React then calls as a cleanup and crashes.
-9. **Phones are a first-class client** (iPhone in particular). Use the `touch:` variant
-   (`(pointer: coarse)`, defined in `index.css`) for finger-sized targets and touch-only UI,
-   and `[@media(hover:hover)]:` for anything that may hide until hover. Never rely on hover
-   to reveal a control. Inputs stay at 16px or larger on touch screens, or iOS zooms the page.
-   Gestures that must not pan the page get `touch-action` (`touch-none`, `touch-pan-y`).
-   Scene card previews follow the tube-site convention: on a touch screen a slight drag (10 px) on a
-   thumbnail starts the preview and swallows the click that ends the drag; a tap still opens the video.
-   One card previews at a time, and a preview stops once its card is mostly scrolled away (`SceneCard.tsx`).
+1. `node scripts/wiki.mjs search <words>` (add `--kind gotcha` for an error, `--tag <t>` to narrow).
+   Read only the pages it returns, not whole directories. If nothing matches, skim `wiki/index.md`
+   (one line per page) and pick from there.
+2. Treat a page as true until the code or the live system contradicts it. When they disagree, the
+   wiki is wrong: fix it (step 4), then proceed from the code.
+3. Never re-open a `decisions/` page without the user. Propose, do not assume.
 
-10. **Deleting a video** (Delete in the multi-select bar, or next to Favorite on the scene page; both confirm first)
-   goes through Whisparr, which owns the files: Stash mounts the library read-only. `delete.ts` finds the
-   Whisparr entry whose file path equals the scene's (looked up by StashDB id, from Stash's link or the
-   `[uuid]` in Whisparr's folder name; feature films by scanning the full list), deletes it with its files
-   and an import exclusion so it is never grabbed again, then `sceneDestroy`s the Stash scene with its
-   generated files and file record, and drops it from playlists. If any file has no Whisparr entry, nothing
-   is touched. Needs `WHISPARR_URL`, `WHISPARR_API_KEY`, `WHISPARR_PATH_MAP`; without them `/api/features`
-   reports `deleteScenes: false` and no button shows. Page grids pin their mobile column with `grid-cols-1`
-   (`minmax(0,1fr)`): an implicit grid column grows to its widest child and the layout root clips it.
+**After** learning anything that cost effort (a command that works or fails, a path, a default, a
+limit, a number, a failure mode, a user preference or decision):
 
-## Run locally
+4. Put it in the page that owns the topic, **in place**. New fact → the right `kind` directory;
+   contradiction → change the record, keep the old value only if it explains something ("_was X
+   until DATE_"), then `grep -rn` the old value across `wiki/` and this file and fix every repeat.
+   Bump `updated`; bump `verified` when you checked it against code or the live system.
+5. An error that took more than one attempt to get past becomes a `gotchas/` page keyed by its
+   symptom text. A choice the user makes becomes a `decisions/` page. A finished initiative becomes
+   a dated `history/` page (what changed, how verified, snags) and an update to `wiki/roadmap.md`.
+   Current behaviour lives in `features/` or `architecture/`, never in a history page.
+6. A fact about another system belongs in `integrations/` only as far as flix needs it, with a
+   `sources:` pointer to the owning repo's doc. Do not restate the nas or k8s docs.
+7. Append a `log.md` entry (`## [YYYY-MM-DD] ingest|correct|decide|query | title`). Then run
+   `node scripts/wiki.mjs index && node scripts/wiki.mjs lint` and fix what it reports. Do this
+   before ending any session that edited the wiki.
+8. An answer you assembled from several pages that someone will ask again is worth filing as a page
+   (`query` op). Chat history is not memory; the wiki is.
+
+Auto-memory (`~/.claude/projects/...`) is for cross-repo user preferences only. Project facts go here.
+
+## Scripts are the hands: use one first, write one when none fits
+
+The wiki holds what is known; `scripts/` holds what can be done, registered in
+`scripts/manifest.json`. Full runbook: `wiki/runbooks/scripts-library.md`.
+
+1. **Before doing an operations task by hand** (checking, deploying, verifying, measuring,
+   regenerating, gathering context), run `node scripts/scripts.mjs search <words>` and use what
+   it finds, exactly as its usage line says.
+2. **If nothing fits and a script would do the job to a high standard, write the script**, then
+   do the task with it. Register it in `scripts/manifest.json` (name, file, does, usage, env,
+   writes, tags, wiki) and name it in the wiki page that owns the task. A script that reaches
+   Stash, Whisparr or the cluster is read-only unless the user asked for the write.
+3. **A script that fails or falls short gets fixed, not bypassed.** If the failure can recur,
+   it also becomes a `gotchas/` page.
+4. `node scripts/scripts.mjs lint` must pass before the session ends (every file in `scripts/`
+   registered, every entry's file and wiki page present).
+
+The checks and the deploy are scripts already: `node scripts/check.mjs [--docker]` before a
+commit, `node scripts/deploy-check.mjs` after a push.
+
+## Gathering context from other systems
+
+Record only the flix-facing fact in `wiki/integrations/`; link the source. Details: `wiki/runbooks/gather-context.md`.
+
+| Question | Where to look | Command (read-only) |
+|---|---|---|
+| What does Stash's schema accept? Why did a query fail? | Stash GraphQL via the nas repo's client (real key, never printed) | `~/code/nas/scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'` |
+| What is Whisparr's state, what does its API return? | nas repo | `~/code/nas/scripts/arr.py whisparr3 get movie\|studio\|queue --json`; `nas:docs/services.md` whisparr3 row, `nas:docs/known-issues.md` #40 |
+| Stash config, library layout, scans, NFS export | nas repo | `nas:docs/services.md` stash row, `nas:docs/network.md`, `nas:docs/operations.md` |
+| How is flix deployed, which secrets, which IP, backups | k8s repo (its clone may be on a side branch) | `cd ~/code/k8s && git show origin/main:infra/flix/deployment.yaml`, `git show origin/main:docs/flix.md` |
+| What is running right now | the cluster | `kubectl -n flix get deploy flix -o wide`, `kubectl -n flix logs deploy/flix --since=5m`, `curl -s http://192.168.1.152/healthz` |
+| Did the last push deploy | Forgejo | the run of `.forgejo/workflows/deploy.yml` at git.lan:3000/zbmowrey/flix/actions; a failure is posted to the forge Discord channel |
+
+## Rules that must be in every session
+
+Each has a wiki page with the full story; these are the one-line versions.
+
+1. **The browser never talks to Stash or sees the API key.** Stash URLs go through `mediaUrl()` →
+   `/media/stash/...` (`wiki/architecture/media-proxy.md`).
+2. **Stash owns ratings, play counts, resume points, O-counts, markers, favourites, titles and tags.**
+   Postgres holds only what Stash cannot: playlists, blocklist, pinned rows, stations, settings
+   (`wiki/architecture/data-model.md`, `wiki/decisions/stash-owns-activity.md`).
+3. **The web app knows only `@flix/shared` types**, never Stash shapes. `stash.ts` is the only file
+   that knows Stash's schema (`wiki/architecture/stash-layer.md`).
+4. **The blocklist applies to every list, search, feed and related query** unless `unblocked=1`;
+   playlists, which you fill by hand, are the exception (`wiki/architecture/blocklist-and-exclusions.md`,
+   `wiki/decisions/playlists-ignore-blocklist.md`).
+5. **Server code is erasable TypeScript**; the other coding conventions and their pitfalls are in
+   `wiki/architecture/coding-conventions.md` and `wiki/gotchas/`.
+6. **Phones are a first-class client** (iPhone). Touch conventions: `wiki/architecture/mobile-first-ui.md`.
+7. **Never read or print `.env`, never copy a key from another repo's `.env`.** The user fills
+   `.env` by hand; in k8s the secrets come from `infra/flix/create-secrets.sh`.
+8. **Checks against Stash must not write.** The headless check scripts block plays, activity,
+   deletes, Whisparr gets, markers, O and ratings; `FLIX_SERVER=http://flix.lan` is for the check
+   scripts only (`wiki/decisions/prod-checks-read-only.md`).
+9. **Whisparr: nothing monitored, one scene per click.** flix must never gain a code path that
+   monitors or searches a studio or performer (`wiki/decisions/whisparr-nothing-monitored.md`).
+10. **Every push to `main` deploys.** Work in initiatives: verify (`node scripts/check.mjs`, a
+    headless screenshot where UI changed), one commit per initiative with a plain imperative
+    subject, push, then `node scripts/deploy-check.mjs`
+    (`wiki/decisions/one-commit-per-initiative.md`, `wiki/runbooks/deploy-and-verify.md`).
+11. **A new write that records what was watched goes through `guardWrite()` or checks `isPrivate()`**
+    (`wiki/features/private-session.md`).
+
+## Quick reference
 
 ```sh
-pnpm install
-pnpm db:up                       # Postgres 18 on 127.0.0.1:5433
-cp .env.example .env             # fill STASH_API_KEY (same key as ~/code/nas/.env STASH_API_KEY)
-pnpm dev                         # BFF :8080 + Vite :5173 (proxies /api and /media)
+pnpm install && pnpm db:up && cp .env.example .env    # fill STASH_API_KEY by hand
+pnpm dev                                              # BFF :8080; Vite: --port 5174 --strictPort (5173 is taken)
+node scripts/check.mjs [--docker]                     # typecheck, web tsc, lint baseline, tests[, image]
+node scripts/deploy-check.mjs [sha] [--no-wait]       # after a push: wait for the sha, hit the smoke routes
+node scripts/scripts.mjs search <words> | list | show | lint
+node scripts/wiki.mjs search <words> | index | lint | tags | stale
 ```
 
-`.env` is gitignored and only the server's `dev` script reads it (`--env-file-if-exists=../../.env`);
-`pnpm start` expects the variables exported. Without it the BFF exits at startup with
-`STASH_API_KEY is not set`. There is no checked-in copy of the key anywhere: fill it by hand, never by
-copying from another repo's `.env`. On this Mac port 5173 is held by another project's OrbStack container
-(`mylottoplancom-vite-1`), so Vite moves to 5174; pass `--port 5174 --strictPort` so the check scripts
-hit the right one. Without a local BFF, `FLIX_SERVER=http://flix.lan pnpm --filter @flix/web exec vite
---port 5174 --strictPort` drives the UI against production: use it only with the check scripts, which
-block every write, never for clicking through by hand.
+Layout (details in `wiki/architecture/server-bff.md` and `wiki/architecture/web-app.md`):
 
-Checks: `pnpm typecheck`, `pnpm --filter @flix/web lint`, `pnpm test`, `docker build -t flix .`
+```
+apps/server      Hono BFF, Node 26 runs .ts natively; src/stash.ts is the only Stash-aware module
+apps/web         Vite + React 19 + Tailwind 4 + TanStack Router (file routes) / Query
+packages/shared  API contract types and the few values both sides need; shipped in the image
+scripts/         the scripts library, registered in scripts/manifest.json (`node scripts/scripts.mjs list`)
+wiki/            the knowledge base (start at wiki/index.md)
+```
 
-Tests are `node:test` files beside the code (`src/**/*.test.ts`, no test dependencies; the image
-build runs them). They cover the pure parts where a mistake only shows as a Stash 500 or a silent
-miss: the filter builder's nesting rules (`stash.test.ts`), the two caches, byte ranges and signed
-links. `test-env.ts` supplies the env `config.ts` needs; nothing reaches Stash or Postgres.
-
-Mobile checks (headless Chrome at iPhone 17 Pro Max size, against `pnpm dev`; plays, progress and deletes are blocked so Stash records nothing):
-- `node scripts/mobile-check.mjs /tmp/m http://localhost:5173 / /browse /scene/<id>` reports
-  horizontal overflow per page, including content cut off at the screen edge by the layout's clip, and saves screenshots (`W=932 H=430` for landscape, `DESKTOP=1`).
-- `node scripts/touch-check.mjs /tmp/t http://localhost:5173 /scene/<id>` drives the player with
-  touch events (tap, seek-bar drag, double tap, sideways swipe) and prints its state.
-- `node scripts/card-check.mjs /tmp/c http://localhost:5173 /browse` checks the drag-to-preview on scene cards.
-
-The check scripts start their own headless Chrome on a free port (`--remote-debugging-port=0`). _Until 2026-10-29_
-they used port 9333 and silently attached to any Chrome left running there, so runs drove a stale page.
-
-After changing a dependency's version while `pnpm dev` runs, Vite's pre-bundled deps can hold
-two copies of a package. React Query is deduped in `vite.config.ts` because of this ("No
-QueryClient set", 2026-10-27).
-
-## Deploy
-
-A push to `main` runs `.forgejo/workflows/deploy.yml` on the cluster's Forgejo runner: build the image
-(`--build-arg GIT_SHA`, reported by `/healthz` as `version`), trivy scan, push to the Forgejo registry,
-commit the tag@digest into `infra/flix/deployment.yaml` in the k8s repo, then wait until `/healthz` on
-flix's LAN address (192.168.1.152, what flix.lan resolves to) reports that commit and smoke-test the
-routes behind every page's first paint (home, tiles, tags, search, facets, performers, studios, the SPA).
-A failure of either phase is posted to the forge Discord channel, naming the phase. Every push goes
-live, so after one, check the run or `kubectl -n flix logs deploy/flix --since=5m` for `warming:` lines.
-
-Data lives in the `flix` database of the shared CNPG cluster `postgres` (namespace `cnpg`, k8s repo
-`infra/cnpg/cluster/init-flix-database.yaml`), not in a PVC of its own. It is covered by that cluster's
-backups: a base backup at 03:00 UTC plus continuous WAL archiving to MinIO (30-day retention), mirrored
-to the NAS `K8sBackups/cnpg/` at 03:40 UTC and shipped to S3 at 10:30 UTC. Details and the restore
-procedure are in the k8s repo, `docs/cnpg.md` and `docs/nas-backups.md`. Ratings, play counts, O-counts
-and markers are Stash's and follow Stash's backups on the NAS. _verified 2026-10-30_
-
-## Caching (goal: Stash does only real work)
-
-| Layer | Where | What | Freshness |
-|---|---|---|---|
-| Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), saved to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot; entries tagged `VOLATILE` (facet and tag-tile working sets, hundreds of KB per filter set) stay in memory only and are re-warmed | every GraphQL read, keyed by query+variables | TTL `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s |
-| Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api/client.ts`) | home feed, settings, favourites, playlists, blocklist | up to 7 days; painted at once on a cold open, then refetched in the background |
-| Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`), metadata kept in memory after first use so a hit costs no file reads | screenshots, preview clips, sprites, VTTs, performer/studio/tag images | URLs with Stash's version stamp `?t=` (screenshots, images) never expire, since a changed image gets a new URL (browser: 1 year, immutable); the rest (previews, sprites, VTTs) TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); stale copy served if Stash is down or answers 404 (it does while a scan locks its database); new 404s remembered 1 min; "database is locked" reads retried with backoff; LRU under `ASSET_CACHE_MAX_MB` (5120); pre-fetched in full daily at `WARM_AT_UTC` (6) and from Settings › Cache (`warm.ts`, 4 at a time, fresh files skipped; sprites found through each VTT) |
-| Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
-
-Invalidation:
-- **flix's own writes** go through `mutate()`, which drops the tags they affect: `scene`, `scene:<id>`, `performer`, and so on.
-- **Plays and progress saves** (every 15 s while watching) drop only `scene:<id>` and the
-  queries that filter or sort by activity (`activity:play`, `activity:resume`, set by
-  `activityTags()`), and mark the rest of `scene` stale. _Until 2026-10-27_ they dropped
-  every `scene` query, so watching anything left Home and Browse cold.
-- **Changes made in Stash** (scans, Identify, edits in its UI) are caught by a change check: one query every `CHANGE_POLL_SECONDS` (60), only while flix has been used in the last 10 minutes. It compares each type's count and newest `updated_at`; any difference marks the whole query cache stale (served once more while it refreshes) and re-warms the home feed. _Verified 2026-10-26:_ `sceneSaveActivity` does not bump `updated_at`, so progress saves while watching don't trigger it; `sceneUpdate` does.
-- **Warming:** the home feed, the unfiltered facets (the filter dialog's counts) and the tag tiles are built in the background at startup and after each Stash change.
-- **Compression:** `/api/*` bodies are gzip'd (`hono/compress`); the home feed goes 108 KB → 17 KB. _Measured 2026-10-29._
-- **Admin:** Settings → Cache shows hit rates and the requests actually sent to Stash, and has clear buttons (`GET /api/admin/cache`, `POST /api/admin/cache/clear {scope: data|assets|all}`).
-
-_Measured 2026-10-26:_ a cold home view cost Stash 7 queries and 79 asset fetches; a warm view cost nothing.
-_Measured 2026-10-27:_ cold `/api/home` 0.7–1.9 s, warm 4–8 ms; after a server restart it is
-answered from the restored cache (10 ms, 0 Stash queries).
-
-## Featured
-
-The Home page's first row (and the hero above it) is the library ranked by `featured.ts`: ten
-signals, each rank-normalised over the whole pool (`featuredPool()` in `stash.ts`: every scene
-minus exclusions, one cached VOLATILE query), times the weights saved under the `featured`
-settings key (Settings → Featured, shared across devices), plus `surprise` × `hash01(id:seed)`.
-The seed is the page's: `useHome(seed)` sends one made at load, Shuffle makes another, and
-anything without one (the warm, curl) gets the day's. `POST /api/featured/preview` scores
-unsaved weights for Settings' live strip. Affinities come from `affinities()` (what you played,
-rated and O'd), shared with For-you. New signal: add it to `FeaturedWeights` and `SIGNALS`,
-its raw value in `rawSignals`, its words in `phrase`, and a dial in `FeaturedDials.tsx`.
-
-## Whisparr and StashDB
-
-With `WHISPARR_URL` and `WHISPARR_API_KEY` set, `/api/features` says `whisparr: true`. StashDB is
-the catalogue and Whisparr the executor: `stashdb.ts` queries StashDB's `queryScenes` for a
-performer's or studio's scenes (by the Stash entity's StashDB ids, `stashIdsOf` in `stash.ts`;
-24 a page, newest first, cached 10 min, VOLATILE, tag `stashdb`) with Stash's own stash-box
-credentials, read from `configuration.general.stashBoxes` at first use (`STASHDB_URL` /
-`STASHDB_API_KEY` override; `features.stashdb` says whether it resolved). `whisparr.ts` labels
-each StashDB scene: already in Stash (dropped; `sceneStashIdMap`), in Whisparr's movie list
-(~25 MB, cached 2 min; state from the queue and the last grabs: available / grabbed /
-downloading / downloaded), or `remote` (only StashDB knows it). Without StashDB the shelf falls
-back to Whisparr's own list (`source: 'whisparr'`). Routes: `/api/whisparr/performer/:id?page=`,
-`/studio/:id?page=` (the "Not in your library yet" shelf, a `WantedList`), `/new` (recent
-releases from favourite performers, Home's "not downloaded" row, Whisparr list only),
-`/activity`. Two writes, each for ONE scene: `POST /api/whisparr/get/:id` monitors a scene
-Whisparr lists and runs `MoviesSearch` for that id alone; `POST /api/whisparr/get-remote/:uuid`
-looks the StashDB id up in Whisparr (`movie/lookup?term=stash:<uuid>`) and `POST movie`s that
-one scene, monitored, `addOptions.searchForMovie`, placed like its studio siblings (else
-Whisparr's first profile and root folder); a lookup that returns an existing id goes through the
-first path, so nothing is added twice. The library policy (nas repo, "Media library policy" 4
-and known-issues #40) is that nothing is monitored and downloads are chosen by hand, so there is
-no code path that monitors or searches a performer or studio; both writes refuse anything but a
-single id (films too), and `whisparr.test.ts` / `stashdb.test.ts` pin the exact requests. Covers
-come from StashDB (`images[].url`, or Whisparr's `images[].remoteUrl`, the same CDN).
-`scripts/mobile-check.mjs` blocks both get routes, like plays and deletes.
-
-## Duplicates
-
-`/duplicates` (linked from Clean up) shows Stash's perceptual-hash groups side by side:
-`GET /api/duplicates?distance=&durationDiff=` runs `findDuplicateScenes` (every scene, blocked
-and hidden too; cached like any scene read) and `duplicates.ts` names the copy to keep: most
-pixels, then bit rate, then size, then the one already watched or rated, then the lowest id.
-The rest are pre-selected; ticks on the page override the suggestion until Delete (the normal
-`DeleteScenesDialog`, so Whisparr removes the file) or Reset. Distance 0 is exact, 4 "close",
-8 "loose"; the library had no groups at any of them on 2026-10-30, so the empty state matters.
-
-## Playback
-
-The client checks `canPlayType` for the file's container and codecs: if the browser can play
-the file, it streams the original (`/media/play/:id`, byte ranges, from the NFS mount when
-`MEDIA_PATH_MAP` resolves it, else Stash's direct stream). Otherwise it uses Stash's HLS
-transcode (`stream.m3u8`, hls.js outside Safari), and also falls back to HLS on any media
-error. _2026-10-26:_ 477/520 files are mp4/h264/aac; the other 43 (mkv hevc/h264-ac3, avi
-mpeg4, wmv vc1, av1) transcode. The first HLS segment takes ~2.3 s.
-
-A saved resume point is applied automatically, with a "Resumed at … · Start over" pill for 8 s
-(Start over honours the studio's intro skip).
-
-`lib/playback.ts` is what the video page's `Player` and the station player share: attaching a
-source (direct, or HLS through hls.js), the watch accounting (a play after 20 s, time and
-resume point saved to Stash every 15 s and on pause, end, leave and tab close), the key guard,
-marker jumps and the flash label. A station in Full mode records plays and resume points like
-the video page (so Continue, History and Most played see it); Moments mode records nothing.
-The seek bar (`SeekBar.tsx`, both players) draws markers as ticks: `groupMarkers` in
-`lib/playback.ts` merges markers within 1% of the duration into one tick with a count, O-counter
-marks (title `O`) draw thin and white, named markers yellow. Hovering a tick shows its frame and
-`tickLabel` (title · tag); clicking or tapping a tick's 24 px pad seeks to the marker itself.
-
-**Marking a moment.** On a touch screen, holding the picture for half a second (`useLongPress`
-in `lib/hooks.ts`) marks the current time without pausing or showing the controls; `b` and the
-gear menu's "Mark this moment" do the same elsewhere. Every mark shows a banner for 5 s,
-"Marked m:ss · O · Undo": Undo deletes the marker (or cancels it if Stash has not answered
-yet), O counts an O-counter press and retitles the marker `O`. `POST /scenes/:id/markers`
-returns the marker for this. The first three videos on a touch device show "Hold the picture
-to mark a moment" while the controls are up (`flix.hint.hold`). The station player has the
-same hold (flash only, no banner). A private session blocks all of it with its toast.
-Below the video, **Moments** (`components/Moments.tsx`) lists every marker with its sprite
-frame, time, title and primary tag, each editable in place (title on blur or Enter, tag via a
-search over Stash's tags; `PUT /scenes/:id/markers/:marker` takes `title` and/or `tagId`),
-delete with an Undo toast that recreates it (`POST` takes an optional `tagId`). O markers show
-a droplet. `Marker.tagId` carries the primary tag id; an untitled marker displays its tag's name.
-
-**Mini-player.** The video page does not render the `Player`: it opens its scene in
-`lib/nowPlaying.ts` (a small external store) and renders a `PlayerSlot`; `NowPlayingHost`, mounted
-once in `Layout`, renders the one `Player` and lays it over that slot (absolute within the layout,
-re-measured by ResizeObserver, so it scrolls with the page), or, on any other page, docks it as a
-strip above the phone tab bar / a card bottom-right on desktop (`mini` prop: picture and progress
-line only, keys unbound). Both placements share one element skeleton, so the `<video>` is the same
-node throughout and nothing reloads; coming back to the scene finds it still playing. Leaving a page
-whose video never started, or with Settings → Playback "Keep playing while browsing" off
-(`flix.keepPlaying`, per browser), stops it; entering `/station` stops it; Stop on the card unmounts
-it. Watch accounting continues while docked (unless the session is private).
-
-The Stations page gets every card's pictures and count from one request, `GET /api/stations/previews?day=&q=`
-(`stations.previews`: saved stations by id, the quick-start queries under the JSON the client sent, each
-one cached Stash query, six in flight at once); `/stations/resume` carries each station's or playlist's
-`name`, so Home's pick-up shelf needs no other list.
-
-On touch screens (`Player.tsx`):
-- A tap shows or hides the controls; it does not pause. A double tap on the left or right
-  third seeks 10 s. While the controls show, the middle has −10 / play-pause / +10 buttons.
-- The seek bar previews while dragged and seeks on release. Hidden controls take no taps.
-- Fullscreen: iPhone Safari can only make a bare `<video>` fullscreen, so it uses
-  `webkitEnterFullscreen` (system controls). Elsewhere the player element goes fullscreen,
-  and on Android a landscape video locks the screen to landscape.
-- A phone turned sideways (`landscape and pointer: coarse and max-height: 520px`) gets the
-  player fixed over the whole screen with flix's own controls, padded for the safe areas.
-  The page behind it is never scroll-locked and the player is `touch-pan-y`: Safari only
-  hides its address bar when the page scrolls, so a swipe up over the video gives the
-  picture the whole screen (a "Swipe up" hint shows while the bar takes space). Locking the
-  scroll, as the first version did, kept the bar on screen for good.
-- **Installed** ("Add to Home Screen"; `public/manifest.json` and the Apple meta tags in
-  `index.html`) flix runs standalone: no address bar at all, so the bar dance above never
-  happens. Standalone has no browser Back, so the header shows one on phones below the top level
-  (`display-mode: standalone`). Icons are rendered from `favicon.svg` with `qlmanage -t -s <px>`.
-- The controls' gradient never takes taps itself (on a phone it covers the middle of the
-  picture); only the bar and buttons inside it do.
-- Speed and "Mark this moment" are in the settings menu (no keyboard on a phone).
-
-## Privacy
-
-Three layers, all browser-side, none needing a login:
-
-- **Discreet mode** (the eye in the header, `flix.discreet` in localStorage): pictures and
-  previews blur until hovered or focused (`html.discreet` rules in `index.css`).
-- **Private session** (the ghost in the header, or Settings → Privacy; `lib/privacy.ts`,
-  `flix.private` in sessionStorage so it ends with the tab or the installed app): nothing watched
-  this visit is recorded. `useWatchAccounting` sends no plays or activity, the station saves no
-  spot, and `guardWrite()` turns the rating, O, marker and "Mark as watched" actions into a
-  toast. Favourites, playlists, Not interested, deletes and metadata edits still go through: they
-  are curation, not a trace of viewing. A new write that records what was watched must go through
-  `guardWrite()` or check `isPrivate()`.
-- **PIN lock** (Settings → Privacy; `lib/lock.ts`, `components/PinLock.tsx`): a 4–6 digit PIN,
-  stored as a salted SHA-256 in localStorage (`flix.pin`; plain-JS SHA-256 because `crypto.subtle`
-  is absent on http origins such as flix.lan). Locks after the chosen idle time (a playing video
-  is not idle), when the tab comes back after a few seconds away, or on `L`. While locked the
-  app root is `visibility: hidden` (`html.locked`) under a full-screen keypad; videos pause and
-  nothing resumes on unlock. The locked flag is in sessionStorage so a reload stays locked. It is
-  a privacy screen, not security: clearing site data removes it, and the UI says so.
-
-## Status and next steps
-
-See `docs/plan.md`.
+Status, backlog and open questions: `wiki/roadmap.md`. Repo conventions: no git commits unless
+asked or working an agreed initiative; commit subjects are plain imperative, one line.
