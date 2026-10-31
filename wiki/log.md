@@ -100,3 +100,12 @@ api-latency, media-probe) → [[2026-10-31-ux-audit]], [[roadmap]], [[perf-check
 Whisparr list 41 MB / 13k (was ~25 MB); the shared VOLATILE cap is the dominant miss cause;
 Mark as watched is in the card menu; intro skip is set from the player, not the studio page →
 [[caching]], [[whisparr-api]], [[scene-page]], [[people-pages]], [[settings-next-to-page]].
+
+## [2026-10-31] ingest | Phase 0 freshness quick wins
+Global failed-write toast from the `MutationCache`; station edits invalidate previews and
+resumes; remove-from-history and title/tag edits reach `scene`, `home`, `related`; deleting a
+playlist deletes its `pl:<id>` resume row and nameless rows are dropped; Block gets Undo; the
+pressed label is "Not interested ✓"; Shuffle plays a shuffled playlist station (`shuffle=1`)
+and never rewrites the order. The gender-switch item was dropped by the owner →
+[[web-app]], [[stations]], [[playlists-and-favorites]], [[people-pages]], [[scene-page]],
+[[playlist-shuffle-plays-shuffled]], [[roadmap]].

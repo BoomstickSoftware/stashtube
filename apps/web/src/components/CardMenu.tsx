@@ -91,7 +91,7 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
         {item(<EyeOff size={16} />, 'Not interested', () => {
           hide.mutate({ id: scene.id, hidden: true })
           showToast(
-            'Hidden from flix',
+            'Marked not interested',
             <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
               Undo
             </button>,

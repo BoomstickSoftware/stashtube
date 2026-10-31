@@ -1,5 +1,6 @@
-import { type Query, QueryClient } from '@tanstack/react-query'
+import { MutationCache, type Query, QueryClient } from '@tanstack/react-query'
 import { readStored } from '../storage'
+import { showToast } from '../toast'
 
 // The transport every hook uses: one fetch wrapper with a timeout, an error that carries the
 // status, the query string builder, and the app's QueryClient with its persistence rules.
@@ -46,7 +47,17 @@ export function qs(params: object): string {
   return s ? `?${s}` : ''
 }
 
+// Every failed write says so, once, in the toast: Stash's reason when the server passed one on
+// ("Stash: database is locked"), a short generic line otherwise. The cache's handler runs for
+// every mutation, including those with their own onError (a per-hook onError would replace a
+// defaultOptions one). A hook that renders the error itself opts out with `meta: { silent: true }`.
 export const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (e, _vars, _ctx, mutation) => {
+      if (mutation.meta?.silent) return
+      showToast(e instanceof ApiError ? e.message : "Couldn't save that")
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 30_000,

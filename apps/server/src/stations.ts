@@ -111,9 +111,12 @@ export async function listResume(): Promise<StationResume[]> {
     exclusions().then((ex) => stash.findScenesByIds(rows.map((r) => r.sceneId), ex)).then((all) => new Map(all.map((s) => [s.id, s]))),
     resumeNames(rows.map((r) => r.key)),
   ])
+  // A row whose station or playlist is gone (deleted before 2026-10-31, when deletion did not
+  // remove it) is left out rather than shown as a nameless "Everything" card.
   return rows.flatMap((r) => {
     const s = scenes.get(r.sceneId)
-    return s ? [{ key: r.key, name: names.get(r.key) ?? null, seconds: r.seconds, updatedAt: r.updatedAt.toISOString(), scene: s }] : []
+    const name = names.get(r.key)
+    return s && name !== undefined ? [{ key: r.key, name, seconds: r.seconds, updatedAt: r.updatedAt.toISOString(), scene: s }] : []
   })
 }
 

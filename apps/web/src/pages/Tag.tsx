@@ -34,7 +34,7 @@ export function TagPage(): JSX.Element {
             <Pin size={16} className={t.favorite ? 'fill-accent text-accent' : ''} /> {t.favorite ? 'Pinned' : 'Pin'}
           </Button>
           <AddFilterButton kind="tag" id={id} name={t.name} variant="button" />
-          <BlockButton kind="tag" id={id} />
+          <BlockButton kind="tag" id={id} name={t.name} />
           {[...t.parents, ...t.children].map((r) => (
             <Link key={r.id} to="/tag/$id" params={{ id: r.id }}>
               <Chip>{r.name}</Chip>

@@ -9,7 +9,11 @@ export const useStations = () => useQuery({ queryKey: ['stations'], queryFn: () 
 
 export function useStationMutations() {
   const qc = useQueryClient()
-  const done = () => qc.invalidateQueries({ queryKey: ['stations'] })
+  // the cards' counts and screenshots are keyed by day, not by the stations, so they go too
+  const done = () => {
+    qc.invalidateQueries({ queryKey: ['stations'] })
+    qc.invalidateQueries({ queryKey: ['station-previews'] })
+  }
   return {
     add: useMutation({ mutationFn: (b: StationInput) => send<{ id: number }>('POST', '/stations', b), onSuccess: done }),
     update: useMutation({
@@ -20,7 +24,10 @@ export function useStationMutations() {
     remove: useMutation({
       mutationFn: (id: number) => send('DELETE', `/stations/${id}`),
       onMutate: (id) => qc.setQueryData<SavedStation[]>(['stations'], (d) => d?.filter((s) => s.id !== id)),
-      onSettled: done,
+      onSettled: () => {
+        done()
+        qc.invalidateQueries({ queryKey: ['station-resume'] }) // the server drops its resume row
+      },
     }),
     reorder: useMutation({ mutationFn: (ids: number[]) => send('PUT', '/stations/order', { ids }), onSuccess: done }),
   }

@@ -2,15 +2,26 @@ import type { BlockKind } from '@flix/shared'
 import { Ban, Heart } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useBlock, useIsBlocked } from '../lib/api'
+import { showToast } from '../lib/toast'
 import { Button } from './ui'
 
-export function BlockButton({ kind, id }: { kind: BlockKind; id: string }) {
+// One tap blocks; the toast's Undo is the way back without a trip to Settings > Blocklist.
+export function BlockButton({ kind, id, name }: { kind: BlockKind; id: string; name: string }) {
   const blocked = useIsBlocked(kind, id)
   const block = useBlock()
   return (
     <Button
       variant={blocked ? 'danger' : 'ghost'}
-      onClick={() => block.mutate({ kind, id, blocked: !blocked })}
+      onClick={() => {
+        block.mutate({ kind, id, blocked: !blocked })
+        if (!blocked)
+          showToast(
+            `Blocked ${name} everywhere`,
+            <button onClick={() => block.mutate({ kind, id, blocked: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+              Undo
+            </button>,
+          )
+      }}
       title={blocked ? 'Show everywhere again' : 'Hide from every list, search and feed'}
     >
       <Ban size={16} /> {blocked ? 'Blocked' : 'Block'}

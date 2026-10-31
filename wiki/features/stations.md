@@ -9,7 +9,7 @@ updated: 2026-10-31
 routes: [/station, /stations, /stations/new, /stations/$id/edit]
 api: [GET /api/stations, POST /api/stations, PUT /api/stations/:id, PUT /api/stations/order, DELETE /api/stations/:id, GET /api/stations/previews?day=&q=, GET /api/stations/resume, PUT /api/stations/resume]
 code: [apps/web/src/pages/Station.tsx, apps/web/src/pages/Stations.tsx, apps/web/src/pages/StationEditor.tsx, apps/web/src/lib/station.ts, apps/server/src/stations.ts, apps/server/src/previews.ts, apps/server/src/db/schema.ts]
-related: [player, seek-bar-markers, moments, browse-and-filters, playlists-and-favorites, home-feed, data-model]
+related: [player, seek-bar-markers, moments, browse-and-filters, playlists-and-favorites, home-feed, data-model, playlist-shuffle-plays-shuffled]
 ---
 
 # Stations
@@ -57,6 +57,14 @@ Entering a station stops the [[mini-player]].
   ([[stations-only-user-made]]; until 2026-10-31 those were kept as `from:<scene>` and
   `q:<filters>`). A card with a saved spot shows "Resume …"; **Shuffle** starts fresh.
   `/api/stations/resume` carries each station's or playlist's `name`, so Home's "Pick up a
-  station" row needs no other list ([[home-feed]]).
+  station" row needs no other list ([[home-feed]]). Deleting a station or a playlist deletes
+  its row, and a row whose station or playlist is gone is left out (_until 2026-10-31_ a
+  deleted playlist's row came back nameless and Home showed it as an "Everything" station).
+- A playlist plays as a station in its order (`/station?playlist=<id>`) or in a random order
+  (`&shuffle=1`, the playlist page's Shuffle; [[playlist-shuffle-plays-shuffled]]). The resume
+  key is `pl:<id>` either way.
+- After a station is added, edited, removed or reordered the client invalidates `stations`
+  **and** `station-previews`, and `station-resume` after a removal (_until 2026-10-31_ only
+  `stations`, so a new station's card had no count or screenshots for up to 10 min).
 
 Tables: [[data-model]].

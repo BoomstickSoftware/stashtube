@@ -4,7 +4,7 @@ kind: feature
 summary: The entity pages and directories, what follow, pin and block mean on each, the gender switch, age at filming, studio families and the three Studios views.
 tags: [performers, studios, tags, directories, favorites]
 status: current
-verified: 2026-10-30
+verified: 2026-10-31
 updated: 2026-10-31
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
@@ -23,7 +23,9 @@ Each entity page is a header, actions, the entity's videos through the shared li
 - **Follow** (heart): Stash's performer or studio favourite, so Stash's UI agrees
   ([[stash-owns-activity]]). Video hearts are different: a flix playlist
   ([[playlists-and-favorites]]).
-- **Rating** (performers), **Block** (hidden everywhere, [[blocklist-and-exclusions]]), **Add to
+- **Rating** (performers), **Block** (hidden everywhere, [[blocklist-and-exclusions]]; one tap,
+  then a toast "Blocked <name> everywhere · Undo" like Not interested's, _no Undo until
+  2026-10-31_), **Add to
   filters** (stacks it, [[browse-and-filters]]), **Station** from this entity's videos
   ([[stations]]).
 - Studios: **intro skip** in seconds, honoured by every player and by Start over

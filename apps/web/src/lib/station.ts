@@ -22,8 +22,9 @@ export const loadPrefs = (): StationPrefs =>
 export const savePrefs = (p: StationPrefs) => writeStored(KEY, p)
 
 // start=resume: pick up where the station was left (otherwise a fresh shuffle). playlist=<id>
-// plays a playlist in its order.
-export type StationSearch = SceneQuery & { from?: string; id?: number; playlist?: number; start?: 'resume' }
+// plays a playlist in its order, or in a random order with shuffle=1 (the stored order is
+// never changed: wiki/decisions/playlist-shuffle-plays-shuffled.md).
+export type StationSearch = SceneQuery & { from?: string; id?: number; playlist?: number; shuffle?: boolean; start?: 'resume' }
 
 // The /station search that reopens the station a resume key belongs to (the inverse of stationKey).
 export function stationSearchFor(key: string): StationSearch {
@@ -101,7 +102,7 @@ const detail = (id: string) =>
 
 // Hands out scenes one at a time, never repeating until everything has played. Keeps what
 // has played (to go back, or pick again from the list) and what is coming up. A playlist
-// station plays the list in its order, then starts over.
+// station plays the list in its order (or reshuffled each round with `shuffle`), then starts over.
 export class StationQueue {
   private played = new Set<string>()
   private pool: SceneCard[] = []
@@ -111,14 +112,16 @@ export class StationQueue {
   private query: SceneQuery
   private from: string | undefined
   private playlist: number | undefined
+  private shuffle: boolean
   private exhausted = false // this shuffle has handed out its last page
   history: SceneCard[] = [] // in play order; the last one is playing
   private pos = -1 // where in history the player is (back moves it)
 
-  constructor(query: SceneQuery, from?: string, playlist?: number) {
+  constructor(query: SceneQuery, from?: string, playlist?: number, shuffle = false) {
     this.query = query
     this.from = from
     this.playlist = playlist
+    this.shuffle = shuffle
   }
 
   get current(): SceneCard | undefined {
@@ -194,7 +197,14 @@ export class StationQueue {
   private async fill(): Promise<boolean> {
     if (this.playlist) {
       const p = await queryClient.fetchQuery({ queryKey: ['playlist', this.playlist], queryFn: () => get<PlaylistDetail>(`/playlists/${this.playlist}`), staleTime: 60_000 })
-      this.pool.push(...p.items.filter((s) => !this.played.has(s.id)))
+      const items = p.items.filter((s) => !this.played.has(s.id))
+      if (this.shuffle) {
+        for (let i = items.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[items[i], items[j]] = [items[j]!, items[i]!]
+        }
+      }
+      this.pool.push(...items)
       this.exhausted = true
       return p.items.length > 0
     }

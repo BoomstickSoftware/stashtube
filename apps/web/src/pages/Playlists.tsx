@@ -136,10 +136,8 @@ export function PlaylistPage(): JSX.Element {
             )}
             <Button
               disabled={!ids.length}
-              onClick={() => {
-                const shuffled = [...ids].sort(() => Math.random() - 0.5)
-                m.reorder.mutate({ id, sceneIds: shuffled }, { onSuccess: () => play(shuffled[0]) })
-              }}
+              title="Play the list in a random order; the order you set stays"
+              onClick={() => navigate({ to: '/station', search: { playlist: id, shuffle: true } })}
             >
               <Shuffle size={16} /> Shuffle
             </Button>

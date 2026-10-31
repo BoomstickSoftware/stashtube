@@ -9,7 +9,7 @@ updated: 2026-10-31
 routes: [/playlists, /playlist/$id]
 api: [GET /api/playlists, POST /api/playlists, PUT /api/playlists/:id, DELETE /api/playlists/:id, POST /api/playlists/:id/items, DELETE /api/playlists/:id/items/:sceneId, PUT /api/playlists/:id/order, GET /api/favorites, POST /api/favorites, PUT /api/favorites/:sceneId, DELETE /api/favorites/:sceneId, GET /api/scenes/:id/playlists]
 code: [apps/server/src/playlists.ts, apps/web/src/pages/Playlists.tsx, apps/web/src/components/PlaylistMenu.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/lib/api/playlists.ts]
-related: [data-model, stations, stash-owns-activity, private-session]
+related: [data-model, stations, stash-owns-activity, private-session, playlist-shuffle-plays-shuffled]
 ---
 
 # Playlists and Favorites
@@ -19,8 +19,12 @@ scene ids (`playlists`, `playlist_items`; see [[data-model]]).
 
 ## Behaviour
 
-- A playlist is ordered; drag to reorder, Play all, Shuffle, and play it as a station
-  (`/station?playlist=`, [[stations]]).
+- A playlist is ordered; drag to reorder, Play all, and play it as a station
+  (`/station?playlist=`, [[stations]]). **Shuffle** plays it as a station in a random order
+  (`/station?playlist=<id>&shuffle=1`, reshuffled each time round) and never changes the stored
+  order ([[playlist-shuffle-plays-shuffled]]); _until 2026-10-31_ it rewrote the order with
+  `PUT /order` before playing.
+- Deleting a playlist also deletes its `pl:<id>` station resume row ([[stations]]).
 - **Favorites** is a built-in playlist (`kind = 'favorites'`, unique) behind the heart on every
   video, because Stash scenes have no favourite flag. Performer and studio hearts are different:
   those are Stash favourites ([[people-pages]]).
