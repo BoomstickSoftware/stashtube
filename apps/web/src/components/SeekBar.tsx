@@ -1,23 +1,37 @@
 import type { Marker } from '@flix/shared'
 import clsx from 'clsx'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { duration as fmt } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
 import { groupMarkers, tickLabel, type Tick } from '../lib/playback'
 import { SpriteThumb } from './SpriteThumb'
 
-type Pos = { x: number; t: number; w: number }
+type Pos = { t: number }
 
 export interface SeekPoint {
   t: number
   scrubbing: boolean // dragging (false: a mouse hovering)
 }
 
+// Lets a swipe elsewhere (the picture) drive the bar exactly as a drag on the bar would.
+export interface SeekBarHandle {
+  grab: () => void // start scrubbing from where playback is
+  drag: (dx: number) => void // px the finger has moved since it went down
+  drop: () => void // seek to where the drag ended
+  cancel: () => void
+}
+
+const DRAG_SLOP = 8 // px a touch moves before it is a drag rather than a tap
+
 // The video seek bar, shared by the player and stations: buffered and played spans, markers,
-// and a sprite thumbnail with the time under the pointer. Mouse: seeks as it moves. Touch: the
-// drag previews (thumbnail and time) and seeks once, on release, so a finger's jitter does not
-// throw the video around. `spans` shades parts of the bar (a station's moments).
+// and a sprite thumbnail with the time being pointed at. Mouse: the playhead goes where the
+// pointer is and seeks as it moves. Touch: the hit area reaches well above the thin track; a
+// tap jumps to where it landed (or to the marker whose tick it hit), a drag moves the playhead
+// by as far as the finger moves, 1:1 with the bar's width, from wherever it was, previewing as
+// it goes and seeking once, on release, so a finger's jitter does not throw the video around.
+// `spans` shades parts of the bar (a station's moments).
 export function SeekBar({
+  ref,
   dur,
   time,
   buffered,
@@ -27,6 +41,7 @@ export function SeekBar({
   onSeek,
   onPoint,
 }: {
+  ref?: Ref<SeekBarHandle>
   dur: number
   time: number
   buffered: number
@@ -55,44 +70,68 @@ export function SeekBar({
   }
 
   const ticks = useMemo(() => groupMarkers(markers, dur), [markers, dur])
-  // Where a touch started, and the tick under it if any: a tap on a tick seeks to the marker
-  // itself, a drag that starts there scrubs as usual.
-  const down = useRef<{ x: number; tick: Tick | null }>({ x: 0, tick: null })
+  const clamp = (t: number) => Math.max(0, Math.min(dur || 0, t))
 
-  const timeAt = (clientX: number) => {
+  const timeAt = (clientX: number): Pos => {
     const r = bar.current!.getBoundingClientRect()
-    const x = Math.max(0, Math.min(r.width, clientX - r.left))
-    return { x, t: (x / r.width) * (dur || 0), w: r.width }
+    return { t: clamp(((clientX - r.left) / r.width) * (dur || 0)) }
   }
   // The pointer position, snapped to the tick whose pad it is over.
   const pointAt = (e: React.PointerEvent): Pos & { tick: Tick | null } => {
-    const p = timeAt(e.clientX)
     const pad = (e.target as HTMLElement).closest?.('[data-tick]') as HTMLElement | null
     const tick = pad ? (ticks[Number(pad.dataset.tick)] ?? null) : null
-    return tick ? { ...p, t: tick.t, x: (tick.t / (dur || 1)) * p.w, tick } : { ...p, tick: null }
+    return tick ? { t: tick.t, tick } : { ...timeAt(e.clientX), tick: null }
   }
+
+  // A touch drag in progress: where the finger went down, the time the playhead had then,
+  // where it is now, and what a tap would seek to. `moved` stays false until the finger has
+  // gone DRAG_SLOP (until then it is a tap); after that every px the finger moved counts.
+  const drag = useRef<{ from: number; moved: boolean; t0: number; t: number; tap: number | null } | null>(null)
+  const begin = (tap: number | null, from = 0) => {
+    drag.current = { from, moved: false, t0: time, t: time, tap }
+  }
+  const move = (dx: number) => {
+    const d = drag.current
+    if (!d || (!d.moved && Math.abs(dx) < DRAG_SLOP)) return
+    d.moved = true
+    const w = bar.current?.getBoundingClientRect().width || 1
+    d.t = clamp(d.t0 + (dx / w) * (dur || 0))
+    show(null, { t: d.t })
+  }
+  const end = () => {
+    const d = drag.current
+    drag.current = null
+    if (d?.moved) onSeek(d.t)
+    else if (d && d.tap !== null) onSeek(d.tap)
+    show(null, null)
+  }
+  const abort = () => {
+    drag.current = null
+    show(null, null)
+  }
+  useImperativeHandle(ref, () => ({ grab: () => begin(null), drag: move, drop: end, cancel: abort }))
+
   const onDown = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     const p = pointAt(e)
-    down.current = { x: e.clientX, tick: p.tick }
+    if (e.pointerType !== 'mouse') return begin(p.t, e.clientX)
     show(null, p)
-    if (e.pointerType === 'mouse') onSeek(p.t)
+    onSeek(p.t)
   }
   const onMove = (e: React.PointerEvent) => {
-    if (scrub) {
+    if (e.pointerType !== 'mouse') {
+      if (drag.current) move(e.clientX - drag.current.from)
+    } else if (scrub) {
       const p = timeAt(e.clientX)
       show(null, p)
-      if (e.pointerType === 'mouse') onSeek(p.t)
-    } else if (e.pointerType === 'mouse') {
+      onSeek(p.t)
+    } else {
       show(pointAt(e), null)
     }
   }
   const onUp = (e: React.PointerEvent) => {
-    if (scrub && e.pointerType !== 'mouse') {
-      const { x, tick } = down.current
-      onSeek(tick && Math.abs(e.clientX - x) < 8 ? tick.t : timeAt(e.clientX).t)
-    }
-    show(null, null)
+    if (e.pointerType !== 'mouse') end()
+    else show(null, null)
   }
 
   const shown = scrub ? scrub.t : time
@@ -106,9 +145,11 @@ export function SeekBar({
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
-      onPointerCancel={() => show(null, null)}
+      onPointerCancel={abort}
       onPointerLeave={(e) => e.pointerType === 'mouse' && !scrub && show(null, null)}
     >
+      {/* on touch the bar takes a finger anywhere up to 28 px above the track, which stays thin */}
+      <div className="absolute inset-x-0 -top-7 bottom-0 hidden touch:block" />
       <div
         className={clsx(
           'relative h-1 w-full rounded-full bg-white/25 transition-[height] group-hover/bar:h-1.5 touch:h-1.5',
@@ -130,7 +171,7 @@ export function SeekBar({
             <div data-tick={i} className="absolute top-1/2 left-1/2 size-6 -translate-x-1/2 -translate-y-1/2" />
           </div>
         ))}
-        {hover && !scrub && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: hover.x }} />}
+        {hover && !scrub && <div className="absolute inset-y-0 w-0.5 bg-white/70" style={{ left: pct(hover.t) }} />}
         <div
           className={clsx(
             'absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 scale-0 rounded-full bg-accent transition-transform group-hover/bar:scale-100 touch:scale-100',
@@ -141,8 +182,9 @@ export function SeekBar({
       </div>
       {point && (
         <div
-          className="pointer-events-none absolute bottom-7 flex flex-col items-center touch:bottom-10"
-          style={{ left: Math.max(thumbW / 2, Math.min(point.w - thumbW / 2, point.x)), transform: 'translateX(-50%)' }}
+          // above the playhead, clear of the finger and of the bar's raised hit area, kept on the bar
+          className="pointer-events-none absolute bottom-7 flex flex-col items-center touch:bottom-[4.5rem]"
+          style={{ left: `clamp(${thumbW / 2}px, ${pct(point.t)}, calc(100% - ${thumbW / 2}px))`, transform: 'translateX(-50%)' }}
         >
           {sprites.length > 0 && <SpriteThumb cues={sprites} t={point.t} width={thumbW} className="overflow-hidden rounded-lg ring-2 ring-white/90" />}
           {(() => {

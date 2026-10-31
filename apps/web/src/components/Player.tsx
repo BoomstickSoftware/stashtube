@@ -27,7 +27,7 @@ import type { Status } from '../lib/nowPlaying'
 import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
-import { SeekBar, type SeekPoint } from './SeekBar'
+import { SeekBar, type SeekBarHandle, type SeekPoint } from './SeekBar'
 import { useLongPress, useMediaQuery } from '../lib/hooks'
 
 const RATES = [0.5, 1, 1.25, 1.5, 2]
@@ -47,6 +47,7 @@ const STASH_RES: Record<string, string> = { '1080': 'FULL_HD', '720': 'STANDARD_
 const STALLS_TO_DROP = 3 // stalls within STALL_WINDOW in auto mode
 const STALL_WINDOW = 30_000
 const DOUBLE_TAP = 300 // ms between taps that count as a double tap
+const SWIPE_SLOP = 10 // px a finger moves on the picture before the swipe is sideways or not
 // Picture in picture: the standard API, or Safari's presentation modes (iPhone has only those).
 const PIP = typeof document !== 'undefined' && (document.pictureInPictureEnabled || 'webkitSetPresentationMode' in HTMLVideoElement.prototype)
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
@@ -451,6 +452,28 @@ export function Player({
     },
     { enabled: touch && !mini },
   )
+  // A sideways swipe on the picture scrubs the seek bar as a drag on the bar would (preview,
+  // then seek on release); a vertical one is left to the page (it hides Safari's address bar).
+  const seekBar = useRef<SeekBarHandle>(null)
+  const swipe = useRef<{ x: number; y: number; on: boolean } | null>(null)
+  const onSurfaceMove = (e: React.PointerEvent) => {
+    hold.onPointerMove(e)
+    const s = swipe.current
+    if (!s) return
+    const dx = e.clientX - s.x
+    const dy = e.clientY - s.y
+    if (!s.on) {
+      if (Math.abs(dy) > SWIPE_SLOP && Math.abs(dy) >= Math.abs(dx)) swipe.current = null
+      if (Math.abs(dx) <= SWIPE_SLOP || Math.abs(dx) < Math.abs(dy)) return
+      s.on = true
+      seekBar.current?.grab()
+    }
+    seekBar.current?.drag(dx)
+  }
+  const endSwipe = (seek: boolean) => {
+    if (swipe.current?.on) seekBar.current?.[seek ? 'drop' : 'cancel']()
+    swipe.current = null
+  }
   const onSurfaceTap = (e: React.PointerEvent) => {
     const start = tapStart.current
     tapStart.current = null
@@ -483,6 +506,7 @@ export function Player({
 
   const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu
+  const centre = showControls && !waiting && !point?.scrubbing // out of the way of a scrub's preview
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   return (
@@ -555,12 +579,17 @@ export function Player({
           className="absolute inset-0"
           onPointerDown={(e) => {
             tapStart.current = { x: e.clientX, y: e.clientY }
+            swipe.current = e.pointerType !== 'mouse' && !menu && e.isPrimary ? { x: e.clientX, y: e.clientY, on: false } : null
             hold.onPointerDown(e)
           }}
-          onPointerMove={hold.onPointerMove}
-          onPointerCancel={hold.onPointerCancel}
+          onPointerMove={onSurfaceMove}
+          onPointerCancel={() => {
+            hold.onPointerCancel()
+            endSwipe(false)
+          }}
           onPointerUp={(e) => {
             hold.onPointerUp()
+            endSwipe(true)
             onSurfaceTap(e)
           }}
           onClick={() => pointerType.current === 'mouse' && toggle()}
@@ -579,16 +608,16 @@ export function Player({
         <div
           className={clsx(
             'pointer-events-none absolute inset-0 flex items-center justify-center gap-10 transition-opacity duration-300',
-            showControls && !waiting ? 'opacity-100' : 'opacity-0',
+            centre ? 'opacity-100' : 'opacity-0',
           )}
         >
-          <Round label={`Back ${TAP_SEEK} seconds`} active={showControls && !waiting} onClick={() => (seekBy(-TAP_SEEK), poke())}>
+          <Round label={`Back ${TAP_SEEK} seconds`} active={centre} onClick={() => (seekBy(-TAP_SEEK), poke())}>
             <RotateCcw size={26} />
           </Round>
-          <Round label={playing ? 'Pause' : 'Play'} big active={showControls && !waiting} onClick={() => (toggle(), poke())}>
+          <Round label={playing ? 'Pause' : 'Play'} big active={centre} onClick={() => (toggle(), poke())}>
             {playing ? <Pause size={34} className="fill-white" /> : <Play size={34} className="ml-1 fill-white" />}
           </Round>
-          <Round label={`Forward ${TAP_SEEK} seconds`} active={showControls && !waiting} onClick={() => (seekBy(TAP_SEEK), poke())}>
+          <Round label={`Forward ${TAP_SEEK} seconds`} active={centre} onClick={() => (seekBy(TAP_SEEK), poke())}>
             <RotateCw size={26} />
           </Round>
         </div>
@@ -600,7 +629,7 @@ export function Player({
           </button>
         )
       )}
-      {touch && !mini && hintEligible && !hintDone && showControls && !marked && !waiting && (
+      {touch && !mini && hintEligible && !hintDone && showControls && !point && !marked && !waiting && (
         <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
           Hold the picture to mark a moment
         </div>
@@ -666,7 +695,7 @@ export function Player({
             'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',
         )}
       >
-        <SeekBar dur={dur} time={time} buffered={buffered} markers={scene.markers} vtt={scene.vtt} onSeek={seekTo} onPoint={setPoint} />
+        <SeekBar ref={seekBar} dur={dur} time={time} buffered={buffered} markers={scene.markers} vtt={scene.vtt} onSeek={seekTo} onPoint={setPoint} />
 
         <div className="mt-1 flex items-center gap-1 sm:gap-2">
           <Ctl onClick={toggle} label={playing ? 'Pause (k)' : 'Play (k)'}>

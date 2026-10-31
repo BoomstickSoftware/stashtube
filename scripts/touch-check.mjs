@@ -1,7 +1,8 @@
 // Drives the player with real touch events in headless Chrome (iPhone 17 Pro Max size):
-// tap to show/hide controls, drag the seek bar (seeks only on release), double tap the
-// right side (+10 s), swipe sideways (page must not pan), tap the centre play/pause. Prints the player state after
-// each step. Plays and progress are blocked, so nothing is recorded in Stash.
+// tap to show/hide controls, drag the seek bar (moves the playhead by as far as the finger
+// moves, seeks only on release), tap the bar (jumps), drag from the raised hit area above the
+// track, double tap the right side (+10 s), swipe sideways on the picture (scrubs, the page
+// must not pan), tap the centre play/pause. Prints the player state after each step. Plays and progress are blocked, so nothing is recorded in Stash.
 // usage: node scripts/touch-check.mjs <outdir> http://localhost:5173 /scene/<id>
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -52,7 +53,7 @@ if (!desktop) {
 await send('Page.enable')
 
 
-const state = () => evaluate(`(() => { const v = document.querySelector('main video[poster]'); const bar = document.querySelector('[class*="group/bar"]'); const r = bar.getBoundingClientRect(); const ctl = bar.parentElement; return { t: +v.currentTime.toFixed(1), paused: v.paused, scrollX, ctlOpacity: getComputedStyle(ctl).opacity, ctlEvents: getComputedStyle(ctl).pointerEvents, bar: [r.left, r.top + r.height / 2, r.width], vid: (() => { const b = v.getBoundingClientRect(); return [b.left, b.top, b.width, b.height] })() } })()`)
+const state = () => evaluate(`(() => { const v = document.querySelector('video[poster]'); const bar = document.querySelector('[class*="group/bar"]'); const r = bar.getBoundingClientRect(); const ctl = bar.parentElement; return { t: +v.currentTime.toFixed(1), dur: +v.duration.toFixed(1), paused: v.paused, scrollX, ctlOpacity: getComputedStyle(ctl).opacity, ctlEvents: getComputedStyle(ctl).pointerEvents, bar: [r.left, r.top + r.height / 2, r.width], vid: (() => { const b = v.getBoundingClientRect(); return [b.left, b.top, b.width, b.height] })() } })()`)
 const touch = async (type, x, y) => send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] })
 const tap = async (x, y) => { await touch('touchStart', x, y); await sleep(40); await touch('touchEnd') }
 await send('Page.navigate', { url: base + path })
@@ -62,23 +63,45 @@ const [vx, vy, vw, vh] = s0.vid
 // 1. tap the middle of the picture: controls appear, playback continues
 await tap(vx + vw / 2, vy + vh * 0.3); await sleep(400)
 console.log('after center tap', await state())
-// 2. drag the seek bar from 20% to 60%: no seek until release, page does not pan
-if ((await state()).ctlOpacity !== '1') { await tap(vx + vw / 2, vy + vh * 0.3); await sleep(400) }
-let s1 = await state(); const [bx, by, bw] = s1.bar; console.log('before drag', s1)
-await touch('touchStart', bx + bw * 0.2, by); await sleep(50)
-for (let i = 1; i <= 8; i++) { await touch('touchMove', bx + bw * (0.2 + i * 0.05), by + (i % 2 ? 6 : -6)); await sleep(30) }
+const shown = async () => { if ((await state()).ctlOpacity !== '1') { await tap(vx + vw / 2, vy + vh * 0.3); await sleep(400) } }
+// a finger down at `from` (fraction of the bar), moved by `by` of the bar's width, `dy` px above the track
+const dragBar = async (from, by, dy = 0) => {
+  const [bx, y, bw] = (await state()).bar
+  await touch('touchStart', bx + bw * from, y - dy); await sleep(50)
+  for (let i = 1; i <= 8; i++) { await touch('touchMove', bx + bw * (from + (by * i) / 8), y - dy + (i % 2 ? 4 : -4)); await sleep(30) }
+}
+// 2. grab the bar at 70% and drag 20% right: the playhead does not jump to 70%, no seek until
+// release, then it lands 20% of the duration past where it was
+await shown()
+let s1 = await state(); console.log('before drag', s1)
+await dragBar(0.7, 0.2)
 console.log('mid-drag (t should be unchanged)', await state())
 await touch('touchEnd'); await sleep(800)
-const afterDrag = await state(); console.log('after release (t ~ 60% of duration)', afterDrag)
+const afterDrag = await state(); console.log(`after release (t ~ ${(s1.t + s1.dur * 0.2).toFixed(1)}, not ${(s1.dur * 0.9).toFixed(1)})`, afterDrag)
+// 2b. a tap on the bar at 30% jumps there
+await shown()
+{ const [bx, y, bw] = (await state()).bar; await tap(bx + bw * 0.3, y); await sleep(800) }
+const afterTap = await state(); console.log(`tap on the bar (t ~ ${(afterTap.dur * 0.3).toFixed(1)})`, afterTap)
+// 2c. a drag that starts 40 px above the track still scrubs (the raised hit area)
+await shown()
+const s2 = await state()
+await dragBar(0.5, -0.1, 40); await touch('touchEnd'); await sleep(800)
+console.log(`drag from 40 px above the track (t ~ ${(s2.t - s2.dur * 0.1).toFixed(1)})`, await state())
 // 3. double tap the right third: +10 s
 await sleep(4000) // let controls hide again
 const before = (await state()).t
 await tap(vx + vw * 0.85, vy + vh / 2); await sleep(120); await tap(vx + vw * 0.85, vy + vh / 2); await sleep(600)
 const s3 = await state(); console.log('double tap right: t before', before, 'after', s3.t, 'paused', s3.paused)
-// 4. sideways swipe across the picture: the page must not pan
-console.log('before swipe', await state())
-await touch('touchStart', vx + vw * 0.8, vy + vh * 0.5); for (let i = 1; i <= 10; i++) { await touch('touchMove', vx + vw * (0.8 - i * 0.06), vy + vh * 0.5); await sleep(20) } await touch('touchEnd'); await sleep(300)
-console.log('after sideways swipe (controls unchanged by the swipe)', await state())
+// 4. sideways swipe right across the picture: scrubs by as far as the finger moved (1:1 with the
+// bar's width), shows the controls, seeks on release; the page must not pan
+const s4 = await state(); console.log('before swipe', s4)
+await touch('touchStart', vx + vw * 0.2, vy + vh * 0.25) // above the centre buttons
+for (let i = 1; i <= 10; i++) { await touch('touchMove', vx + vw * (0.2 + i * 0.03), vy + vh * 0.25); await sleep(20) }
+console.log('mid-swipe (t unchanged, controls shown)', await state())
+const shotSwipe = await send('Page.captureScreenshot', { format: 'png' })
+writeFileSync(`${outDir}/swipe.png`, Buffer.from(shotSwipe.result.data, 'base64'))
+await touch('touchEnd'); await sleep(800)
+console.log(`after sideways swipe (t ~ ${(s4.t + (s4.dur * vw * 0.3) / s4.bar[2]).toFixed(1)}, scrollX 0)`, await state())
 // 5. the big play/pause in the middle must take the tap (the controls' gradient once covered it)
 const play = () => evaluate(`(() => { const b = document.querySelector('[aria-label="Pause"],[aria-label="Play"]'); const r = b.getBoundingClientRect(); return { label: b.getAttribute('aria-label'), x: r.left + r.width / 2, y: r.top + r.height / 2, shown: getComputedStyle(b).pointerEvents !== 'none' } })()`)
 let pb = await play()
