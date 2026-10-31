@@ -30,7 +30,7 @@ Done, by date (each page says what changed and how it was verified):
   [[2026-10-30-hold-to-mark-and-moments]], [[2026-10-30-wiki-created]],
   [[2026-10-30-relative-scrubbing]], [[2026-10-30-app-follows-deploys]]
 - [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]],
-  [[2026-10-31-shelf-grid-view]]
+  [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 
@@ -71,6 +71,9 @@ The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
   k8s repo ([[postgres-cnpg]]).
 
 ## Open questions
+
+- Did the `z-10` on the mini-player's picture overlay fix the iPhone tap, or does only Expand
+  work there? Needs the user's phone ([[mini-player]]).
 
 - Does Whisparr's daily `RefreshStudios` still add newly released scenes to a studio whose
   new-items flag is off? Baseline for a later diff: 9,363 scenes across 36 studios at

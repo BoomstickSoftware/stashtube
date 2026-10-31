@@ -58,3 +58,7 @@ User rule: scriptable operations get a registered script; `scripts/manifest.json
 ## [2026-10-31] ingest | Row or grid for the Not-in-your-library shelf
 Row/Grid toggle per browser (`flix.wanted.view`); Grid loads StashDB pages by sentinel →
 [[whisparr-shelf]], [[2026-10-31-shelf-grid-view]]; EVAL probe note in [[mobile-checks]].
+
+## [2026-10-31] ingest | A way back from the mini-player
+Expand button in the dock, `z-10` on the picture overlay (inferred WebKit hit-testing), new
+`scripts/mini-check.mjs` → [[mini-player]], [[mobile-checks]], [[2026-10-31-mini-player-expand]].

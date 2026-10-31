@@ -1,6 +1,6 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Pause, Play, X } from 'lucide-react'
+import { Maximize2, Pause, Play, X } from 'lucide-react'
 import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { duration as fmt } from '../lib/format'
 import { nowPlaying, useNowPlaying, useNowPlayingStatus } from '../lib/nowPlaying'
@@ -98,13 +98,18 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
   )
 }
 
+// A tap on the docked picture goes back to the video's page. The button sits above the
+// playing <video> in its own stacking layer (z-10): WebKit composites an inline video on its
+// own layer and, without an explicit z-index, hit-tests it over a transparent sibling, so on
+// an iPhone the tap used to reach the video and do nothing.
 function BackToVideo({ id }: { id: string }) {
   const navigate = useNavigate()
-  return <button onClick={() => navigate({ to: '/scene/$id', params: { id } })} className="absolute inset-0" aria-label="Back to the video" />
+  return <button onClick={() => navigate({ to: '/scene/$id', params: { id } })} className="absolute inset-0 z-10" aria-label="Back to the video" />
 }
 
 // The docked card's bar: a strip above the tab bar on a phone, below the picture in a
-// bottom-right card on a desktop. Tapping the title goes back to the video's page.
+// bottom-right card on a desktop. The title and the Expand button go back to the video's
+// page (Expand is the visible, finger-sized way; the picture and title taps are shortcuts).
 function MiniBar({ scene }: { scene: { id: string; title: string } }) {
   const status = useNowPlayingStatus()
   const navigate = useNavigate()
@@ -117,6 +122,9 @@ function MiniBar({ scene }: { scene: { id: string; title: string } }) {
           <div className="text-[11px] text-muted tabular-nums">
             {fmt(status.time)} / {fmt(status.dur)}
           </div>
+        </button>
+        <button onClick={back} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Expand">
+          <Maximize2 size={18} />
         </button>
         <button onClick={() => nowPlaying.toggle()} className="rounded-full p-2 hover:bg-raised" aria-label={status.playing ? 'Pause' : 'Play'}>
           {status.playing ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" />}

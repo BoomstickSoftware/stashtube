@@ -1,12 +1,12 @@
 ---
 title: Run the headless mobile checks
 kind: runbook
-summary: The three headless-Chrome scripts (page overflow and screenshots, touch-driven player, drag-to-preview on cards), their exact commands and options, what writes they block, and the cleanup after a station run.
+summary: The four headless-Chrome scripts (overflow and screenshots, touch-driven player, drag-to-preview, mini-player round trip), their commands, what they block, and the cleanup after a station run.
 tags: [mobile, testing, headless, chrome, scripts]
 status: current
 verified: 2026-10-31
 updated: 2026-10-31
-code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs]
+code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs]
 related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library]
 ---
 
@@ -30,11 +30,16 @@ node scripts/touch-check.mjs /tmp/t http://localhost:5174 /scene/<id>
 
 # drag-to-preview on scene cards (drags 25 px: Chrome holds touchmoves inside its ~15 px slop)
 node scripts/card-check.mjs /tmp/c http://localhost:5174 /browse
+
+# the mini-player round trip: play, tap Home (docks), tap the picture / title / Expand (restores)
+node scripts/mini-check.mjs /tmp/mp http://localhost:5174 /scene/<id>
 ```
 
 Expected: `mobile-check` prints `overflow: none` (or the offending elements) per page and
 writes `<outdir>/<page>.png`; `touch-check` prints the player state after each step;
-`card-check` reports each gesture's outcome. Read the screenshots.
+`card-check` reports each gesture's outcome; `mini-check` prints the path and dock state after
+each tap, ends with `all restore paths work` (exit 1 otherwise) and saves a screenshot per
+step ([[mini-player]]). Read the screenshots.
 
 ## What they block
 
