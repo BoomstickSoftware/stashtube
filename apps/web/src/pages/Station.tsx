@@ -47,6 +47,7 @@ import {
   type Segment,
   segmentsFor,
   segmentsFrom,
+  remembersPlace,
   stationKey,
   StationQueue,
   type StationPrefs,
@@ -175,7 +176,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const spot = useRef<{ id: string; t: number } | null>(null)
   const saveSpot = useCallback(() => {
     const s = spot.current
-    if (s && !isPrivate()) saveStationResume(config.key, s.id, s.t).catch(() => {})
+    if (s && !isPrivate() && remembersPlace(config.key)) saveStationResume(config.key, s.id, s.t).catch(() => {})
   }, [config.key])
   useEffect(() => {
     addEventListener('pagehide', saveSpot)

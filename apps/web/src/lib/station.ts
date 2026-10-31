@@ -37,6 +37,10 @@ export function stationSearchFor(key: string): StationSearch {
   }
 }
 
+// Only stations you made remember where they were (a saved station, a playlist): one started
+// from a video, a list or a quick start plays and leaves nothing behind.
+export const remembersPlace = (key: string) => key.startsWith('id:') || key.startsWith('pl:')
+
 // The key a station's resume point is saved under.
 export function stationKey(c: { id?: number; query: SceneQuery; from?: string; playlist?: number }): string {
   if (c.id) return `id:${c.id}`

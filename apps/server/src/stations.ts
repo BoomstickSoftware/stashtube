@@ -1,5 +1,5 @@
 import type { SavedStation, SceneQuery, StationInput, StationMode, StationPreview, StationPreviews, StationResume } from '@flix/shared'
-import { asc, desc, eq, inArray, notInArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, notInArray, notLike, sql } from 'drizzle-orm'
 import { exclusions } from './blocklist.ts'
 import { db } from './db/index.ts'
 import { playlists, stationResume, stations } from './db/schema.ts'
@@ -98,7 +98,14 @@ export async function previews(day: number, queries: { key: string; query: Scene
 
 const KEEP_RESUMES = 50
 
+// Only stations the user made remember their place: saved ones (`id:<n>`) and playlists
+// (`pl:<n>`). Ad-hoc ones (`from:<scene>`, `q:<filters>`) were remembered until 2026-10-31 and
+// filled Home's "Pick up a station" with stations nobody created; their rows are dropped here.
+const remembered = (key: string) => key.startsWith('id:') || key.startsWith('pl:')
+const forgetAdHoc = () => db.delete(stationResume).where(and(notLike(stationResume.key, 'id:%'), notLike(stationResume.key, 'pl:%')))
+
 export async function listResume(): Promise<StationResume[]> {
+  await forgetAdHoc()
   const rows = await db.select().from(stationResume).orderBy(desc(stationResume.updatedAt))
   const [scenes, names] = await Promise.all([
     exclusions().then((ex) => stash.findScenesByIds(rows.map((r) => r.sceneId), ex)).then((all) => new Map(all.map((s) => [s.id, s]))),
@@ -121,6 +128,7 @@ async function resumeNames(keys: string[]): Promise<Map<string, string>> {
 }
 
 export async function saveResume(key: string, sceneId: string, seconds: number) {
+  if (!remembered(key)) return
   const row = { key, sceneId, seconds: Math.floor(seconds), updatedAt: new Date() }
   await db.insert(stationResume).values(row).onConflictDoUpdate({ target: stationResume.key, set: row })
   const keep = db.select({ key: stationResume.key }).from(stationResume).orderBy(desc(stationResume.updatedAt)).limit(KEEP_RESUMES)
