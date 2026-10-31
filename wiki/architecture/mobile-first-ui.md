@@ -12,8 +12,9 @@ related: [player, installable-app, mobile-checks, safari-address-bar-needs-page-
 
 # Mobile-first UI rules
 
-**Rule 9: phones are a first-class client** (the user mostly uses an iPhone 17 Pro Max).
-Every change is checked headless at that size ([[mobile-checks]]).
+**Rule 6: the iPhone is the primary client** (the user mostly uses an iPhone 17 Pro Max;
+decision [[iphone-first-polish]]: polish the phone over everything else, the desktop only
+has to be fine). Every change is checked headless at that size ([[mobile-checks]]).
 
 ## Variants
 

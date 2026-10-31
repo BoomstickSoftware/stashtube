@@ -100,7 +100,9 @@ Each has a wiki page with the full story; these are the one-line versions.
    `wiki/decisions/playlists-ignore-blocklist.md`).
 5. **Server code is erasable TypeScript**; the other coding conventions and their pitfalls are in
    `wiki/architecture/coding-conventions.md` and `wiki/gotchas/`.
-6. **Phones are a first-class client** (iPhone). Touch conventions: `wiki/architecture/mobile-first-ui.md`.
+6. **The iPhone (17 Pro Max) is the primary client: polish it over everything else; the desktop
+   only has to be fine.** Verify every web change at phone size first. Touch conventions:
+   `wiki/architecture/mobile-first-ui.md`, decision `wiki/decisions/iphone-first-polish.md`.
 7. **Never read or print `.env`, never copy a key from another repo's `.env`.** The user fills
    `.env` by hand; in k8s the secrets come from `infra/flix/create-secrets.sh`.
 8. **Checks against Stash must not write.** The headless check scripts block plays, activity,

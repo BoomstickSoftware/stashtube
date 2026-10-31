@@ -2,7 +2,7 @@ import type { Playback } from '@flix/shared'
 
 // `sizes` for a video card in the scene grids (one column on a phone, up to five on a wide
 // screen), so the browser picks the resized copy that fits (`srcSet` from @flix/shared).
-export const CARD_SIZES = '(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'
+export const CARD_SIZES = '(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 50vw' // two columns on a phone too
 
 // RFC 6381 codec strings for canPlayType. Unknown codecs fall back to HLS.
 const VIDEO: Record<string, string> = {

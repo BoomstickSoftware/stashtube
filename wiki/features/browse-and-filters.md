@@ -85,3 +85,6 @@ pinned-row titles.
 ## Numbers
 
 Facets over the whole library (~2,000 scenes) take 0.5–0.9 s cold (2026-10-29).
+
+On a phone the grid is two columns with compact cards (decision
+[[browse-two-columns-on-phones]], 2026-10-31); from `sm` it is 2/3/4/5 columns by width.

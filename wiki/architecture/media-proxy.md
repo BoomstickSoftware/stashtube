@@ -25,7 +25,7 @@ the API hands out is already a `/media/remote/<token>` URL.
   (`/scene/<id>/stream.m3u8/<n>.ts`), which the proxy turns into `/media/stash/...` again.
 - Screenshots, previews, sprites, VTTs and entity images are served through the disk asset
   cache ([[caching]]); `/scene/<id>/stream*` (direct and HLS) is never cached.
-- **`?w=320|640|960`** (`IMAGE_WIDTHS` in `@flix/shared`) asks for a smaller copy of an image:
+- **`?w=320|480|640|960`** (`IMAGE_WIDTHS` in `@flix/shared`; 480 since 2026-10-31, [[image-variant-480]]) asks for a smaller copy of an image:
   made once from the cached original with sharp, WebP quality 72, cached under its own key;
   never sent to Stash. Anything sharp cannot shrink (SVG, not an image, a broken file) and any
   other width get the original. The web asks through `sized(url, w)` and `srcSet(url)` with

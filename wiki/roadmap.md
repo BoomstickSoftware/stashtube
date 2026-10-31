@@ -55,8 +55,8 @@ message; every control on the phone at least 44 px; one word per concept.
 [[2026-10-31-ux-phase4-desktop-polish]], [[2026-10-31-ux-phase5-freshness]]). Targets met
 and measured: Filters and Categories 7–9 ms right after a deploy, a phone performer page
 254 KB, CLS 0.02 on Home and 0 on entity pages, every failed write toasts, 44 px controls,
-one vocabulary. Not re-measured: the Browse append at 800 cards (cards now skip layout
-off-screen). Still open: decisions 11 and 12 below; the iPhone mini-player restore bug
+one vocabulary. Priority from here: the phone first ([[iphone-first-polish]]). Not re-measured: the Browse append at 800 cards (cards now skip layout
+off-screen). Still open: the iPhone mini-player restore bug
 (waiting for a Diagnostics copy, [[mini-player]]); History remove keeps its confirm and has
 no Undo, since Stash cannot restore a removed play; the optional inline facts in the
 performer header at `lg`; a History-list skeleton.
@@ -211,8 +211,8 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
    ([[gender-switch-performers-page-only]]); an initiative decouples it.
 9. ~~Home rows~~ Decided: keep 24, render lazily ([[home-rows-stay-24-render-lazily]]).
 10. ~~A persistent "Stash is busy" pill~~ Decided: the toast only ([[failed-writes-toast-only]]).
-11. A 480-px image variant for desktop grids (one more WebP per scene, ~50 MB) (client Q3)?
-12. Browse on the phone: one column or two (phone 10)?
+11. ~~A 480-px image variant for desktop grids (client Q3)?~~ Yes: [[image-variant-480]] (2026-10-31).
+12. ~~Browse on the phone: one column or two (phone 10)?~~ Two for now: [[browse-two-columns-on-phones]] (2026-10-31).
 
 ## Backlog
 

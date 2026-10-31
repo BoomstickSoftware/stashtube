@@ -48,7 +48,7 @@ export interface FeaturedWeights {
 // Used by both: the web's dials and the server's ranker (the runtime image ships this package).
 // Widths the media proxy makes smaller copies of images at (`?w=`, WebP, cached). Cards ask
 // for these instead of Stash's full-size screenshots.
-export const IMAGE_WIDTHS = [320, 640, 960] as const
+export const IMAGE_WIDTHS = [320, 480, 640, 960] as const // 480 since 2026-10-31 (decision: desktop 4-column grids)
 
 // The proxy paths that resize: Stash's assets and remote (StashDB) covers.
 const RESIZABLE = /^\/media\/(stash|remote)\//

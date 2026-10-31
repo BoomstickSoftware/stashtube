@@ -50,6 +50,7 @@ export function SceneBrowser({
 
   // memoised, and the card props below are stable, so a page append re-renders only the new cards
   const scenes = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])
+  const phone = useMediaQuery('(max-width: 639px)') // two columns there: studio in the meta line, no disc
   const total = data?.pages[0]?.total
   const [selecting, setSelecting] = useState(alwaysSelecting)
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
@@ -128,6 +129,7 @@ export function SceneBrowser({
               <SceneCard
                 key={s.id}
                 scene={s}
+                compact={phone}
                 selecting={selecting}
                 selected={selecting ? selected.has(s.id) : undefined}
                 onToggle={toggle}
@@ -156,7 +158,8 @@ export function SceneBrowser({
 
 export function Grid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    // two columns on a phone (decision: two-column Browse), with the card's compact meta there
+    <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 sm:gap-y-8 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {children}
     </div>
   )

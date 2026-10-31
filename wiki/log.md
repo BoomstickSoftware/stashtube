@@ -191,3 +191,8 @@ gained `STUB` → [[web-app]], [[caching]], [[player]], [[whisparr-shelf]], [[mo
 ## [2026-10-31] ingest | UX audit roadmap: every phase live
 Phases 4 and 5 merged and deployed (ce71950, 889567c); status paragraph with the measured targets
 and what remains added at the top of the audit section → [[roadmap]].
+
+## [2026-10-31] decide | iPhone first; 480 px variant; two-column Browse on phones
+The user: the iPhone 17 Pro Max is the primary client, polish it over everything else →
+[[iphone-first-polish]] (CLAUDE.md rule 6 reworded). Decisions 11 and 12 of the audit answered:
+[[image-variant-480]], [[browse-two-columns-on-phones]].
