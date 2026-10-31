@@ -6,6 +6,7 @@ import { useState, type JSX, type ReactNode } from 'react'
 import { Empty, ErrorBox, Spinner } from '../components/ui'
 import { useHistory, useRemoveFromHistory, useStats } from '../lib/api'
 import { duration } from '../lib/format'
+import { sized } from '@flix/shared'
 
 // Continue / History / Stats share one nav item and these tabs.
 export function WatchTabs() {
@@ -67,7 +68,7 @@ export function History(): JSX.Element {
               {entries.map((e) => (
                 <div key={`${e.scene.id}-${e.playedAt}`} className="group flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface">
                   <Link to="/scene/$id" params={{ id: e.scene.id }} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg sm:w-44">
-                    <img src={e.scene.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+                    <img src={sized(e.scene.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
                     <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(e.scene.durationSec)}</span>
                     {e.scene.resumeTime > 0 && (
                       <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20">

@@ -7,6 +7,7 @@ import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, ErrorBox, Spinner } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
 import { useFavoriteStudio, useStudio } from '../lib/api'
+import { sized } from '@flix/shared'
 
 const route = getRouteApi('/studio/$id')
 
@@ -24,7 +25,7 @@ export function StudioPage(): JSX.Element {
     <div>
       <section className="mb-6 flex flex-col gap-6 sm:flex-row sm:items-center">
         <div className="flex h-28 w-56 shrink-0 items-center justify-center rounded-2xl bg-surface p-5 ring-1 ring-white/5">
-          {s.image ? <img src={s.image} alt={s.name} className="max-h-full max-w-full object-contain" /> : <span className="text-2xl font-black">{s.name}</span>}
+          {s.image ? <img src={sized(s.image, 320)} alt={s.name} className="max-h-full max-w-full object-contain" /> : <span className="text-2xl font-black">{s.name}</span>}
         </div>
         <div className="min-w-0">
           {s.parent && (

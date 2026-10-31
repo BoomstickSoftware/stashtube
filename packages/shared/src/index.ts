@@ -46,6 +46,20 @@ export interface FeaturedWeights {
 }
 
 // Used by both: the web's dials and the server's ranker (the runtime image ships this package).
+// Widths the media proxy makes smaller copies of images at (`?w=`, WebP, cached). Cards ask
+// for these instead of Stash's full-size screenshots.
+export const IMAGE_WIDTHS = [320, 640, 960] as const
+
+// An image URL from the API at `w` px wide; anything that is not a /media/stash URL is left alone.
+export function sized(url: string, w: (typeof IMAGE_WIDTHS)[number]): string {
+  if (!url.startsWith('/media/stash/')) return url
+  return `${url}${url.includes('?') ? '&' : '?'}w=${w}`
+}
+
+// `srcset` over every width, for an <img> whose `sizes` says how wide it shows.
+export const srcSet = (url: string): string | undefined =>
+  url.startsWith('/media/stash/') ? IMAGE_WIDTHS.map((w) => `${sized(url, w)} ${w}w`).join(', ') : undefined
+
 export const FEATURED_DEFAULTS: FeaturedWeights = {
   dormant: 0.4,
   shelfAge: 0.2,

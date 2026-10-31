@@ -53,6 +53,8 @@ async function run() {
     try {
       const got = await assetCache.warm(path)
       if (got?.fetched) status.fetched++
+      // the resized copies cards ask for (desktop grids pick 640, a 3x phone 960; avatars 320)
+      if (got) for (const w of RESIZED.find(([re]) => re.test(path))?.[1] ?? []) await assetCache.warmResized(path, w)
       // The scrubber's VTT names its sprite sheet relative to itself.
       if (got && path.includes('/vtt/')) {
         const sprite = (await readFile(got.file, 'utf8')).match(/^([^\s#/]+\.jpg)#/m)?.[1]
@@ -74,6 +76,11 @@ async function run() {
   status = { ...status, running: false, finishedAt: new Date().toISOString() }
   console.log(`warmed assets: ${status.done} checked, ${status.fetched} fetched, ${status.failed} failed`)
 }
+
+const RESIZED: [RegExp, number[]][] = [
+  [/\/screenshot\?/, [640, 960]],
+  [/\/image\?/, [320]],
+]
 
 // "/media/stash/scene/1/screenshot?t=…" -> "/scene/1/screenshot?t=…", the asset cache's key
 const local = (url: string) => url.replace(/^\/media\/stash/, '')

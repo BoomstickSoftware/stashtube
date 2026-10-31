@@ -6,6 +6,7 @@ import { useSearch } from '../lib/api'
 import { duration } from '../lib/format'
 import { Avatar } from './ui'
 import { useClickOutside, useDebounced } from '../lib/hooks'
+import { sized } from '@flix/shared'
 
 type Hit =
   | { kind: 'scene'; id: string; label: string; sub: string; image: string | null }
@@ -113,13 +114,13 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
             >
               {h.kind === 'scene' ? (
                 <span className="aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-raised">
-                  {h.image && <img src={h.image} alt="" className="size-full object-cover" />}
+                  {h.image && <img src={sized(h.image, 320)} alt="" className="size-full object-cover" />}
                 </span>
               ) : h.kind === 'performer' ? (
                 <Avatar src={h.image} name={h.label} className="size-9 shrink-0 rounded-full" />
               ) : h.kind === 'studio' ? (
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white p-1">
-                  {h.image ? <img src={h.image} alt="" className="max-h-full max-w-full object-contain" /> : null}
+                  {h.image ? <img src={sized(h.image, 320)} alt="" className="max-h-full max-w-full object-contain" /> : null}
                 </div>
               ) : (
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-raised text-muted">

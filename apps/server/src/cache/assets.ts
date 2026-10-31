@@ -9,12 +9,15 @@
 //   validator, refetched otherwise. If Stash is unreachable, the stale copy is served.
 // - Stash 404s (e.g. a preview not generated yet) are remembered for `missTtl`, in memory.
 // - Total size capped at `maxBytes`, least recently used first out.
+// - Smaller copies of images (`resized`): made once from the cached original with sharp, as
+//   WebP, and cached under their own key, so a card never downloads a 1920 px screenshot.
 import { createHash, randomUUID } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import sharp from 'sharp'
 import { serveFile } from '../files.ts'
 
 interface Meta {
@@ -49,11 +52,14 @@ type Upstream = (path: string, headers: Record<string, string>) => Promise<Respo
 
 const MISS_RETRIES = [1000, 2000] // ms; see fetchUpstream
 const VERSIONED = /[?&]t=/
+const RESIZE_QUALITY = 72 // WebP; a 640 px screenshot comes to ~30 KB
+const key = (path: string) => createHash('sha256').update(path).digest('hex')
 
 export class AssetCache {
   private index = new Map<string, IndexEntry>()
   private bytes = 0
   private inflight = new Map<string, Promise<Meta | null>>()
+  private resizing = new Map<string, Promise<Meta | null>>()
   private missing = new Map<string, number>()
   private s = { hits: 0, misses: 0, revalidated: 0, refetched: 0, staleServed: 0, notFound: 0, evictions: 0 }
   private ready: Promise<void>
@@ -105,7 +111,7 @@ export class AssetCache {
 
   async serve(path: string, req: Request, cacheControl: string): Promise<Response> {
     await this.ready
-    const k = createHash('sha256').update(path).digest('hex')
+    const k = key(path)
     const miss = this.missing.get(k)
     if (miss && miss > Date.now()) {
       this.s.notFound++
@@ -126,6 +132,28 @@ export class AssetCache {
       await this.remove(k) // metadata without a file: drop it and fetch again
       return this.serve(path, req, cacheControl)
     }
+    return this.send(k, entry, meta, req, cacheControl)
+  }
+
+  // The image at `path`, at most `width` px wide. Anything sharp cannot shrink (not a raster
+  // image, a broken file) is served as the original.
+  async serveResized(path: string, width: number, req: Request, cacheControl: string): Promise<Response> {
+    await this.ready
+    const vpath = `${path}#w=${width}`
+    const k = key(vpath)
+    let meta = await this.readMeta(k)
+    if (meta && this.index.has(k) && (VERSIONED.test(path) || Date.now() - meta.fetchedAt < this.ttl)) {
+      this.s.hits++
+    } else {
+      meta = await this.resize(k, vpath, path, width)
+      if (!meta) return this.serve(path, req, cacheControl)
+    }
+    const entry = this.index.get(k)
+    if (!entry) return this.serve(path, req, cacheControl)
+    return this.send(k, entry, meta, req, cacheControl)
+  }
+
+  private send(k: string, entry: IndexEntry, meta: Meta, req: Request, cacheControl: string): Promise<Response> | Response {
     entry.used = Date.now()
     const headers: Record<string, string> = { 'content-type': meta.type, 'cache-control': cacheControl }
     if (meta.etag) {
@@ -139,7 +167,7 @@ export class AssetCache {
   // the cached file, or null when Stash has nothing there.
   async warm(path: string): Promise<{ file: string; fetched: boolean } | null> {
     await this.ready
-    const k = createHash('sha256').update(path).digest('hex')
+    const k = key(path)
     const miss = this.missing.get(k)
     if (miss && miss > Date.now()) return null
     let meta = await this.readMeta(k)
@@ -159,6 +187,39 @@ export class AssetCache {
     if (!p) {
       p = this.fetchUpstream(k, path, old).finally(() => this.inflight.delete(k))
       this.inflight.set(k, p)
+    }
+    return p
+  }
+
+  // Make sure the `width` copy of an image exists (the nightly warm); false if it cannot be made.
+  async warmResized(path: string, width: number): Promise<boolean> {
+    await this.ready
+    const vpath = `${path}#w=${width}`
+    const k = key(vpath)
+    if (this.index.has(k) && VERSIONED.test(path)) return true
+    return !!(await this.resize(k, vpath, path, width))
+  }
+
+  // One resize per variant at a time; null when the original is missing or not shrinkable.
+  private resize(k: string, vpath: string, path: string, width: number): Promise<Meta | null> {
+    let p = this.resizing.get(k)
+    if (!p) {
+      p = (async () => {
+        const orig = await this.warm(path).catch(() => null)
+        const type = orig && (await this.readMeta(key(path)))?.type
+        if (!orig || !type?.startsWith('image/') || type.includes('svg')) return null
+        try {
+          const buf = await sharp(orig.file).resize({ width, withoutEnlargement: true }).webp({ quality: RESIZE_QUALITY }).toBuffer()
+          const f = this.files(k)
+          await mkdir(f.d, { recursive: true })
+          const tmp = join(f.d, `.${randomUUID()}.tmp`)
+          await writeFile(tmp, buf)
+          return await this.commit(k, tmp, { path: vpath, type: 'image/webp', etag: null, lastModified: null, size: buf.length, fetchedAt: Date.now() })
+        } catch {
+          return null
+        }
+      })().finally(() => this.resizing.delete(k))
+      this.resizing.set(k, p)
     }
     return p
   }
@@ -220,20 +281,24 @@ export class AssetCache {
     await mkdir(f.d, { recursive: true })
     const tmp = join(f.d, `.${randomUUID()}.tmp`)
     await pipeline(Readable.fromWeb(res.body as never), createWriteStream(tmp))
-    const size = (await stat(tmp)).size
-    const meta: Meta = {
+    return this.commit(k, tmp, {
       path,
       type: res.headers.get('content-type') ?? 'application/octet-stream',
       etag: res.headers.get('etag'),
       lastModified: res.headers.get('last-modified'),
-      size,
+      size: (await stat(tmp)).size,
       fetchedAt: Date.now(),
-    }
+    })
+  }
+
+  // A finished download (or resize) in `tmp` becomes the cached file for `k`.
+  private async commit(k: string, tmp: string, meta: Meta): Promise<Meta> {
+    const f = this.files(k)
     const prev = this.index.get(k)
     await rename(tmp, f.bin)
     await writeFile(f.meta, JSON.stringify(meta))
-    this.bytes += size - (prev?.size ?? 0)
-    this.index.set(k, { size, used: Date.now(), meta })
+    this.bytes += meta.size - (prev?.size ?? 0)
+    this.index.set(k, { size: meta.size, used: Date.now(), meta })
     this.missing.delete(k)
     await this.evict()
     return meta

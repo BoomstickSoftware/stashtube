@@ -8,6 +8,7 @@ import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { Button, Chip, Empty, ErrorBox, Spinner } from '../components/ui'
 import { useDuplicates, useFeatures } from '../lib/api'
 import { bytes, duration, resolution } from '../lib/format'
+import { sized } from '@flix/shared'
 
 // Stash's perceptual-hash duplicates, side by side. The server names the copy to keep (most
 // pixels, then bit rate, then size, then the one already watched) and pre-selects the rest;
@@ -151,7 +152,7 @@ function CopyCard({ scene: s, keep, selected, canDelete, onToggle }: { scene: Du
     <div className={clsx('overflow-hidden rounded-xl bg-surface ring-1', selected ? 'ring-red-500/60' : keep ? 'ring-emerald-500/50' : 'ring-line')}>
       <Link to="/scene/$id" params={{ id: s.id }} className="block">
         <div className="relative aspect-video bg-raised">
-          {s.screenshot && <img src={s.screenshot} alt="" loading="lazy" className="size-full object-cover" />}
+          {s.screenshot && <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />}
           <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[11px] tabular-nums">{duration(s.durationSec)}</span>
           {keep && <span className="absolute top-1 left-1 rounded bg-emerald-500/90 px-1.5 text-[11px] font-semibold text-black">Keep</span>}
         </div>

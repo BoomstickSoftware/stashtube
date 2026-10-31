@@ -10,6 +10,8 @@ import { Avatar, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/
 import { useDebounced } from '../lib/hooks'
 import { useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useSettings, useStudios, useTagTiles, useUpdateSettings } from '../lib/api'
+import { sized, srcSet } from '@flix/shared'
+import { CARD_SIZES } from '../lib/media'
 
 function Filter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -71,7 +73,7 @@ export function Performers(): JSX.Element {
           {items.map((p) => (
             <Link key={p.id} to="/performer/$id" params={{ id: p.id }} className="group">
               <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/5">
-                <Avatar src={p.image} name={p.name} className="aspect-[3/4] w-full object-top text-4xl transition-transform duration-500 group-hover:scale-105" />
+                <Avatar src={p.image} name={p.name} sizes="(min-width: 640px) 20vw, 50vw" className="aspect-[3/4] w-full object-top text-4xl transition-transform duration-500 group-hover:scale-105" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 pt-10">
                   <div className="truncate font-semibold">{p.name}</div>
                   <div className="flex items-center gap-2 text-xs text-white/70">
@@ -328,7 +330,7 @@ function StudioTable({
         <div key={s.id} className={clsx(cols, 'border-b border-line/50 px-3 py-1.5 last:border-0 hover:bg-raised')}>
           <Link to="/studio/$id" params={{ id: s.id }} className="flex h-9 items-center justify-center sm:h-11">
             {s.image ? (
-              <img src={s.image} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
+              <img src={sized(s.image, 320)} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
             ) : (
               <Building2 size={18} className="text-muted" />
             )}
@@ -373,7 +375,7 @@ function StudioTile({ s, label, showParent }: { s: StudioCard; label?: string; s
     >
       <div className="flex aspect-[2/1] items-center justify-center rounded-xl p-4">
         {s.image ? (
-          <img src={s.image} alt={s.name} loading="lazy" className="max-h-full max-w-full object-contain" />
+          <img src={sized(s.image, 320)} alt={s.name} loading="lazy" className="max-h-full max-w-full object-contain" />
         ) : (
           <span className="text-center text-lg font-black break-words">{s.name}</span>
         )}
@@ -464,7 +466,9 @@ function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin
     >
       {tile.image && (
         <img
-          src={tile.image}
+          src={sized(tile.image, 640)}
+          srcSet={srcSet(tile.image)}
+          sizes={CARD_SIZES}
           alt=""
           loading="lazy"
           className="absolute inset-0 size-full object-cover opacity-70 transition duration-500 group-hover:scale-105 group-hover:opacity-90"

@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { Star } from 'lucide-react'
 import { useToast } from '../lib/toast'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { sized, srcSet } from '@flix/shared'
 
 // An on/off control. `size` md is the default; sm sits inline with small text.
 export function Switch({ on, onChange, disabled, size = 'md', className }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; size?: 'sm' | 'md'; className?: string }) {
@@ -157,7 +158,8 @@ export function Empty({ children }: { children: ReactNode }) {
   return <div className="py-24 text-center text-muted">{children}</div>
 }
 
-export function Avatar({ src, name, className }: { src?: string | null; name: string; className?: string }) {
+// `sizes` (how wide it shows) lets the browser pick a resized copy; without it, a small one.
+export function Avatar({ src, name, className, sizes }: { src?: string | null; name: string; className?: string; sizes?: string }) {
   const [broken, setBroken] = useState(false)
   if (!src || broken) {
     return (
@@ -166,7 +168,16 @@ export function Avatar({ src, name, className }: { src?: string | null; name: st
       </div>
     )
   }
-  return <img src={src} alt={name} loading="lazy" onError={() => setBroken(true)} className={clsx('object-cover', className)} />
+  return (
+    <img
+      src={sized(src, 320)}
+      srcSet={sizes ? srcSet(src) : undefined}
+      sizes={sizes}
+      alt={name}
+      loading="lazy"
+      onError={() => setBroken(true)} className={clsx('object-cover', className)}
+    />
+  )
 }
 
 // One toast at a time, bottom of the screen (above the tab bar on phones); see lib/toast.

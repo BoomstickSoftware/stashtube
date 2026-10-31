@@ -9,6 +9,8 @@ import { FavoriteSceneButton, PlaylistMenu } from './PlaylistMenu'
 import { CardMenu } from './CardMenu'
 import { PreviewVideo } from './PreviewVideo'
 import { SpriteThumb } from './SpriteThumb'
+import { sized, srcSet } from '@flix/shared'
+import { CARD_SIZES } from '../lib/media'
 
 const HOVER_DELAY = 350
 const SCRUB_REST = 700 // ms the mouse rests before the scrubbed frame gives way to the preview clip again
@@ -164,7 +166,9 @@ export function SceneCard({
           </span>
         )}
         <img
-          src={scene.screenshot}
+          src={sized(scene.screenshot, 640)}
+          srcSet={srcSet(scene.screenshot)}
+          sizes={CARD_SIZES}
           alt=""
           loading="lazy"
           decoding="async"
@@ -221,7 +225,7 @@ export function SceneCard({
           <Link to="/studio/$id" params={{ id: scene.studio.id }} className="shrink-0">
             <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-white p-1">
               {scene.studio.image ? (
-                <img src={scene.studio.image} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
+                <img src={sized(scene.studio.image, 320)} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
               ) : (
                 <span className="text-xs font-bold text-black">{scene.studio.name[0]}</span>
               )}

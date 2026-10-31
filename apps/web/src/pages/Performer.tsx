@@ -10,6 +10,7 @@ import { Avatar, ErrorBox, Spinner, Stars } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
 import { useFavoritePerformer, usePerformer, useRatePerformer } from '../lib/api'
 import { age, ageAt, date } from '../lib/format'
+import { sized } from '@flix/shared'
 
 const route = getRouteApi('/performer/$id')
 
@@ -30,10 +31,10 @@ export function PerformerPage(): JSX.Element {
   return (
     <div>
       <section className="relative -mx-4 -mt-6 mb-6 overflow-hidden sm:-mx-6">
-        {p.image && <img src={p.image} alt="" className="absolute inset-0 size-full scale-125 object-cover opacity-30 blur-3xl" />}
+        {p.image && <img src={sized(p.image, 320)} alt="" className="absolute inset-0 size-full scale-125 object-cover opacity-30 blur-3xl" />}
         <div className="absolute inset-0 bg-gradient-to-t from-bg to-bg/30" />
         <div className="relative mx-auto flex max-w-[1920px] flex-col gap-6 px-4 py-8 sm:flex-row sm:items-end sm:px-6">
-          <Avatar src={p.image} name={p.name} className="aspect-[3/4] w-40 shrink-0 rounded-2xl object-top shadow-2xl ring-1 ring-white/10 sm:w-52" />
+          <Avatar src={p.image} name={p.name} sizes="208px" className="aspect-[3/4] w-40 shrink-0 rounded-2xl object-top shadow-2xl ring-1 ring-white/10 sm:w-52" />
           <div className="min-w-0 flex-1">
             <h1 className="text-3xl font-black tracking-tight sm:text-5xl">{p.name}</h1>
             {p.disambiguation && <div className="mt-1 text-muted">{p.disambiguation}</div>}

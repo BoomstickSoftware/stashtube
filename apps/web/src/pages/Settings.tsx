@@ -14,6 +14,7 @@ import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
+import { sized } from '@flix/shared'
 
 export function Settings(): JSX.Element {
   const { data } = useBlocklist()
@@ -157,7 +158,7 @@ function HiddenSetting() {
         {data.map((s) => (
           <li key={s.id} className="flex items-center gap-3 p-2">
             <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
-              <img src={s.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+              <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
             </Link>
             <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{s.title}</div>

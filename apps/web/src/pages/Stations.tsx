@@ -10,6 +10,8 @@ import { useMediaQuery } from '../lib/hooks'
 import { previewFor, useStationMutations, useStationPreviews, useStationResumes, useStations } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { stationKey } from '../lib/station'
+import { sized, srcSet } from '@flix/shared'
+import { CARD_SIZES } from '../lib/media'
 
 // Ready-made stations: one tap, nothing to set up.
 const quick: { name: string; query: SceneQuery; icon: typeof Radio }[] = [
@@ -117,7 +119,9 @@ function Preview({
           (k === at || k === (at + 1) % covers.length) && (
             <img
               key={src}
-              src={src}
+              src={sized(src, 640)}
+              srcSet={srcSet(src)}
+              sizes={CARD_SIZES}
               alt=""
               className={clsx(
                 'absolute inset-0 size-full object-cover transition-[opacity,scale] duration-1000 ease-in-out group-hover:scale-[1.03]',

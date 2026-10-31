@@ -53,6 +53,7 @@ import {
   stationQuery,
   windows,
 } from '../lib/station'
+import { sized } from '@flix/shared'
 
 const route = getRouteApi('/station')
 const FADE_MS = 700
@@ -751,7 +752,7 @@ function StationList({
       )}
     >
       <span className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-white/5">
-        <img src={s.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+        <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
         <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[10px] font-semibold tabular-nums">{fmt(s.durationSec)}</span>
       </span>
       <span className="min-w-0 flex-1">

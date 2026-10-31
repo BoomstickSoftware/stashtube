@@ -1,6 +1,7 @@
 // Media endpoints. The browser never talks to Stash: generated assets come from the disk
 // cache (filled from Stash with the API key), transcodes are proxied, and original files
 // are served straight from the NFS mount when MEDIA_PATH_MAP resolves them.
+import { IMAGE_WIDTHS } from '@flix/shared'
 import { Hono } from 'hono'
 import { stat } from 'node:fs/promises'
 import { AssetCache } from './cache/assets.ts'
@@ -20,6 +21,7 @@ export const assetCache = new AssetCache({
 
 const ALLOWED = /^\/(scene|performer|studio|tag|group)\//
 const STREAM = /^\/scene\/\d+\/stream/
+const WIDTHS = new Set<number>(IMAGE_WIDTHS)
 const PASS_REQUEST = ['range', 'if-none-match', 'if-modified-since']
 const PASS_RESPONSE = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified']
 
@@ -71,6 +73,11 @@ media.get('/stash/*', async (c) => {
   // ?t= is Stash's version stamp (screenshots, images), so those URLs never change content.
   // Previews and sprites change only if Stash regenerates them.
   const cacheControl = url.searchParams.has('t') ? 'private, max-age=31536000, immutable' : 'private, max-age=604800'
+  // ?w= asks for a smaller copy of an image (flix's own parameter, never sent to Stash); only
+  // a few widths, so the cache holds a bounded number of copies.
+  const w = Number(url.searchParams.get('w'))
+  url.searchParams.delete('w')
+  if (WIDTHS.has(w)) return assetCache.serveResized(path + url.search, w, c.req.raw, cacheControl)
   return assetCache.serve(path + url.search, c.req.raw, cacheControl)
 })
 

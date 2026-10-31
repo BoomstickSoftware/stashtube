@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
+import sharp from 'sharp'
 import { AssetCache } from './assets.ts'
 
 // A Stash that answers from a table; `calls` records what reached it.
@@ -92,5 +93,28 @@ describe('AssetCache', () => {
       for (const p of ['/a?t=1', '/b?t=1', '/c?t=1']) await (await c.serve(p, get('/x'), 'public')).text()
       assert.ok(c.stats().evictions >= 1)
       assert.ok(c.stats().bytes <= 150)
+    }))
+
+  it('makes a smaller WebP copy of an image once, and serves anything else as it is', () =>
+    withDir(async (dir) => {
+      const jpeg = await sharp({ create: { width: 1920, height: 1080, channels: 3, background: '#357' } }).jpeg().toBuffer()
+      const calls: string[] = []
+      const upstream = async (path: string) => {
+        calls.push(path)
+        if (path.startsWith('/scene/1/')) return new Response(new Uint8Array(jpeg), { headers: { 'content-type': 'image/jpeg' } })
+        return new Response('WEBVTT', { headers: { 'content-type': 'text/vtt' } })
+      }
+      const c = new AssetCache({ dir, ttl: 1000, missTtl: 1000, maxBytes: 1 << 24, upstream })
+      const small = await c.serveResized('/scene/1/screenshot?t=1', 640, get('/x'), 'public')
+      assert.equal(small.headers.get('content-type'), 'image/webp')
+      const img = sharp(Buffer.from(await small.arrayBuffer()))
+      assert.equal((await img.metadata()).width, 640)
+      await (await c.serveResized('/scene/1/screenshot?t=1', 640, get('/x'), 'public')).arrayBuffer()
+      const full = await c.serve('/scene/1/screenshot?t=1', get('/x'), 'public')
+      assert.equal(full.headers.get('content-type'), 'image/jpeg')
+      await full.arrayBuffer()
+      assert.equal(calls.length, 1) // the original was fetched once, for both
+      const vtt = await c.serveResized('/scene/1_thumbs.vtt', 640, get('/x'), 'public')
+      assert.equal(await vtt.text(), 'WEBVTT')
     }))
 })

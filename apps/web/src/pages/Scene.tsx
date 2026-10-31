@@ -17,6 +17,7 @@ import { nowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
+import { sized } from '@flix/shared'
 
 const route = getRouteApi('/scene/$id')
 
@@ -95,7 +96,7 @@ function SceneView({ id }: { id: string }) {
         <div className="absolute inset-0 z-[35] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="w-80 max-w-[90%] text-center">
             <div className="text-sm text-muted">Up next in {countdown}</div>
-            <img src={next.screenshot} alt="" className="mt-3 hidden aspect-video w-full rounded-xl object-cover sm:block" />
+            <img src={sized(next.screenshot, 640)} alt="" className="mt-3 hidden aspect-video w-full rounded-xl object-cover sm:block" />
             <div className="mt-3 line-clamp-2 font-semibold">{next.title}</div>
             <div className="mt-4 flex justify-center gap-2">
               <button onClick={() => setCountdown(null)} className="rounded-full bg-raised px-5 py-2 text-sm hover:bg-line">
@@ -121,7 +122,7 @@ function SceneView({ id }: { id: string }) {
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/studio/$id" params={{ id: scene.studio.id }} className="flex min-w-0 items-center gap-2.5">
               <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1">
-                {scene.studio.image && <img src={scene.studio.image} alt="" className="max-h-full max-w-full object-contain" />}
+                {scene.studio.image && <img src={sized(scene.studio.image, 320)} alt="" className="max-h-full max-w-full object-contain" />}
               </div>
               <div className="font-semibold break-words hover:text-accent">{scene.studio.name}</div>
             </Link>
@@ -318,7 +319,7 @@ function UpNextItem({ scene, playlist }: { scene: Scene; playlist?: number }) {
       className="group flex gap-3 rounded-xl p-1 hover:bg-surface"
     >
       <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg bg-surface">
-        <img src={scene.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+        <img src={sized(scene.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
         <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(scene.durationSec)}</span>
         {scene.resumeTime > 0 && (
           <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20">

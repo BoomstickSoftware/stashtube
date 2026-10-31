@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { Button, Empty, ErrorBox, Spinner } from '../components/ui'
 import { usePlaylist, usePlaylistMutations, usePlaylists } from '../lib/api'
 import { ago, duration } from '../lib/format'
+import { sized, srcSet } from '@flix/shared'
+import { CARD_SIZES } from '../lib/media'
 
 export function Playlists(): JSX.Element {
   const { data, error, isLoading } = usePlaylists()
@@ -45,7 +47,7 @@ export function Playlists(): JSX.Element {
             <Link key={p.id} to="/playlist/$id" params={{ id: String(p.id) }} className="group">
               <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
                 {p.cover ? (
-                  <img src={p.cover} alt="" className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img src={sized(p.cover, 640)} srcSet={srcSet(p.cover)} sizes={CARD_SIZES} alt="" className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 ) : (
                   <ListVideo size={40} className="absolute inset-0 m-auto text-muted" />
                 )}
@@ -92,7 +94,7 @@ export function PlaylistPage(): JSX.Element {
     <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-accent/30 to-surface p-5">
-          {p.cover && <img src={p.cover} alt="" className="aspect-video w-full rounded-xl object-cover" />}
+          {p.cover && <img src={sized(p.cover, 640)} alt="" className="aspect-video w-full rounded-xl object-cover" />}
           {editing ? (
             <form
               className="mt-4 flex gap-2"
@@ -172,7 +174,7 @@ export function PlaylistPage(): JSX.Element {
               <GripVertical size={16} className="hidden shrink-0 cursor-grab text-muted sm:block" />
               <span className="w-6 shrink-0 text-center text-sm text-muted tabular-nums">{i + 1}</span>
               <Link to="/scene/$id" params={{ id: s.id }} search={{ playlist: id }} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg sm:w-44">
-                <img src={s.screenshot} alt="" loading="lazy" className="size-full object-cover" />
+                <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
                 <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(s.durationSec)}</span>
               </Link>
               <div className="min-w-0 flex-1">

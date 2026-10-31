@@ -13,6 +13,7 @@ import { useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
+import { sized, srcSet } from '@flix/shared'
 
 export function Home(): JSX.Element {
   // One seed per visit: the server's Featured row (and so the hero) keeps its order while
@@ -114,7 +115,7 @@ function ResumeCard({ resume: r }: { resume: StationResume }) {
   return (
     <Link to="/station" search={{ ...search, start: 'resume' }} className="group w-[62vw] shrink-0 snap-start sm:w-[260px]">
       <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
-        <img src={r.scene.screenshot} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        <img src={sized(r.scene.screenshot, 640)} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         <span className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
           <span className="flex size-12 items-center justify-center rounded-full bg-white/90 text-black shadow-xl">
             <Play size={20} className="ml-0.5 fill-current" />
@@ -164,7 +165,7 @@ function Hero({ scene, count, onStep }: { scene: SceneCard; count: number; onSte
       onPointerCancel={() => (swipe.current = null)}
     >
       <div key={scene.id} className="animate-fade-in">
-        <img src={scene.screenshot} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" />
+        <img src={sized(scene.screenshot, 320)} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-2xl" />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-transparent" />
         <div className="relative mx-auto grid max-w-[1920px] grid-cols-1 items-center gap-6 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:py-12">
           {/* Sized by the viewport, not the title next to it: 16:9, no taller than ~half the
@@ -328,7 +329,7 @@ function HeroMedia({ scene, onPreview }: { scene: SceneCard; onPreview: (on: boo
       }}
       className="group relative block aspect-video w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
     >
-      <img src={scene.screenshot} alt="" className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
+      <img src={sized(scene.screenshot, 960)} srcSet={srcSet(scene.screenshot)} sizes="(min-width: 768px) 55vw, 100vw" alt="" className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
       {hovering && scene.preview && <PreviewVideo src={scene.preview} ready={ready} onReady={() => setReady(true)} className="duration-300" />}
     </Link>
   )
