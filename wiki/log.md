@@ -82,3 +82,7 @@ from the run page; tea cannot read logs on this Forgejo → [[trivy-db-download-
 Re-run failed the same way; every default registry crawled from this ISP while Docker Hub did
 131 MB in 33 s → deploy.yml changed; [[trivy-db-download-timed-out]] rewritten with the
 measurements, [[forgejo-ci]].
+
+## [2026-10-31] ingest | aed32a9 live: mini-player links + diagnostics, trivy from Docker Hub
+Run 81 passed with the new scan step (29 min on a slow evening); deploy-check 9/9. The phone's
+Diagnostics copy after a tap on Expand is the next evidence → [[mini-player]], [[diagnostics]].

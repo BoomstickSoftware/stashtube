@@ -37,6 +37,9 @@ covers the download. Docker Hub's anonymous pull limit (100 per 6 h per IP) is f
 reach with the cache. To re-run a failed job by hand: Forgejo → the run → **Re-run all
 jobs**, then `TIMEOUT=1200 node scripts/deploy-check.mjs`.
 
+Outcome: run 81 (aed32a9, the fix itself) passed first time, 29 min end to end on that
+evening's network (job set-up alone 5 min); the next runs fill and then reuse `trivy-cache`.
+
 ## Reading the log
 
 `tea actions runs logs <id>` fails on Forgejo 15.0.10 (`/actions/runs/<id>/jobs` is 404), and
