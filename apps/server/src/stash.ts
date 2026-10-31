@@ -551,14 +551,16 @@ export async function findDuplicateScenes(distance: number, durationDiff: number
   )
 }
 
-export async function findScenesByIds(sceneIds: string[]): Promise<SceneCard[]> {
+// `blocked`: leave out what the blocklist and "Not interested" exclude (station resume points).
+export async function findScenesByIds(sceneIds: string[], blocked?: Exclusions): Promise<SceneCard[]> {
   if (!sceneIds.length) return []
   const d = await query<Pick<Query, 'findScenes'>>(
-    `query($ids: [ID!]) { findScenes(ids: $ids) { scenes { ${SCENE_CARD} } } }`,
+    `query($ids: [ID!]) { findScenes(ids: $ids) { scenes { ${SCENE_CARD} ${blocked ? BLOCK_FIELDS : ''} } } }`,
     { ids: sceneIds },
     ['scene'],
   )
-  const byId = new Map<string, SceneCard>(d.findScenes.scenes.map((s) => [s.id, toSceneCard(s)]))
+  const scenes = blocked ? d.findScenes.scenes.filter((s) => !isBlocked(s, blocked)) : d.findScenes.scenes
+  const byId = new Map<string, SceneCard>(scenes.map((s) => [s.id, toSceneCard(s)]))
   return sceneIds.map((id) => byId.get(id)).filter((s): s is SceneCard => !!s)
 }
 
@@ -1015,17 +1017,31 @@ async function activityScenes(): Promise<Scene[]> {
         play_count: { value: 0, modifier: GREATER_THAN },
         OR: { rating100: { value: 0, modifier: GREATER_THAN }, OR: { o_counter: { value: 0, modifier: GREATER_THAN } } }
       }
-    ) { scenes { ${SCENE_CARD} play_duration play_history performers { gender } tags { id name scene_count } } } }`,
+    ) { scenes { ${SCENE_CARD} ${BLOCK_FIELDS} play_duration play_history performers { gender } tags { id name scene_count } } } }`,
     {},
     ['scene', 'activity:play'],
   )
   return d.findScenes.scenes
 }
 
+// The fields isBlocked reads, for queries that apply the blocklist after the fact.
+const BLOCK_FIELDS = 'tags { id } performers { id } studio { id parent_studio { id } }'
+
+// Does the blocklist (or "Not interested") exclude this scene? For results Stash cannot
+// filter: what was watched, a station's resume points. Age and ethnicity defaults are not
+// applied here; they shape what lists offer, not what you already watched.
+export function isBlocked(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, ex: Pick<Exclusions, 'tags' | 'performers' | 'studios'>): boolean {
+  return (
+    (s.tags ?? []).some((t) => ex.tags.includes(t.id)) ||
+    (s.performers ?? []).some((p) => ex.performers.includes(p.id)) ||
+    [s.studio?.id, s.studio?.parent_studio?.id].some((id) => id != null && ex.studios.includes(id))
+  )
+}
+
 const weight = (s: Scene) => (s.play_count ?? 0) + 2 * (s.o_counter ?? 0) + (s.rating100 ? (s.rating100 / 20 - 3) * 1.5 : 0)
 
-export async function history(limit = 300): Promise<HistoryEntry[]> {
-  const scenes = await activityScenes()
+export async function history(limit = 300, blocked?: Exclusions): Promise<HistoryEntry[]> {
+  const scenes = (await activityScenes()).filter((s) => !blocked || !isBlocked(s, blocked))
   const out: HistoryEntry[] = []
   for (const s of scenes) {
     const card = toSceneCard(s)
@@ -1039,8 +1055,8 @@ export async function removeFromHistory(id: string) {
   await mutate(`mutation($id: ID!) { sceneResetActivity(id: $id, reset_resume: true, reset_duration: true) }`, { id }, ['scene'])
 }
 
-export async function stats(showGender: (g: string | null) => boolean): Promise<Stats> {
-  const scenes = await activityScenes()
+export async function stats(showGender: (g: string | null) => boolean, blocked?: Exclusions): Promise<Stats> {
+  const scenes = (await activityScenes()).filter((s) => !blocked || !isBlocked(s, blocked))
   const tally = () => new Map<string, { ref: Ref; plays: number }>()
   const perf = tally()
   const studios = tally()

@@ -55,11 +55,14 @@ const sceneQuery = z.object({
   ethnicities: z.string().max(200).regex(/^[A-Za-z ,]*$/).optional(),
 }) satisfies z.ZodType<SceneQuery>
 
-const people = z.object({
-  minAge: z.number().int().min(18).max(99).optional(),
-  maxAge: z.number().int().min(18).max(99).optional(),
-  ethnicities: z.array(z.string().max(40)).max(20).optional(),
-})
+const people = z
+  .object({
+    minAge: z.number().int().min(18).max(99).optional(),
+    maxAge: z.number().int().min(18).max(99).optional(),
+    ethnicities: z.array(z.string().max(40)).max(20).optional(),
+  })
+  // a reversed range would be saved and applied to every list, emptying the library
+  .refine((p) => p.minAge == null || p.maxAge == null || p.minAge <= p.maxAge, { message: 'minimum age is above the maximum' })
 
 const listQuery = z.object({
   q: z.string().max(200).optional(),
@@ -69,6 +72,7 @@ const listQuery = z.object({
   perPage: z.coerce.number().int().min(1).max(1000).optional(),
   seed: num,
   favorites: flag,
+  unblocked: flag,
   gender: z.enum(['women', 'men', 'all']).optional(), // performers only; default from settings
 })
 
@@ -161,7 +165,7 @@ api.post('/featured/preview', async (c) => {
 
 // Related videos of the last one played, unwatched ones first.
 async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>): Promise<HomeRow | null> {
-  const last = (await stash.history(1))[0]?.scene
+  const last = (await stash.history(1, blocked))[0]?.scene
   if (!last) return null
   const r = await stash.getScene(last.id)
   if (!r) return null
@@ -294,14 +298,14 @@ api.delete('/stations/:id', async (c) => {
 
 // --- history and stats -------------------------------------------------------------
 
-api.get('/history', async (c) => c.json(await stash.history()))
+api.get('/history', async (c) => c.json(await stash.history(undefined, await exclusions())))
 api.delete('/history/:id', async (c) => {
   await stash.removeFromHistory(sceneId(c.req.param('id')))
   return c.body(null, 204)
 })
 api.get('/stats', async (c) => {
   const g = (await getSettings()).performerGender
-  return c.json(await stash.stats((x) => genderAllows(g, x)))
+  return c.json(await stash.stats((x) => genderAllows(g, x), await exclusions()))
 })
 
 api.get('/scenes/:id', async (c) => {
@@ -444,7 +448,7 @@ api.get('/tags', async (c) => {
   const perPage = q.perPage ?? 200
   const r = await stash.findTags(
     stash.findFilter({ ...q, sort: q.sort ?? 'scenes_count', dir: q.dir ?? (q.sort === 'name' ? 'asc' : 'desc'), page, perPage }),
-    c.req.query('unblocked') ? { tags: [], performers: [], studios: [] } : await exclusions(),
+    q.unblocked ? { tags: [], performers: [], studios: [] } : await exclusions(),
   )
   return c.json({ ...r, page, perPage })
 })
@@ -501,9 +505,9 @@ api.put('/settings', async (c) => {
 // Seconds to skip at the start of this studio's videos; null clears it.
 api.put('/studios/:id/intro', async (c) => {
   const { seconds } = parse(z.object({ seconds: z.number().min(0).max(600).nullable() }), await c.req.json())
-  const id = c.req.param('id')
+  const id = parse(z.string().regex(/^\d+$/), c.req.param('id')) // a studio id, not any key
   const skip = { ...(await getSettings()).introSkip }
-  if (seconds) skip[id] = Math.round(seconds)
+  if (seconds && Math.round(seconds) > 0) skip[id] = Math.round(seconds)
   else delete skip[id]
   await setSetting('introSkip', skip)
   return c.json(await getSettings())

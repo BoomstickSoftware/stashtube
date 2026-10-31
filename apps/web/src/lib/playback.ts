@@ -8,6 +8,8 @@ import { isPrivate } from './privacy'
 
 export const COUNT_PLAY_AFTER = 20 // seconds watched before a video counts as played
 const SAVE_EVERY = 15 // seconds of playback between activity saves
+const FINISHED_AT = 0.95 // past this share of the video it counts as finished: no resume point
+const RESUME_AFTER = 30 // seconds in before a resume point is kept
 
 const isHls = (src: string) => /\.m3u8(\?|$)/.test(src)
 
@@ -85,8 +87,11 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
       const v = video.current
       if (isPrivate()) s.unsaved = 0 // watched in private: forgotten, not saved later
       if (!v || !s.id || !opts.current.resume || s.unsaved < 1) return
-      const end = v.duration && v.currentTime > v.duration - 15
-      saveActivity(s.id, end ? 0 : v.currentTime, s.unsaved).catch(() => {})
+      // No resume point once it is all but over (end credits) or before it has really begun:
+      // either way it would only sit in Continue watching.
+      const t = v.currentTime
+      const finished = v.duration && (t > v.duration - 15 || t > v.duration * FINISHED_AT)
+      saveActivity(s.id, finished || t < RESUME_AFTER ? 0 : t, s.unsaved).catch(() => {})
       s.unsaved = 0
     }
     const onTimeUpdate = () => {

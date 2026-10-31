@@ -101,7 +101,7 @@ const KEEP_RESUMES = 50
 export async function listResume(): Promise<StationResume[]> {
   const rows = await db.select().from(stationResume).orderBy(desc(stationResume.updatedAt))
   const [scenes, names] = await Promise.all([
-    stash.findScenesByIds(rows.map((r) => r.sceneId)).then((all) => new Map(all.map((s) => [s.id, s]))),
+    exclusions().then((ex) => stash.findScenesByIds(rows.map((r) => r.sceneId), ex)).then((all) => new Map(all.map((s) => [s.id, s]))),
     resumeNames(rows.map((r) => r.key)),
   ])
   return rows.flatMap((r) => {

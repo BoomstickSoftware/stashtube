@@ -3,7 +3,7 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked } from './stash.ts'
 
 const none: Exclusions = { tags: [], performers: [], studios: [] }
 
@@ -86,4 +86,16 @@ describe('findFilter', () => {
     assert.deepEqual(findFilter({ sort: 'random', seed: 42 }), { q: undefined, sort: 'random_42', direction: 'DESC', page: 1, per_page: 40 })
     assert.equal(findFilter({ sort: 'date', dir: 'asc', page: 3, perPage: 10 }).direction, 'ASC')
   })
+
+describe('isBlocked', () => {
+  const ex = { tags: ['9'], performers: ['8'], studios: ['7'] }
+  const scene = (o: object) => ({ tags: [], performers: [], studio: null, ...o }) as Parameters<typeof isBlocked>[0]
+  it('excludes by tag, performer, studio and the studio\'s parent', () => {
+    assert.equal(isBlocked(scene({ tags: [{ id: '9' }] }), ex), true)
+    assert.equal(isBlocked(scene({ performers: [{ id: '1' }, { id: '8' }] }), ex), true)
+    assert.equal(isBlocked(scene({ studio: { id: '7' } }), ex), true)
+    assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '7' } } }), ex), true)
+    assert.equal(isBlocked(scene({ tags: [{ id: '1' }], performers: [{ id: '2' }], studio: { id: '3' } }), ex), false)
+  })
+})
 })
