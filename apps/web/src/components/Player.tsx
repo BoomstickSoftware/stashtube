@@ -25,7 +25,7 @@ import { useAddO, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import type { Status } from '../lib/nowPlaying'
-import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
+import { At, attachSource, createClock, nextMarker, useClock, useFlash, usePassed, usePlayerKeys, useWatchAccounting, type Clock } from '../lib/playback'
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekBarHandle, type SeekPoint } from './SeekBar'
@@ -161,8 +161,7 @@ export function Player({
   const hintCounted = useRef(false)
   const introSkip = scene.studio ? settings?.introSkip[scene.studio.id] : undefined
   const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(0)
-  const [buffered, setBuffered] = useState(0)
+  const [clock] = useState(createClock) // time and buffered live outside state: see useClock
   const [dur, setDur] = useState(scene.durationSec)
   const [volume, setVolume] = useStored('flix.volume', asNumber(1))
   const [muted, setMuted] = useState(false)
@@ -172,6 +171,7 @@ export function Player({
   const [waiting, setWaiting] = useState(false)
   const [point, setPoint] = useState<SeekPoint | null>(null) // the seek bar is hovered or dragged
   const touch = useMediaQuery('(pointer: coarse)')
+  const started = usePassed(clock, 3, touch && !mini && hintEligible && !hintDone) // the hint waits for playback to begin
   // A phone turned sideways: the player fills the screen with its own controls (iPhone
   // Safari cannot make anything but a bare <video> fullscreen).
   const landscapePhone = useMediaQuery('(orientation: landscape) and (pointer: coarse) and (max-height: 520px)')
@@ -256,8 +256,7 @@ export function Player({
 
   const onTimeUpdate = () => {
     const v = video.current!
-    setTime(v.currentTime)
-    if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1))
+    clock.set(v.currentTime, v.buffered.length ? v.buffered.end(v.buffered.length - 1) : undefined)
     accountTime()
     report()
   }
@@ -501,12 +500,11 @@ export function Player({
 
   const seekTo = (t: number) => {
     video.current!.currentTime = t
-    setTime(t)
+    clock.set(t)
     poke()
   }
   useImperativeHandle(ref, () => ({ seek: seekTo, time: () => video.current?.currentTime ?? 0, toggle }))
 
-  const shownTime = point?.scrubbing ? point.t : time
   const showControls = !playing || !idle || point !== null || menu
   const centre = showControls && !waiting && !point?.scrubbing // out of the way of a scrub's preview
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
@@ -517,11 +515,11 @@ export function Player({
         <button
           onClick={() => {
             setMenu(false)
-            markAt(time)
+            markAt(clock.get().time)
           }}
           className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
         >
-          <Bookmark size={15} /> Mark this moment ({fmt(time)})
+          <Bookmark size={15} /> Mark this moment (<At clock={clock}>{fmt}</At>)
         </button>
         {/* speed lives here on narrow screens, where the bar has no room for it */}
         <div className="flex items-center gap-1 px-3 py-1.5 sm:hidden">
@@ -557,13 +555,14 @@ export function Player({
             </div>
             <button
               onClick={() => {
+                const time = clock.get().time
                 setIntro.mutate({ studioId: scene.studio!.id, seconds: Math.round(time) })
                 setMenu(false)
                 setFlash(`Intro skip set: ${fmt(time)}`)
               }}
               className="w-full px-3 py-1.5 text-left hover:bg-white/10"
             >
-              Skip to here on every video ({fmt(time)})
+              Skip to here on every video (<At clock={clock}>{fmt}</At>)
             </button>
             {introSkip ? (
               <button
@@ -672,7 +671,7 @@ export function Player({
       {waiting && !casting && <div className="pointer-events-none absolute inset-0 m-auto size-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />}
       {mini && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
-          <div className="h-full bg-accent" style={{ width: `${dur ? (time / dur) * 100 : 0}%` }} />
+          <At clock={clock}>{(time) => <div className="h-full bg-accent" style={{ width: `${dur ? (time / dur) * 100 : 0}%` }} />}</At>
         </div>
       )}
       {mini ? null : touch ? (
@@ -701,7 +700,7 @@ export function Player({
           </button>
         )
       )}
-      {touch && !mini && hintEligible && !hintDone && showControls && !point && !marked && !waiting && time > 3 && (
+      {touch && !mini && hintEligible && !hintDone && showControls && !point && !marked && !waiting && started && (
         <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[13px] whitespace-nowrap text-white/80 ring-1 ring-white/10 backdrop-blur">
           Hold the picture to mark a moment
         </div>
@@ -767,7 +766,7 @@ export function Player({
             'pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]',
         )}
       >
-        <SeekBar ref={seekBar} dur={dur} time={time} buffered={buffered} markers={scene.markers} vtt={scene.vtt} onSeek={seekTo} onPoint={setPoint} />
+        <SeekBar ref={seekBar} dur={dur} clock={clock} markers={scene.markers} vtt={scene.vtt} onSeek={seekTo} onPoint={setPoint} />
 
         <div className="mt-1 flex items-center gap-1 sm:gap-2">
           <Ctl onClick={toggle} label={playing ? 'Pause (k)' : 'Play (k)'}>
@@ -795,9 +794,7 @@ export function Player({
               className="slim w-0 opacity-0 transition-all group-hover/vol:w-20 group-hover/vol:opacity-100 touch:hidden"
             />
           </div>
-          <span className="ml-1 text-[13px] text-white/90 tabular-nums">
-            {fmt(shownTime)} <span className="text-white/50">/ {fmt(dur)}</span>
-          </span>
+          <TimeReadout clock={clock} dur={dur} point={point} className="ml-1 text-[13px] text-white/90" />
           <span className="ml-auto" />
           {airplay && (
             <Ctl
@@ -904,5 +901,16 @@ function Ctl({ children, onClick, label, className }: { children: React.ReactNod
     <button onClick={onClick} title={label} aria-label={label} className={clsx('flex size-9 items-center justify-center rounded-full text-white hover:bg-white/10', className)}>
       {children}
     </button>
+  )
+}
+
+// "1:23 / 45:00", following the scrub point while the bar is dragged. Its own component so the
+// clock's ticks re-render only this span.
+export function TimeReadout({ clock, dur, point, className }: { clock: Clock; dur: number; point: SeekPoint | null; className?: string }) {
+  const { time } = useClock(clock)
+  return (
+    <span className={clsx('tabular-nums', className)}>
+      {fmt(point?.scrubbing ? point.t : time)} <span className="text-white/50">/ {fmt(dur)}</span>
+    </span>
   )
 }

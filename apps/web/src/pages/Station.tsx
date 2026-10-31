@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TimeReadout } from '../components/Player'
 import { SeekBar, type SeekPoint } from '../components/SeekBar'
 import { Spinner } from '../components/ui'
 import {
@@ -40,7 +41,7 @@ import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { guardWrite, isPrivate } from '../lib/privacy'
 import { useLongPress } from '../lib/hooks'
-import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
+import { attachSource, createClock, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
 import {
   loadPrefs,
   savePrefs,
@@ -129,8 +130,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const [muted, setMuted] = useState(false)
   const [shown, setShown] = useState(true)
   const [segInfo, setSegInfo] = useState<{ i: number; n: number; segs: Segment[] }>({ i: 0, n: 1, segs: [] })
-  const [time, setTime] = useState(0)
-  const [buffered, setBuffered] = useState(0)
+  const [clock] = useState(createClock) // time and buffered live outside state: see useClock
   const [dur, setDur] = useState(0)
   const [point, setPoint] = useState<SeekPoint | null>(null)
   const [flash, setFlash] = useFlash()
@@ -253,8 +253,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     if (!scene || !v) return
     const direct = canDirectPlay(scene.playback) && fallen !== scene.id
     const start = fallen === scene.id ? lastT.current : (segs.current[0]?.start ?? 0)
-    setTime(start)
-    setBuffered(0)
+    clock.set(start, 0)
     setDur(scene.durationSec)
     const onMeta = () => {
       setDur(v.duration || scene.durationSec)
@@ -270,7 +269,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
       detach()
       v.removeEventListener('loadedmetadata', onMeta)
     }
-  }, [scene, fallen, play])
+  }, [scene, fallen, play, clock])
   const onError = () => {
     if (scene && canDirectPlay(scene.playback) && fallen !== scene.id) {
       lastT.current = video.current?.currentTime || lastT.current
@@ -308,8 +307,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     const v = video.current!
     const seg = segs.current[segIdx.current]
     const t = v.currentTime
-    setTime(t)
-    if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1))
+    clock.set(t, v.buffered.length ? v.buffered.end(v.buffered.length - 1) : undefined)
     accountTime()
     if (t > lastT.current && t - lastT.current < 2) sinceSave.current += t - lastT.current
     lastT.current = t
@@ -336,7 +334,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     if (!v || !scene) return
     const to = Math.max(0, Math.min((v.duration || dur) - 0.5, t))
     v.currentTime = to
-    setTime(to)
+    clock.set(to)
     if (prefsRef.current.mode === 'moments') {
       segs.current = segmentsFrom(scene, prefsRef.current, to, skipOf(scene))
       segIdx.current = 0
@@ -425,7 +423,6 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   })
 
   const controlsVisible = shown || state !== 'playing' || point !== null
-  const shownTime = point?.scrubbing ? point.t : time
   const btn = 'flex size-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20 disabled:opacity-40'
   const small = 'flex size-10 items-center justify-center rounded-full text-white hover:bg-white/15 disabled:opacity-40'
   const fav = scene ? favorites.has(scene.id) : false
@@ -579,8 +576,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
               {scene && (
                 <SeekBar
                   dur={dur}
-                  time={time}
-                  buffered={buffered}
+                  clock={clock}
                   markers={markers}
                   vtt={scene.vtt}
                   spans={prefs.mode === 'moments' ? segInfo.segs : undefined}
@@ -589,11 +585,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                 />
               )}
               <div className="mt-1 flex items-center gap-1 text-[13px] text-white/80 tabular-nums">
-                {scene && (
-                  <span>
-                    {fmt(shownTime)} <span className="text-white/50">/ {fmt(dur)}</span>
-                  </span>
-                )}
+                {scene && <TimeReadout clock={clock} dur={dur} point={point} />}
                 <span className="ml-auto" />
                 <button onClick={mark} disabled={!scene} className={small} title="Mark this moment (b)" aria-label="Mark this moment">
                   <Bookmark size={18} />

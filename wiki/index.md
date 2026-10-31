@@ -135,7 +135,7 @@ Pages: 125. Last generated 2026-10-31.
 
 ## History: dated records of rounds and incidents
 
-- [[2026-10-31-ux-phase2-3-web]] — Lazy rows and cards, chunked Categories, a reserved station row, a one-row phone filter bar with a More sheet, a card "⋯" opening the sheet with Save to playlist, Delete moved off the sheet and the action row, the player's gear menu as a sheet, first-use toasts. · _ux, mobile, performance, audit_ · verified 2026-10-31
+- [[2026-10-31-ux-phase2-3-web]] — Lazy rows, cards and category tiles, a one-row phone filter bar with a More sheet, a card "⋯" button and Save to playlist in the card sheet, Delete relocated, the gear menu as a sheet. · _ux, mobile, performance, audit_ · verified 2026-10-31
 - [[2026-10-31-ux-phase0-web]] — Small fixes across twenty web files from the audit's phone, desktop and client findings (landscape header, Pin sheet, 44 px targets, gutters, labels, memoised cards, image sizes, poster, hover cost), verified headless. · _ux, mobile, desktop, performance, audit_ · verified 2026-10-31
 - [[2026-10-31-ux-audit]] — Five auditor agents (server caching, client loading, phone, desktop, information architecture) measured and walked the live app read-only; the findings, the wiki corrections, the scripts they left and the roadmap. · _ux, performance, caching, mobile, desktop, audit_ · verified 2026-10-31
 - [[2026-10-31-shelf-grid-view]] — The shelf on performer and studio pages gained a Row/Grid toggle remembered per browser; Grid loads the next StashDB page as the bottom scrolls into view. · _whisparr, stashdb, performers, studios, ui_ · verified 2026-10-31

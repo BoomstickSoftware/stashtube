@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { duration as fmt } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
-import { groupMarkers, tickLabel, type Tick } from '../lib/playback'
+import { type Clock, groupMarkers, tickLabel, type Tick, useClock } from '../lib/playback'
 import { SpriteThumb } from './SpriteThumb'
 
 type Pos = { t: number }
@@ -33,8 +33,7 @@ const DRAG_SLOP = 8 // px a touch moves before it is a drag rather than a tap
 export function SeekBar({
   ref,
   dur,
-  time,
-  buffered,
+  clock,
   markers,
   vtt,
   spans,
@@ -43,8 +42,7 @@ export function SeekBar({
 }: {
   ref?: Ref<SeekBarHandle>
   dur: number
-  time: number
-  buffered: number
+  clock: Clock // where playback is and how far it is buffered
   markers: Marker[]
   vtt: string | null
   spans?: { start: number; end: number }[]
@@ -52,6 +50,7 @@ export function SeekBar({
   onPoint?: (p: SeekPoint | null) => void // what the bar is pointing at, for the time readout and keeping controls up
 }) {
   const bar = useRef<HTMLDivElement>(null)
+  const { time, buffered } = useClock(clock)
   const [loaded, setLoaded] = useState<{ vtt: string; cues: SpriteCue[] } | null>(null)
   const sprites = loaded && loaded.vtt === vtt ? loaded.cues : []
   const [hover, setHover] = useState<Pos | null>(null) // mouse over the bar

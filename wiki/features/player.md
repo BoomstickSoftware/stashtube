@@ -60,6 +60,11 @@ over" pill for 8 s; Start over honours the studio's intro skip (Settings on the 
   address bar). A swipe that starts on a centre button does not scrub.
 - The seek bar itself: tall hit area, tap to jump, relative drag ([[seek-bar-markers]]);
   hidden controls take no taps. The controls' gradient never takes taps itself.
+- **Where playback is lives outside React state** (since 2026-10-31): `createClock()` in
+  `lib/playback.ts` holds `time` and `buffered`; `timeupdate` writes to it and only the
+  subscribers re-render (the `SeekBar`, the `TimeReadout`, the mini progress line, the gear
+  menu's "(1:23)" labels through `<At>`). Before, each of the ~4 ticks a second re-rendered
+  the whole Player, its menu and every marker tick. The station page uses the same clock.
 - Speed and "Mark this moment" live in the gear menu (no keyboard on a phone). On touch the
   gear menu is a bottom sheet (`Sheet`), not a popover clipped inside the player; in
   fullscreen it stays a popover, since `<body>` is hidden there.

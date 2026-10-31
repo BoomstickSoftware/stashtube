@@ -95,7 +95,7 @@ freshness items in their own initiatives the same day._
 
 ### Phase 2: rendering and layout stability (client, M)
 
-_Shipped 2026-10-31 except the Player's time state (F11) ([[2026-10-31-ux-phase2-3-web]])._
+_Shipped 2026-10-31 ([[2026-10-31-ux-phase2-3-web]]); the Player's time state followed the same day._
 
 - `content-visibility: auto` on cards and rows, or virtualise the grid, so append cost stops
   growing (F1); render Home rows below the fold lazily, or 12 cards per row with "See all"
@@ -103,7 +103,9 @@ _Shipped 2026-10-31 except the Player's time state (F11) ([[2026-10-31-ux-phase2
 - No layout shift: ship station resumes in the home payload or reserve the row's height;
   reserve the wanted shelf's height while it loads, or render it below the grid (F4); entity
   header skeletons with the grid fetching in parallel instead of a spinner (F6, phone 11).
-- `time`/`buffered` out of the Player's state into the SeekBar or an external store (F11).
+- ~~`time`/`buffered` out of the Player's state into the SeekBar or an external store (F11).~~
+  Done: `createClock()` in `lib/playback.ts`, subscribed by the SeekBar, the time readout and
+  the mini progress line ([[player]]).
 
 ### Phase 3: phone flows (M)
 

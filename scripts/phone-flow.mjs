@@ -1,6 +1,6 @@
 // Headless Chrome at iPhone size driven by a list of steps (JSON in env STEPS), modelled on
-// scripts/mobile-check.mjs. Steps: {goto:'/path'}, {tap:'css'}, {tapText:'label'} (button/a/label
-// whose text includes it), {longpress:'css'}, {type:'text'} (into the focused element), {key:'Enter'},
+// scripts/mobile-check.mjs. Steps: {goto:'/path'}, {tap:'css'}, {tapText:'label'} (the first visible
+// button/a/label whose text includes it), {longpress:'css'}, {type:'text'} (into the focused element), {key:'Enter'},
 // {scroll:px}, {scrollTo:'css'}, {wait:ms}, {eval:'expr'}, {shot:'name'}, {full:'name'} (whole page),
 // {standalone:true} (display-mode: standalone), {back:true}, {targets:true} (list controls < 44px).
 // Plays, activity, markers, o, rating, deletes and whisparr gets are blocked, so nothing is recorded.
@@ -62,7 +62,7 @@ await send('Page.enable')
 
 const touch = (type, x, y) => send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] })
 const rectOf = (sel) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return null; el.scrollIntoView({block:'center'}); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height } })()`)
-const rectOfText = (text) => evaluate(`(() => { const els = [...document.querySelectorAll('button, a, label, [role=radio], [role=menuitem], summary')]; const el = els.find(e => (e.innerText||e.getAttribute('aria-label')||'').trim().includes(${JSON.stringify(text)})); if (!el) return null; el.scrollIntoView({block:'center'}); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, tag: el.tagName, text: (el.innerText||el.getAttribute('aria-label')||'').trim().slice(0,40) } })()`)
+const rectOfText = (text) => evaluate(`(() => { const els = [...document.querySelectorAll('button, a, label, [role=radio], [role=menuitem], summary')]; const el = els.find(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && (e.innerText||e.getAttribute('aria-label')||'').trim().includes(${JSON.stringify(text)}) }); if (!el) return null; el.scrollIntoView({block:'center'}); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, tag: el.tagName, text: (el.innerText||el.getAttribute('aria-label')||'').trim().slice(0,40) } })()`)
 const tapAt = async (x, y) => { await touch('touchStart', x, y); await sleep(40); await touch('touchEnd'); }
 const state = () => evaluate(`(() => ({ path: location.pathname + location.search, dialog: !!document.querySelector('[role=dialog],[role=menu]'), title: document.title }))()`)
 const shot = async (name, full) => {

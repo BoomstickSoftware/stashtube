@@ -134,3 +134,8 @@ Lazy rows and cards, chunked Categories, reserved station row, one-row phone fil
 More sheet, card "⋯" and Save to playlist in the sheet, Delete relocated, gear menu as a sheet,
 `components/Sheet.tsx` → [[2026-10-31-ux-phase2-3-web]], [[browse-and-filters]], [[player]],
 [[scene-page]], [[home-feed]], [[mobile-first-ui]].
+
+## [2026-10-31] ingest | Player time out of React state (F11)
+`createClock()` in `lib/playback.ts`; the SeekBar, `TimeReadout`, the mini progress line and the
+gear menu labels subscribe; the station page uses the same clock. `phone-flow`'s `tapText` now
+skips hidden elements → [[player]], [[2026-10-31-ux-phase2-3-web]].

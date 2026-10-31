@@ -2,7 +2,7 @@
 // HLS), telling Stash what was watched, the keyboard guard, marker jumps and the flash label.
 import type { Marker } from '@flix/shared'
 import type Hls from 'hls.js'
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { addPlay, saveActivity } from './api'
 import { isPrivate } from './privacy'
 
@@ -164,4 +164,50 @@ export function usePlayerKeys(handle: (e: KeyboardEvent) => boolean | void, enab
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [enabled])
+}
+
+// Where playback is, outside React state. `timeupdate` fires about four times a second; held
+// as state in the Player or the station page it re-rendered the whole player, its menu and
+// its markers each time. The store changes on every tick, but only the components that
+// subscribe (the seek bar, the time readout, the mini progress line) re-render.
+export interface ClockValue {
+  time: number
+  buffered: number // end of the buffered range, seconds
+}
+export interface Clock {
+  get(): ClockValue
+  set(time: number, buffered?: number): void
+  subscribe(l: () => void): () => void
+}
+export function createClock(): Clock {
+  let value: ClockValue = { time: 0, buffered: 0 }
+  const listeners = new Set<() => void>()
+  return {
+    get: () => value,
+    set(time, buffered = value.buffered) {
+      if (time === value.time && buffered === value.buffered) return
+      value = { time, buffered }
+      listeners.forEach((l) => l())
+    },
+    subscribe(l) {
+      listeners.add(l)
+      return () => listeners.delete(l)
+    },
+  }
+}
+export const useClock = (clock: Clock): ClockValue => useSyncExternalStore(clock.subscribe, clock.get, clock.get)
+// Renders something from the current time, re-rendering only itself as it ticks.
+export function At({ clock, children }: { clock: Clock; children: (time: number) => ReactNode }) {
+  return children(useClock(clock).time)
+}
+// Resolves once playback passes `seconds` (for a one-time hint).
+export function usePassed(clock: Clock, seconds: number, enabled = true): boolean {
+  const [passed, setPassed] = useState(false)
+  useEffect(() => {
+    if (!enabled || passed) return
+    const check = () => clock.get().time > seconds && setPassed(true)
+    check()
+    return clock.subscribe(check)
+  }, [clock, seconds, enabled, passed])
+  return passed
 }
