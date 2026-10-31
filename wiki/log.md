@@ -167,3 +167,10 @@ the Women/Men/Everyone switch decoupled from Home, Stats, search and the People 
 [[caching]], [[whisparr-shelf]], [[whisparr-api]], [[home-feed]], [[stash-layer]],
 [[people-pages]], [[data-model]], [[continue-history-stats]], [[browse-and-filters]],
 [[gender-switch-performers-page-only]], [[roadmap]], [[2026-10-31-ux-phase1-server-caching]].
+## [2026-10-31] ingest | UX audit Phase 4: desktop polish and loading states
+Related sidebar capped at 8 with a "More like this" grid, "Pick up a station" after Featured,
+About as a real button with a deduped Links disclosure, station cover placeholders, directory
+and playlist skeletons (`Bone` in `ui.tsx`), "Filter" chips on touch, `LATENCY` for
+`desktop-check` → [[scene-page]], [[related-videos]], [[home-feed]], [[people-pages]],
+[[stations]], [[playlists-and-favorites]], [[mobile-first-ui]], [[mobile-checks]], [[roadmap]],
+[[2026-10-31-ux-phase4-desktop-polish]].

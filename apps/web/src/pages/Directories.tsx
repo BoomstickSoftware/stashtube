@@ -6,7 +6,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Pin, Search, Star, Table as TableIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { Avatar, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
+import { Avatar, Bone, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
 import { oneOf, useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useStudios, useTagTiles } from '../lib/api'
@@ -23,6 +23,7 @@ function Filter({ value, onChange, placeholder }: { value: string; onChange: (v:
 
 type PerfSearch = { q?: string; sort?: string; favorites?: boolean }
 const perfRoute = getRouteApi('/performers')
+const PERFORMER_GRID = 'grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8'
 
 export function Performers(): JSX.Element {
   const search = perfRoute.useSearch()
@@ -63,11 +64,16 @@ export function Performers(): JSX.Element {
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
-        <Spinner className="mx-auto mt-24" />
+        // the first page's shape: portrait tiles in the same grid, so the page does not jump
+        <div role="status" aria-label="Loading" className={PERFORMER_GRID}>
+          {Array.from({ length: 12 }, (_, i) => (
+            <Bone key={i} className="aspect-[3/4] rounded-2xl" />
+          ))}
+        </div>
       ) : !items.length ? (
         <Empty>No performers.</Empty>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8">
+        <div className={PERFORMER_GRID}>
           {items.map((p) => (
             <Link key={p.id} to="/performer/$id" params={{ id: p.id }} className="group">
               <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/5">
@@ -242,7 +248,26 @@ export function Studios(): JSX.Element {
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
-        <Spinner className="mx-auto mt-24" />
+        view === 'table' ? (
+          <div role="status" aria-label="Loading" className="overflow-hidden rounded-2xl bg-surface ring-1 ring-white/5">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-line/50 px-3 py-1.5 last:border-0">
+                <Bone className="h-9 w-[4.5rem] sm:h-11 sm:w-24" />
+                <Bone className="h-4 w-1/3" />
+                <Bone className="ml-auto h-4 w-10" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div role="status" aria-label="Loading">
+            {view === 'networks' && <Bone className="mb-3 h-7 w-56" />}
+            <StudioGrid>
+              {Array.from({ length: 10 }, (_, i) => (
+                <StudioTileSkeleton key={i} />
+              ))}
+            </StudioGrid>
+          </div>
+        )
       ) : !all.length ? (
         <Empty>{prefs.following ? 'No followed studios.' : 'No studios.'}</Empty>
       ) : view === 'networks' ? (
@@ -368,6 +393,19 @@ function StudioGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6">{children}</div>
 }
 
+// A tile's shape while the list loads: the logo well and the name line.
+function StudioTileSkeleton() {
+  return (
+    <div className="min-w-0 rounded-2xl bg-surface p-3 ring-1 ring-white/5">
+      <Bone className="aspect-[2/1] rounded-xl" />
+      <div className="mt-2.5 flex items-center gap-2 px-1">
+        <Bone className="h-4 w-2/3" />
+        <Bone className="ml-auto h-3 w-6" />
+      </div>
+    </div>
+  )
+}
+
 function StudioTile({ s, label, showParent }: { s: StudioCard; label?: string; showParent?: boolean }) {
   return (
     <Link
@@ -429,7 +467,19 @@ export function Tags(): JSX.Element {
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
-        <Spinner className="mx-auto mt-24" />
+        // the Popular layout's shape: a screen of big tiles, then the compact grid
+        <div role="status" aria-label="Loading">
+          <div className={clsx(BIG_TILE_GRID, 'mb-8')}>
+            {Array.from({ length: 12 }, (_, i) => (
+              <Bone key={i} className="aspect-video rounded-xl" />
+            ))}
+          </div>
+          <div className={SMALL_TILE_GRID}>
+            {Array.from({ length: 16 }, (_, i) => (
+              <Bone key={i} className="aspect-[16/7] rounded-xl" />
+            ))}
+          </div>
+        </div>
       ) : !tiles.length ? (
         <Empty>No tags match.</Empty>
       ) : (
@@ -439,7 +489,7 @@ export function Tags(): JSX.Element {
               <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
                 <Pin size={16} className="fill-accent text-accent" /> Pinned
               </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+              <div className={BIG_TILE_GRID}>
                 {pinned.map((t) => (
                   <TagTileCard key={t.id} tile={t} big onPin={onPin} />
                 ))}
@@ -447,13 +497,13 @@ export function Tags(): JSX.Element {
             </section>
           )}
           {featured.length > 0 && (
-            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+            <div className={clsx(BIG_TILE_GRID, 'mb-8')}>
               {featured.map((t) => (
                 <TagTileCard key={t.id} tile={t} big onPin={onPin} />
               ))}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8">
+          <div className={SMALL_TILE_GRID}>
             {rest.slice(0, shown).map((t) => (
               <TagTileCard key={t.id} tile={t} onPin={onPin} />
             ))}
@@ -466,6 +516,8 @@ export function Tags(): JSX.Element {
 }
 
 const TILE_PAGE = 72
+const BIG_TILE_GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6'
+const SMALL_TILE_GRID = 'grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8'
 
 function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin: (t: TagTile) => void }) {
   return (

@@ -5,7 +5,7 @@ import clsx from 'clsx'
 import { Check, History, Pencil, Play, Plus, Radio, Shuffle, Sparkles, Star, Trash2, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { QuerySummary } from '../components/QuerySummary'
-import { ErrorBox, Spinner } from '../components/ui'
+import { Bone, ErrorBox } from '../components/ui'
 import { useMediaQuery } from '../lib/hooks'
 import { previewFor, useStationMutations, useStationPreviews, useStationResumes, useStations } from '../lib/api'
 import { duration as fmt } from '../lib/format'
@@ -27,7 +27,7 @@ const ROTATE_MS = 4000
 export function Stations(): JSX.Element {
   const { data, error, isLoading } = useStations()
   const { data: resumes } = useStationResumes()
-  const { data: previews } = useStationPreviews(quickQueries)
+  const { data: previews, isPending: previewsPending } = useStationPreviews(quickQueries)
   const resumeFor = (key: string) => resumes?.find((r) => r.key === key)
   return (
     <div className="space-y-10">
@@ -54,7 +54,11 @@ export function Stations(): JSX.Element {
         {error ? (
           <ErrorBox error={error} />
         ) : isLoading ? (
-          <Spinner className="mx-auto my-12" />
+          <div role="status" aria-label="Loading" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: 3 }, (_, i) => (
+              <StationCardSkeleton key={i} />
+            ))}
+          </div>
         ) : !data?.length ? (
           <div className="rounded-2xl bg-surface p-6 text-sm text-muted ring-1 ring-line">
             None saved yet. Choose <b>New station</b>, or open a station and choose <b>Save station</b> next to its name.
@@ -62,7 +66,7 @@ export function Stations(): JSX.Element {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {data.map((s, i) => (
-              <StationCard key={s.id} station={s} preview={previewFor(previews, s)} resume={resumeFor(stationKey(s))} offset={i} />
+              <StationCard key={s.id} station={s} preview={previewFor(previews, s)} pending={previewsPending} resume={resumeFor(stationKey(s))} offset={i} />
             ))}
           </div>
         )}
@@ -72,7 +76,7 @@ export function Stations(): JSX.Element {
         <h2 className="mb-3 text-lg font-bold">Quick start</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {quick.map((q, i) => (
-            <QuickCard key={q.name} {...q} preview={previewFor(previews, q)} resume={resumeFor(stationKey({ query: q.query }))} offset={i + 1} />
+            <QuickCard key={q.name} {...q} preview={previewFor(previews, q)} pending={previewsPending} resume={resumeFor(stationKey({ query: q.query }))} offset={i + 1} />
           ))}
         </div>
       </section>
@@ -80,17 +84,38 @@ export function Stations(): JSX.Element {
   )
 }
 
+// The shape of a saved station's card while the list loads: picture, name, summary, two chips.
+function StationCardSkeleton() {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      <Bone className="aspect-video rounded-none" />
+      <div className="p-3 pb-1">
+        <Bone className="h-5 w-2/3" />
+        <Bone className="mt-2 h-3 w-full" />
+      </div>
+      <div className="flex gap-1.5 px-3 pt-2 pb-3">
+        <Bone className="h-7 w-20 rounded-full" />
+        <Bone className="h-7 w-24 rounded-full" />
+      </div>
+    </div>
+  )
+}
+
 // A station's picture: cycles through screenshots of what it plays, crossfading, with how many
-// videos it has. `offset` staggers the cards so they do not all change at once.
+// videos it has. `offset` staggers the cards so they do not all change at once. Under the
+// pictures sits a neutral block: pulsing until the previews and the first picture have arrived
+// (so the card never paints blank), a still Radio mark when the station has no cover at all.
 function Preview({
   data,
   cover,
+  pending,
   offset,
   className,
   children,
 }: {
   data?: StationPreview
   cover?: string | null
+  pending?: boolean // the previews request is still out
   offset: number
   className?: string
   children?: React.ReactNode
@@ -98,6 +123,7 @@ function Preview({
   const still = useMediaQuery('(prefers-reduced-motion: reduce)')
   const covers = [...new Set([...(cover ? [cover] : []), ...(data?.items.map((s) => s.screenshot) ?? [])])]
   const [i, setI] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     if (still || covers.length < 2) return
     let iv: number | undefined
@@ -111,8 +137,18 @@ function Preview({
     }
   }, [still, covers.length, offset])
   const at = covers.length ? i % covers.length : 0
+  const waiting = !covers.length ? !!pending : !loaded
   return (
-    <div className={clsx('relative overflow-hidden bg-raised', className)}>
+    <div className={clsx('relative overflow-hidden bg-surface', className)}>
+      {waiting ? (
+        <div role="status" aria-label="Loading" className="absolute inset-0 animate-pulse bg-raised motion-reduce:animate-none" />
+      ) : (
+        !covers.length && (
+          <div aria-hidden className="absolute inset-0 flex items-center justify-center text-muted">
+            <Radio size={32} strokeWidth={1.5} />
+          </div>
+        )
+      )}
       {covers.map(
         (src, k) =>
           // the current one and the next (so it has loaded before it fades in)
@@ -123,6 +159,8 @@ function Preview({
               srcSet={srcSet(src)}
               sizes={CARD_SIZES}
               alt=""
+              decoding="async"
+              onLoad={k === at ? () => setLoaded(true) : undefined}
               className={clsx(
                 'absolute inset-0 size-full object-cover transition-[opacity,scale] duration-1000 ease-in-out group-hover:scale-[1.03]',
                 k === at ? 'opacity-100' : 'opacity-0',
@@ -162,7 +200,19 @@ const PlayBadge = () => (
 
 // Tap the picture to pick up where the station was left (or start it); the buttons start a
 // fresh shuffle or only unwatched videos.
-function StationCard({ station: s, preview, resume, offset }: { station: SavedStation; preview?: StationPreview; resume?: StationResume; offset: number }) {
+function StationCard({
+  station: s,
+  preview,
+  pending,
+  resume,
+  offset,
+}: {
+  station: SavedStation
+  preview?: StationPreview
+  pending: boolean
+  resume?: StationResume
+  offset: number
+}) {
   const { update, remove } = useStationMutations()
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -170,7 +220,7 @@ function StationCard({ station: s, preview, resume, offset }: { station: SavedSt
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Link to="/station" search={resume ? { id: s.id, start: 'resume' } : { id: s.id }} className="block">
-        <Preview data={preview} cover={s.cover} offset={offset} className="aspect-video">
+        <Preview data={preview} cover={s.cover} pending={pending} offset={offset} className="aspect-video">
           <PlayBadge />
           <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold backdrop-blur">
             {s.mode === 'moments' ? `Moments · ${s.window}s` : 'Full videos'}
@@ -246,6 +296,7 @@ function QuickCard({
   query,
   icon: Icon,
   preview,
+  pending,
   resume,
   offset,
 }: {
@@ -253,13 +304,14 @@ function QuickCard({
   query: SceneQuery
   icon: typeof Radio
   preview?: StationPreview
+  pending: boolean
   resume?: StationResume
   offset: number
 }) {
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Link to="/station" search={resume ? { ...query, start: 'resume' } : query} className="block">
-        <Preview data={preview} offset={offset} className="aspect-video">
+        <Preview data={preview} pending={pending} offset={offset} className="aspect-video">
           <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
           <span className="absolute bottom-2 left-2 flex min-w-0 items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/90 text-white">

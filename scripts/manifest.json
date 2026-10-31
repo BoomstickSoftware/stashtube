@@ -254,11 +254,13 @@
       "does": "Scenario-driven headless Chrome at desktop size: real mouse moves, clicks, right-clicks, key presses, Tab, typing, scroll, eval and screenshots per scenario; writes are blocked. Example scenario: scripts/examples/desktop-scenario.json.",
       "usage": [
         "node scripts/desktop-check.mjs <outdir> http://localhost:5174 scripts/examples/desktop-scenario.json",
-        "W=1920 H=1080 node scripts/desktop-check.mjs <outdir> http://localhost:5174 <scenario.json>"
+        "W=1920 H=1080 node scripts/desktop-check.mjs <outdir> http://localhost:5174 <scenario.json>",
+        "LATENCY=1500 node scripts/desktop-check.mjs <outdir> http://localhost:5174 <scenario.json>   # catch loading states"
       ],
       "env": {
         "W": "viewport width (1440)",
-        "H": "viewport height (900)"
+        "H": "viewport height (900)",
+        "LATENCY": "ms added to every /api and /media answer (0; Vite's modules are not delayed); with a scenario `wait` under it, the first shot catches skeletons and placeholders"
       },
       "writes": "screenshots under <outdir>",
       "tags": [

@@ -10,9 +10,11 @@ import { PlayerSlot } from '../components/NowPlaying'
 import { Moments } from '../components/Moments'
 import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
+import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
 import { cachedCard, useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
+import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
@@ -20,6 +22,11 @@ import { asBool, useStored } from '../lib/storage'
 import { sized, srcSet } from '@flix/shared'
 
 const route = getRouteApi('/scene/$id')
+
+// Beside the video (lg and up) the Related list stops here, about where the title and actions
+// end, and the rest becomes a "More like this" grid under both columns: 24 compact rows ran two
+// screens past the details with the left side empty. A playlist's Up next keeps its full order.
+const SIDEBAR_MAX = 8
 
 // Keyed by id so per-video state (countdown, expanded details) starts fresh.
 export function ScenePage(): JSX.Element {
@@ -45,6 +52,10 @@ function SceneView({ id }: { id: string }) {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const toggleTheater = useCallback(() => setTheater((v) => !v), [setTheater])
+  const sideBySide = useMediaQuery('(min-width: 1024px)') // the lg two-column layout
+  // On a finger screen the "+" filter badges become "Filter" chips: a bare "+" reads as
+  // "follow" and its title never shows (phone audit, item 7).
+  const touch = useMediaQuery('(pointer: coarse)')
 
   const queue: Scene[] = useMemo(() => {
     if (playlist.data) {
@@ -54,6 +65,9 @@ function SceneView({ id }: { id: string }) {
     return related.data ?? []
   }, [playlist.data, related.data, id])
   const next = queue[0]
+  const capped = sideBySide && !playlist.data
+  const listed = capped ? queue.slice(0, SIDEBAR_MAX) : queue
+  const overflow = capped ? queue.slice(SIDEBAR_MAX) : []
 
   const goNext = useCallback(() => {
     setCountdown(null)
@@ -126,7 +140,7 @@ function SceneView({ id }: { id: string }) {
               </div>
               <div className="font-semibold break-words hover:text-accent">{scene.studio.name}</div>
             </Link>
-            <AddFilterButton kind="studio" id={scene.studio.id} name={scene.studio.name} />
+            <AddFilterButton kind="studio" id={scene.studio.id} name={scene.studio.name} variant={touch ? 'chip' : 'icon'} />
           </div>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -176,12 +190,16 @@ function SceneView({ id }: { id: string }) {
       {scene.performers.length > 0 && (
         <div className="no-scrollbar mt-5 flex gap-4 overflow-x-auto pb-1">
           {scene.performers.map((p) => (
-            <div key={p.id} className="relative shrink-0">
+            <div key={p.id} className={clsx('relative flex shrink-0 flex-col items-center', touch ? 'w-24' : 'w-20')}>
               <Link to="/performer/$id" params={{ id: p.id }} className="group flex w-20 flex-col items-center text-center">
                 <Avatar src={p.image} name={p.name} className="size-20 rounded-full object-top ring-2 ring-transparent transition group-hover:ring-accent" />
                 <span className="mt-1.5 line-clamp-2 text-xs font-medium group-hover:text-accent">{p.name}</span>
               </Link>
-              <AddFilterButton kind="performer" id={p.id} name={p.name} className="absolute top-0 right-0 shadow-lg" />
+              {touch ? (
+                <AddFilterButton kind="performer" id={p.id} name={p.name} variant="chip" className="mt-1" />
+              ) : (
+                <AddFilterButton kind="performer" id={p.id} name={p.name} className="absolute top-0 right-0 shadow-lg" />
+              )}
             </div>
           ))}
         </div>
@@ -282,31 +300,48 @@ function SceneView({ id }: { id: string }) {
       </div>
       <div className="space-y-3">
         {related.isLoading && !playlist.data && <Spinner className="mx-auto my-8" />}
-        {queue.map((s) => (
+        {listed.map((s) => (
           <UpNextItem key={s.id} scene={s} playlist={playlistId} />
         ))}
       </div>
     </aside>
   )
 
+  const more = overflow.length > 0 && (
+    <section className="mt-10">
+      <h2 className="mb-3 text-lg font-bold tracking-tight sm:text-xl">More like this</h2>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {overflow.map((s) => (
+          <SceneCard key={s.id} scene={s} />
+        ))}
+      </div>
+    </section>
+  )
+
   if (theater) {
     return (
       <div>
         <div className="-mx-4 -mt-6 bg-black sm:-mx-6">{player}</div>
-        <div className="mx-auto grid max-w-[1700px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-          {info}
-          <div className="mt-4">{sidebar}</div>
+        <div className="mx-auto max-w-[1700px]">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+            {info}
+            <div className="mt-4">{sidebar}</div>
+          </div>
+          {more}
         </div>
       </div>
     )
   }
   return (
-    <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-      <div className="min-w-0">
-        {player}
-        {info}
+    <div className="mx-auto max-w-[1800px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="min-w-0">
+          {player}
+          {info}
+        </div>
+        {sidebar}
       </div>
-      {sidebar}
+      {more}
     </div>
   )
 }

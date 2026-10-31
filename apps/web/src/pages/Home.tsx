@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import type { HomeRow, SceneCard, StationResume } from '@flix/shared'
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, Pencil, Play, Radio, Shuffle, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
@@ -45,24 +45,29 @@ export function Home(): JSX.Element {
     )
   if (!data?.length) return <Empty>Your library is empty.</Empty>
 
+  // "Pick up a station" follows Featured (desktop audit, item 13): the first row under the hero
+  // is something to browse, not a two-tile strip, so Featured shows above the fold at 900 px.
+  // Without a Featured row it leads, as it did before.
   return (
     <div className="space-y-10">
       <Hero order={order} seed={seed} more={!!featuredRow} />
-      <PickUpStations />
+      {!featuredRow && <PickUpStations />}
       {data.map((r) =>
         r.savedId ? (
           <PinnedRow key={r.key} row={r} order={data.filter((x) => x.savedId).map((x) => x.savedId!)} />
         ) : r.key === 'featured' ? (
-          <Row
-            key={r.key}
-            title={r.title}
-            items={r.items}
-            actions={
-              <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
-                <Shuffle size={15} />
-              </button>
-            }
-          />
+          <Fragment key={r.key}>
+            <Row
+              title={r.title}
+              items={r.items}
+              actions={
+                <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
+                  <Shuffle size={15} />
+                </button>
+              }
+            />
+            <PickUpStations />
+          </Fragment>
         ) : (
           <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
         ),

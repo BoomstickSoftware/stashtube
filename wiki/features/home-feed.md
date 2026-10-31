@@ -26,7 +26,7 @@ open, then refetches, which the weak ETag turns into a 304 when nothing moved.
 ## Behaviour
 
 Rows, in the order `homeRows()` assembles them (a row needs 3 items to show; pinned rows always
-show, even empty, so they can be managed):
+show, even empty, so they can be managed); the web slots "Pick up a station" in after Featured:
 
 | Row | Source |
 |---|---|
@@ -38,7 +38,7 @@ show, even empty, so they can be managed):
 | **New from performers you follow** | favourite (followed) performers, newest first; _titled "New from your favourites" until 2026-10-31_ ([[categories-and-us-spelling]]) |
 | Recently added, Discover (random, unwatched), Top rated (★4+), Latest releases, Most watched | plain filtered lists |
 | **New from your favourites, not downloaded** | Whisparr's recent releases from favourite performers, from 3 items; see [[whisparr-shelf]] |
-| **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]] |
+| **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]]. Rendered **right after Featured** (since 2026-10-31; _the first row under the hero before_, which put Featured below the fold at 1440×900), or first when there is no Featured row |
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
 The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]);

@@ -42,11 +42,18 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
 - **Playlist** opens the save-to-playlist menu (_the button said "Save" until 2026-10-31_).
 - **Station** by Related starts a drifting station from this scene ([[stations]]).
 - **+** next to each performer, the studio and each tag adds it to the stacked filters
-  ([[browse-and-filters]]).
+  ([[browse-and-filters]]). On a touch screen (`pointer: coarse`) the studio's and the
+  performers' badges are labelled **Filter** chips (44 px; "In filters" once added), since a
+  bare "+" read as "follow" and its title never shows on iOS (since 2026-10-31; the tag chips
+  keep the "+").
 - The full description shows; file path, format, size and links fold under the categories
   behind "Show file and links".
 - **Moments** lists every marker below the video ([[moments]]).
-- **Related videos** at the bottom ([[related-videos]]).
+- **Related videos**: beside the video from `lg` (1024 px), the first 8 as compact rows in the
+  400 px sidebar, the other 16 as a **More like this** card grid under both columns; below `lg`
+  all 24 are rows under the details. A playlist's **Up next** is never capped: its order is the
+  point ([[related-videos]]; since 2026-10-31, _before, all 24 rows ran down the sidebar, two
+  screens past the details_).
 - Play buttons from elsewhere pass `?play=1` so the video starts at once; otherwise it opens
   paused unless Settings › Playback says otherwise ([[player]]).
 

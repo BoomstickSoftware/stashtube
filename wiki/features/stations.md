@@ -45,6 +45,11 @@ Entering a station stops the [[mini-player]].
 - `/stations` lists them as cards (desktop nav, phone header icon) plus quick starts
   (Everything, Unwatched, Performers I follow, Top rated). Each card cycles through screenshots
   of what it plays (4 s, crossfade, staggered, still under reduced motion) and shows its count.
+  Under the pictures sits a neutral block (`bg-surface`): it pulses until the previews and
+  the first picture have loaded, and a station with no cover at all (no saved cover, no
+  matching videos) shows a still Radio mark instead; the list itself is three card skeletons
+  while `/api/stations` loads (since 2026-10-31; _covers painted blank grey on first paint
+  before_, desktop audit item 26). Images decode `async`.
   All cards come from **one request**, `GET /api/stations/previews?day=&q=` (saved stations by
   id, quick starts by their JSON; six Stash queries in flight at once; `previews.ts` has the
   per-station daily seed and the bounded fan-out, tested). It was one request per card before

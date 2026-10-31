@@ -37,6 +37,10 @@ scene ids (`playlists`, `playlist_items`; see [[data-model]]).
   half (and more than 3) look gone, since that means Stash is in a bad state, not that you deleted
   them. Stations started from a deleted video are left alone.
 - Playlists ignore the blocklist: they show whatever you put in them ([[playlists-ignore-blocklist]]).
+- While a playlist loads, the page is its own frame: the cover card's skeleton
+  (`HeaderSkeleton shape="playlist"` in `EntityHeader.tsx`) on the left and six row bones on
+  the right, so nothing moves when the list arrives (since 2026-10-31; _a bare spinner for
+  over 3 s on a phone before_, phone audit item 11).
 - Favourites and playlist edits are curation, so a [[private-session]] does not block them.
 
 The lists are persisted in the browser (`flix.queries`) for a cold open ([[caching]]).

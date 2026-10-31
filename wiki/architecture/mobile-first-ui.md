@@ -26,7 +26,12 @@ Every change is checked headless at that size ([[mobile-checks]]).
   gear was clipped off-screen by the layout root's `overflow-x-clip`. Tablets in portrait get
   the phone layout too.
 - `touch:` (`(pointer: coarse)`, defined in `index.css`) for finger-sized targets and
-  touch-only UI.
+  touch-only UI. When the touch version is a different element rather than different
+  styling (the scene page's "+" badges becoming "Filter" chips), the page reads
+  `useMediaQuery('(pointer: coarse)')` instead of rendering both and hiding one.
+- **Icon-only controls get a label on touch**: `title` never shows on iOS, so a bare icon
+  whose meaning is not obvious ("+" for "add to Browse filters") is a labelled chip there
+  (`AddFilterButton variant="chip"`, [[scene-page]]).
 - `[@media(hover:hover)]:` for anything that may hide until hover. **Never rely on hover to
   reveal a control**; hover-only controls are visible on touch.
 - Inputs stay at 16 px or larger on touch screens, or iOS zooms the page.
@@ -70,5 +75,7 @@ frames.
 
 With `prefers-reduced-motion: reduce` (since 2026-10-31) `index.css` cuts every animation and
 transition to 0.01 ms, cards do not start a hover preview (`SceneCard.enter` checks the
-query), the station covers stop cycling, the header skeletons stop pulsing and the hero
-stops auto-advancing (its 12 s timer is paused).
+query), the station covers stop cycling, the skeletons stop pulsing (`bone` / `Bone` in
+`ui.tsx` carry `motion-reduce:animate-none`; used by the entity, playlist and directory
+skeletons and the station cover placeholder) and the hero stops auto-advancing (its 12 s
+timer is paused).
