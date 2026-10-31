@@ -34,7 +34,7 @@ After a Stash upgrade: [[regenerate-stash-schema]].
 | Function | Does |
 |---|---|
 | `query(gql, vars, tags)` | the one call site: cached by query+variables, tagged for invalidation ([[caching]]); `VOLATILE` tags keep large working sets out of `data.json` |
-| `mutate()` | writes, then drops the cache tags they affect |
+| `mutate(q, vars, invalidates, expires)` | writes, then drops the `invalidates` tags and marks the `expires` tags stale ([[caching]]) |
 | `activityTags()` | the extra tags (`activity:play`, `activity:resume`) a list gets when it filters or sorts by activity |
 | `exclusions()` | the blocklist plus the "Not interested" tag as a scene filter ([[blocklist-and-exclusions]]) |
 | `dropBlocked()` | removes blocked performers/studios/tags **after** the query, because those filter types have no `id` criterion ([[stash-filters-have-no-id-criterion]]) |

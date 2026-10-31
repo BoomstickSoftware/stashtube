@@ -52,6 +52,10 @@ type Upstream = (path: string, headers: Record<string, string>) => Promise<Respo
 
 const MISS_RETRIES = [1000, 2000] // ms; see fetchUpstream
 const VERSIONED = /[?&]t=/
+// The weak ETag a cached file gets when upstream sent none (resized copies, Stash's generated
+// clips and sprites), so a browser's If-None-Match can be answered 304. Never sent to Stash.
+const OWN_ETAG = /^W\/"flix-/
+const ownEtag = (m: Meta) => `W/"flix-${m.size.toString(36)}-${m.fetchedAt.toString(36)}"`
 const RESIZE_QUALITY = 72 // WebP; a 640 px screenshot comes to ~30 KB
 const key = (path: string) => createHash('sha256').update(path).digest('hex')
 
@@ -226,7 +230,7 @@ export class AssetCache {
 
   private async fetchUpstream(k: string, path: string, old: Meta | null): Promise<Meta | null> {
     const headers: Record<string, string> = {}
-    if (old?.etag) headers['if-none-match'] = old.etag
+    if (old?.etag && !OWN_ETAG.test(old.etag)) headers['if-none-match'] = old.etag
     else if (old?.lastModified) headers['if-modified-since'] = old.lastModified
     let res: Response
     try {
@@ -305,6 +309,7 @@ export class AssetCache {
   private async commit(k: string, tmp: string, meta: Meta): Promise<Meta> {
     const f = this.files(k)
     const prev = this.index.get(k)
+    if (!meta.etag) meta = { ...meta, etag: ownEtag(meta) }
     await rename(tmp, f.bin)
     await writeFile(f.meta, JSON.stringify(meta))
     this.bytes += meta.size - (prev?.size ?? 0)

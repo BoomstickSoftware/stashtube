@@ -108,3 +108,8 @@ image sizes, poster, hover cost → [[2026-10-31-ux-phase0-web]], [[mobile-first
 ## [2026-10-31] ingest | The hero pages the Featured ranking instead of looping over 8
 `offset` on /api/featured, `useMoreFeatured`, Hero fetches twenty more near its end →
 [[2026-10-31-hero-pages-the-ranking]], [[home-feed]], [[featured-ranking]].
+## [2026-10-31] ingest | Phase 0 server quick wins: softer write invalidation, volatile cap, Whisparr TTL, warm debounce, asset ETags
+Ratings, O, edits and favourites drop one entity and expire lists ([[ratings-expire-lists]]);
+`maxVolatile` 60 and StashDB pages out of VOLATILE; `LIST_TTL` 15 min; the re-warm waits for two
+quiet polls and 5 min; resized and generated assets get a weak ETag → [[caching]], [[whisparr-shelf]],
+[[stashdb]], [[whisparr-api]], [[stash-layer]].

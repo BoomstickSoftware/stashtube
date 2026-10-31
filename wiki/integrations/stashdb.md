@@ -23,7 +23,8 @@ the executor that downloads.
   pages further).
 - Each scene's cover is `images[].url` (the StashDB CDN; Whisparr's `images[].remoteUrl` is the
   same CDN).
-- Results are cached 10 minutes in memory only (`VOLATILE`, tag `stashdb`) ([[caching]]).
+- Results are cached 10 minutes (tag `stashdb`); a page is ~8 KB and goes into the snapshot
+  (_memory only, `VOLATILE`, until 2026-10-31_) ([[caching]]).
 - `stashdb.test.ts` pins the exact queries.
 
 ## Credentials

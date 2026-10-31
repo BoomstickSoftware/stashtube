@@ -45,7 +45,9 @@ interface Paged<T> {
 }
 
 const TIMEOUT = 60_000 // ms
-const LIST_TTL = 2 * 60_000 // the movie list is ~41 MB (13k entries, 2026-10-31) and changes only when Whisparr imports or adds
+// The movie list is ~41 MB (13,079 entries, 2026-10-31) and changes only when Whisparr imports or
+// adds; flix's own writes drop it, and the 30 s activity reads show what moved meanwhile.
+const LIST_TTL = 15 * 60_000
 const ACTIVITY_TTL = 30_000 // queue and grabs move faster, and the cards show them
 const GRABBED_FOR = 48 * 3_600_000 // a grab older than this with no download is treated as gone
 
@@ -64,7 +66,7 @@ async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, 
   return (method === 'DELETE' ? undefined : await res.json()) as T
 }
 
-// Cached reads. VOLATILE keeps the 25 MB list out of the on-disk cache; 'whisparr' lets a
+// Cached reads. VOLATILE keeps the 41 MB list out of the on-disk cache; 'whisparr' lets a
 // write drop them all.
 const cached = <T>(key: string, ttl: number, load: () => Promise<T>) => dataCache.get(`whisparr:${key}`, ttl, ['whisparr', VOLATILE], load)
 

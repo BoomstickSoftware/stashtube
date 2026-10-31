@@ -58,6 +58,9 @@ export const upstream = { queries: 0, mutations: 0, assets: 0, streams: 0, chang
 export const dataCache = new MemoryCache({
   maxEntries: config.cache.dataMaxEntries,
   staleFor: config.cache.dataStaleFor,
+  // Facet and tile working sets, sceneStashIdMap and Whisparr's lists share this cap; 30 let a
+  // long shelf session evict the facets (2026-10-31). A stopgap until each family has its own cap.
+  maxVolatile: 60,
 })
 
 const TIMEOUT = 60_000 // ms; a hung Stash request must not hold a page (or a shared in-flight read) forever
@@ -166,6 +169,41 @@ let lastActivity = 0
 let lastCheck = 0
 const IDLE_AFTER = 10 * 60_000
 
+// Decides when the listeners (the re-warm of the home feed, facets and tiles) run after the
+// fingerprint moved. The cache is expired on the spot, but a scan or an import moves the
+// fingerprint on every poll, and warming ~20 queries a minute against a locked database only
+// competes with the user: wait until it has held still for `stablePolls` polls in a row, and
+// never warm more than once per `minGap` ms. Exported for tests.
+export class WarmDebounce {
+  private stablePolls: number
+  private minGap: number
+  private pending = false
+  private stable = 0
+  private lastWarm = -Infinity // the gap applies only after a warm has run
+
+  constructor(opts: { stablePolls: number; minGap: number }) {
+    this.stablePolls = opts.stablePolls
+    this.minGap = opts.minGap
+  }
+
+  // Called once per poll with whether the fingerprint moved; true when it is time to warm.
+  poll(changed: boolean, now = Date.now()): boolean {
+    if (changed) {
+      this.pending = true
+      this.stable = 0
+      return false
+    }
+    if (!this.pending) return false
+    this.stable++
+    if (this.stable < this.stablePolls || now - this.lastWarm < this.minGap) return false
+    this.pending = false
+    this.lastWarm = now
+    return true
+  }
+}
+
+const warmDebounce = new WarmDebounce({ stablePolls: 2, minGap: 5 * 60_000 })
+
 async function checkForChanges() {
   lastCheck = Date.now()
   const d = await gql<{ s: FindScenesResultType; p: FindPerformersResultType; st: FindStudiosResultType; t: FindTagsResultType }>(`{
@@ -180,16 +218,21 @@ async function checkForChanges() {
     d.st.count, d.st.studios[0]?.updated_at,
     d.t.count, d.t.tags[0]?.updated_at,
   ])
-  if (lastFingerprint !== null && fp !== lastFingerprint) {
+  const changed = lastFingerprint !== null && fp !== lastFingerprint
+  if (changed) {
     console.log('stash data changed; refreshing cached queries')
     dataCache.expire()
+  }
+  if (warmDebounce.poll(changed)) {
+    console.log('stash data settled; re-warming')
     for (const fn of changeListeners) fn()
   }
   lastFingerprint = fp
 }
 
 const changeListeners: (() => void)[] = []
-// Runs after a change in Stash marked the cache stale (e.g. to re-warm the home feed).
+// Runs once Stash has settled after a change that marked the cache stale (two unchanged polls
+// in a row, at most every 5 min), e.g. to re-warm the home feed.
 export function onStashChange(fn: () => void) {
   changeListeners.push(fn)
 }
@@ -654,15 +697,18 @@ export async function relatedScenes(
   return ranked.map(toSceneCard)
 }
 
+// A rating, O, edit or play drops only its scene and marks every list stale: lists are served
+// once more while they refresh (so one sorted by rating may lag one refresh, a decision of
+// 2026-10-31), instead of Home and Browse rebuilding cold after every tap on a star.
 export async function updateSceneRating(id: string, stars: number | null) {
   await mutate(`mutation($id: ID!, $r: Int) { sceneUpdate(input: { id: $id, rating100: $r }) { id } }`, {
     id,
     r: rating100(stars),
-  }, ['scene'])
+  }, [`scene:${id}`], ['scene'])
 }
 
-// Plays and progress saves (every 15 s while watching) must not empty the cache: they drop
-// this scene and the lists that filter or sort by activity, and only mark the rest stale.
+// Plays and progress saves (every 15 s while watching) also drop the lists that filter or
+// sort by activity.
 export async function addScenePlay(id: string) {
   await mutate(`mutation($id: ID!) { sceneAddPlay(id: $id) { count } }`, { id }, [`scene:${id}`, 'activity:play'], ['scene'])
 }
@@ -676,7 +722,7 @@ export async function saveSceneActivity(id: string, resumeTime: number, playDura
 }
 
 export async function addSceneO(id: string) {
-  const d = await mutate<Pick<Mutation, 'sceneAddO'>>(`mutation($id: ID!) { sceneAddO(id: $id) { count } }`, { id }, ['scene'])
+  const d = await mutate<Pick<Mutation, 'sceneAddO'>>(`mutation($id: ID!) { sceneAddO(id: $id) { count } }`, { id }, [`scene:${id}`], ['scene'])
   return d.sceneAddO.count
 }
 
@@ -726,11 +772,13 @@ export async function getPerformer(id: string): Promise<PerformerDetail | null> 
   }
 }
 
+// Drops the performer; the performer lists and the scene rows a favourite drives ("New from
+// your favourites") are served once more while they refresh.
 export async function setPerformerFavorite(id: string, favorite: boolean) {
   await mutate(`mutation($id: ID!, $f: Boolean) { performerUpdate(input: { id: $id, favorite: $f }) { id } }`, {
     id,
     f: favorite,
-  }, ['performer', 'scene'])
+  }, [`performer:${id}`], ['performer', 'scene'])
 }
 
 export async function setPerformerRating(id: string, stars: number | null) {
@@ -828,7 +876,10 @@ export async function updateScene(id: string, patch: { title?: string; tagIds?: 
   const input: SceneUpdateInput = { id }
   if (patch.title !== undefined) input.title = patch.title
   if (patch.tagIds !== undefined) input.tag_ids = patch.tagIds
-  await mutate(`mutation($i: SceneUpdateInput!) { sceneUpdate(input: $i) { id } }`, { i: input }, ['scene', 'tag'])
+  // a tag change moves the scene counts on tag cards, so the 'tag' lists go stale too (nothing
+  // needs them dropped: the facets and tiles are tagged 'scene')
+  const expires = ['scene', ...(patch.tagIds !== undefined ? ['tag'] : [])]
+  await mutate(`mutation($i: SceneUpdateInput!) { sceneUpdate(input: $i) { id } }`, { i: input }, [`scene:${id}`], expires)
 }
 
 // What deleting a scene needs: its files and StashDB links. Uncached, so it sees the scene as it is now.
