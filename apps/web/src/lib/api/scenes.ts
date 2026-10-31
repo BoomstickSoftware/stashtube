@@ -100,10 +100,12 @@ export const useSearch = (q: string) =>
 
 // --- writes ---------------------------------------------------------------------
 
-// Patch a scene everywhere it is cached: detail, lists, home rows, playlists.
-function patchScene(qc: QueryClient, id: string, patch: Partial<SceneCard>) {
-  const fix = (s: SceneCard) => (s.id === id ? { ...s, ...patch } : s)
-  qc.setQueryData<SceneDetail>(['scene', id], (d) => d && { ...d, ...patch })
+// Patch a scene everywhere it is cached: detail, lists, home rows, playlists. The patch may be
+// computed from the cached card (a count to bump).
+export function patchScene(qc: QueryClient, id: string, patch: Partial<SceneCard> | ((s: SceneCard) => Partial<SceneCard>)) {
+  const apply = <T extends SceneCard>(s: T): T => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) })
+  const fix = (s: SceneCard) => (s.id === id ? apply(s) : s)
+  qc.setQueryData<SceneDetail>(['scene', id], (d) => d && apply(d))
   // ['scenes', …] also holds the continue count, history and stats (so they refresh with
   // the lists); only the paged lists are patched.
   qc.setQueriesData<{ pages: Page<SceneCard>[] }>({ queryKey: ['scenes'] }, (d) =>
@@ -112,12 +114,25 @@ function patchScene(qc: QueryClient, id: string, patch: Partial<SceneCard>) {
   qc.setQueriesData<HomeRow[]>({ queryKey: ['home'] }, (d) => d?.map((r) => ({ ...r, items: r.items.map(fix) })))
 }
 
+// The value a scene shows before an optimistic write, from whichever copy is cached, so a
+// failed write can put it back everywhere (the global toast says why).
+const cachedValue = <K extends keyof SceneCard>(qc: QueryClient, id: string, key: K): SceneCard[K] | undefined =>
+  (qc.getQueryData<SceneDetail>(['scene', id]) ?? cachedCard(id))?.[key]
+
 export function useRateScene() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, rating }: { id: string; rating: number | null }) => send('PUT', `/scenes/${id}/rating`, { rating }),
-    onMutate: ({ id, rating }) => patchScene(qc, id, { rating }),
-    onError: (_e, { id }) => qc.invalidateQueries({ queryKey: ['scene', id] }),
+    onMutate: ({ id, rating }) => {
+      const prev = cachedValue(qc, id, 'rating')
+      patchScene(qc, id, { rating })
+      return { prev }
+    },
+    // back to the stars it had, in the lists too (until 2026-10-31 only the detail was refetched)
+    onError: (_e, { id }, ctx) => {
+      if (ctx?.prev !== undefined) patchScene(qc, id, { rating: ctx.prev })
+      qc.invalidateQueries({ queryKey: ['scene', id] })
+    },
   })
 }
 
@@ -129,21 +144,40 @@ export function useAddO() {
   })
 }
 
-export const addPlay = (id: string) => send('POST', `/scenes/${id}/play`)
+// A play and a progress save patch the cached cards as soon as Stash has them (view count,
+// New badge, progress bar), so the list you go Back to shows what you just watched instead of
+// waiting a refetch (the server serves the expired list once more, caching.md). Both are called
+// by the players' watch accounting, which already checks the private session.
+export const addPlay = (id: string) =>
+  send('POST', `/scenes/${id}/play`).then(() => patchScene(queryClient, id, (s) => ({ playCount: s.playCount + 1, lastPlayedAt: new Date().toISOString() })))
 // "Mark as watched": one play, so Unwatched lists and the New badge let it go.
 export function useMarkWatched() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => addPlay(id),
-    onSuccess: (_r, id) => {
-      patchScene(qc, id, { playCount: 1 })
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scenes'] })
       qc.invalidateQueries({ queryKey: ['home'] })
     },
   })
 }
 export const saveActivity = (id: string, resumeTime: number, playDuration: number) =>
-  send('POST', `/scenes/${id}/activity`, { resumeTime, playDuration })
+  send('POST', `/scenes/${id}/activity`, { resumeTime, playDuration }).then(() => noteResume(id, resumeTime))
+
+// The Continue badge in the nav and the Continue list change only when a resume point appears
+// or goes (not as it moves); the count is nudged at once and confirmed by a refetch.
+const inProgressList = (q: { queryKey: readonly unknown[] }) =>
+  q.queryKey[0] === 'scenes' && typeof q.queryKey[1] === 'object' && !!(q.queryKey[1] as SceneQuery | null)?.inProgress
+function noteResume(id: string, resumeTime: number) {
+  const qc = queryClient
+  const was = (cachedValue(qc, id, 'resumeTime') ?? 0) > 0
+  patchScene(qc, id, { resumeTime })
+  const is = resumeTime > 0
+  if (was === is) return
+  qc.setQueryData<number>(['scenes', 'continue-count'], (n) => (n === undefined ? n : Math.max(0, n + (is ? 1 : -1))))
+  qc.invalidateQueries({ queryKey: ['scenes', 'continue-count'] })
+  qc.invalidateQueries({ predicate: inProgressList })
+}
 
 // "Not interested": hides one video from every list; Settings lists them to undo.
 export const useHiddenScenes = () => useQuery({ queryKey: ['hidden'], queryFn: () => get<SceneCard[]>('/scenes/hidden') })
@@ -207,8 +241,30 @@ export function useSceneEdits(id: string) {
       mutationFn: (marker: string) => send('DELETE', `/scenes/${id}/markers/${marker}`),
       onSuccess: refresh,
     }),
-    identify: useMutation({ mutationFn: () => send<{ jobId: string }>('POST', `/scenes/${id}/identify`) }),
+    // The server waits for Stash's Identify job (up to 40 s) and answers with its result; a job
+    // still running then is remembered here, so the page keeps polling it (useJob) when it comes
+    // back. This onSuccess runs even after the page has unmounted (hook-level callbacks do).
+    identify: useMutation({
+      mutationFn: () => send<JobStatus>('POST', `/scenes/${id}/identify`),
+      onSuccess: (job) => {
+        if (jobDone(job)) identifyFinished(qc, id)
+        else pendingIdentify.set(id, job.id)
+      },
+    }),
   }
+}
+
+export const jobDone = (job: JobStatus | undefined) => !!job && ['FINISHED', 'FAILED', 'CANCELLED'].includes(job.status)
+// Identify jobs that outlived their request, scene id → job id, until seen finished.
+export const pendingIdentify = new Map<string, string>()
+// What an Identify can have changed: the scene's title, date, studio, performers, tags and cover,
+// so every copy of its card.
+export function identifyFinished(qc: QueryClient, id: string) {
+  pendingIdentify.delete(id)
+  qc.invalidateQueries({ queryKey: ['scene', id] })
+  qc.invalidateQueries({ queryKey: ['scenes'] })
+  qc.invalidateQueries({ queryKey: ['home'] })
+  qc.invalidateQueries({ queryKey: ['related'] })
 }
 
 export const useJob = (jobId: string | null) =>
@@ -216,7 +272,7 @@ export const useJob = (jobId: string | null) =>
     queryKey: ['job', jobId],
     queryFn: () => get<JobStatus>(`/jobs/${jobId}`),
     enabled: !!jobId,
-    refetchInterval: (q) => (q.state.data && ['FINISHED', 'FAILED', 'CANCELLED'].includes(q.state.data.status) ? false : 1500),
+    refetchInterval: (q) => (jobDone(q.state.data) ? false : 1500),
   })
 
 // --- deleting scenes (file, Whisparr entry, Stash scene) --------------------------------

@@ -12,7 +12,7 @@ import type {
   TagDetail,
   TagTile,
 } from '@flix/shared'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, invalidateLists, qs, send } from './client'
 
 // Performers, studios and tags: lists, one of each, their favourite/rating writes, the
@@ -57,17 +57,31 @@ export const useTagTiles = () =>
 
 // --- writes ---------------------------------------------------------------------
 
+// Every write below shows its new value at once and, when Stash refuses it, puts the old one
+// back in the same places (the failed-write toast in client.ts says why). `onMutate` returns
+// the previous value as the mutation context for `onError`.
+
+// Patch a performer in its detail and in every performer grid page.
+function patchPerformer(qc: QueryClient, id: string, patch: Partial<PerformerCard>) {
+  qc.setQueryData<PerformerDetail>(['performer', id], (d) => d && { ...d, ...patch })
+  qc.setQueriesData<{ pages: Page<PerformerCard>[] }>({ queryKey: ['performers'] }, (d) =>
+    d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map((x) => (x.id === id ? { ...x, ...patch } : x)) })) } : d,
+  )
+}
+const cachedPerformer = (qc: QueryClient, id: string): PerformerCard | undefined =>
+  qc.getQueryData<PerformerDetail>(['performer', id]) ??
+  qc.getQueriesData<{ pages: Page<PerformerCard>[] }>({ queryKey: ['performers'] }).flatMap(([, d]) => d?.pages?.flatMap((p) => p.items) ?? []).find((x) => x.id === id)
+
 export function useFavoritePerformer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => send('PUT', `/performers/${id}/favorite`, { favorite }),
     onMutate: ({ id, favorite }) => {
-      qc.setQueryData<PerformerDetail>(['performer', id], (d) => d && { ...d, favorite })
-      // flip the heart in performer grids at once, without a refetch
-      qc.setQueriesData<{ pages: Page<PerformerCard>[] }>({ queryKey: ['performers'] }, (d) =>
-        d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map((x) => (x.id === id ? { ...x, favorite } : x)) })) } : d,
-      )
+      const prev = cachedPerformer(qc, id)?.favorite ?? !favorite
+      patchPerformer(qc, id, { favorite }) // the heart flips in the grids too, without a refetch
+      return { prev }
     },
+    onError: (_e, { id }, ctx) => ctx && patchPerformer(qc, id, { favorite: ctx.prev }),
     onSettled: () => qc.invalidateQueries({ queryKey: ['home'] }),
   })
 }
@@ -76,7 +90,12 @@ export function useRatePerformer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, rating }: { id: string; rating: number | null }) => send('PUT', `/performers/${id}/rating`, { rating }),
-    onMutate: ({ id, rating }) => qc.setQueryData<PerformerDetail>(['performer', id], (d) => d && { ...d, rating }),
+    onMutate: ({ id, rating }) => {
+      const prev = cachedPerformer(qc, id)?.rating
+      patchPerformer(qc, id, { rating })
+      return { prev }
+    },
+    onError: (_e, { id }, ctx) => ctx?.prev !== undefined && patchPerformer(qc, id, { rating: ctx.prev }),
   })
 }
 
@@ -84,19 +103,30 @@ export function useFavoriteStudio() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => send('PUT', `/studios/${id}/favorite`, { favorite }),
-    onMutate: ({ id, favorite }) => qc.setQueryData<StudioDetail>(['studio', id], (d) => d && { ...d, favorite }),
+    onMutate: ({ id, favorite }) => {
+      const prev = qc.getQueryData<StudioDetail>(['studio', id])?.favorite ?? !favorite
+      qc.setQueryData<StudioDetail>(['studio', id], (d) => d && { ...d, favorite })
+      return { prev }
+    },
+    onError: (_e, { id }, ctx) => ctx && qc.setQueryData<StudioDetail>(['studio', id], (d) => d && { ...d, favorite: ctx.prev }),
   })
 }
 
-// Pins a category (Stash's tag favourite).
+// Pins a category (Stash's tag favourite): the tile and the category page.
+function patchTag(qc: QueryClient, id: string, favorite: boolean) {
+  qc.setQueryData<TagTile[]>(['tags', 'tiles'], (d) => d?.map((t) => (t.id === id ? { ...t, favorite } : t)))
+  qc.setQueryData<TagDetail>(['tag', id], (d) => d && { ...d, favorite })
+}
 export function useFavoriteTag() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => send('PUT', `/tags/${id}/favorite`, { favorite }),
     onMutate: ({ id, favorite }) => {
-      qc.setQueryData<TagTile[]>(['tags', 'tiles'], (d) => d?.map((t) => (t.id === id ? { ...t, favorite } : t)))
-      qc.setQueryData<TagDetail>(['tag', id], (d) => d && { ...d, favorite })
+      const prev = (qc.getQueryData<TagDetail>(['tag', id]) ?? qc.getQueryData<TagTile[]>(['tags', 'tiles'])?.find((t) => t.id === id))?.favorite ?? !favorite
+      patchTag(qc, id, favorite)
+      return { prev }
     },
+    onError: (_e, { id }, ctx) => ctx && patchTag(qc, id, ctx.prev),
     onSettled: () => qc.invalidateQueries({ queryKey: ['tags', 'tiles'] }),
   })
 }

@@ -55,9 +55,12 @@ gender until 2026-10-31_, [[gender-switch-performers-page-only]]): Stash's
 own `performer_age` would match any performer, so a 40+ male co-star would count. Stash has no
 age-at-filming field, so scenes are matched in yearly release-date buckets (right to about six
 months), two-year buckets once the library spans more than 16 years
-([[sqlite-or-chain-overflow]]). Settings › Performer preferences sets defaults for every list,
-the home feed and related videos; a list's own People filter replaces them, Show blocked drops
-them.
+([[sqlite-or-chain-overflow]]). Settings › Feed › Performer preferences sets defaults for every
+list, the home feed and related videos; a list's own People filter replaces them, Show blocked
+drops them. When they apply to a list, the filter bar shows a dim chip **"Your performer
+defaults · Age 25–35 · Latin, Asian"** under the active filters, linking to `/settings#feed`
+(`PeopleDefaultsChip` in `SceneBrowser.tsx`, since 2026-10-31, audit F18): the defaults are not
+part of the query, so the Filters count and chips never showed why a list was short.
 
 ## Also on the page
 

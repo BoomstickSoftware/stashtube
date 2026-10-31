@@ -79,8 +79,11 @@ Stash 502 (see Errors below), "Couldn't save that" otherwise. The cache's `onErr
 `onError` (a per-hook `onError` would *replace* a `defaultOptions.mutations.onError`, which is
 why the cache hook is used); a hook whose UI renders the error itself opts out with
 `meta: { silent: true }` (`useDeleteScenes`). _Until 2026-10-31_ only Get, Delete, Settings and
-the station editor surfaced a failed write. Rolling optimistic updates back on error is still
-per hook and mostly missing ([[roadmap]], Phase 5).
+the station editor surfaced a failed write. The optimistic hooks roll back on error (since
+2026-10-31): a scene rating, a performer rating, Follow on a performer or studio and Pin on a
+category capture the cached value in `onMutate` and put it back in every cached copy (detail,
+grid pages, Home rows) in `onError`, alongside the toast. Moments' "Removed · Undo" toast shows
+only once the delete has succeeded.
 
 What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
 
@@ -90,6 +93,12 @@ What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
   `station-resume` ([[stations]]).
 - Remove from history: `scenes`, `home` and `scene:<id>` (its view count and resume pill).
 - Title or tag edit: `scene:<id>`, `scenes`, `home` (persisted) and `related`.
+- Identify: the server answers with the finished job; the hook-level `onSuccess` (it runs
+  after unmount too) invalidates `scene:<id>`, `scenes`, `home`, `related`. A job still running
+  (202) waits in `pendingIdentify` for the next scene-page visit to poll ([[scene-page]]).
+- A counted play and every progress save patch `playCount` / `resumeTime` into every cached
+  card and nudge the Continue badge ([[continue-history-stats]]); Get patches the answered
+  `requested` card into the shelf and the Home row, then `whisparr` refetches ([[whisparr-shelf]]).
 - Settings: `people` → everything but settings; `featured` → `home`; anything else → `search`.
 
 The server side is in [[caching]]; the per-action freshness table from the 2026-10-31 audit is

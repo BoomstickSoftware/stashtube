@@ -413,7 +413,12 @@ api.post('/scenes/delete', async (c) => {
 
 api.get('/features', async (c) => c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: !!config.whisparr && (await stashdb.available()) } satisfies Features))
 
-api.post('/scenes/:id/identify', async (c) => c.json({ jobId: await stash.identifyScene(c.req.param('id')) }, 202))
+// Answers with the finished job (200) in the usual case; 202 with the running job when it
+// outlived the server's wait, which `GET /jobs/:id` then follows.
+api.post('/scenes/:id/identify', async (c) => {
+  const job = await stash.identifyScene(c.req.param('id'))
+  return c.json(job, ['FINISHED', 'FAILED', 'CANCELLED'].includes(job.status) ? 200 : 202)
+})
 api.get('/jobs/:id', async (c) => c.json((await stash.jobStatus(c.req.param('id'))) ?? notFound()))
 
 // --- performers / studios / tags --------------------------------------------------

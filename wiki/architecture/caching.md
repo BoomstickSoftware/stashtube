@@ -40,7 +40,10 @@ not. Env knobs and defaults: [[config-env]]. Admin: [[cache-admin]].
   2026-10-31_ these dropped every `scene` entry (the favourite also every `performer`), so Home
   rebuilt cold (0.7–1.9 s, ~20 queries) after every tap on a star. Pinned by
   `stash.test.ts` ("writes and the query cache"). Deletes, Identify and the scene-destroy path
-  still drop whole families.
+  still drop whole families: Identify drops `scene`, `performer`, `studio` and `tag` when its
+  job finishes, and since 2026-10-31 the server itself waits for the job (`identifyScene`, up
+  to 40 s) or follows it afterwards (`followJob`, every 2 s for up to 10 min), so the drop no
+  longer depends on the scene page polling `GET /api/jobs/:id` (`identify.test.ts`).
 - Whisparr: a Get or a delete **patches** the cached movie list in place (`dataCache.patch`:
   monitored, the added entry, the removed one) and drops only the queue and grabs
   (`whisparr:activity`); _until 2026-10-31_ they dropped the whole list, and the next shelf page

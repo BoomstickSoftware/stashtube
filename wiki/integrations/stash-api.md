@@ -4,8 +4,8 @@ kind: integration
 summary: What flix relies on in Stash v0.31.1's GraphQL and asset endpoints — auth header, generated assets, Range and HLS behaviour, the mutations used, updated_at semantics and how a locked SQLite shows up.
 tags: [stash, graphql, api, hls, assets]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-10-31
+updated: 2026-10-31
 sources: [nas:docs/services.md]
 code: [apps/server/src/stash.ts, apps/server/src/media.ts]
 related: [stash-layer, media-proxy, caching, stash-database-locked, stash-library, regenerate-stash-schema]
@@ -55,6 +55,12 @@ images come from `/performer|studio|tag/<id>/image`.
 against the stash-box, `configuration.general.stashBoxes` ([[stashdb]]).
 
 ## Semantics that matter
+
+- `metadataIdentify` returns a job id; `findJob(input: { id })` answers `status`, `progress`
+  and `error`, and `null` for a job no longer in the queue (inferred from the schema, 2026-10-31;
+  flix treats a vanished job as finished and drops its caches). A single-scene Identify is a
+  few seconds; flix waits up to 40 s in the request and follows the job afterwards
+  ([[scene-page]], [[caching]]).
 
 - `sceneSaveActivity` does **not** change a scene's `updated_at`; `sceneUpdate` does (verified
   2026-10-26). The change check relies on this.

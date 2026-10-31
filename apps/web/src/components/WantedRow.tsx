@@ -1,7 +1,7 @@
 import type { WantedScene } from '@flix/shared'
 import { sized, srcSet } from '@flix/shared'
 import clsx from 'clsx'
-import { Check, ChevronLeft, ChevronRight, Download, GalleryHorizontalEnd, LayoutGrid, Loader2 } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clock, Download, GalleryHorizontalEnd, LayoutGrid, Loader2 } from 'lucide-react'
 import { useCallback, useRef, type ReactNode } from 'react'
 import { useGetScene, useWanted } from '../lib/api'
 import { asBool, oneOf, useStored } from '../lib/storage'
@@ -62,7 +62,10 @@ function Heading({ title, hint, right }: { title: ReactNode; hint?: string; righ
   )
 }
 
+// 'requested' is flix's own state: Get was pressed and Whisparr has not grabbed it yet, so the
+// card no longer offers Get as if nothing had happened.
 const STATE: Record<Exclude<WantedScene['state'], 'available' | 'remote'>, { label: string; icon: ReactNode; tone: string }> = {
+  requested: { label: 'Requested', icon: <Clock size={13} />, tone: 'bg-white/15 text-fg/90' },
   grabbed: { label: 'Grabbed', icon: <Loader2 size={13} className="animate-spin" />, tone: 'bg-accent/20 text-accent' },
   downloading: { label: 'Downloading', icon: <Download size={13} />, tone: 'bg-accent/20 text-accent' },
   downloaded: { label: 'In library', icon: <Check size={13} />, tone: 'bg-green-500/20 text-green-300' },
@@ -73,7 +76,7 @@ function WantedCard({ scene: w, sizes, className }: { scene: WantedScene; sizes:
   const getScene = useGetScene()
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
-  const state = busy ? 'grabbed' : w.state
+  const state = busy ? 'requested' : w.state
   const canGet = state === 'available' || state === 'remote'
   return (
     <article className={clsx('flex flex-col gap-2', className)}>

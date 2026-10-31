@@ -2,14 +2,14 @@ import type { SceneCard as SceneCardType, SceneQuery, SceneSort } from '@flix/sh
 import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
+import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
 import { Sheet } from './Sheet'
-import { useRowMutations, useScenes } from '../lib/api'
+import { useRowMutations, useScenes, useSettings } from '../lib/api'
 import { rowTitle, useQueryParts } from '../lib/describe'
-import { withBase } from '../lib/query'
+import { ageLabel, withBase } from '../lib/query'
 import { stationQuery } from '../lib/station'
 import { ActiveFilters, FilterDialog } from './Filters'
 import { clearAll, filterTotal } from '../lib/filters'
@@ -256,6 +256,7 @@ function FilterBar({
       </div>
 
       <ActiveFilters query={query} onChange={onChange} className="mt-2.5" />
+      <PeopleDefaultsChip query={effective} className="mt-2.5" />
 
       <div className="mt-2 hidden items-center gap-2 text-xs text-muted sm:flex">
         {total === undefined ? '…' : `${total.toLocaleString()} video${total === 1 ? '' : 's'}`}
@@ -296,6 +297,33 @@ function FilterBar({
       )}
 
       {open && <FilterDialog query={query} countQuery={countQuery} onApply={onChange} onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
+// Settings › Feed › Performer preferences (age, ethnicity) shorten every list without showing
+// in its filters, so a short list looked unexplained; when they apply to this one, a dim chip
+// says so and leads to the setting. They do not apply when the list has its own People filter
+// or shows blocked videos (the server's rule, blocklist-and-exclusions).
+function PeopleDefaultsChip({ query, className }: { query: SceneQuery; className?: string }) {
+  const { data: settings } = useSettings()
+  const p = settings?.people
+  const set = !!p && !!(p.minAge || p.maxAge || p.ethnicities?.length)
+  const applies = set && !(query.minAge || query.maxAge || query.ethnicities) && !query.unblocked
+  if (!applies) return null
+  const label = [ageLabel(p.minAge, p.maxAge), p.ethnicities?.length ? p.ethnicities.join(', ') : null].filter(Boolean).join(' · ')
+  return (
+    <div className={clsx('flex', className)}>
+      <Link
+        to="/settings"
+        hash="feed"
+        title="Set in Settings › Feed › Performer preferences"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-xs text-muted ring-1 ring-line transition-colors hover:bg-raised hover:text-fg touch:min-h-11"
+      >
+        <Users size={12} className="shrink-0" />
+        <span className="shrink-0">Your performer defaults</span>
+        <span className="truncate opacity-80">· {label}</span>
+      </Link>
     </div>
   )
 }

@@ -4,6 +4,8 @@
 // {scroll:px}, {scrollTo:'css'}, {wait:ms}, {eval:'expr'}, {shot:'name'}, {full:'name'} (whole page),
 // {standalone:true} (display-mode: standalone), {back:true}, {targets:true} (list controls < 44px).
 // Plays, activity, markers, o, rating, deletes and whisparr gets are blocked, so nothing is recorded.
+// STUB='{"/api/settings": {...}}' answers those GET API paths from here instead of the server, to show
+// a state production does not have (a Settings value, an empty list); writes are never stubbed.
 // usage: STEPS='[...]' node scripts/phone-flow.mjs <outdir> http://localhost:5174
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -55,6 +57,25 @@ ws.addEventListener('message', (e) => {
   if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, `${m.params.request.method} ${m.params.request.url}`)
   if (m.method === 'Network.loadingFailed' && m.params.blockedReason) console.log('  blocked:', requests.get(m.params.requestId) ?? m.params.requestId)
 })
+// Stubbed reads (env STUB): a GET whose pathname is a key gets that JSON as its 200 answer.
+const stubs = Object.entries(JSON.parse(process.env.STUB ?? '{}'))
+if (stubs.length) {
+  await send('Fetch.enable', { patterns: stubs.map(([path]) => ({ urlPattern: `*${path}*`, requestStage: 'Request' })) })
+  ws.addEventListener('message', (e) => {
+    const m = JSON.parse(e.data)
+    if (m.method !== 'Fetch.requestPaused') return
+    const { requestId, request } = m.params
+    const hit = stubs.find(([path]) => request.method === 'GET' && new URL(request.url).pathname === path)
+    if (!hit) return send('Fetch.continueRequest', { requestId })
+    console.log('  stubbed:', request.url)
+    send('Fetch.fulfillRequest', {
+      requestId,
+      responseCode: 200,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+      body: Buffer.from(JSON.stringify(hit[1])).toString('base64'),
+    })
+  })
+}
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true })
 await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })
 await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1' })

@@ -3,6 +3,7 @@ import { sized } from '@flix/shared'
 import clsx from 'clsx'
 import {
   Airplay,
+  AlertTriangle,
   Bookmark,
   Check,
   Droplet,
@@ -55,6 +56,10 @@ const PIP = typeof document !== 'undefined' && (document.pictureInPictureEnabled
 const TAP_SEEK = 10 // seconds per double tap on either side of the video
 const MARK_BANNER_MS = 5000 // how long "Marked · Undo · O" stays
 const HOLD_HINTS = 3 // videos that show "Hold the picture to mark a moment"
+// Dev-only test hook for the error state: `?src=missing` on a scene URL points both sources at
+// nothing, so direct play fails, the transcode fails and the player shows "Can't play". Read
+// once at load (the router drops unknown search keys); compiled out of production builds.
+const MISSING_SRC = import.meta.env.DEV && new URLSearchParams(location.search).get('src') === 'missing'
 
 // What the page around the player may ask of it.
 export interface PlayerHandle {
@@ -92,11 +97,17 @@ export function Player({
   const video = useRef<HTMLVideoElement>(null)
   const [quality, setQualityState] = useStored<Quality>('flix.quality', oneOf(QUALITIES.map(([q]) => q), 'auto'))
   const [fallback, setFallback] = useState(false) // direct play errored
+  const [failed, setFailed] = useState(false) // the transcode errored too (or was forced and errored): nothing plays
+  const [attempt, setAttempt] = useState(0) // bumped by "Try again" to reattach the same source
   const [autoRes, setAutoRes] = useState<string | null>(null) // auto mode dropped after stalls
   const canDirect = useMemo(() => canDirectPlay(scene.playback), [scene.playback])
   const mode: 'direct' | 'hls' = (quality === 'auto' || quality === 'original') && !fallback && !autoRes && canDirect ? 'direct' : 'hls'
   const res = STASH_RES[quality] ?? autoRes ?? 'ORIGINAL'
-  const src = mode === 'direct' ? scene.playback.direct : scene.playback.hls.replace('resolution=ORIGINAL', `resolution=${res}`)
+  const src = MISSING_SRC
+    ? `/media/play/missing${mode === 'direct' ? '' : '/stream.m3u8'}`
+    : mode === 'direct'
+      ? scene.playback.direct
+      : scene.playback.hls.replace('resolution=ORIGINAL', `resolution=${res}`)
   // Where to start the next source: resume point or ?t= first, then the current time on a switch.
   const pendingSeek = useRef<number | null>(
     startAt ?? (scene.resumeTime > 5 && scene.resumeTime < scene.durationSec - 30 ? scene.resumeTime : null),
@@ -184,16 +195,26 @@ export function Player({
   const { onTimeUpdate: accountTime, flush, watched } = useWatchAccounting(video, scene.id)
 
   // Source setup. Direct play first; a media error or (in auto) repeated stalls switch to
-  // Stash's HLS transcode, continuing from the same point.
-  useEffect(() => attachSource(video.current!, src, pendingSeek.current), [src])
+  // Stash's HLS transcode, continuing from the same point. When that errors too (a missing or
+  // unreadable file; hls.js reports its fatal errors as the element's `error`), the picture
+  // says so and offers to try again rather than spinning.
+  useEffect(() => attachSource(video.current!, src, pendingSeek.current), [src, attempt])
 
   // Keep the position across a source switch.
   const switchSource = (apply: () => void) => {
     const v = video.current
     if (v && v.currentTime > 0) pendingSeek.current = v.currentTime
     if (!firstLoad.current) playAfterLoad.current = playing
+    setFailed(false)
     apply()
   }
+  const onSourceError = () => {
+    if (mode === 'direct') return switchSource(() => setFallback(true))
+    setWaiting(false)
+    setFailed(true)
+    report({ playing: false })
+  }
+  const retrySource = () => switchSource(() => setAttempt((n) => n + 1))
   const setQuality = (q: Quality) => {
     switchSource(() => {
       setQualityState(q)
@@ -506,7 +527,7 @@ export function Player({
   useImperativeHandle(ref, () => ({ seek: seekTo, time: () => video.current?.currentTime ?? 0, toggle }))
 
   const showControls = !playing || !idle || point !== null || menu
-  const centre = showControls && !waiting && !point?.scrubbing // out of the way of a scrub's preview
+  const centre = showControls && !waiting && !failed && !point?.scrubbing // out of the way of a scrub's preview
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   // the gear menu's items; a popover in the player with a mouse, a sheet on touch
@@ -636,7 +657,7 @@ export function Player({
           report({ playing: false, ended: true })
           onEnded?.()
         }}
-        onError={() => mode === 'direct' && switchSource(() => setFallback(true))}
+        onError={onSourceError}
       />
 
       {casting && (
@@ -668,7 +689,7 @@ export function Player({
         />
       )}
 
-      {waiting && !casting && <div className="pointer-events-none absolute inset-0 m-auto size-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />}
+      {waiting && !casting && !failed && <div className="pointer-events-none absolute inset-0 m-auto size-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />}
       {mini && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
           <At clock={clock}>{(time) => <div className="h-full bg-accent" style={{ width: `${dur ? (time / dur) * 100 : 0}%` }} />}</At>
@@ -694,7 +715,8 @@ export function Player({
         </div>
       ) : (
         !playing &&
-        !waiting && (
+        !waiting &&
+        !failed && (
           <button onClick={toggle} aria-label="Play" className="absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:scale-105 hover:bg-accent">
             <Play size={36} className="ml-1 fill-white" />
           </button>
@@ -860,6 +882,21 @@ export function Player({
           </Ctl>
         </div>
       </div>
+      {/* over everything else: nothing underneath can act until the source is back */}
+      {failed && !casting && (
+        <div role="alert" className={clsx('absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/80 px-4 text-center', mini ? 'text-[11px]' : 'text-sm')}>
+          <AlertTriangle size={mini ? 16 : 28} className="text-red-400" />
+          <div className="font-semibold">Can't play this video</div>
+          {!mini && <div className="max-w-xs text-xs text-white/60">The file may be missing or Stash could not transcode it.</div>}
+          <button
+            type="button"
+            onClick={retrySource}
+            className={clsx('inline-flex items-center gap-1.5 rounded-full bg-white/15 font-semibold hover:bg-accent', mini ? 'px-2 py-0.5' : 'mt-1 px-4 py-2 touch:min-h-11')}
+          >
+            <RotateCcw size={mini ? 11 : 14} /> Try again
+          </button>
+        </div>
+      )}
     </div>
   )
 }

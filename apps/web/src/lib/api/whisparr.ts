@@ -1,5 +1,5 @@
 import type { WantedList, WantedScene } from '@flix/shared'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, send } from './client'
 import { useFeatures } from './settings'
 
@@ -32,13 +32,27 @@ export function useWhisparrNew() {
   return useQuery({ queryKey: ['whisparr', 'new'], queryFn: () => get<WantedScene[]>('/whisparr/new'), enabled: on, staleTime: 60_000 })
 }
 
+// The card as the server now sees it (state 'requested', a Whisparr id for a remote scene), in
+// every shelf page and the Home row that holds it.
+function patchWanted(qc: QueryClient, w: WantedScene) {
+  const same = (x: WantedScene) => (w.stashdbId !== null && x.stashdbId === w.stashdbId) || (w.whisparrId !== null && x.whisparrId === w.whisparrId)
+  const fix = (items: WantedScene[]) => items.map((x) => (same(x) ? w : x))
+  qc.setQueriesData<{ pages: WantedList[] } | WantedScene[]>({ queryKey: ['whisparr'] }, (d) =>
+    Array.isArray(d) ? fix(d) : d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: fix(p.items) })) } : d,
+  )
+}
+
 // Fetch one scene. A scene Whisparr lists is monitored and searched; one only StashDB lists is
-// added to Whisparr first. The server refuses anything but a single id either way.
+// added to Whisparr first. The server refuses anything but a single id either way. The card
+// shows "Requested" from the answer on, and the shelf refetches for Whisparr's own state.
 export function useGetScene() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (w: WantedScene) =>
       w.whisparrId !== null ? send<WantedScene>('POST', `/whisparr/get/${w.whisparrId}`) : send<WantedScene>('POST', `/whisparr/get-remote/${w.stashdbId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['whisparr'] }),
+    onSuccess: (w) => {
+      patchWanted(qc, w)
+      qc.invalidateQueries({ queryKey: ['whisparr'] })
+    },
   })
 }

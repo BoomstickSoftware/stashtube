@@ -31,7 +31,7 @@ Done, by date (each page says what changed and how it was verified):
   [[2026-10-30-relative-scrubbing]], [[2026-10-30-app-follows-deploys]]
 - [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]],
   [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]],
-  [[2026-10-31-ux-copy-settings-errors]]
+  [[2026-10-31-ux-copy-settings-errors]], [[2026-10-31-ux-phase5-freshness]]
   [[2026-10-31-covers-shelf-skeletons]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
@@ -161,18 +161,20 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
   strings in files other initiatives owned (Home/WantedRow hint, Tag eyebrow, Player O title)
   followed the same day. The Studios table header stays an uppercase eyebrow row like every
   other small heading, so "Network" renders as NETWORK by design.
-- Optimistic rollbacks on error for rating, follow, pin and performer rating; Moments' Undo
+- ~~Optimistic rollbacks on error for rating, follow, pin and performer rating; Moments' Undo
   toast on success only (IA F1); progress and Continue badge patched after `saveActivity`
-  (IA F3); Identify polled server-side until finished (IA F6); ~~Playlist Shuffle plays
-  shuffled without rewriting the order (IA F5)~~ done in Phase 0; a "Requested" state on wanted cards between
-  Get and the grab (IA row 18).
+  (IA F3); Identify polled server-side until finished (IA F6)~~ done:
+  [[2026-10-31-ux-phase5-freshness]]; ~~Playlist Shuffle plays
+  shuffled without rewriting the order (IA F5)~~ done in Phase 0; ~~a "Requested" state on wanted cards between
+  Get and the grab (IA row 18)~~ done: [[2026-10-31-ux-phase5-freshness]].
 - ~~Actionable errors: map "Stash: …" 502s to "Stash is busy or down (a scan locks it for a
   few minutes). Cached pages still work.", network failures to "No connection to flix"; client
   timeout below the server's so the server's reason wins (IA F15)~~ done in [[2026-10-31-ux-copy-settings-errors]]
   (the client timeout went above the server's instead, 65 s, so the server's reason arrives);
-  an HLS error state in the player instead of an endless spinner (IA F16, verify with a renamed
+  ~~an HLS error state in the player instead of an endless spinner (IA F16, verify with a renamed
   file); a dim "Your performer defaults" chip when Settings' people filter shortens a list
-  (IA F18).
+  (IA F18)~~ done: [[2026-10-31-ux-phase5-freshness]] (verified with a dev-only `?src=missing`
+  hook rather than a renamed file).
 - ~~Settings in five groups (Library, Feed, Playback, Privacy, Advanced) with an anchor strip,
   one page ([[settings-next-to-page]] kept) (IA F9); fix `CachePanel`'s "within 60 s" to
   mention the 10-minute idle gate; remove or wire `useWhisparrActivity`.~~ Done:
