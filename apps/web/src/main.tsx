@@ -5,11 +5,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { PERSIST_MAX_AGE, persistQuery, queryClient } from './lib/api'
+import { keepCurrent } from './lib/update'
 import { router } from './router'
 
 // The last home feed, playlists and settings are kept in localStorage, so a cold open (a
 // phone waking the tab, a new tab) paints at once and refreshes in the background.
 const persister = createAsyncStoragePersister({ storage: safeStorage(), key: 'flix.queries', throttleTime: 2000 })
+
+keepCurrent() // reload onto a new build when the server has one (an installed app is never reloaded otherwise)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

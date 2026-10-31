@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono } from 'hono'
+import { type Context, Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { compress } from 'hono/compress'
 import { logger } from 'hono/logger'
@@ -18,12 +18,13 @@ import { scheduleWarm } from './warm.ts'
 import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
 
 const app = new Hono()
+const VERSION = process.env.FLIX_VERSION ?? 'dev'
 
 app.use('/api/*', logger())
 app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
 // Liveness, and which build this is: the deploy workflow waits for its commit to appear here
 // before smoke-testing the rollout.
-app.get('/healthz', (c) => c.json({ ok: true, version: process.env.FLIX_VERSION ?? 'dev' }))
+app.get('/healthz', (c) => c.json({ ok: true, version: VERSION }))
 // Readiness is "can serve", which means the database answers; Stash being busy (a scan
 // holds its SQLite lock for minutes) must not take flix out of rotation, the caches cover it.
 app.get('/readyz', async (c) => {
@@ -76,14 +77,34 @@ app.onError((err, c) => {
 
 if (config.webDist) {
   const dist = config.webDist
-  const index = await readFile(join(dist, 'index.html'), 'utf8')
+  // The page names its build, so an open app can tell when the server has moved on and reload
+  // (web lib/update.ts). It is revalidated on every load; only the hashed assets are cached.
+  const index = (await readFile(join(dist, 'index.html'), 'utf8')).replace('</head>', `<meta name="flix-version" content="${VERSION}" /></head>`)
+  const page = (c: Context) => {
+    c.header('cache-control', 'no-cache')
+    return c.html(index)
+  }
   app.use('/assets/*', async (c, next) => {
     await next()
-    c.header('cache-control', 'public, max-age=31536000, immutable')
+    if (c.res.ok) c.header('cache-control', 'public, max-age=31536000, immutable')
   })
-  app.use('/*', serveStatic({ root: dist }))
+  app.get('/', page)
+  app.get('/index.html', page)
+  app.use(
+    '/*',
+    serveStatic({
+      root: dist,
+      // the manifest, icons and the rest of public/ are revalidated too
+      onFound: (_path, c) => {
+        if (!c.req.path.startsWith('/assets/')) c.header('cache-control', 'no-cache')
+      },
+    }),
+  )
+  // An asset this build does not have is a 404, never the page: an app still running an older
+  // build asks for its own chunks, and HTML in their place fails in a way nothing can catch.
+  app.get('/assets/*', (c) => c.notFound())
   // Client-side routes
-  app.get('*', (c) => (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/') ? c.notFound() : c.html(index)))
+  app.get('*', (c) => (c.req.path.startsWith('/api/') || c.req.path.startsWith('/media/') ? c.notFound() : page(c)))
 }
 
 await migrateDb()
