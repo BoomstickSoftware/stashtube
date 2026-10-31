@@ -9,16 +9,16 @@ import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
 import { WantedRow } from '../components/WantedRow'
-import { useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
+import { homeSeed, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
 import { sized, srcSet } from '@flix/shared'
 
 export function Home(): JSX.Element {
-  // One seed per visit: the server's Featured row (and so the hero) keeps its order while
-  // the feed refreshes, and Shuffle draws a new one.
-  const [seed, setSeed] = useState(newSeed)
+  // The server's Featured row (and so the hero) keeps its order while the seed holds
+  // (lib/api/home.ts); Shuffle draws a new one.
+  const [seed, setSeed] = useState(homeSeed)
   const { data, error, isLoading } = useHome(seed)
   // Hero: the top of the Featured row, in score order; without one (no library yet), a
   // shuffle of everything on the page. It moves on by itself, by arrow, or by a swipe, and
@@ -59,7 +59,7 @@ export function Home(): JSX.Element {
             title={r.title}
             items={r.items}
             actions={
-              <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(newSeed())}>
+              <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
                 <Shuffle size={15} />
               </button>
             }
@@ -84,7 +84,6 @@ function NotDownloaded() {
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
 const HERO_PICKS = 8 // how many of the Featured row the hero cycles through
 
-const newSeed = () => Math.random().toString(36).slice(2, 10)
 const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 1000, 7) / 1000
 
 // Stations left part-way, most recent first: tap one to pick it up where it was.

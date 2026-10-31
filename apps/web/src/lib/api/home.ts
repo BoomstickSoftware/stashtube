@@ -1,12 +1,36 @@
 import type { FeaturedWeights, HomeRow, SavedRow, SceneCard, SceneQuery } from '@flix/shared'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, send } from './client'
+import { readStored, writeStored } from '../storage'
+import { get, HOME_SEED_KEY, queryClient, send } from './client'
 
 // The Home page: its rows, the Featured dials' live preview, and the pinned rows.
 
-// `seed` is the visit's: the Featured row and hero keep their order across refetches until
-// the page makes a new one.
-export const useHome = (seed: string) => useQuery({ queryKey: ['home', seed], queryFn: () => get<HomeRow[]>(`/home?seed=${seed}`), placeholderData: keepPreviousData })
+// The Featured row and hero keep their order while `seed` stays. It is kept (per browser)
+// across visits for SEED_HOURS, so a return to Home or a cold open finds its feed in the
+// cache and paints at once, scrolled where it was; then it rolls, and Shuffle rolls it now.
+const SEED_HOURS = 6
+const rollSeed = () => {
+  const seed = Math.random().toString(36).slice(2, 10)
+  writeStored(HOME_SEED_KEY, { seed, at: Date.now() })
+  return seed
+}
+export const homeSeed = (): string => {
+  const s = readStored(HOME_SEED_KEY, (v) => v as { seed?: unknown; at?: unknown } | undefined)
+  const fresh = typeof s?.seed === 'string' && typeof s.at === 'number' && Date.now() - s.at < SEED_HOURS * 3_600_000
+  return fresh ? (s.seed as string) : rollSeed()
+}
+export const shuffleSeed = rollSeed
+
+// Until a new seed's feed arrives, the newest feed in the cache stands in (a rolled seed).
+const lastFeed = () =>
+  queryClient
+    .getQueryCache()
+    .findAll({ queryKey: ['home'], type: 'all' })
+    .filter((q) => q.state.data)
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0]?.state.data as HomeRow[] | undefined
+
+export const useHome = (seed: string) =>
+  useQuery({ queryKey: ['home', seed], queryFn: () => get<HomeRow[]>(`/home?seed=${seed}`), placeholderData: (prev) => keepPreviousData(prev) ?? lastFeed() })
 
 // Settings' live preview of the Featured dials, unsaved.
 export const useFeaturedPreview = (weights: FeaturedWeights, enabled: boolean) =>

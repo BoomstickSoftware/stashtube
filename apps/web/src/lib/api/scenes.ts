@@ -95,7 +95,7 @@ function patchScene(qc: QueryClient, id: string, patch: Partial<SceneCard>) {
   qc.setQueriesData<{ pages: Page<SceneCard>[] }>({ queryKey: ['scenes'] }, (d) =>
     d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.map(fix) })) } : d,
   )
-  qc.setQueryData<HomeRow[]>(['home'], (d) => d?.map((r) => ({ ...r, items: r.items.map(fix) })))
+  qc.setQueriesData<HomeRow[]>({ queryKey: ['home'] }, (d) => d?.map((r) => ({ ...r, items: r.items.map(fix) })))
 }
 
 export function useRateScene() {

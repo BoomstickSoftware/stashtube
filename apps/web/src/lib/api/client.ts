@@ -1,4 +1,5 @@
 import { type Query, QueryClient } from '@tanstack/react-query'
+import { readStored } from '../storage'
 
 // The transport every hook uses: one fetch wrapper with a timeout, an error that carries the
 // status, the query string builder, and the app's QueryClient with its persistence rules.
@@ -50,7 +51,8 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2,
-      refetchOnWindowFocus: false,
+      // back in the foreground (an installed app resumed after hours), stale data refreshes
+      refetchOnWindowFocus: true,
     },
   },
 })
@@ -61,7 +63,14 @@ export const queryClient = new QueryClient({
 const PERSISTED = ['session', 'home', 'settings', 'favorite-scenes', 'playlists', 'blocklist']
 export const PERSIST_MAX_AGE = 7 * 24 * 3_600_000
 for (const key of PERSISTED) queryClient.setQueryDefaults([key], { gcTime: PERSIST_MAX_AGE })
-export const persistQuery = (q: Query) => q.state.status === 'success' && PERSISTED.includes(q.queryKey[0] as string)
+// Only the current Home seed's feed is stored (a feed per seed would fill localStorage);
+// the seed itself is kept by lib/api/home.ts.
+export const HOME_SEED_KEY = 'flix.homeSeed'
+const isCurrentHome = (key: readonly unknown[]) => key[0] !== 'home' || key[1] === readStored(HOME_SEED_KEY, (v) => (v as { seed?: string } | undefined)?.seed)
+export const persistQuery = (q: Query) => q.state.status === 'success' && PERSISTED.includes(q.queryKey[0] as string) && isCurrentHome(q.queryKey)
+// What Back returns to: a list, a video and its related row outlive a long watch (the default
+// 5 minutes would drop the list you came from, and with it the scroll position).
+for (const key of ['scenes', 'scene', 'related']) queryClient.setQueryDefaults([key], { gcTime: 30 * 60_000 })
 
 // Blocking or hiding changes what every list returns, so drop all list caches.
 export function invalidateLists(qc: QueryClient) {

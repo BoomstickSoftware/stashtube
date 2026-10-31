@@ -3,6 +3,7 @@ import { Star } from 'lucide-react'
 import { useToast } from '../lib/toast'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { sized, srcSet } from '@flix/shared'
+import { queryClient } from '../lib/api/client'
 
 // An on/off control. `size` md is the default; sm sits inline with small text.
 export function Switch({ on, onChange, disabled, size = 'md', className }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; size?: 'sm' | 'md'; className?: string }) {
@@ -146,10 +147,21 @@ export function Spinner({ className }: { className?: string }) {
   )
 }
 
+// "Try again" refetches whatever failed on the page (the installed app has no reload button).
 export function ErrorBox({ error }: { error: unknown }) {
+  const [busy, setBusy] = useState(false)
+  const retry = () => {
+    setBusy(true)
+    queryClient.refetchQueries({ type: 'active', predicate: (q) => q.state.status === 'error' }).finally(() => setBusy(false))
+  }
   return (
     <div className="mx-auto my-16 max-w-md rounded-2xl bg-red-500/10 p-6 text-center text-red-300 ring-1 ring-red-500/20">
       {error instanceof Error ? error.message : 'Something went wrong'}
+      <div>
+        <button onClick={retry} disabled={busy} className="mt-4 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-fg hover:bg-white/20 disabled:opacity-50">
+          {busy ? 'Trying…' : 'Try again'}
+        </button>
+      </div>
     </div>
   )
 }
