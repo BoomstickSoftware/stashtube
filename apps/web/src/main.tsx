@@ -5,6 +5,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { PERSIST_MAX_AGE, persistQuery, queryClient } from './lib/api'
+import { watch } from './lib/diag'
 import { keepCurrent } from './lib/update'
 import { router } from './router'
 
@@ -13,6 +14,7 @@ import { router } from './router'
 const persister = createAsyncStoragePersister({ storage: safeStorage(), key: 'flix.queries', throttleTime: 2000 })
 
 keepCurrent() // reload onto a new build when the server has one (an installed app is never reloaded otherwise)
+watch(router) // errors and navigations into Settings → Diagnostics
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

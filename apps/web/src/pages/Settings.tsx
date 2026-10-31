@@ -10,10 +10,12 @@ import { PeopleControls } from '../components/People'
 import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
 import { Button, Chip, Switch } from '../components/ui'
+import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
+import { showToast } from '../lib/toast'
 import { sized } from '@flix/shared'
 
 export function Settings(): JSX.Element {
@@ -91,6 +93,8 @@ export function Settings(): JSX.Element {
           <ShortcutList />
         </div>
       </section>
+
+      <Diagnostics />
 
       {session.data?.required && (
         <Button onClick={() => authApi.logout().then(() => location.reload())}>Sign out</Button>
@@ -251,6 +255,36 @@ function PanicSetting() {
         </Button>
       </form>
       {save.isError && <div className="mt-2 text-sm text-red-400">{(save.error as Error).message}</div>}
+    </section>
+  )
+}
+
+// The on-device console (lib/diag.ts): for a phone bug, reproduce it, come here, Copy.
+function Diagnostics() {
+  const entries = useDiag()
+  const build = document.querySelector<HTMLMetaElement>('meta[name="flix-version"]')?.content ?? 'dev'
+  const header = `flix ${build} · ${matchMedia('(display-mode: standalone)').matches ? 'installed app' : 'browser tab'} · ${navigator.userAgent}`
+  const line = (e: { at: number; text: string }) => `${new Date(e.at).toLocaleTimeString()} ${e.text}`
+  const copy = () =>
+    navigator.clipboard
+      .writeText([header, ...entries.map(line)].join('\n'))
+      .then(() => showToast('Copied'))
+      .catch(() => showToast('Could not copy'))
+  return (
+    <section>
+      <h2 className="text-lg font-bold">Diagnostics</h2>
+      <p className="mt-1 text-sm text-muted">
+        What a desktop console would show: errors, page changes and where the player is, newest first. Kept in memory for this
+        visit only. For a bug on the phone: make it happen, come here, Copy.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Button onClick={copy}>Copy</Button>
+        <Button onClick={clearLog}>Clear</Button>
+      </div>
+      <pre className="mt-3 max-h-72 overflow-auto rounded-xl bg-surface p-3 text-[11px] leading-relaxed break-all whitespace-pre-wrap ring-1 ring-line">
+        {header}
+        {[...entries].reverse().map((e) => `\n${line(e)}`)}
+      </pre>
     </section>
   )
 }

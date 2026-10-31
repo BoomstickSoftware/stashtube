@@ -7,7 +7,7 @@
       "does": "Lists, searches and lints this manifest: the way to find out whether a script already exists before doing a thing by hand.",
       "usage": [
         "node scripts/scripts.mjs list",
-        "node scripts/scripts.mjs search <words…>",
+        "node scripts/scripts.mjs search <words\u2026>",
         "node scripts/scripts.mjs show <name>",
         "node scripts/scripts.mjs lint"
       ],
@@ -23,7 +23,7 @@
       "file": "scripts/wiki.mjs",
       "does": "Searches, indexes and lints the wiki/ knowledge base; run `search` before reading pages by hand, `index` then `lint` after any wiki edit.",
       "usage": [
-        "node scripts/wiki.mjs search <words…> [--kind k] [--tag t] [-n 10]",
+        "node scripts/wiki.mjs search <words\u2026> [--kind k] [--tag t] [-n 10]",
         "node scripts/wiki.mjs index",
         "node scripts/wiki.mjs lint",
         "node scripts/wiki.mjs tags",
@@ -164,7 +164,7 @@
       "file": "scripts/stash-schema.mjs",
       "does": "Refreshes apps/server/stash.schema.graphql from a running Stash (or a saved introspection JSON) so codegen can regenerate stash.schema.ts after a Stash upgrade.",
       "usage": [
-        "STASH_URL=http://stash:9999 STASH_API_KEY=… node scripts/stash-schema.mjs",
+        "STASH_URL=http://stash:9999 STASH_API_KEY=\u2026 node scripts/stash-schema.mjs",
         "node scripts/stash-schema.mjs introspection.json"
       ],
       "env": {
@@ -178,6 +178,27 @@
         "codegen"
       ],
       "wiki": "regenerate-stash-schema"
+    },
+    {
+      "name": "webkit-mini-check",
+      "file": "scripts/webkit-mini-check.mjs",
+      "does": "The mini-player round trip in real WebKit (Playwright's build, iPhone emulation with touch): play, tap Home (docks), tap Expand, the title and the picture (each restores); prints console, page errors and failed requests; writes are blocked.",
+      "usage": [
+        "node scripts/webkit-mini-check.mjs <outdir> http://localhost:5174 /scene/<id>"
+      ],
+      "env": {
+        "PLAYWRIGHT": "path of the global playwright package (/opt/homebrew/lib/node_modules/playwright)"
+      },
+      "writes": "screenshots under <outdir>",
+      "tags": [
+        "mobile",
+        "headless",
+        "webkit",
+        "ios",
+        "mini-player",
+        "checks"
+      ],
+      "wiki": "mobile-checks"
     }
   ],
   "external": [

@@ -72,8 +72,9 @@ The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 
 ## Open questions
 
-- Did the `z-10` on the mini-player's picture overlay fix the iPhone tap, or does only Expand
-  work there? Needs the user's phone ([[mini-player]]).
+- Why do the mini-player's restore controls do nothing on the iPhone when play/pause and Stop
+  beside them work, and both headless Chrome and real WebKit restore fine? Next evidence: the
+  phone's Settings → Diagnostics copy after a tap on Expand ([[mini-player]], [[diagnostics]]).
 
 - Does Whisparr's daily `RefreshStudios` still add newly released scenes to a studio whose
   new-items flag is off? Baseline for a later diff: 9,363 scenes across 36 studios at

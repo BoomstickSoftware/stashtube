@@ -6,6 +6,7 @@
 import type { SceneDetail } from '@flix/shared'
 import { useSyncExternalStore } from 'react'
 import type { PlayerHandle } from '../components/Player'
+import { log } from './diag'
 import { asBool, readStored } from './storage'
 
 export const KEEP_PLAYING_KEY = 'flix.keepPlaying' // Settings → Playback: dock instead of stopping
@@ -42,7 +43,9 @@ const listeners = new Set<() => void>()
 const statusListeners = new Set<() => void>()
 
 const set = (patch: Partial<NowPlaying>) => {
+  const prev = state
   state = { ...state, ...patch }
+  if (prev.scene?.id !== state.scene?.id || !!prev.slot !== !!state.slot) log(state.scene ? `player: scene ${state.scene.id} ${state.slot ? 'on its page' : 'docked'}` : 'player: closed')
   listeners.forEach((l) => l())
 }
 

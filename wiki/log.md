@@ -62,3 +62,9 @@ Row/Grid toggle per browser (`flix.wanted.view`); Grid loads StashDB pages by se
 ## [2026-10-31] ingest | A way back from the mini-player
 Expand button in the dock, `z-10` on the picture overlay (inferred WebKit hit-testing), new
 `scripts/mini-check.mjs` → [[mini-player]], [[mobile-checks]], [[2026-10-31-mini-player-expand]].
+
+## [2026-10-31] ingest | Mini-player restore: links, an on-device log, a WebKit check
+Expand/title/picture are `<Link>`s; `lib/diag.ts` + Settings → Diagnostics; new
+`scripts/webkit-mini-check.mjs` (real WebKit, iPhone emulation) also passes, so the phone's
+failure is still unexplained → [[mini-player]], [[diagnostics]], [[mobile-checks]],
+[[2026-10-31-mini-player-expand]], [[playwright-webkit-install-hangs]].

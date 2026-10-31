@@ -94,7 +94,7 @@ const back1 = await step('tap dock picture', () => tap(pic.x, pic.y))
 if (back1.path === path && !back1.docked) console.log('ok: picture tap restored the full player')
 else {
   console.log(`FAIL: picture tap -> path ${back1.path}, docked ${back1.docked}`)
-  const title = await rect('[role=region][aria-label="Now playing"] button.min-w-0')
+  const title = await rect('[role=region][aria-label="Now playing"] a.min-w-0')
   console.log('  dock title button at', title)
   if (title) {
     const back2 = await step('tap dock title', () => tap(title.x, title.y))
@@ -103,7 +103,7 @@ else {
 }
 // Round trips again from Home, by the title and by the Expand button
 let failed = back1.path !== path || back1.docked
-for (const [name, sel] of [['title', '[role=region][aria-label="Now playing"] button.min-w-0'], ['Expand', '[role=region][aria-label="Now playing"] [aria-label="Expand"]']]) {
+for (const [name, sel] of [['title', '[role=region][aria-label="Now playing"] a.min-w-0'], ['Expand', '[role=region][aria-label="Now playing"] [aria-label="Expand"]']]) {
   if ((await state()).path !== path) break
   const home2 = await rect('nav a[href="/"]')
   await step('tap Home tab again', () => tap(home2.x, home2.y))

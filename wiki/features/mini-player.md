@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-10-31
 code: [apps/web/src/lib/nowPlaying.ts, apps/web/src/components/NowPlaying.tsx, apps/web/src/components/Layout.tsx, apps/web/src/pages/Scene.tsx]
-related: [player, scene-page, stations, private-session, mobile-checks]
+related: [player, scene-page, stations, private-session, mobile-checks, diagnostics]
 ---
 
 # Mini-player
@@ -25,13 +25,20 @@ same `<video>` node is used wherever it shows, so nothing reloads.
 - On any other page it docks the player: a strip above the phone tab bar, or a card
   bottom-right on desktop (`mini` prop: picture and progress line only, keys unbound), with
   title, time, Expand, play/pause and Stop.
-- **Back to the full player**: the Expand button, the title, or a tap on the picture, all
-  navigate to the scene page, whose slot the host then lays the same element over. Expand was
-  added 2026-10-31 after the user found no way back on the iPhone: taps on the picture did
-  nothing there while they worked in headless Chrome. Inferred cause: WebKit composites a
-  playing inline `<video>` on its own layer and hit-tests it over a transparent sibling
-  without a z-index; the overlay button now has `z-10`. `scripts/mini-check.mjs` drives the
-  three restore paths with touch events ([[mobile-checks]]). _Not yet confirmed on the phone._
+- **Back to the full player**: the Expand button, the title, or a tap on the picture. All
+  three are router `<Link>`s to the scene page (since 2026-10-31 evening; _until then_ buttons
+  calling `navigate()`), whose slot the host then lays the same element over. A real
+  `<a href>` still gets there, by a full load, if the script's click handling fails. Each tap
+  is logged for Settings → [[diagnostics]] (`dock: tap Expand|title|picture`), with the
+  player's dock/undock transitions and every navigation.
+- **The iPhone problem (open)**: the user reports that on the phone Expand, the title and the
+  picture do nothing, while play/pause and Stop in the same bar work. Headless Chrome
+  (`scripts/mini-check.mjs`) and real WebKit with iPhone emulation
+  (`scripts/webkit-mini-check.mjs`, [[mobile-checks]]) both restore by all three paths, with
+  the video playing, so the cause is on the device itself. The picture overlay's `z-10`
+  (WebKit composites an inline video on its own layer and can hit-test it over a transparent
+  sibling) was the first guess and is kept; the links and the diagnostics log are the second
+  round, to be read off the phone.
 - Both placements share one element skeleton, so coming back to the scene finds it still
   playing. Verified 2026-10-30: a marker set on the node survived Home and back, and the time
   stayed monotonic.

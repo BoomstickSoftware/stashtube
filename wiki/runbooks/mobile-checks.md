@@ -1,13 +1,13 @@
 ---
 title: Run the headless mobile checks
 kind: runbook
-summary: The four headless-Chrome scripts (overflow and screenshots, touch-driven player, drag-to-preview, mini-player round trip), their commands, what they block, and the cleanup after a station run.
+summary: The headless check scripts (overflow and screenshots, touch-driven player, drag-to-preview, mini-player round trip in Chrome and in real WebKit), their commands, what they block, and the cleanup after a station run.
 tags: [mobile, testing, headless, chrome, scripts]
 status: current
 verified: 2026-10-31
 updated: 2026-10-31
-code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs]
-related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library]
+code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs, scripts/webkit-mini-check.mjs]
+related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs]
 ---
 
 # Run the headless mobile checks
@@ -33,13 +33,24 @@ node scripts/card-check.mjs /tmp/c http://localhost:5174 /browse
 
 # the mini-player round trip: play, tap Home (docks), tap the picture / title / Expand (restores)
 node scripts/mini-check.mjs /tmp/mp http://localhost:5174 /scene/<id>
+
+# the same round trip in real WebKit (iPhone 15 Pro Max emulation, touch), with the page's
+# console, page errors and failed requests printed; needs Playwright, see below
+node scripts/webkit-mini-check.mjs /tmp/wk http://localhost:5174 /scene/<id>
 ```
+
+`webkit-mini-check` is the closest thing to an iPhone a session can drive: Playwright's WebKit
+build, installed globally (`npm i -g playwright`, 1.58.2 at `/opt/homebrew/lib/node_modules/
+playwright`, `PLAYWRIGHT=` to point elsewhere) plus `playwright install webkit` (~73 MB; its
+unzip step hung on this Mac, [[playwright-webkit-install-hangs]]). It is still desktop WebKit
+with a phone viewport, user agent and touch: it passed on 2026-10-31 while the user's phone
+failed, so a pass does not clear a phone report. A `<video>` there only plays once muted.
 
 Expected: `mobile-check` prints `overflow: none` (or the offending elements) per page and
 writes `<outdir>/<page>.png`; `touch-check` prints the player state after each step;
-`card-check` reports each gesture's outcome; `mini-check` prints the path and dock state after
-each tap, ends with `all restore paths work` (exit 1 otherwise) and saves a screenshot per
-step ([[mini-player]]). Read the screenshots.
+`card-check` reports each gesture's outcome; `mini-check` and `webkit-mini-check` print the path
+and dock state after each tap, end with `all restore paths work` (exit 1 otherwise) and save a
+screenshot per step ([[mini-player]]). Read the screenshots.
 
 ## What they block
 
