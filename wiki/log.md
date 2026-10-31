@@ -187,3 +187,7 @@ gained `STUB` → [[web-app]], [[caching]], [[player]], [[whisparr-shelf]], [[mo
 [[continue-history-stats]], [[browse-and-filters]], [[scene-page]], [[stash-api]],
 [[mobile-checks]], [[phone-flow-tap-below-infinite-grid-lands-on-a-card]], [[roadmap]],
 [[2026-10-31-ux-phase5-freshness]].
+
+## [2026-10-31] ingest | UX audit roadmap: every phase live
+Phases 4 and 5 merged and deployed (ce71950, 889567c); status paragraph with the measured targets
+and what remains added at the top of the audit section → [[roadmap]].

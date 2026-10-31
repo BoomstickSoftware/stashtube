@@ -48,6 +48,19 @@ performer page costs under 300 KB on the phone; no long task on an idle Home; CL
 and entity pages; a Browse page append under 30 ms at 800 cards; every failed write shows a
 message; every control on the phone at least 44 px; one word per concept.
 
+**Status 2026-10-31, end of day**: every phase shipped and is live (history pages:
+[[2026-10-31-ux-phase0-web]], [[2026-10-31-hero-pages-the-ranking]],
+[[2026-10-31-ux-phase1-server-caching]], [[2026-10-31-covers-shelf-skeletons]],
+[[2026-10-31-ux-phase2-3-web]], [[2026-10-31-ux-copy-settings-errors]],
+[[2026-10-31-ux-phase4-desktop-polish]], [[2026-10-31-ux-phase5-freshness]]). Targets met
+and measured: Filters and Categories 7–9 ms right after a deploy, a phone performer page
+254 KB, CLS 0.02 on Home and 0 on entity pages, every failed write toasts, 44 px controls,
+one vocabulary. Not re-measured: the Browse append at 800 cards (cards now skip layout
+off-screen). Still open: decisions 11 and 12 below; the iPhone mini-player restore bug
+(waiting for a Diagnostics copy, [[mini-player]]); History remove keeps its confirm and has
+no Undo, since Stash cannot restore a removed play; the optional inline facts in the
+performer header at `lg`; a History-list skeleton.
+
 ### Phase 0: quick wins (one initiative, S each)
 
 _Phone, desktop and client items shipped 2026-10-31 ([[2026-10-31-ux-phase0-web]]); server and
