@@ -60,7 +60,9 @@ over" pill for 8 s; Start over honours the studio's intro skip (Settings on the 
   address bar). A swipe that starts on a centre button does not scrub.
 - The seek bar itself: tall hit area, tap to jump, relative drag ([[seek-bar-markers]]);
   hidden controls take no taps. The controls' gradient never takes taps itself.
-- Speed and "Mark this moment" live in the gear menu (no keyboard on a phone).
+- Speed and "Mark this moment" live in the gear menu (no keyboard on a phone). On touch the
+  gear menu is a bottom sheet (`Sheet`), not a popover clipped inside the player; in
+  fullscreen it stays a popover, since `<body>` is hidden there.
 - Fullscreen: iPhone Safari can only make a bare `<video>` fullscreen, so flix calls
   `webkitEnterFullscreen` (system controls). Elsewhere the player element goes fullscreen, and on
   Android a landscape video locks the screen to landscape.

@@ -54,6 +54,12 @@ frames.
   ([[safari-address-bar-needs-page-scroll]], [[player]]).
 - Installed ("Add to Home Screen") flix runs standalone with no browser Back, so the header
   shows one on phones below the top level (`display-mode: standalone`) ([[installable-app]]).
+- **Menus that must not be clipped are a `Sheet`** (`components/Sheet.tsx`, since 2026-10-31):
+  a bottom sheet on a phone, a small centred panel with a mouse, portalled to `<body>`; used
+  by the card menu's Save to playlist, the playlist menu on touch, the filter bar's "More",
+  the Pin to home form and the player's gear menu. A popover inside an element with
+  `backdrop-filter` is positioned relative to it even when `fixed` (the Pin form once painted
+  behind the first card).
 - Dialogs that need the keyboard (the playlist menu, the Filters sheet) survive it opening;
   the Filters dialog is a full-screen sheet portalled to `body` on phones
   ([[filter-popovers-clipped-in-scroll-row]]).

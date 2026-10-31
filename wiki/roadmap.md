@@ -95,6 +95,8 @@ freshness items in their own initiatives the same day._
 
 ### Phase 2: rendering and layout stability (client, M)
 
+_Shipped 2026-10-31 except the Player's time state (F11) ([[2026-10-31-ux-phase2-3-web]])._
+
 - `content-visibility: auto` on cards and rows, or virtualise the grid, so append cost stops
   growing (F1); render Home rows below the fold lazily, or 12 cards per row with "See all"
   (F2, a product choice); Tags page tiles in chunks on a sentinel with tile-sized `sizes` (F3).
@@ -104,6 +106,9 @@ freshness items in their own initiatives the same day._
 - `time`/`buffered` out of the Player's state into the SeekBar or an external store (F11).
 
 ### Phase 3: phone flows (M)
+
+_Shipped 2026-10-31 except the Filters dialog order, the "2 filters" chip and the shelf
+placement (the wanted-shelf initiative) ([[2026-10-31-ux-phase2-3-web]])._
 
 - One-row filter bar on phones: Filters · sort · "⋯" (Select, Pin, Station), count inline;
   Cleanup's chips likewise (phone 3).

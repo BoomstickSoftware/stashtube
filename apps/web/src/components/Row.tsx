@@ -14,7 +14,7 @@ export const Row = memo(function Row({ title, browse, from, items, actions }: { 
     if (el) el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: 'smooth' })
   }
   return (
-    <section className="group/row">
+    <section className="group/row [content-visibility:auto] [contain-intrinsic-size:auto_400px]">
       <div className="mb-3 flex items-baseline gap-3">
         <h2 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h2>
         {browse && (

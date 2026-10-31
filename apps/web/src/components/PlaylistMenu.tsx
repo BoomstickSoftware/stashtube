@@ -4,7 +4,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFavoriteScenes, usePlaylistMutations, usePlaylists, useScenePlaylists, useToggleFavoriteScene } from '../lib/api'
 import { Button } from './ui'
-import { useClickOutside } from '../lib/hooks'
+import { useClickOutside, useMediaQuery } from '../lib/hooks'
+import { Sheet } from './Sheet'
 
 const MENU_W = 288
 
@@ -12,18 +13,14 @@ const MENU_W = 288
 // shelves and card overflow do not clip it. Membership loads when the menu opens.
 export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string; variant?: 'button' | 'icon' }) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
+  const sheet = useMediaQuery('(pointer: coarse)')
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const anchor = useRef<HTMLDivElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const close = () => setOpen(false)
   useClickOutside(menu, close, open)
-  const { data: playlists } = usePlaylists()
-  const { data: member = [] } = useScenePlaylists(sceneId, open)
-  const m = usePlaylistMutations()
-
   useLayoutEffect(() => {
-    if (!open || !anchor.current) return
+    if (!open || sheet || !anchor.current) return
     const place = () => {
       const r = anchor.current!.getBoundingClientRect()
       const left = Math.min(Math.max(8, r.right - MENU_W), window.innerWidth - MENU_W - 8)
@@ -46,7 +43,7 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
       window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', place)
     }
-  }, [open])
+  }, [open, sheet])
 
   return (
     <div ref={anchor} className="relative">
@@ -64,7 +61,9 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
           <ListPlus size={18} /> Save
         </Button>
       )}
+      {open && sheet && <PlaylistSheet sceneId={sceneId} onClose={close} />}
       {open &&
+        !sheet &&
         pos &&
         createPortal(
           <div
@@ -73,47 +72,70 @@ export function PlaylistMenu({ sceneId, variant = 'button' }: { sceneId: string;
             className="fixed z-[60] overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-line"
           >
             <div className="border-b border-line px-4 py-3 text-sm font-semibold">Save to playlist</div>
-            <div className="max-h-64 overflow-y-auto py-1">
-              {playlists?.map((p) => {
-                const has = member.includes(p.id)
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => (has ? m.removeItem : m.add).mutate({ id: p.id, sceneId })}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/5"
-                  >
-                    <span className={`flex size-5 shrink-0 items-center justify-center rounded ${has ? 'bg-accent' : 'ring-1 ring-white/30'}`}>
-                      {has && <Check size={14} />}
-                    </span>
-                    {p.favorites && <Heart size={14} className="shrink-0 fill-accent text-accent" />}
-                    <span className="truncate">{p.name}</span>
-                    <span className="ml-auto text-xs text-muted">{p.itemCount}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <form
-              className="flex items-center gap-2 border-t border-line p-2"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!name.trim()) return
-                m.create.mutate({ name: name.trim(), sceneId }, { onSuccess: () => setName('') })
-              }}
-            >
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="New playlist"
-                className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-1 focus:ring-accent"
-              />
-              <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover" aria-label="Create playlist">
-                <Plus size={16} />
-              </button>
-            </form>
+            <PlaylistList sceneId={sceneId} />
           </div>,
           document.body,
         )}
     </div>
+  )
+}
+
+// The playlists with this video's membership, and a field for a new one. Membership loads
+// when it shows.
+function PlaylistList({ sceneId }: { sceneId: string }) {
+  const [name, setName] = useState('')
+  const { data: playlists } = usePlaylists()
+  const { data: member = [] } = useScenePlaylists(sceneId, true)
+  const m = usePlaylistMutations()
+  return (
+    <>
+      <div className="max-h-64 overflow-y-auto py-1">
+        {playlists?.map((p) => {
+          const has = member.includes(p.id)
+          return (
+            <button
+              key={p.id}
+              onClick={() => (has ? m.removeItem : m.add).mutate({ id: p.id, sceneId })}
+              className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/5"
+            >
+              <span className={`flex size-5 shrink-0 items-center justify-center rounded ${has ? 'bg-accent' : 'ring-1 ring-white/30'}`}>
+                {has && <Check size={14} />}
+              </span>
+              {p.favorites && <Heart size={14} className="shrink-0 fill-accent text-accent" />}
+              <span className="truncate">{p.name}</span>
+              <span className="ml-auto text-xs text-muted">{p.itemCount}</span>
+            </button>
+          )
+        })}
+      </div>
+      <form
+        className="flex items-center gap-2 border-t border-line p-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!name.trim()) return
+          m.create.mutate({ name: name.trim(), sceneId }, { onSuccess: () => setName('') })
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New playlist"
+          className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-1 focus:ring-accent"
+        />
+        <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover" aria-label="Create playlist">
+          <Plus size={16} />
+        </button>
+      </form>
+    </>
+  )
+}
+
+// "Save to playlist" as a sheet: what the card menu and touch screens use.
+export function PlaylistSheet({ sceneId, onClose }: { sceneId: string; onClose: () => void }) {
+  return (
+    <Sheet title="Save to playlist" onClose={onClose} z="z-[80]">
+      <PlaylistList sceneId={sceneId} />
+    </Sheet>
   )
 }
 

@@ -405,6 +405,9 @@ export function Tags(): JSX.Element {
   const featured = sort === 'popular' && !q ? tiles.filter((t) => !t.favorite).slice(0, FEATURED) : []
   const rest = featured.length ? tiles.filter((t) => !t.favorite && !featured.includes(t)) : tiles.filter((t) => !t.favorite)
   const onPin = (t: TagTile) => pin.mutate({ id: t.id, favorite: !t.favorite })
+  // 1,100 tiles at once cost 11k nodes and a 120 ms task on a phone: render them a screenful at a time
+  const [shown, setShown] = useState(TILE_PAGE)
+  const showMore = useCallback(() => setShown((n) => n + TILE_PAGE), [])
 
   return (
     <div>
@@ -448,22 +451,25 @@ export function Tags(): JSX.Element {
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8">
-            {rest.map((t) => (
+            {rest.slice(0, shown).map((t) => (
               <TagTileCard key={t.id} tile={t} onPin={onPin} />
             ))}
           </div>
+          <Sentinel onVisible={showMore} disabled={shown >= rest.length} />
         </>
       )}
     </div>
   )
 }
 
+const TILE_PAGE = 72
+
 function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin: (t: TagTile) => void }) {
   return (
     <Link
       to="/tag/$id"
       params={{ id: tile.id }}
-      className={clsx('group relative block overflow-hidden rounded-xl bg-surface ring-1', tile.favorite ? 'ring-accent/40' : 'ring-white/5', big ? 'aspect-video' : 'aspect-[16/7]')}
+      className={clsx('group relative block overflow-hidden rounded-xl bg-surface ring-1 [content-visibility:auto] [contain-intrinsic-size:auto_120px]', tile.favorite ? 'ring-accent/40' : 'ring-white/5', big ? 'aspect-video' : 'aspect-[16/7]')}
     >
       {tile.image && (
         <img

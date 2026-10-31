@@ -1,7 +1,7 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Check, Star } from 'lucide-react'
+import { Check, MoreVertical, Star } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ago, date, duration, resolution } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
@@ -108,7 +108,7 @@ export const SceneCard = memo(function SceneCard({
   return (
     <div
       ref={root}
-      className={clsx('group min-w-0', className)}
+      className={clsx('group min-w-0 [content-visibility:auto] [contain-intrinsic-size:auto_320px]', className)}
       // a real mouse only: iOS sends emulated mouse events on every tap
       onPointerEnter={(e) => e.pointerType === 'mouse' && !select && enter()}
       onPointerLeave={(e) => e.pointerType === 'mouse' && leave()}
@@ -280,10 +280,21 @@ export const SceneCard = memo(function SceneCard({
           {/* a Featured pick says why it is here, on its own line so it is not cut off */}
           {scene.why && <div className="mt-0.5 truncate text-[11px] text-accent/90">{scene.why}</div>}
         </div>
-        <div className="-mr-1.5 flex shrink-0 flex-col items-center opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:has-[[aria-pressed=true]]:opacity-100">
+        <div className="-mr-1.5 flex shrink-0 flex-col items-center opacity-100 transition-opacity touch:hidden [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:has-[[aria-pressed=true]]:opacity-100">
           <FavoriteSceneButton sceneId={scene.id} />
           <PlaylistMenu sceneId={scene.id} variant="icon" />
         </div>
+        {/* on touch, one finger-sized button opens the same sheet as a long press */}
+        <button
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            setMenu({ x: r.left, y: r.top })
+          }}
+          aria-label="More"
+          className="-mr-2 hidden size-11 shrink-0 items-center justify-center self-start rounded-full text-muted hover:bg-raised hover:text-fg touch:flex"
+        >
+          <MoreVertical size={20} />
+        </button>
       </div>
       {menu && <CardMenu scene={scene} at={menu} onClose={() => setMenu(null)} />}
     </div>

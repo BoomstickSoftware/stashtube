@@ -5,7 +5,7 @@ summary: The Filters dialog, the stackable per-browser filters, the People filte
 tags: [browse, filters, facets, people, sort]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 routes: [/browse, /performer/$id, /studio/$id, /tag/$id, /playlist/$id]
 api: [GET /api/scenes, GET /api/scenes/facets, GET /api/tags/tiles]
 code: [apps/web/src/components/Filters.tsx, apps/web/src/components/SceneBrowser.tsx, apps/web/src/components/AddFilter.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/lib/filters.ts, apps/web/src/lib/describe.ts, apps/server/src/stash.ts]
@@ -58,7 +58,13 @@ them.
 ## Also on the page
 
 Category tiles, multi-select with bulk Favorite, Add to playlist and Delete, and the card menu
-(right-click or long press: play, station, favourite, watched, not interested, delete).
+(right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
+Save to playlist…, Mark as watched, Not interested, and with a mouse Delete…; "Station from
+here" was dropped and Delete left the phone's sheet on 2026-10-31, decision: a long press
+lands on it too easily). On a phone the filter bar is one sideways-scrolling row (Filters,
+sort, the count) with the list's actions (Select, Pin to home, Station) behind a "More"
+sheet; from `sm` it wraps and shows them inline. Sheets are `components/Sheet.tsx`
+([[mobile-first-ui]]).
 `describeQuery` (`lib/describe.ts`) names a filter set for chips, station summaries and
 pinned-row titles.
 

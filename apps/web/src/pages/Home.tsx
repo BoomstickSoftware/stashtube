@@ -76,7 +76,7 @@ export function Home(): JSX.Element {
 function NotDownloaded() {
   const { data } = useWhisparrNew()
   if (!data || data.length < 3) return null
-  return <WantedRow title="New from your favourites, not downloaded" hint="Get fetches one scene" items={data} />
+  return <WantedRow title="New from performers you follow, not downloaded" hint="Get fetches one scene" items={data} />
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
@@ -85,8 +85,10 @@ const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0))
 
 // Stations left part-way, most recent first: tap one to pick it up where it was.
 function PickUpStations() {
-  const { data: resumes } = useStationResumes()
+  const { data: resumes, isLoading } = useStationResumes()
   const recent = (resumes ?? []).slice(0, 6)
+  // the row arrives after the feed paints; hold its height so the rows below do not jump
+  if (isLoading && !resumes) return <section aria-hidden className="h-[calc(62vw*9/16+4.75rem)] sm:h-[calc(260px*9/16+4.75rem)]" />
   if (!recent.length) return null
   return (
     <section>

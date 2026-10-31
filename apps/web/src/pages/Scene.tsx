@@ -169,15 +169,6 @@ function SceneView({ id }: { id: string }) {
           >
             <EyeOff size={17} /> {scene.hidden ? 'Not interested ✓' : 'Not interested'}
           </button>
-          {features?.deleteScenes && (
-            <button
-              onClick={() => setDeleting(true)}
-              title="Delete video"
-              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm text-red-400 hover:bg-red-500/15"
-            >
-              <Trash2 size={17} /> Delete
-            </button>
-          )}
           <PlaylistMenu sceneId={scene.id} />
         </div>
       </div>
@@ -239,6 +230,16 @@ function SceneView({ id }: { id: string }) {
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <IdentifyButton scene={scene} />
+          {/* destructive, so away from the everyday actions above the fold */}
+          {features?.deleteScenes && (
+            <button
+              onClick={() => setDeleting(true)}
+              title="Delete video"
+              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm text-red-400 hover:bg-red-500/15"
+            >
+              <Trash2 size={17} /> Delete
+            </button>
+          )}
         </div>
         {deleting && (
           <DeleteScenesDialog

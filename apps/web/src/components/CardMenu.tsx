@@ -1,7 +1,7 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { CheckCheck, EyeOff, Heart, Play, Radio, Trash2 } from 'lucide-react'
+import { CheckCheck, EyeOff, Heart, ListPlus, Play, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene } from '../lib/api'
@@ -9,9 +9,10 @@ import { useClickOutside, useMediaQuery } from '../lib/hooks'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { DeleteScenesDialog } from './DeleteScenes'
+import { PlaylistSheet } from './PlaylistMenu'
 
-// A card's actions, on right-click (a menu at the pointer) or a long press (a sheet at the
-// bottom of a phone): everything the hover buttons offer and more, without hunting for them.
+// A card's actions, on right-click (a menu at the pointer), a long press or the card's "⋯"
+// (a sheet at the bottom of a phone): everything the hover buttons offer and more.
 export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number; y: number }; onClose: () => void }) {
   const navigate = useNavigate()
   const sheet = useMediaQuery('(pointer: coarse)')
@@ -29,18 +30,20 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
   const watched = useMarkWatched()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const fav = favorites.has(scene.id)
 
-  const item = (icon: ReactNode, label: string, run: () => void, tone?: 'danger') => (
+  // `keep`: the item opens something of its own (a dialog, a sheet) and closes the menu itself
+  const item = (icon: ReactNode, label: string, run: () => void, opts: { tone?: 'danger'; keep?: boolean } = {}) => (
     <button
       key={label}
       onClick={() => {
         run()
-        if (!deleting) onClose()
+        if (!opts.keep) onClose()
       }}
       className={clsx(
         'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-white/10 touch:py-3.5',
-        tone === 'danger' ? 'text-red-400' : 'text-fg',
+        opts.tone === 'danger' ? 'text-red-400' : 'text-fg',
       )}
     >
       <span className="w-5 shrink-0 text-muted">{icon}</span>
@@ -53,6 +56,16 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
   const H = 290
   const style = sheet ? undefined : { left: Math.min(at.x, innerWidth - W - 8), top: Math.min(at.y, innerHeight - H - 8) }
 
+  if (saving)
+    return (
+      <PlaylistSheet
+        sceneId={scene.id}
+        onClose={() => {
+          setSaving(false)
+          onClose()
+        }}
+      />
+    )
   if (deleting)
     return (
       <DeleteScenesDialog
@@ -83,10 +96,10 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
           </div>
         )}
         {item(<Play size={16} />, 'Play', () => navigate({ to: '/scene/$id', params: { id: scene.id }, search: { play: true } }))}
-        {item(<Radio size={16} />, 'Station from here', () => navigate({ to: '/station', search: { from: scene.id } }))}
         {item(<Heart size={16} className={fav ? 'fill-accent text-accent' : ''} />, fav ? 'Remove from Favorites' : 'Add to Favorites', () =>
           toggleFavorite.mutate({ id: scene.id, favorite: !fav }),
         )}
+        {item(<ListPlus size={16} />, 'Save to playlist…', () => setSaving(true), { keep: true })}
         {scene.playCount === 0 && item(<CheckCheck size={16} />, 'Mark as watched', () => guardWrite(() => watched.mutate(scene.id)))}
         {item(<EyeOff size={16} />, 'Not interested', () => {
           hide.mutate({ id: scene.id, hidden: true })
@@ -97,7 +110,8 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
             </button>,
           )
         })}
-        {features?.deleteScenes && item(<Trash2 size={16} />, 'Delete…', () => setDeleting(true), 'danger')}
+        {/* a phone's long press is too easy to land on Delete; it lives on the video's page there */}
+        {features?.deleteScenes && !sheet && item(<Trash2 size={16} />, 'Delete…', () => setDeleting(true), { tone: 'danger', keep: true })}
       </div>
     </div>,
     document.body,

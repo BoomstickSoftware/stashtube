@@ -29,6 +29,7 @@ import { attachSource, nextMarker, useFlash, usePlayerKeys, useWatchAccounting }
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekBarHandle, type SeekPoint } from './SeekBar'
+import { Sheet } from './Sheet'
 import { useLongPress, useMediaQuery } from '../lib/hooks'
 
 const RATES = [0.5, 1, 1.25, 1.5, 2]
@@ -431,7 +432,7 @@ export function Player({
     setIdle(false)
     clearTimeout(idleTimer.current)
     idleTimer.current = window.setTimeout(() => setIdle(true), touch ? 3500 : 2500)
-  }, [touch])
+  }, [touch, setIdle])
 
   // Taps on the picture. Mouse: click plays or pauses, double click is fullscreen. Touch: a
   // tap shows or hides the controls; double taps on the left or right third seek, YouTube
@@ -509,6 +510,76 @@ export function Player({
   const showControls = !playing || !idle || point !== null || menu
   const centre = showControls && !waiting && !point?.scrubbing // out of the way of a scrub's preview
   const VolIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
+
+  // the gear menu's items; a popover in the player with a mouse, a sheet on touch
+  const menuBody = (
+    <>
+        <button
+          onClick={() => {
+            setMenu(false)
+            markAt(time)
+          }}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+        >
+          <Bookmark size={15} /> Mark this moment ({fmt(time)})
+        </button>
+        {/* speed lives here on narrow screens, where the bar has no room for it */}
+        <div className="flex items-center gap-1 px-3 py-1.5 sm:hidden">
+          <span className="mr-auto text-[11px] font-semibold tracking-wider text-white/50 uppercase">Speed</span>
+          {RATES.map((r) => (
+            <button
+              key={r}
+              onClick={() => {
+                setRate(r)
+                video.current!.playbackRate = r
+              }}
+              className={clsx('rounded px-1.5 py-1 text-xs tabular-nums', rate === r ? 'bg-white text-black' : 'hover:bg-white/10')}
+            >
+              {r}×
+            </button>
+          ))}
+        </div>
+        <div className="border-t border-white/10 px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">Quality</div>
+        {QUALITIES.map(([q, label]) => (
+          <button key={q} onClick={() => setQuality(q)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/10">
+            <span className="w-4">{quality === q && <Check size={15} />}</span>
+            {label}
+            {q === 'auto' && quality === 'auto' && (
+              <span className="ml-auto text-xs text-white/50">{autoRes ? '720p' : mode === 'direct' ? 'original' : 'transcode'}</span>
+            )}
+            {q === 'original' && !canDirect && <span className="ml-auto text-xs text-white/50">transcoded</span>}
+          </button>
+        ))}
+        {scene.studio && (
+          <>
+            <div className="mt-1 border-t border-white/10 px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
+              {scene.studio.name} intro
+            </div>
+            <button
+              onClick={() => {
+                setIntro.mutate({ studioId: scene.studio!.id, seconds: Math.round(time) })
+                setMenu(false)
+                setFlash(`Intro skip set: ${fmt(time)}`)
+              }}
+              className="w-full px-3 py-1.5 text-left hover:bg-white/10"
+            >
+              Skip to here on every video ({fmt(time)})
+            </button>
+            {introSkip ? (
+              <button
+                onClick={() => {
+                  setIntro.mutate({ studioId: scene.studio!.id, seconds: null })
+                  setMenu(false)
+                }}
+                className="w-full px-3 py-1.5 text-left text-white/70 hover:bg-white/10"
+              >
+                Stop skipping (now {fmt(introSkip)})
+              </button>
+            ) : null}
+          </>
+        )}
+    </>
+  )
 
   return (
     <div
@@ -752,77 +823,19 @@ export function Player({
             >
               <Settings2 size={20} className={menu ? 'rotate-45 transition-transform' : 'transition-transform'} />
             </Ctl>
-            {menu && (
-              <div
-                style={{ maxHeight: menuMax }}
-                className="absolute right-0 bottom-11 w-60 overflow-y-auto overscroll-contain rounded-xl bg-black/90 py-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur"
-              >
-                <button
-                  onClick={() => {
-                    setMenu(false)
-                    markAt(time)
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/10"
+            {menu &&
+              (touch && !fullscreen ? (
+                <Sheet title="Settings" onClose={() => setMenu(false)} z="z-[80]">
+                  <div className="py-1 text-sm">{menuBody}</div>
+                </Sheet>
+              ) : (
+                <div
+                  style={{ maxHeight: menuMax }}
+                  className="absolute right-0 bottom-11 w-60 overflow-y-auto overscroll-contain rounded-xl bg-black/90 py-1 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur"
                 >
-                  <Bookmark size={15} /> Mark this moment ({fmt(time)})
-                </button>
-                {/* speed lives here on narrow screens, where the bar has no room for it */}
-                <div className="flex items-center gap-1 px-3 py-1.5 sm:hidden">
-                  <span className="mr-auto text-[11px] font-semibold tracking-wider text-white/50 uppercase">Speed</span>
-                  {RATES.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        setRate(r)
-                        video.current!.playbackRate = r
-                      }}
-                      className={clsx('rounded px-1.5 py-1 text-xs tabular-nums', rate === r ? 'bg-white text-black' : 'hover:bg-white/10')}
-                    >
-                      {r}×
-                    </button>
-                  ))}
+                  {menuBody}
                 </div>
-                <div className="border-t border-white/10 px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">Quality</div>
-                {QUALITIES.map(([q, label]) => (
-                  <button key={q} onClick={() => setQuality(q)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/10">
-                    <span className="w-4">{quality === q && <Check size={15} />}</span>
-                    {label}
-                    {q === 'auto' && quality === 'auto' && (
-                      <span className="ml-auto text-xs text-white/50">{autoRes ? '720p' : mode === 'direct' ? 'original' : 'transcode'}</span>
-                    )}
-                    {q === 'original' && !canDirect && <span className="ml-auto text-xs text-white/50">transcoded</span>}
-                  </button>
-                ))}
-                {scene.studio && (
-                  <>
-                    <div className="mt-1 border-t border-white/10 px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
-                      {scene.studio.name} intro
-                    </div>
-                    <button
-                      onClick={() => {
-                        setIntro.mutate({ studioId: scene.studio!.id, seconds: Math.round(time) })
-                        setMenu(false)
-                        setFlash(`Intro skip set: ${fmt(time)}`)
-                      }}
-                      className="w-full px-3 py-1.5 text-left hover:bg-white/10"
-                    >
-                      Skip to here on every video ({fmt(time)})
-                    </button>
-                    {introSkip ? (
-                      <button
-                        onClick={() => {
-                          setIntro.mutate({ studioId: scene.studio!.id, seconds: null })
-                          setMenu(false)
-                        }}
-                        className="w-full px-3 py-1.5 text-left text-white/70 hover:bg-white/10"
-                      >
-                        Stop skipping (now {fmt(introSkip)})
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            )}
+              ))}
           </div>
           <button
             onClick={() => {

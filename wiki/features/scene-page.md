@@ -32,7 +32,9 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
   playlist, [[playlists-and-favorites]]), **Not interested** (hides it everywhere,
   [[blocklist-and-exclusions]]; pressed it reads "Not interested ✓" and the toast says "Marked
   not interested · Undo", here and in the card menu; _"Hidden" / "Hidden from flix" until
-  2026-10-31_), **Delete** next to Favorite ([[delete-via-whisparr]]).
+  2026-10-31_). **Delete** sits in the details card beside Identify since 2026-10-31 (_it was
+  in the action row next to Favorite_; destructive, so away from the everyday actions,
+  [[delete-via-whisparr]]).
   **Mark as watched** is not on this page: it lives in the card's long-press / right-click
   menu (`CardMenu.tsx`); _the page listed it until 2026-10-31_ (UX audit, F14 in
   `docs/audits/2026-10-31-ux/ia.md`).

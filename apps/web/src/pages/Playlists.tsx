@@ -171,7 +171,7 @@ export function PlaylistPage(): JSX.Element {
             >
               <GripVertical size={16} className="hidden shrink-0 cursor-grab text-muted sm:block" />
               <span className="w-6 shrink-0 text-center text-sm text-muted tabular-nums">{i + 1}</span>
-              <Link to="/scene/$id" params={{ id: s.id }} search={{ playlist: id }} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg sm:w-44">
+              <Link to="/scene/$id" params={{ id: s.id }} search={{ playlist: id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg sm:w-44">
                 <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
                 <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(s.durationSec)}</span>
               </Link>
@@ -184,10 +184,10 @@ export function PlaylistPage(): JSX.Element {
                 </div>
               </div>
               <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                <button onClick={() => move(i, i - 1)} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Move up">
+                <button onClick={() => move(i, i - 1)} className="hidden rounded-full p-2 text-muted hover:bg-raised hover:text-fg sm:inline-flex" aria-label="Move up">
                   <ArrowUp size={16} />
                 </button>
-                <button onClick={() => move(i, i + 1)} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Move down">
+                <button onClick={() => move(i, i + 1)} className="hidden rounded-full p-2 text-muted hover:bg-raised hover:text-fg sm:inline-flex" aria-label="Move down">
                   <ArrowDown size={16} />
                 </button>
                 <button onClick={() => m.removeItem.mutate({ id, sceneId: s.id })} className="rounded-full p-2 text-muted hover:bg-raised hover:text-red-400" aria-label="Remove">

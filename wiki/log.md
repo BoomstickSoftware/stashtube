@@ -128,3 +128,9 @@ Settings, gender switch page-only, home rows 24 lazy, toast-only errors →
 [[library-before-wanted-shelf]], [[categories-and-us-spelling]], [[panic-key-desktop-only]],
 [[library-tools-group-in-settings]], [[gender-switch-performers-page-only]],
 [[home-rows-stay-24-render-lazily]], [[failed-writes-toast-only]].
+
+## [2026-10-31] ingest | UX Phases 2 and 3 web shipped
+Lazy rows and cards, chunked Categories, reserved station row, one-row phone filter bar with a
+More sheet, card "⋯" and Save to playlist in the sheet, Delete relocated, gear menu as a sheet,
+`components/Sheet.tsx` → [[2026-10-31-ux-phase2-3-web]], [[browse-and-filters]], [[player]],
+[[scene-page]], [[home-feed]], [[mobile-first-ui]].

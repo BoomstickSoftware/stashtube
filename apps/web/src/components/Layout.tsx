@@ -9,6 +9,7 @@ import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
 import { setPrivate, useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
+import { showToast } from '../lib/toast'
 import { Login } from '../pages/Login'
 import { NowPlayingHost } from './NowPlaying'
 import { PinLock } from './PinLock'
@@ -112,7 +113,10 @@ export function Layout(): JSX.Element {
             <Radio size={20} />
           </Link>
           <button
-            onClick={() => setDiscreet(!discreet)}
+            onClick={() => {
+              setDiscreet(!discreet)
+              if (!discreet) showToast('Discreet: pictures stay blurred until you touch them')
+            }}
             className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', discreet ? 'text-accent' : 'text-muted')}
             aria-pressed={discreet}
             aria-label={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
@@ -121,7 +125,10 @@ export function Layout(): JSX.Element {
             {discreet ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
           <button
-            onClick={() => setPrivate(!priv)}
+            onClick={() => {
+              setPrivate(!priv)
+              if (!priv) showToast('Private session: nothing you watch is recorded until you turn it off')
+            }}
             className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', priv ? 'text-violet-300' : 'text-muted')}
             aria-pressed={priv}
             aria-label={priv ? 'End the private session' : 'Private session: record nothing this visit'}

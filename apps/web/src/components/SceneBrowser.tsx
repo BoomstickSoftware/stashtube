@@ -2,10 +2,11 @@ import type { SceneCard as SceneCardType, SceneQuery, SceneSort } from '@flix/sh
 import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
+import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
+import { Sheet } from './Sheet'
 import { useRowMutations, useScenes } from '../lib/api'
 import { rowTitle, useQueryParts } from '../lib/describe'
 import { withBase } from '../lib/query'
@@ -172,12 +173,14 @@ function FilterBar({
   onSelectAll?: () => void // selects every loaded video
 }) {
   const [open, setOpen] = useState(false)
+  const [more, setMore] = useState(false) // the phone's "More" sheet with the list's actions
   const sort = query.sort ?? defaultSort
   const n = filterTotal(query)
 
   return (
     <div className="z-20 -mx-4 mb-6 border-b sm:sticky sm:top-16 border-white/5 bg-bg/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* one row on a phone (it scrolls sideways; the list's actions sit behind "More"), wrapping from sm */}
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -212,7 +215,11 @@ function FilterBar({
             <Shuffle size={14} /> Reshuffle
           </Chip>
         )}
-        <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
+        <span className="shrink-0 text-xs text-muted sm:hidden">{total === undefined ? '…' : `${total.toLocaleString()} video${total === 1 ? '' : 's'}`}</span>
+        <Chip className="ml-auto shrink-0 sm:hidden" onClick={() => setMore(true)}>
+          <MoreHorizontal size={14} /> More
+        </Chip>
+        <span className="hidden flex-wrap items-center gap-2 sm:ml-auto sm:flex">
           {onSelecting && (
             <Chip tone={selecting ? 'active' : 'default'} onClick={onSelecting}>
               <CheckSquare size={14} /> {selecting ? 'Done' : 'Select'}
@@ -234,10 +241,43 @@ function FilterBar({
 
       <ActiveFilters query={query} onChange={onChange} className="mt-2.5" />
 
-      <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+      <div className="mt-2 hidden items-center gap-2 text-xs text-muted sm:flex">
         {total === undefined ? '…' : `${total.toLocaleString()} video${total === 1 ? '' : 's'}`}
         {busy && <Spinner className="size-3 border" />}
       </div>
+      {more && (
+        <Sheet title="This list" onClose={() => setMore(false)}>
+          <div className="flex flex-wrap gap-2 p-4">
+            {onSelecting && (
+              <Chip
+                tone={selecting ? 'active' : 'default'}
+                onClick={() => {
+                  onSelecting()
+                  setMore(false)
+                }}
+              >
+                <CheckSquare size={14} /> {selecting ? 'Done' : 'Select'}
+              </Chip>
+            )}
+            {onSelectAll && (
+              <Chip
+                onClick={() => {
+                  onSelectAll()
+                  setMore(false)
+                }}
+              >
+                <CheckCheck size={14} /> Select all loaded
+              </Chip>
+            )}
+            <PinButton query={effective} />
+            <Link to="/station" search={stationQuery(effective)}>
+              <Chip>
+                <Radio size={14} /> Station
+              </Chip>
+            </Link>
+          </div>
+        </Sheet>
+      )}
 
       {open && <FilterDialog query={query} countQuery={countQuery} onApply={onChange} onClose={() => setOpen(false)} />}
     </div>

@@ -69,3 +69,11 @@ With the pool cached, Featured for a new seed answers in 0.04 s.
 - Cold `/api/home` cost Stash 7 queries and 79 asset fetches on 2026-10-26; warm, nothing.
 - Cold 0.7–1.9 s, warm 4–8 ms, after a restart 10 ms from the restored cache (2026-10-27).
 - The home body is 108 KB → 17 KB gzip'd (2026-10-29).
+
+## Rendering cost (2026-10-31)
+
+Home holds ~260 cards. Each `Row` section and each card is `content-visibility: auto` with an
+intrinsic size, so rows below the fold are laid out and painted only when they come near;
+`Row` and `SceneCard` are memoised; the hero owns its own index so its 12 s tick re-renders
+only itself. "Pick up a station" arrives after the feed: while it loads the section holds its
+height, so the rows below do not jump (decision [[home-rows-stay-24-render-lazily]]).
