@@ -716,7 +716,7 @@ export function Player({
             <button
               onClick={markAsO}
               disabled={!marked.id}
-              title="Count an O at this moment"
+              title="Count an O here (adds a marker)"
               className="ml-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 font-semibold hover:bg-sky-500/40 disabled:opacity-50"
             >
               <Droplet size={13} /> O

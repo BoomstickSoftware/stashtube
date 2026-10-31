@@ -70,5 +70,5 @@ frames.
 
 With `prefers-reduced-motion: reduce` (since 2026-10-31) `index.css` cuts every animation and
 transition to 0.01 ms, cards do not start a hover preview (`SceneCard.enter` checks the
-query), the station covers stop cycling and the header skeletons stop pulsing. The hero's
-12 s auto-advance is not yet covered (Home.tsx; roadmap).
+query), the station covers stop cycling, the header skeletons stop pulsing and the hero
+stops auto-advancing (its 12 s timer is paused).

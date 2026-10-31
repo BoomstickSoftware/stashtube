@@ -183,7 +183,7 @@ export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: st
       </section>
     )
   }
-  const hint = 'Get fetches one scene'
+  const hint = 'Get downloads one scene'
   const toggle = <ViewToggle view={view} onChange={setView} />
   if (view === 'grid') {
     return (

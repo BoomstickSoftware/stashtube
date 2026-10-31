@@ -141,9 +141,8 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 - ~~Right-click: skip `preventDefault` with Shift (12); Shift+click range select and
   Cmd/Ctrl+A in select mode (24); NEW badge always visible at low opacity (18);
   `prefers-reduced-motion` for the card zoom and previews (19); card meta contrast (21).~~
-  Done 2026-10-31 ([[browse-and-filters]], [[mobile-first-ui]]); the hero's auto-advance
-  under reduced motion is still open. Station cover placeholders (26); tile skeletons for
-  directories (27).
+  Done 2026-10-31 ([[browse-and-filters]], [[mobile-first-ui]]), the hero included.
+  Station cover placeholders (26); tile skeletons for directories (27).
 
 ### Phase 5: vocabulary, freshness and errors (IA, S–M, several need a decision)
 

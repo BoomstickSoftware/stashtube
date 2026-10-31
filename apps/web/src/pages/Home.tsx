@@ -9,6 +9,7 @@ import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
 import { WantedRow } from '../components/WantedRow'
+import { useMediaQuery } from '../lib/hooks'
 import { useMoreFeatured, homeSeed, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
@@ -76,7 +77,7 @@ export function Home(): JSX.Element {
 function NotDownloaded() {
   const { data } = useWhisparrNew()
   if (!data || data.length < 3) return null
-  return <WantedRow title="New from performers you follow, not downloaded" hint="Get fetches one scene" items={data} />
+  return <WantedRow title="New from performers you follow, not downloaded" hint="Get downloads one scene" items={data} />
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
@@ -166,7 +167,8 @@ function Hero({ order, seed, more }: { order: SceneCard[]; seed: string; more: b
   const onStep = useCallback((d: number) => setHeroId(picks[(at + d + picks.length) % picks.length]?.id), [picks, at])
   const [hovering, setHovering] = useState(false)
   const [previewing, setPreviewing] = useState(false)
-  const paused = hovering || previewing || count < 2
+  const still = useMediaQuery('(prefers-reduced-motion: reduce)') // no auto-advance either
+  const paused = hovering || previewing || count < 2 || still
   useEffect(() => {
     if (paused) return
     const t = setTimeout(() => document.visibilityState === 'visible' && onStep(1), HERO_EVERY)

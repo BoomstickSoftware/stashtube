@@ -2,7 +2,7 @@ import type { PeopleFilter } from '@flix/shared'
 import { ethnicities } from '@flix/shared'
 import { Chip } from './ui'
 
-// Age at filming and ethnicity of a performer (of the Settings gender): one performer must
+// Age at filming and ethnicity of a performer: one performer must
 // match both. Used by the filter panel and by Settings (defaults for every list).
 const agePresets: { label: string; min?: number; max?: number }[] = [
   { label: '18–22', min: 18, max: 22 },
