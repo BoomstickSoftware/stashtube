@@ -182,39 +182,34 @@ export async function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]
   }
   const seed = daySeed()
   const settings = await getSettings()
-  const [recs, pinned] = await Promise.all([
-    stash.recommendations(blocked, (g) => genderAllows(settings.performerGender, g)).catch((e) => {
-      console.error('recommendations:', e.message)
-      return null
-    }),
-    savedRows.listRows(),
+  const failed = (what: string) => (e: Error) => {
+    console.error(`${what}:`, e.message)
+    return null
+  }
+  // The groups that do not depend on each other run together (a cold feed waited on each in
+  // turn); only "More with" needs the recommendations' favourite performers.
+  const recsP = stash.recommendations(blocked, (g) => genderAllows(settings.performerGender, g)).catch(failed('recommendations'))
+  const [recs, picks, because, pinnedRows, moreWith, rows] = await Promise.all([
+    recsP,
+    featured(settings.featured, visitSeed, 24).catch(failed('featured')),
+    becauseYouWatched(blocked).catch(failed('because you watched')),
+    savedRows.listRows().then((pinned) => Promise.all(pinned.map(async (r) => ({ ...(await row(`saved-${r.id}`, r.title, r.query)), savedId: r.id })))),
+    recsP.then((r) =>
+      Promise.all((r?.favPerformers ?? []).map((p) => row(`more-${p.id}`, `More with ${p.name}`, { performers: p.id, sort: 'random', seed }))),
+    ),
+    Promise.all([
+      row('favorites', 'New from your favourites', { favorites: true, sort: 'date' }),
+      row('recent', 'Recently added', { sort: 'created_at' }),
+      row('discover', 'Discover', { sort: 'random', seed, unwatched: true }),
+      row('top', 'Top rated', { sort: 'rating', minRating: 4 }),
+      row('releases', 'Latest releases', { sort: 'date' }),
+      row('most', 'Most watched', { sort: 'play_count' }),
+    ]),
   ])
   const personal: HomeRow[] = []
-  const picks = await featured(settings.featured, visitSeed, 24).catch((e) => {
-    console.error('featured:', e.message)
-    return []
-  })
-  if (picks.length) personal.push({ key: 'featured', title: 'Featured', items: picks })
+  if (picks?.length) personal.push({ key: 'featured', title: 'Featured', items: picks })
   if (recs?.forYou.length) personal.push({ key: 'for-you', title: 'For you', browse: { unwatched: true }, items: recs.forYou })
-  const because = await becauseYouWatched(blocked).catch((e) => {
-    console.error('because you watched:', e.message)
-    return null
-  })
   if (because) personal.push(because)
-  const pinnedRows = await Promise.all(
-    pinned.map(async (r) => ({ ...(await row(`saved-${r.id}`, r.title, r.query)), savedId: r.id })),
-  )
-  const moreWith = await Promise.all(
-    (recs?.favPerformers ?? []).map((p) => row(`more-${p.id}`, `More with ${p.name}`, { performers: p.id, sort: 'random', seed })),
-  )
-  const rows = await Promise.all([
-    row('favorites', 'New from your favourites', { favorites: true, sort: 'date' }),
-    row('recent', 'Recently added', { sort: 'created_at' }),
-    row('discover', 'Discover', { sort: 'random', seed, unwatched: true }),
-    row('top', 'Top rated', { sort: 'rating', minRating: 4 }),
-    row('releases', 'Latest releases', { sort: 'date' }),
-    row('most', 'Most watched', { sort: 'play_count' }),
-  ])
   // A shelf of one or two looks broken; pinned rows always show (even empty) so they can be managed.
   return [...personal, ...pinnedRows, ...moreWith, ...rows].filter((r) => r.savedId || r.items.length >= 3)
 }

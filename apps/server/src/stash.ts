@@ -512,7 +512,9 @@ export async function firstSceneYear(): Promise<number> {
   const d = await query<Pick<Query, 'findScenes'>>(
     `query { findScenes(filter: { per_page: 1, sort: "date", direction: ASC }, scene_filter: { date: { value: "1900-01-01", modifier: GREATER_THAN } }) { scenes { date } } }`,
     {},
-    ['scene'],
+    // not 'scene': every list waits on this, and an edit to one video (a rating, a tag) cannot
+    // move the earliest date; a scan that adds videos refreshes it with everything else
+    ['library'],
   )
   const y = Number(d.findScenes.scenes[0]?.date?.slice(0, 4))
   return Number.isFinite(y) && y > 1900 ? y : 1970
@@ -824,14 +826,19 @@ export async function destroyScene(id: string) {
 // its id is looked up once for the exclusions and remembered.
 const HIDDEN_TAG = 'Not interested'
 let hiddenTagId: string | null | undefined
-export async function hiddenTag(create = false): Promise<string | null> {
-  if (hiddenTagId === undefined || (create && hiddenTagId === null)) {
-    const d = await gql<Pick<Query, 'findTags'>>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
-    hiddenTagId = d.findTags.tags[0]?.id ?? null
-    if (!hiddenTagId && create) {
-      const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
-      hiddenTagId = c.tagCreate?.id ?? null
-    }
+let hiddenTagLookup: Promise<string | null> | null = null // shared by the requests that arrive before it is known
+export function hiddenTag(create = false): Promise<string | null> {
+  if (hiddenTagId !== undefined && !(create && hiddenTagId === null)) return Promise.resolve(hiddenTagId)
+  if (create) return lookupHiddenTag(true)
+  hiddenTagLookup ??= lookupHiddenTag(false).finally(() => (hiddenTagLookup = null))
+  return hiddenTagLookup
+}
+async function lookupHiddenTag(create: boolean): Promise<string | null> {
+  const d = await gql<Pick<Query, 'findTags'>>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
+  hiddenTagId = d.findTags.tags[0]?.id ?? null
+  if (!hiddenTagId && create) {
+    const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
+    hiddenTagId = c.tagCreate?.id ?? null
   }
   return hiddenTagId ?? null
 }

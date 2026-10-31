@@ -18,12 +18,12 @@ export async function exclusions(): Promise<Exclusions> {
       studios: rows.filter((r) => r.kind === 'studio').map((r) => r.stashId),
     }
   }
-  const settings = await getSettings()
-  const hidden = await hiddenTag() // videos marked "Not interested" stay out like a blocked tag
+  // videos marked "Not interested" stay out like a blocked tag
+  const [settings, hidden, firstYear] = await Promise.all([getSettings(), hiddenTag(), firstSceneYear()])
   return {
     ...cache,
     tags: hidden ? [...cache.tags, hidden] : cache.tags,
-    people: { gender: genderCriterion(settings.performerGender), firstYear: await firstSceneYear(), ...settings.people },
+    people: { gender: genderCriterion(settings.performerGender), firstYear, ...settings.people },
   }
 }
 

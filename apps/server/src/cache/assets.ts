@@ -280,7 +280,17 @@ export class AssetCache {
     if (old) this.s.refetched++
     await mkdir(f.d, { recursive: true })
     const tmp = join(f.d, `.${randomUUID()}.tmp`)
-    await pipeline(Readable.fromWeb(res.body as never), createWriteStream(tmp))
+    try {
+      await pipeline(Readable.fromWeb(res.body as never), createWriteStream(tmp))
+    } catch (e) {
+      // the body broke off (a timeout, Stash restarting): no half file, and the old copy if any
+      await rm(tmp, { force: true })
+      if (old) {
+        this.s.staleServed++
+        return old
+      }
+      throw e
+    }
     return this.commit(k, tmp, {
       path,
       type: res.headers.get('content-type') ?? 'application/octet-stream',

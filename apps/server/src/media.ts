@@ -11,12 +11,16 @@ import { sceneFilePath, stashFetch } from './stash.ts'
 
 export const media = new Hono()
 
+const ASSET_TIMEOUT = 60_000 // ms for one generated asset, body included
+
 export const assetCache = new AssetCache({
   dir: `${config.cache.dir}/assets`,
   ttl: config.cache.assetTtl,
   missTtl: 60_000,
   maxBytes: config.cache.assetMaxBytes,
-  upstream: (path, headers) => stashFetch(path, headers),
+  // a hung Stash (it stalls during scans) must not hold a card, or the nightly warm, forever;
+  // the signal also ends the body download
+  upstream: (path, headers) => stashFetch(path, headers, AbortSignal.timeout(ASSET_TIMEOUT)),
 })
 
 const ALLOWED = /^\/(scene|performer|studio|tag|group)\//

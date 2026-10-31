@@ -85,4 +85,38 @@ describe('MemoryCache', () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it('keeps a fetch that was running when an unrelated tag changed', async () => {
+    const c = new MemoryCache({ maxEntries: 10, staleFor: 1000 })
+    let release!: (v: string) => void
+    const slow = c.get('library', 1000, ['scene'], () => new Promise<string>((r) => (release = r)))
+    c.invalidate('scene:7', 'activity:resume') // a progress save on another video
+    c.expire('activity:resume')
+    release('all scenes')
+    assert.equal(await slow, 'all scenes')
+    let loads = 0
+    assert.equal(await c.get('library', 1000, ['scene'], async () => `again ${++loads}`), 'all scenes', 'stored, so no second fetch')
+  })
+
+  it('drops a fetch whose own tag changed while it ran, and does not let new reads join it', async () => {
+    const c = new MemoryCache({ maxEntries: 10, staleFor: 1000 })
+    let release!: (v: string) => void
+    const old = c.get('scene:1', 1000, ['scene:1'], () => new Promise<string>((r) => (release = r)))
+    c.invalidate('scene:1') // a rating saved meanwhile
+    const fresh = c.get('scene:1', 1000, ['scene:1'], async () => 'rated')
+    release('unrated')
+    assert.equal(await old, 'unrated')
+    assert.equal(await fresh, 'rated', 'a new fetch, not the one from before the write')
+    assert.equal(await c.get('scene:1', 1000, ['scene:1'], async () => 'third'), 'rated')
+  })
+
+  it('caps the volatile entries on their own, oldest out', async () => {
+    const c = new MemoryCache({ maxEntries: 100, staleFor: 1000, maxVolatile: 2 })
+    for (const k of ['a', 'b', 'c']) await c.get(k, 1000, [VOLATILE], async () => k)
+    await c.get('kept', 1000, ['scene'], async () => 'kept')
+    let loads = 0
+    assert.equal(await c.get('a', 1000, [VOLATILE], async () => `a${++loads}`), 'a1', 'a was evicted')
+    assert.equal(await c.get('c', 1000, [VOLATILE], async () => 'reloaded'), 'c')
+    assert.equal(await c.get('kept', 1000, ['scene'], async () => 'reloaded'), 'kept')
+  })
 })

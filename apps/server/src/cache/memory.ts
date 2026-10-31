@@ -3,7 +3,10 @@
 // - TTL per entry; after it, the entry is stale: served at once while one background refresh
 //   runs (stale-while-revalidate), until `staleFor` runs out too.
 // - Concurrent callers of the same key share one upstream request.
-// - Entries carry tags so a write can drop everything it affects, or only mark it stale.
+// - Entries carry tags so a write can drop everything it affects, or only mark it stale. A
+//   fetch that was running when one of its own tags changed is not stored (it may hold the
+//   old data), and the next read starts a new one; fetches with other tags are unaffected, so
+//   a progress save every 15 s does not throw away a whole-library query in flight.
 // - LRU: Map insertion order, re-inserted on every hit.
 // - save()/load() keep entries across restarts, so a new process does not start cold. Entries
 //   tagged VOLATILE (large raw working sets that are cheap to rebuild) stay in memory only.
@@ -32,15 +35,21 @@ export const VOLATILE = 'volatile'
 
 export class MemoryCache {
   private entries = new Map<string, Entry<unknown>>()
-  private inflight = new Map<string, Promise<unknown>>()
-  private generation = 0 // bumped on clear/invalidate so in-flight results from before are not stored
+  private inflight = new Map<string, { p: Promise<unknown>; tags: string[] }>()
+  private tick = 0 // counts invalidate/expire/clear calls
+  private changed = new Map<string, number>() // tag -> tick of its last change
+  private allChanged = 0 // tick of the last change that touched every entry
   private dirty = false // changed since the last save
   private s = { hits: 0, staleHits: 0, misses: 0, coalesced: 0, evictions: 0, invalidations: 0 }
   private maxEntries: number
+  private maxVolatile: number
   private staleFor: number
 
-  constructor(opts: { maxEntries: number; staleFor: number }) {
+  // `maxVolatile` caps the VOLATILE entries on their own: each can be hundreds of KB (a filter
+  // set's raw scenes), so the entry cap alone would let them reach a gigabyte.
+  constructor(opts: { maxEntries: number; staleFor: number; maxVolatile?: number }) {
     this.maxEntries = opts.maxEntries
+    this.maxVolatile = opts.maxVolatile ?? 30
     this.staleFor = opts.staleFor
   }
 
@@ -63,20 +72,34 @@ export class MemoryCache {
   }
 
   private fetch<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>): Promise<T> {
-    const running = this.inflight.get(key) as Promise<T> | undefined
+    const running = this.inflight.get(key)
     if (running) {
       this.s.coalesced++
-      return running
+      return running.p as Promise<T>
     }
-    const gen = this.generation
-    const p = load()
+    const started = this.tick
+    const p: Promise<T> = load()
       .then((value) => {
-        if (gen === this.generation) this.set(key, value, ttl, tags)
+        if (!this.changedSince(started, tags)) this.set(key, value, ttl, tags)
         return value
       })
-      .finally(() => this.inflight.delete(key))
-    this.inflight.set(key, p)
+      .finally(() => {
+        if (this.inflight.get(key)?.p === p) this.inflight.delete(key)
+      })
+    this.inflight.set(key, { p, tags })
     return p
+  }
+
+  private changedSince(tick: number, tags: string[]) {
+    return this.allChanged > tick || tags.some((t) => (this.changed.get(t) ?? 0) > tick)
+  }
+
+  // Record a change to these tags (none: everything); running fetches with them are let go.
+  private mark(tags: string[]) {
+    this.tick++
+    if (!tags.length) this.allChanged = this.tick
+    for (const t of tags) this.changed.set(t, this.tick)
+    for (const [k, f] of this.inflight) if (!tags.length || f.tags.some((t) => tags.includes(t))) this.inflight.delete(k)
   }
 
   private set<T>(key: string, value: T, ttl: number, tags: string[]) {
@@ -88,11 +111,18 @@ export class MemoryCache {
       this.entries.delete(this.entries.keys().next().value!)
       this.s.evictions++
     }
+    if (tags.includes(VOLATILE)) {
+      const volatile = [...this.entries].filter(([, e]) => e.tags.includes(VOLATILE)) // oldest first
+      for (const [k] of volatile.slice(0, Math.max(0, volatile.length - this.maxVolatile))) {
+        this.entries.delete(k)
+        this.s.evictions++
+      }
+    }
   }
 
   // Drop every entry carrying any of these tags.
   invalidate(...tags: string[]) {
-    this.generation++
+    this.mark(tags)
     for (const [k, e] of this.entries) {
       if (e.tags.some((t) => tags.includes(t))) {
         this.entries.delete(k)
@@ -105,7 +135,7 @@ export class MemoryCache {
   // Mark entries carrying any of these tags (no tags: every entry) stale without dropping
   // them: the next read is answered at once and refreshed in the background.
   expire(...tags: string[]) {
-    this.generation++
+    this.mark(tags)
     for (const e of this.entries.values()) {
       if (!tags.length || e.tags.some((t) => tags.includes(t))) e.fresh = 0
     }
@@ -113,7 +143,7 @@ export class MemoryCache {
   }
 
   clear() {
-    this.generation++
+    this.mark([])
     this.s.invalidations += this.entries.size
     this.entries.clear()
     this.dirty = true
