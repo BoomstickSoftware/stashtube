@@ -30,8 +30,8 @@ related: [scripts-library, run-checks, deploy-and-verify, 2026-10-30-wiki-create
 ## How it was verified
 
 `node scripts/scripts.mjs lint` → `ok: 8 scripts, 2 external`; `node scripts/check.mjs` →
-all four checks pass (80 tests); `node scripts/wiki.mjs lint` clean. `deploy-check.mjs` was
-run after the next push (see the following history page).
+all four checks pass (80 tests); `node scripts/wiki.mjs lint` clean. `deploy-check.mjs` ran
+after the next push ([[2026-10-31-shelf-grid-view]]): waited 8 min 16 s, nine routes at 200.
 
 ## Snags
 

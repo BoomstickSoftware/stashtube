@@ -29,7 +29,9 @@ node scripts/deploy-check.mjs --no-wait  # what runs now
 ```
 
    Expected: `running <sha> (= <sha>) after N s`, `image …@sha256:…`, `ok 200` per route and
-   `all 9 routes answered 200`; exit 1 on a failed route or the wrong sha. The same by hand:
+   `all 9 routes answered 200`; exit 1 on a failed route or the wrong sha. Push to live took
+   8 min 16 s on 2026-10-31 (build, scan, push, ArgoCD poll, rollout); `/healthz` stopped
+   answering for one poll during the switch. The same by hand:
 
 ```sh
 kubectl -n flix get deploy flix -o wide                 # image tag = the pushed sha

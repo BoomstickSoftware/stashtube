@@ -26,7 +26,8 @@ related: [whisparr-shelf, people-pages, mobile-checks, scripts-library]
 through Vite (`FLIX_SERVER=http://flix.lan`, writes blocked, [[mobile-checks]]) on
 `/performer/447`: Row shows 24 cards and the toggle, no overflow; an `EVAL` that clicks Grid
 and scrolls the last card into view goes from 24 to 46 cards; desktop at 1440 px shows four
-columns. Deployed with `scripts/deploy-check.mjs`.
+columns. `scripts/deploy-check.mjs` saw b973f8c live after 8 min 16 s with all nine smoke
+routes at 200.
 
 ## Snags
 

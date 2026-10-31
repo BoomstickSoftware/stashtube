@@ -31,13 +31,18 @@ const health = async () => {
 
 const t0 = Date.now()
 let h = await health()
+// Progress: a live line in a terminal, one line every 30 s when piped (a log, an agent).
+const tty = process.stdout.isTTY
 if (!noWait) {
+  let n = 0
   while (!h?.version?.startsWith(want) && Date.now() - t0 < TIMEOUT) {
-    process.stdout.write(`\rwaiting for ${want.slice(0, 7)}: running ${h?.version?.slice(0, 7) ?? '(no answer)'} after ${Math.round((Date.now() - t0) / 1000)}s   `)
+    const msg = `waiting for ${want.slice(0, 7)}: running ${h?.version?.slice(0, 7) ?? '(no answer)'} after ${Math.round((Date.now() - t0) / 1000)}s`
+    if (tty) process.stdout.write(`\r${msg}   `)
+    else if (n++ % 6 === 0) console.log(msg)
     await sleep(5000)
     h = await health()
   }
-  process.stdout.write('\n')
+  if (tty) process.stdout.write('\n')
 }
 if (!h) {
   console.log(`healthz: no answer from ${FLIX}`)
