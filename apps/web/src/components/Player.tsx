@@ -946,7 +946,7 @@ function Ctl({ children, onClick, label, className }: { children: React.ReactNod
 export function TimeReadout({ clock, dur, point, className }: { clock: Clock; dur: number; point: SeekPoint | null; className?: string }) {
   const { time } = useClock(clock)
   return (
-    <span className={clsx('tabular-nums', className)}>
+    <span className={clsx('whitespace-nowrap tabular-nums', className)}>
       {fmt(point?.scrubbing ? point.t : time)} <span className="text-white/50">/ {fmt(dur)}</span>
     </span>
   )
