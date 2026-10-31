@@ -109,8 +109,9 @@ _Shipped 2026-10-31 ([[2026-10-31-ux-phase2-3-web]]); the Player's time state fo
 
 ### Phase 3: phone flows (M)
 
-_Shipped 2026-10-31 except the Filters dialog order, the "2 filters" chip and the shelf
-placement (the wanted-shelf initiative) ([[2026-10-31-ux-phase2-3-web]])._
+_Shipped 2026-10-31 ([[2026-10-31-ux-phase2-3-web]]); the Filters dialog order followed the
+same day; the shelf placement is the wanted-shelf initiative. The "2 filters" chip is covered
+by the bar's own "Filters 2" button, so the tab badge stays a number like Continue's._
 
 - One-row filter bar on phones: Filters · sort · "⋯" (Select, Pin, Station), count inline;
   Cleanup's chips likewise (phone 3).
@@ -134,10 +135,12 @@ placement (the wanted-shelf initiative) ([[2026-10-31-ux-phase2-3-web]])._
 - Related sidebar capped with a "More like this" grid below, or sticky with its own scroll
   (desktop 10); "Pick up a station" below Featured or beside the hero at `xl` (13); About as
   a real button with inline facts and a deduped "Links (27)" disclosure (14).
-- Right-click: add "Open in new tab" / "Copy link" or skip `preventDefault` with Shift (12);
-  Shift+click range select and Cmd/Ctrl+A in select mode (24); NEW badge always visible at
-  low opacity (18); `prefers-reduced-motion` for the hero, card zoom and previews (19); card
-  meta contrast (21); station cover placeholders (26); tile skeletons for directories (27).
+- ~~Right-click: skip `preventDefault` with Shift (12); Shift+click range select and
+  Cmd/Ctrl+A in select mode (24); NEW badge always visible at low opacity (18);
+  `prefers-reduced-motion` for the card zoom and previews (19); card meta contrast (21).~~
+  Done 2026-10-31 ([[browse-and-filters]], [[mobile-first-ui]]); the hero's auto-advance
+  under reduced motion is still open. Station cover placeholders (26); tile skeletons for
+  directories (27).
 
 ### Phase 5: vocabulary, freshness and errors (IA, S–M, several need a decision)
 

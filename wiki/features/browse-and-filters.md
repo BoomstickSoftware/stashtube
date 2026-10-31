@@ -4,7 +4,7 @@ kind: feature
 summary: The Filters dialog, the stackable per-browser filters, the People filter, live facet counts, sort and multi-select on every list page.
 tags: [browse, filters, facets, people, sort]
 status: current
-verified: 2026-10-30
+verified: 2026-10-31
 updated: 2026-10-31
 routes: [/browse, /performer/$id, /studio/$id, /tag/$id, /playlist/$id]
 api: [GET /api/scenes, GET /api/scenes/facets, GET /api/tags/tiles]
@@ -65,6 +65,13 @@ lands on it too easily). On a phone the filter bar is one sideways-scrolling row
 sort, the count) with the list's actions (Select, Pin to home, Station) behind a "More"
 sheet; from `sm` it wraps and shows them inline. Sheets are `components/Sheet.tsx`
 ([[mobile-first-ui]]).
+
+Selecting (since 2026-10-31): in select mode a click toggles a card, **Shift+click selects
+from the last card clicked up to this one**, and **Cmd/Ctrl+A selects everything loaded**
+(same as "Select all loaded"). **Shift+right-click** on a card leaves the browser's own menu
+(open in new tab, copy link) instead of flix's. The Filters dialog shows the quick choices
+(Watched, Rating, Quality, Length) above Find and the tag cloud, so on a phone they are not
+below a tall cloud.
 `describeQuery` (`lib/describe.ts`) names a filter set for chips, station summaries and
 pinned-row titles.
 

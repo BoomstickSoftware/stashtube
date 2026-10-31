@@ -22,7 +22,7 @@ const DRAG_START_PX = 10
 let stopActive: (() => void) | undefined
 
 // Memoised: a grid of hundreds re-renders on every page append otherwise. Callers pass stable
-// props (`onToggle` takes the id, `sizes` is a constant string).
+// props (`onToggle` takes the id and whether Shift was held, `sizes` is a constant string).
 export const SceneCard = memo(function SceneCard({
   scene,
   playlist,
@@ -41,12 +41,12 @@ export const SceneCard = memo(function SceneCard({
   compact?: boolean
   selecting?: boolean // multi-select mode: clicks toggle instead of opening
   selected?: boolean
-  onToggle?: (id: string) => void
+  onToggle?: (id: string, range: boolean) => void // range: Shift held, select up to here
   extra?: string | null // one more fact for the meta line
   sizes?: string // how wide the card shows (srcset `sizes`); the grid's by default
   omitPerformer?: string // leave this performer off the names line (their own page)
 }) {
-  const select = selecting ? { selected: !!selected, onToggle: () => onToggle?.(scene.id) } : undefined
+  const select = selecting ? { selected: !!selected, onToggle: (range: boolean) => onToggle?.(scene.id, range) } : undefined
   const people = omitPerformer ? scene.performers.filter((p) => p.id !== omitPerformer) : scene.performers
   const [hovering, setHovering] = useState(false)
   const [previewReady, setPreviewReady] = useState(false)
@@ -81,6 +81,7 @@ export const SceneCard = memo(function SceneCard({
     if (scene.vtt) loadSprites(scene.vtt).then(setSprites) // only once the hover is meant
   }
   const enter = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return // no moving pictures on hover
     timer.current = window.setTimeout(start, HOVER_DELAY)
   }
   const onScrub = (e: React.PointerEvent) => {
@@ -117,7 +118,7 @@ export const SceneCard = memo(function SceneCard({
           ? (e) => {
               e.preventDefault()
               e.stopPropagation()
-              select.onToggle()
+              select.onToggle(e.shiftKey)
             }
           : undefined
       }
@@ -162,7 +163,7 @@ export const SceneCard = memo(function SceneCard({
         onTouchEnd={() => clearTimeout(pressTimer.current)}
         onTouchCancel={() => clearTimeout(pressTimer.current)}
         onContextMenu={(e) => {
-          if (select) return
+          if (select || e.shiftKey) return // Shift: the browser's own menu (open in new tab, copy link)
           e.preventDefault()
           leave()
           setMenu({ x: e.clientX, y: e.clientY })

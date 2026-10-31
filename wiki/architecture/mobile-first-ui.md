@@ -4,7 +4,7 @@ kind: architecture
 summary: Phones (an iPhone in particular) are the first-class client; the touch and hover variants, input sizes, touch-action, the drag-to-preview convention, safe areas and standalone-mode rules every component follows.
 tags: [mobile, touch, ios, css, ux]
 status: current
-verified: 2026-10-30
+verified: 2026-10-31
 updated: 2026-10-31
 code: [apps/web/src/index.css, apps/web/src/components/SceneCard.tsx, apps/web/src/components/Layout.tsx]
 related: [player, installable-app, mobile-checks, safari-address-bar-needs-page-scroll, grid-column-overflow]
@@ -65,3 +65,10 @@ frames.
   ([[filter-popovers-clipped-in-scroll-row]]).
 - Controls that need a keyboard elsewhere (speed, Mark this moment) live in the player's
   settings menu on a phone; marking is a half-second hold on the picture ([[long-press-to-mark]]).
+
+## Reduced motion
+
+With `prefers-reduced-motion: reduce` (since 2026-10-31) `index.css` cuts every animation and
+transition to 0.01 ms, cards do not start a hover preview (`SceneCard.enter` checks the
+query), the station covers stop cycling and the header skeletons stop pulsing. The hero's
+12 s auto-advance is not yet covered (Home.tsx; roadmap).

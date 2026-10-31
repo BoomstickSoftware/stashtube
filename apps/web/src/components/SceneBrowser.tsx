@@ -3,7 +3,7 @@ import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
 import { Sheet } from './Sheet'
@@ -53,15 +53,31 @@ export function SceneBrowser({
   const total = data?.pages[0]?.total
   const [selecting, setSelecting] = useState(alwaysSelecting)
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
+  // Shift+click selects from the last card clicked up to this one; Cmd/Ctrl+A selects everything loaded
+  const anchor = useRef<string | null>(null)
   const toggle = useCallback(
-    (id: string) =>
+    (id: string, range: boolean) =>
       setSelected((s) => {
         const n = new Set(s)
-        if (!n.delete(id)) n.add(id)
+        const from = range ? scenes.findIndex((x) => x.id === anchor.current) : -1
+        const to = scenes.findIndex((x) => x.id === id)
+        if (from >= 0 && to >= 0) for (const x of scenes.slice(Math.min(from, to), Math.max(from, to) + 1)) n.add(x.id)
+        else if (!n.delete(id)) n.add(id)
+        anchor.current = id
         return n
       }),
-    [],
+    [scenes],
   )
+  useEffect(() => {
+    if (!selecting) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'a' || !(e.metaKey || e.ctrlKey) || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return
+      e.preventDefault()
+      setSelected(new Set(scenes.map((x) => x.id)))
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [selecting, scenes])
   const stopSelecting = () => {
     setSelecting(alwaysSelecting)
     setSelected(new Set())

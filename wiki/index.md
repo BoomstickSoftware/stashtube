@@ -27,7 +27,7 @@ Pages: 125. Last generated 2026-10-31.
 - [[config-env]] — Every environment variable the BFF reads, its default, what it enables, and what the k8s Deployment sets. · _config, env, server, k8s_ · verified 2026-10-30
 - [[data-model]] — The six Postgres tables and what each holds, against the rule that Stash owns ratings, plays, resume points, markers and favourites; also the two Stash tags flix creates. · _postgres, drizzle, schema, data_ · verified 2026-10-30
 - [[media-proxy]] — The browser never talks to Stash or sees its API key; /media/stash proxies an allowlist of Stash asset and stream paths, /media/play serves originals by byte range, and playback links are signed for AirPlay. · _media, proxy, stash, security, airplay_ · verified 2026-10-31
-- [[mobile-first-ui]] — Phones (an iPhone in particular) are the first-class client; the touch and hover variants, input sizes, touch-action, the drag-to-preview convention, safe areas and standalone-mode rules every component follows. · _mobile, touch, ios, css, ux_ · verified 2026-10-30
+- [[mobile-first-ui]] — Phones (an iPhone in particular) are the first-class client; the touch and hover variants, input sizes, touch-action, the drag-to-preview convention, safe areas and standalone-mode rules every component follows. · _mobile, touch, ios, css, ux_ · verified 2026-10-31
 - [[overview]] — flix is a React web app plus a small Hono BFF in front of a headless Stash on the NAS; which repo owns what, and the one-user LAN-only scope. · _architecture, repos, scope_ · verified 2026-10-30
 - [[request-guard]] — What keeps other web pages away from flix without a login — cross-site writes refused, foreign host names (DNS rebinding) refused, no framing, no sniffing, no referrer — and what is always let through. · _security, server, csrf, headers_ · verified 2026-10-31
 - [[server-bff]] — Module map of apps/server, how it runs (Node 26 executes .ts natively, erasable TypeScript), what the tests cover, and what /healthz and /readyz mean. · _server, hono, node, tests_ · verified 2026-10-30
@@ -37,7 +37,7 @@ Pages: 125. Last generated 2026-10-31.
 
 ## Features: what the user can do
 
-- [[browse-and-filters]] — The Filters dialog, the stackable per-browser filters, the People filter, live facet counts, sort and multi-select on every list page. · _browse, filters, facets, people, sort_ · verified 2026-10-30
+- [[browse-and-filters]] — The Filters dialog, the stackable per-browser filters, the People filter, live facet counts, sort and multi-select on every list page. · _browse, filters, facets, people, sort_ · verified 2026-10-31
 - [[cleanup-page]] — Ready-made lists of likely deletions (low resolution, never watched, low rated, not on StashDB) with selection always on and a link to the duplicates workbench. · _cleanup, delete, library_ · verified 2026-10-30
 - [[continue-history-stats]] — The Continue nav item with its History and Stats tabs, what counts as a play, and how a history entry is removed. · _history, stats, resume, accounting_ · verified 2026-10-31
 - [[delete-via-whisparr]] — Why and how a delete goes to Whisparr first (it owns the files), then removes the Stash scene and playlist rows, and when it refuses to touch anything. · _delete, whisparr, stash, files_ · verified 2026-10-30

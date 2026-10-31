@@ -139,3 +139,8 @@ More sheet, card "⋯" and Save to playlist in the sheet, Delete relocated, gear
 `createClock()` in `lib/playback.ts`; the SeekBar, `TimeReadout`, the mini progress line and the
 gear menu labels subscribe; the station page uses the same clock. `phone-flow`'s `tapText` now
 skips hidden elements → [[player]], [[2026-10-31-ux-phase2-3-web]].
+
+## [2026-10-31] ingest | Filters order, range select, native menu on Shift, reduced motion
+Quick choices above the tag cloud; Shift+click range and Cmd/Ctrl+A in select mode; Shift+right-click
+keeps the browser's menu; reduced-motion CSS and no hover previews. desktop-check takes
+`shift`/`cmd`/`ctrl` → [[browse-and-filters]], [[mobile-first-ui]], [[2026-10-31-ux-phase2-3-web]].

@@ -71,7 +71,7 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
           <p className="text-sm text-muted">None yet, so every video is in. Search below, or pick from the choices.</p>
         )}
       </Section>
-      <FinderSection query={q} onChange={onChange} facets={facets} />
+      {/* the quick choices first: on a phone the tag cloud below is tall */}
       <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
         <Choice
           title="Watched"
@@ -118,6 +118,7 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
           onChange={onChange}
         />
       </div>
+      <FinderSection query={q} onChange={onChange} facets={facets} />
       <Section title="Performers">
         <Toggle on={!!q.favorites} onChange={(v) => onChange({ favorites: v || undefined })}>
           Only videos with a performer I follow

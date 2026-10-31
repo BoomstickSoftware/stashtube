@@ -111,3 +111,16 @@ input[type="range"].slim::-webkit-slider-thumb {
   to { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
 }
 .pulse-once { animation: pulse-once 600ms ease-out forwards; }
+
+/* Reduced motion: no fades, slides or zooms; the hero and the station covers stop cycling
+   (they check the query themselves) and cards do not play a preview on hover. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

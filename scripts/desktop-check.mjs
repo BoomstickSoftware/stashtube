@@ -6,6 +6,7 @@
 // env: W, H (viewport; default 1440x900)
 // scenario.json: [{ name, path, steps: [ {wait:ms} | {mouse:[x,y]} | {click:[x,y]} | {rclick:[x,y]}
 //   | {key:'t'} | {tab:n} | {type:'text'} | {scroll:y} | {eval:'expr'} | {shot:'suffix'} ] }]
+//   click and rclick take shift:true (modifier held) and key takes cmd:true / ctrl:true.
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -73,9 +74,9 @@ const KEYS = {
   ArrowRight: { key: 'ArrowRight', code: 'ArrowRight', vk: 39 },
   Space: { key: ' ', code: 'Space', text: ' ', vk: 32 },
 }
-const press = async (name) => {
+const press = async (name, modifiers = 0) => {
   const k = KEYS[name] ?? { key: name, code: name, text: name, vk: name.toUpperCase().charCodeAt(0) }
-  const common = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, modifiers: k.modifiers ?? 0 }
+  const common = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, modifiers: (k.modifiers ?? 0) | modifiers }
   await send('Input.dispatchKeyEvent', { type: k.text ? 'keyDown' : 'rawKeyDown', ...common, ...(k.text ? { text: k.text, unmodifiedText: k.text } : {}) })
   await send('Input.dispatchKeyEvent', { type: 'keyUp', ...common })
 }
@@ -96,15 +97,17 @@ for (const sc of scenarios) {
     else if (st.mouse) { await mouse('mouseMoved', st.mouse[0], st.mouse[1]) }
     else if (st.click) {
       const [x, y] = st.click
+      const mod = { clickCount: 1, modifiers: st.shift ? 8 : 0 }
       await mouse('mouseMoved', x, y)
-      await mouse('mousePressed', x, y, 'left', { clickCount: 1 })
-      await mouse('mouseReleased', x, y, 'left', { clickCount: 1 })
+      await mouse('mousePressed', x, y, 'left', mod)
+      await mouse('mouseReleased', x, y, 'left', mod)
     } else if (st.rclick) {
       const [x, y] = st.rclick
+      const mod = { clickCount: 1, modifiers: st.shift ? 8 : 0 }
       await mouse('mouseMoved', x, y)
-      await mouse('mousePressed', x, y, 'right', { clickCount: 1 })
-      await mouse('mouseReleased', x, y, 'right', { clickCount: 1 })
-    } else if (st.key) await press(st.key)
+      await mouse('mousePressed', x, y, 'right', mod)
+      await mouse('mouseReleased', x, y, 'right', mod)
+    } else if (st.key) await press(st.key, (st.cmd ? 4 : 0) | (st.ctrl ? 2 : 0))
     else if (st.tab) { for (let i = 0; i < st.tab; i++) await press('Tab') }
     else if (st.type) await send('Input.insertText', { text: st.type })
     else if (st.scroll !== undefined) await evaluate(`window.scrollTo({top:${st.scroll}})`)
