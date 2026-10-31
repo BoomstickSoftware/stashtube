@@ -15,6 +15,7 @@ import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
+import { scheduleSweep } from './sweep.ts'
 import { scheduleWarm } from './warm.ts'
 import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
 
@@ -141,6 +142,7 @@ const warm = () =>
   })().catch((e) => console.error('warming:', e.message))
 warm()
 onStashChange(warm)
+onStashChange(scheduleSweep())
 
 startChangeDetection()
 scheduleWarm()

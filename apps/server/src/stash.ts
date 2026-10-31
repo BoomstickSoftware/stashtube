@@ -551,6 +551,17 @@ export async function findDuplicateScenes(distance: number, durationDiff: number
   )
 }
 
+// Which of these scene ids Stash still has, asked fresh (never from the cache): the ghost sweep
+// removes flix's rows for the rest. Throws when Stash does not answer, so nothing is removed then.
+export async function existingSceneIds(sceneIds: string[]): Promise<Set<string>> {
+  const found = new Set<string>()
+  for (let i = 0; i < sceneIds.length; i += 500) {
+    const d = await gql<Pick<Query, 'findScenes'>>(`query($ids: [ID!]) { findScenes(ids: $ids) { scenes { id } } }`, { ids: sceneIds.slice(i, i + 500) })
+    for (const s of d.findScenes.scenes) found.add(s.id)
+  }
+  return found
+}
+
 // `blocked`: leave out what the blocklist and "Not interested" exclude (station resume points).
 export async function findScenesByIds(sceneIds: string[], blocked?: Exclusions): Promise<SceneCard[]> {
   if (!sceneIds.length) return []
