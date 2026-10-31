@@ -1046,7 +1046,9 @@ export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<S
 // --- activity: history, stats, recommendations ---------------------------------------
 
 // Every scene you have touched: played, rated or O'd. One cached query feeds history,
-// stats and "For you".
+// stats and "For you". Tag sizes (for weighting rare tags) come from tagSceneCounts: asked
+// here as `tags { scene_count }`, Stash counted every tag's scenes for every scene, 0.5 of the
+// query's 0.6 s (2026-10-31).
 async function activityScenes(): Promise<Scene[]> {
   const d = await query<Pick<Query, 'findScenes'>>(
     `query { findScenes(
@@ -1055,7 +1057,7 @@ async function activityScenes(): Promise<Scene[]> {
         play_count: { value: 0, modifier: GREATER_THAN },
         OR: { rating100: { value: 0, modifier: GREATER_THAN }, OR: { o_counter: { value: 0, modifier: GREATER_THAN } } }
       }
-    ) { scenes { ${SCENE_CARD} ${BLOCK_FIELDS} play_duration play_history performers { gender } tags { id name scene_count } } } }`,
+    ) { scenes { ${SCENE_CARD} ${BLOCK_FIELDS} play_duration play_history performers { gender } tags { id name } } } }`,
     {},
     ['scene', 'activity:play'],
   )
@@ -1153,8 +1155,15 @@ export interface Affinities {
 }
 
 // How much each performer, studio and tag figures in what you watched, rated and O'd.
+// How many scenes carry each tag, all tags in one query (0.14 s for ~1,100 tags). Only weights
+// "For you" and Featured, so it may lag a tag edit until Stash next reports a change.
+async function tagSceneCounts(): Promise<Map<string, number>> {
+  const d = await query<Pick<Query, 'findTags'>>(`{ findTags(filter: { per_page: -1 }) { tags { id scene_count } } }`, {}, ['library'])
+  return new Map(d.findTags.tags.map((t) => [t.id, t.scene_count ?? 0]))
+}
+
 export async function affinities(): Promise<Affinities | null> {
-  const scenes = await activityScenes()
+  const [scenes, tagCounts] = await Promise.all([activityScenes(), tagSceneCounts()])
   if (!scenes.length) return null
   const totalRaw = await query<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
   const total = totalRaw.findScenes.count
@@ -1170,7 +1179,7 @@ export async function affinities(): Promise<Affinities | null> {
       pAff.set(p.id, e)
     })
     if (s.studio) sAff.set(s.studio.id, (sAff.get(s.studio.id) ?? 0) + w)
-    s.tags.forEach((t) => tAff.set(t.id, (tAff.get(t.id) ?? 0) + w * Math.log(1 + total / Math.max(1, t.scene_count))))
+    s.tags.forEach((t) => tAff.set(t.id, (tAff.get(t.id) ?? 0) + w * Math.log(1 + total / Math.max(1, tagCounts.get(t.id) ?? 1))))
   }
   return { performers: pAff, studios: sAff, tags: tAff }
 }
@@ -1225,7 +1234,8 @@ export async function recommendations(blocked: Exclusions, showGender: (g: strin
 //
 // Tagged POOL rather than 'scene' / 'activity:play': a play or an edit marks it stale instead
 // of dropping it (see mutate), so Home after watching something answers from the old pool at
-// once while it refreshes, instead of waiting for a whole-library query.
+// once while it refreshes, instead of waiting for a whole-library query. Not VOLATILE: at
+// 2.3 MB it goes into the snapshot, so a restart (every deploy) starts with it.
 export const POOL = 'featured-pool'
 export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
   const d = await query<Pick<Query, 'findScenes'>>(
@@ -1233,7 +1243,7 @@ export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
       scenes { id created_at last_played_at play_count o_counter rating100 tags { id favorite } scene_markers { id } performers { id favorite } studio { id favorite } }
     } }`,
     { s: withExclusions({}, { ...blocked }) },
-    [POOL, VOLATILE],
+    [POOL],
   )
   return d.findScenes.scenes
 }
