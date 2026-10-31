@@ -4,8 +4,8 @@ kind: feature
 summary: The "Not in your library yet" shelf fed by StashDB and labelled by Whisparr, the Home row of undownloaded releases, and the two single-scene Get writes.
 tags: [whisparr, stashdb, downloads, performers, studios, home]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-10-31
+updated: 2026-10-31
 api: [GET /api/whisparr/performer/:id?page=, GET /api/whisparr/studio/:id?page=, GET /api/whisparr/new, GET /api/whisparr/activity, POST /api/whisparr/get/:id, POST /api/whisparr/get-remote/:stashdbId, GET /api/features]
 code: [apps/server/src/whisparr.ts, apps/server/src/stashdb.ts, apps/server/src/whisparr.test.ts, apps/server/src/stashdb.test.ts, apps/web/src/components/WantedRow.tsx, apps/web/src/lib/api/whisparr.ts]
 related: [whisparr-nothing-monitored, whisparr-api, stashdb, people-pages, home-feed, prod-checks-read-only]
@@ -20,8 +20,17 @@ credentials resolved ([[stashdb]]).
 ## The shelf
 
 Performer and studio pages ([[people-pages]]) get **"Not in your library yet"** (a
-`WantedList`): the entity's scenes on StashDB (by its StashDB ids), 24 a page with "Show
-more", newest first. Each scene is labelled:
+`WantedShelf`): the entity's scenes on StashDB (by its StashDB ids), 24 a page, newest first.
+A Row/Grid toggle in the heading picks the layout, remembered per browser
+(`flix.wanted.view` through `useStored`, like the Studios views):
+
+- **Row** (default): a sideways carousel with a "Show more" card at the end for the next page.
+- **Grid**: two columns on a phone, up to five on a wide screen, and a `Sentinel` under it
+  loads the next page as the bottom comes into view, so the whole catalogue scrolls. The
+  library's own grid follows below, so a large catalogue in Grid view pushes it down until
+  every page has loaded; switch back to Row to reach it sooner.
+
+Each scene is labelled:
 
 - **already in Stash**: dropped from the shelf (`sceneStashIdMap`);
 - **in Whisparr's movie list**: state from the queue and the last grabs: available / grabbed /

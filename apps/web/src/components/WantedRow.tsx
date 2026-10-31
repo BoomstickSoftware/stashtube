@@ -1,16 +1,17 @@
 import type { WantedScene } from '@flix/shared'
 import clsx from 'clsx'
-import { Check, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
-import { useRef, type ReactNode } from 'react'
+import { Check, ChevronLeft, ChevronRight, Download, GalleryHorizontalEnd, LayoutGrid, Loader2 } from 'lucide-react'
+import { useCallback, useRef, type ReactNode } from 'react'
 import { useGetScene, useWanted } from '../lib/api'
-import { Button } from './ui'
+import { oneOf, useStored } from '../lib/storage'
+import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
 
 // A shelf of scenes Whisparr knows about but has not downloaded. Each card has one action,
 // Get, which asks the server to fetch that one scene; nothing here acts on a whole performer
 // or studio (the library policy).
-export function WantedRow({ title, items, hint, more }: { title: ReactNode; items: WantedScene[]; hint?: string; more?: ReactNode }) {
+export function WantedRow({ title, items, hint, more, right }: { title: ReactNode; items: WantedScene[]; hint?: string; more?: ReactNode; right?: ReactNode }) {
   const scroller = useRef<HTMLDivElement>(null)
   const page = (dir: number) => {
     const el = scroller.current
@@ -19,10 +20,7 @@ export function WantedRow({ title, items, hint, more }: { title: ReactNode; item
   if (!items.length) return null
   return (
     <section className="group/row">
-      <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h2>
-        {hint && <span className="hidden text-sm text-muted sm:inline">{hint}</span>}
-      </div>
+      <Heading title={title} hint={hint} right={right} />
       <div className="relative -mx-4 sm:-mx-6">
         <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 sm:px-6">
           {items.map((w) => (
@@ -46,6 +44,16 @@ export function WantedRow({ title, items, hint, more }: { title: ReactNode; item
         </button>
       </div>
     </section>
+  )
+}
+
+function Heading({ title, hint, right }: { title: ReactNode; hint?: string; right?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <h2 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h2>
+      {hint && <span className="hidden text-sm text-muted sm:inline">{hint}</span>}
+      {right && <div className="ml-auto shrink-0">{right}</div>}
+    </div>
   )
 }
 
@@ -100,18 +108,75 @@ function WantedCard({ scene: w, className }: { scene: WantedScene; className?: s
   )
 }
 
-// The row for a performer or studio page: their scenes that are not in the library, from
+// How the shelf on an entity page is laid out, remembered per browser like the Studios views:
+// a row that pages with "Show more" (the default), or a grid that loads the next page as the
+// bottom comes into view.
+const WANTED_VIEWS = ['row', 'grid'] as const
+type WantedView = (typeof WANTED_VIEWS)[number]
+const WANTED_VIEW_KEY = 'flix.wanted.view'
+
+function ViewToggle({ view, onChange }: { view: WantedView; onChange: (v: WantedView) => void }) {
+  const views: [WantedView, string, typeof LayoutGrid][] = [
+    ['row', 'Row', GalleryHorizontalEnd],
+    ['grid', 'Grid', LayoutGrid],
+  ]
+  return (
+    <div role="radiogroup" aria-label="View" className="flex rounded-full bg-raised p-0.5 text-[13px]">
+      {views.map(([v, label, Icon]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={view === v}
+          aria-label={label}
+          title={label}
+          onClick={() => onChange(v)}
+          className={clsx(
+            'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors touch:py-1.5 sm:px-3',
+            view === v ? 'bg-white text-black' : 'text-muted hover:text-fg',
+          )}
+        >
+          <Icon size={14} /> <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// The shelf for a performer or studio page: their scenes that are not in the library, from
 // StashDB's catalogue (pages) or, without it, Whisparr's list.
 export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: string }) {
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useWanted(kind, id)
+  const [view, setView] = useStored<WantedView>(WANTED_VIEW_KEY, oneOf(WANTED_VIEWS, 'row'))
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
   const items = data?.pages.flatMap((p) => p.items) ?? []
   if (!items.length) return null
   const source = data?.pages[0]?.source === 'stashdb' ? 'StashDB' : 'Whisparr'
+  const title = 'Not in your library yet'
+  const hint = `${items.length}${hasNextPage ? '+' : ''} on ${source} · Get fetches one scene`
+  const toggle = <ViewToggle view={view} onChange={setView} />
+  if (view === 'grid') {
+    return (
+      <section className="mb-8">
+        <Heading title={title} hint={hint} right={toggle} />
+        <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 2xl:grid-cols-5">
+          {items.map((w) => (
+            <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} />
+          ))}
+        </div>
+        <Sentinel onVisible={loadMore} disabled={!hasNextPage} />
+        {isFetchingNextPage && <Spinner className="mx-auto my-6" />}
+      </section>
+    )
+  }
   return (
     <WantedRow
-      title="Not in your library yet"
-      hint={`${items.length}${hasNextPage ? '+' : ''} on ${source} · Get fetches one scene`}
+      title={title}
+      hint={hint}
       items={items}
+      right={toggle}
       more={
         hasNextPage ? (
           <Button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>

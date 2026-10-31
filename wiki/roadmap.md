@@ -29,7 +29,8 @@ Done, by date (each page says what changed and how it was verified):
   [[2026-10-30-privacy-layers]], [[2026-10-30-mini-player]],
   [[2026-10-30-hold-to-mark-and-moments]], [[2026-10-30-wiki-created]],
   [[2026-10-30-relative-scrubbing]], [[2026-10-30-app-follows-deploys]]
-- [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]]
+- [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]],
+  [[2026-10-31-shelf-grid-view]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 

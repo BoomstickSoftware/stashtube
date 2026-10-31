@@ -54,3 +54,7 @@ Featured pool is snapshotted → [[featured-ranking]], [[caching]], [[2026-10-31
 User rule: scriptable operations get a registered script; `scripts/manifest.json`,
 `scripts.mjs` (list/search/show/lint), `check.mjs`, `deploy-check.mjs` → [[scripts-library]],
 [[2026-10-31-scripts-library]]; [[run-checks]] and [[deploy-and-verify]] now name the scripts.
+
+## [2026-10-31] ingest | Row or grid for the Not-in-your-library shelf
+Row/Grid toggle per browser (`flix.wanted.view`); Grid loads StashDB pages by sentinel →
+[[whisparr-shelf]], [[2026-10-31-shelf-grid-view]]; EVAL probe note in [[mobile-checks]].
