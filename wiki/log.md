@@ -104,3 +104,7 @@ Mark as watched is in the card menu; intro skip is set from the player, not the 
 ## [2026-10-31] ingest | UX Phase 0 web quick wins shipped
 Landscape header, Pin sheet, 44 px targets, gutters, labels, memoised cards/rows, hero state,
 image sizes, poster, hover cost → [[2026-10-31-ux-phase0-web]], [[mobile-first-ui]], [[mini-player]].
+
+## [2026-10-31] ingest | The hero pages the Featured ranking instead of looping over 8
+`offset` on /api/featured, `useMoreFeatured`, Hero fetches twenty more near its end →
+[[2026-10-31-hero-pages-the-ranking]], [[home-feed]], [[featured-ranking]].

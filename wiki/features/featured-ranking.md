@@ -55,3 +55,9 @@ Add it to `FeaturedWeights` (shared) and `SIGNALS`, its raw value in `rawSignals
 Server `featured.ts` (pure; pool and affinities from `stash.ts`); web `FeaturedDials.tsx`,
 the row in `pages/Home.tsx` ([[home-feed]]). The runtime image must ship `packages/shared/src`
 because the server imports the defaults as a value ([[shared-contract]]).
+
+## Paging the ranking
+
+`GET /api/featured?seed=<s>&limit=<n>&offset=<o>` (since 2026-10-31) returns ranks `o..o+n` of the
+same ranking for that seed (`rankFeatured` runs with `limit + offset`, then slices), so the Home
+hero can keep going past the row ([[home-feed]]). `limit` ≤ 60, `offset` ≤ 5000.

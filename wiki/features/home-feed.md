@@ -26,7 +26,7 @@ show, even empty, so they can be managed):
 
 | Row | Source |
 |---|---|
-| Hero carousel + **Featured** | the top of [[featured-ranking]]; the hero is shuffled per visit, advances every 12 s, arrows and swipe; a slight drag previews on touch |
+| Hero carousel + **Featured** | the top of [[featured-ranking]]; the hero walks the whole Featured row (24) in score order, then fetches the same ranking further down twenty at a time as it nears the end (`GET /api/featured?seed&limit=20&offset=`), wrapping only when the ranking runs out (_until 2026-10-31 it looped over the first 8_); advances every 12 s, arrows and swipe; a slight drag previews on touch |
 | **For you** | `recommendations()`: watch, rating and O affinity, tags weighted by rarity; unwatched |
 | **Because you watched …** | [[related-videos]] of the last played scene, unwatched first, up to 24 |
 | Pinned rows | Browse filters saved as rows (`saved_rows` table): rename, reorder, unpin |

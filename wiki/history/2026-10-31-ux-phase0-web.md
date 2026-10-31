@@ -1,7 +1,7 @@
 ---
 title: "2026-10-31: UX audit Phase 0, the web quick wins"
 kind: history
-summary: Twenty files of small fixes from the audit's phone, desktop and client findings (landscape header, Pin sheet, 44 px targets, row gutters, labels, memoised cards, hero state, image sizes, poster, hover cost), verified headless.
+summary: Small fixes across twenty web files from the audit's phone, desktop and client findings (landscape header, Pin sheet, 44 px targets, gutters, labels, memoised cards, image sizes, poster, hover cost), verified headless.
 tags: [ux, mobile, desktop, performance, audit]
 status: record
 date: 2026-10-31

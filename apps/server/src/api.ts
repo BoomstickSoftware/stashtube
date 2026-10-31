@@ -128,6 +128,7 @@ api.get('/duplicates', async (c) => {
 // The page sends one seed per visit; anything else (the warm, curl) gets today's.
 const seedParam = (s: string | undefined) => (s && /^[\w-]{1,40}$/.test(s) ? s : String(daySeed()))
 const limitParam = (s: string | undefined) => Math.min(60, Math.max(1, Number(s) || 24))
+const offsetParam = (s: string | undefined) => Math.min(5000, Math.max(0, Math.floor(Number(s) || 0))) // the hero pages down the same ranking
 const weightsBody = z.object(Object.fromEntries(['dormant', 'shelfAge', 'fresh', 'performer', 'tag', 'studio', 'watched', 'marked', 'rated', 'oCount', 'surprise'].map((k) => [k, z.number().min(-1).max(1)])) as Record<keyof FeaturedWeights, z.ZodNumber>).partial()
 
 const toCandidate = (s: Scene): Candidate => ({
@@ -143,13 +144,13 @@ const toCandidate = (s: Scene): Candidate => ({
 })
 
 // The Featured row: the library scored by the saved (or given) dials, for this seed.
-async function featured(weights: FeaturedWeights, seed: string, limit: number): Promise<SceneCard[]> {
+async function featured(weights: FeaturedWeights, seed: string, limit: number, offset = 0): Promise<SceneCard[]> {
   const blocked = await exclusions()
   const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities()])
   const affinity: Affinity = aff
     ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
     : NO_AFFINITY
-  const ranked = rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit)
+  const ranked = rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit + offset).slice(offset)
   // the pool carries only what scoring needs; the winners get their full cards
   const cards = new Map((await stash.findScenesByIds(ranked.map((r) => r.card.id))).map((s) => [s.id, s]))
   return ranked.flatMap((r) => {
@@ -159,7 +160,7 @@ async function featured(weights: FeaturedWeights, seed: string, limit: number): 
 }
 
 api.get('/featured', async (c) =>
-  c.json(await featured((await getSettings()).featured, seedParam(c.req.query('seed')), limitParam(c.req.query('limit')))),
+  c.json(await featured((await getSettings()).featured, seedParam(c.req.query('seed')), limitParam(c.req.query('limit')), offsetParam(c.req.query('offset')))),
 )
 
 // Settings' live preview: score with dials that are not saved (yet).

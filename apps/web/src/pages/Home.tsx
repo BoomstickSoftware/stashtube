@@ -9,7 +9,7 @@ import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
 import { WantedRow } from '../components/WantedRow'
-import { homeSeed, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
+import { useMoreFeatured, homeSeed, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -20,13 +20,15 @@ export function Home(): JSX.Element {
   // (lib/api/home.ts); Shuffle draws a new one.
   const [seed, setSeed] = useState(homeSeed)
   const { data, error, isLoading } = useHome(seed)
-  // Hero: the top of the Featured row, in score order; without one (no library yet), a
-  // shuffle of everything on the page. It moves on by itself, by arrow, or by a swipe, and
-  // wraps around. The current pick holds while the feed refreshes in the background, as
-  // long as the video is still on the page.
+  // Hero: the Featured row in score order, then (Hero fetches it) the same ranking further
+  // down, twenty at a time; without a Featured row (no library yet), a shuffle of everything
+  // on the page. It moves on by itself, by arrow, or by a swipe, and wraps around only when
+  // the ranking runs out. The current pick holds while the feed refreshes in the
+  // background, as long as the video is still on the page.
+  const featuredRow = (data ?? []).find((r) => r.key === 'featured')
   const order = useMemo(() => {
     const featured = (data ?? []).find((r) => r.key === 'featured')
-    if (featured) return featured.items.slice(0, HERO_PICKS)
+    if (featured) return featured.items
     const unique = [...new Map((data ?? []).flatMap((r) => r.items).map((s) => [s.id, s])).values()]
     const rank = (id: string) => Math.sin(Number(id) * 12.9898 + hash(seed) * 78.233) // seeded shuffle
     return unique.sort((a, b) => rank(a.id) - rank(b.id))
@@ -44,7 +46,7 @@ export function Home(): JSX.Element {
 
   return (
     <div className="space-y-10">
-      <Hero order={order} />
+      <Hero order={order} seed={seed} more={!!featuredRow} />
       <PickUpStations />
       {data.map((r) =>
         r.savedId ? (
@@ -78,7 +80,6 @@ function NotDownloaded() {
 }
 
 const HERO_EVERY = 12_000 // ms a pick stays up before the next one
-const HERO_PICKS = 8 // how many of the Featured row the hero cycles through
 
 const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 1000, 7) / 1000
 
@@ -133,12 +134,34 @@ function ResumeCard({ resume: r }: { resume: StationResume }) {
 // The hero carousel: arrows, a sideways swipe, or the timer move it. The timer waits while
 // the pointer is over it, a preview is playing, or the tab is in the background.
 // Owns which pick is up, so its timer re-renders nothing but itself (Home holds ~260 cards).
-function Hero({ order }: { order: SceneCard[] }) {
+// `more`: the picks are a ranking that continues below the row, fetched as the end nears.
+function Hero({ order, seed, more }: { order: SceneCard[]; seed: string; more: boolean }) {
   const [heroId, setHeroId] = useState<string>()
-  const at = Math.max(0, order.findIndex((s) => s.id === heroId))
-  const scene = order[at]
-  const count = order.length
-  const onStep = useCallback((d: number) => setHeroId(order[(at + d + order.length) % order.length]?.id), [order, at])
+  const atInRow = Math.max(0, order.findIndex((s) => s.id === heroId))
+  const pages = useMoreFeatured(seed, order.length, more && atInRow >= order.length - 4)
+  // The row, then the fetched pages with anything already shown left out. A page that adds
+  // nothing new (an older server, a ranking that repeats) ends the paging, or the hero would
+  // ask for the next page forever.
+  const { picks, stalled } = useMemo(() => {
+    const seen = new Set(order.map((s) => s.id))
+    const picks = [...order]
+    let stalled = false
+    for (const page of pages.data?.pages ?? []) {
+      const fresh = page.filter((s) => !seen.has(s.id) && !!seen.add(s.id))
+      picks.push(...fresh)
+      stalled = fresh.length === 0
+    }
+    return { picks, stalled }
+  }, [order, pages.data])
+  const at = Math.max(0, picks.findIndex((s) => s.id === heroId))
+  const scene = picks[at]
+  const count = picks.length
+  const nearEnd = more && at >= picks.length - 4
+  const { hasNextPage, isFetching, fetchNextPage } = pages
+  useEffect(() => {
+    if (nearEnd && hasNextPage && !isFetching && !stalled) fetchNextPage()
+  }, [nearEnd, hasNextPage, isFetching, stalled, fetchNextPage])
+  const onStep = useCallback((d: number) => setHeroId(picks[(at + d + picks.length) % picks.length]?.id), [picks, at])
   const [hovering, setHovering] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const paused = hovering || previewing || count < 2

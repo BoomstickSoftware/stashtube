@@ -1,5 +1,5 @@
 import type { FeaturedWeights, HomeRow, SavedRow, SceneCard, SceneQuery } from '@flix/shared'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { readStored, writeStored } from '../storage'
 import { get, HOME_SEED_KEY, queryClient, send } from './client'
 
@@ -31,6 +31,19 @@ const lastFeed = () =>
 
 export const useHome = (seed: string) =>
   useQuery({ queryKey: ['home', seed], queryFn: () => get<HomeRow[]>(`/home?seed=${seed}`), placeholderData: (prev) => keepPreviousData(prev) ?? lastFeed() })
+
+// The hero past the Featured row: the same ranking, further down, HERO_PAGE at a time,
+// asked for as the hero nears its end (Home's Hero). `from` is the row's length.
+export const HERO_PAGE = 20
+export const useMoreFeatured = (seed: string, from: number, enabled: boolean) =>
+  useInfiniteQuery({
+    queryKey: ['featured-more', seed, from],
+    initialPageParam: from,
+    queryFn: ({ pageParam }) => get<SceneCard[]>(`/featured?seed=${seed}&limit=${HERO_PAGE}&offset=${pageParam}`),
+    getNextPageParam: (last, _all, lastOffset) => (last.length < HERO_PAGE ? undefined : lastOffset + HERO_PAGE),
+    enabled,
+    staleTime: 30 * 60_000,
+  })
 
 // Settings' live preview of the Featured dials, unsaved.
 export const useFeaturedPreview = (weights: FeaturedWeights, enabled: boolean) =>
