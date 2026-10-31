@@ -152,3 +152,11 @@ and the write toast (client timeout 45 s → 65 s); `useWhisparrActivity` remove
 [[2026-10-31-ux-copy-settings-errors]], [[settings-page]], [[web-app]], [[home-feed]],
 [[browse-and-filters]], [[whisparr-shelf]], [[stations]], [[featured-ranking]],
 [[discreet-mode]], [[scene-page]], [[roadmap]].
+## [2026-10-31] ingest | StashDB covers proxied, shelf below the library, entity header skeletons
+`/media/remote/<token>` (HMAC-signed URL, allowlist `stashdb.org`, same asset cache, `?w=`
+resize: 280 KB → 19 KB at 640); `WantedShelf` after `SceneBrowser`, collapsed to its heading and
+count (`flix.wanted.open`); `HeaderSkeleton` on performer/studio/tag pages with the grid
+fetching from the first paint; tag eyebrow "Category" →
+[[media-proxy]], [[whisparr-shelf]], [[people-pages]], [[library-before-wanted-shelf]],
+[[stashdb]], [[request-guard]], [[server-bff]], [[caching]], [[roadmap]],
+[[2026-10-31-covers-shelf-skeletons]].

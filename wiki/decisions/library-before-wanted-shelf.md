@@ -8,7 +8,7 @@ decided: 2026-10-31
 by: user
 verified: 2026-10-31
 updated: 2026-10-31
-related: [whisparr-shelf, people-pages, 2026-10-31-ux-audit]
+related: [whisparr-shelf, people-pages, 2026-10-31-ux-audit, 2026-10-31-covers-shelf-skeletons]
 ---
 
 # The library leads a performer or studio page; the wanted shelf follows, collapsed
@@ -25,7 +25,9 @@ Render the library (filter bar and grid) first. The shelf follows as a collapsed
 
 ## Consequences
 
-Finding a performer's scene is one scroll shorter; the page no longer shifts; the shelf is one tap further for the user who came to fetch. Phase 3 of the roadmap implements it.
+Finding a performer's scene is one scroll shorter; the page no longer shifts; the shelf is one tap further for the user who came to fetch.
+
+Implemented 2026-10-31 ([[2026-10-31-covers-shelf-skeletons]]): `WantedShelf` renders after `SceneBrowser` in `Performer.tsx` and `Studio.tsx`, as a heading button with `aria-expanded`; `flix.wanted.open` through `useStored(..., asBool(false))`; the count is the first page's `items.length` with "+" while `hasNextPage` (the API has no total that excludes what is already in the library). The first page is still fetched while closed (for the count), no cover is. Because the shelf follows the library's own infinite grid, a long library is scrolled through, page by page, before the shelf is reached; the trade accepted here is that the fetcher scrolls, the browser does not. Nothing above the shelf is reserved or moved: it appears, closed, when its page arrives.
 
 ## Revisit if
 

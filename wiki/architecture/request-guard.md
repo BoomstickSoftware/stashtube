@@ -29,7 +29,8 @@ browser talk to flix. `guard.ts` answers it; `index.ts` mounts it before every r
   cannot become same-origin with flix. `/healthz` and `/readyz` answer any Host (probes, the
   deploy's smoke test by IP).
 - **Headers on every response**: `X-Content-Type-Options: nosniff`, `Referrer-Policy:
-  no-referrer` (the StashDB covers are hotlinked; no flix URL leaks to that CDN),
+  no-referrer` (no flix URL leaks to any outside link; _the StashDB covers were hotlinked until
+  2026-10-31_, now they come through [[media-proxy]]),
   `X-Frame-Options: DENY` and `frame-ancestors 'none'` (no click-jacking a Delete).
 - **Playback CORS** echoes the asking origin only when it is local (`playbackOrigin`), for
   hls.js on `flix.lan` reading from `MEDIA_ORIGIN` ([[media-proxy]]); it was `*`.

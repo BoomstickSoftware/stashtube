@@ -1,17 +1,22 @@
 import type { WantedScene } from '@flix/shared'
+import { sized, srcSet } from '@flix/shared'
 import clsx from 'clsx'
 import { Check, ChevronLeft, ChevronRight, Download, GalleryHorizontalEnd, LayoutGrid, Loader2 } from 'lucide-react'
 import { useCallback, useRef, type ReactNode } from 'react'
 import { useGetScene, useWanted } from '../lib/api'
-import { oneOf, useStored } from '../lib/storage'
+import { asBool, oneOf, useStored } from '../lib/storage'
 import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
 
+// How wide a card shows, so the browser picks the resized cover that fits (`srcSet`).
+const ROW_SIZES = '(min-width: 640px) 260px, 66vw'
+const GRID_SIZES = '(min-width: 1536px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw'
+
 // A shelf of scenes Whisparr knows about but has not downloaded. Each card has one action,
 // Get, which asks the server to fetch that one scene; nothing here acts on a whole performer
 // or studio (the library policy).
-export function WantedRow({ title, items, hint, more, right }: { title: ReactNode; items: WantedScene[]; hint?: string; more?: ReactNode; right?: ReactNode }) {
+export function WantedRow({ title, items, hint, more, right, className }: { title: ReactNode; items: WantedScene[]; hint?: string; more?: ReactNode; right?: ReactNode; className?: string }) {
   const scroller = useRef<HTMLDivElement>(null)
   const page = (dir: number) => {
     const el = scroller.current
@@ -19,12 +24,12 @@ export function WantedRow({ title, items, hint, more, right }: { title: ReactNod
   }
   if (!items.length) return null
   return (
-    <section className="group/row">
+    <section className={clsx('group/row', className)}>
       <Heading title={title} hint={hint} right={right} />
       <div className="relative -mx-4 sm:-mx-6">
         <div ref={scroller} className="no-scrollbar flex snap-x gap-4 overflow-x-auto scroll-smooth px-4 pb-2 scroll-pl-4 sm:px-6 sm:scroll-pl-6">
           {items.map((w) => (
-            <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} className="w-[66vw] shrink-0 snap-start sm:w-[260px]" />
+            <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} sizes={ROW_SIZES} className="w-[66vw] shrink-0 snap-start sm:w-[260px]" />
           ))}
           {more && <div className="flex w-[40vw] shrink-0 snap-start items-center justify-center sm:w-[160px]">{more}</div>}
         </div>
@@ -63,7 +68,8 @@ const STATE: Record<Exclude<WantedScene['state'], 'available' | 'remote'>, { lab
   downloaded: { label: 'In library', icon: <Check size={13} />, tone: 'bg-green-500/20 text-green-300' },
 }
 
-function WantedCard({ scene: w, className }: { scene: WantedScene; className?: string }) {
+// The cover is a StashDB image through flix's proxy (`/media/remote/…`), resized like any card.
+function WantedCard({ scene: w, sizes, className }: { scene: WantedScene; sizes: string; className?: string }) {
   const getScene = useGetScene()
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
@@ -73,7 +79,7 @@ function WantedCard({ scene: w, className }: { scene: WantedScene; className?: s
     <article className={clsx('flex flex-col gap-2', className)}>
       <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
         {w.image ? (
-          <img src={w.image} alt="" loading="lazy" className="size-full object-cover" />
+          <img src={sized(w.image, 640)} srcSet={srcSet(w.image)} sizes={sizes} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         ) : (
           <div className="flex size-full items-center justify-center text-xs text-muted">No cover</div>
         )}
@@ -111,6 +117,8 @@ function WantedCard({ scene: w, className }: { scene: WantedScene; className?: s
 const WANTED_VIEWS = ['row', 'grid'] as const
 type WantedView = (typeof WANTED_VIEWS)[number]
 const WANTED_VIEW_KEY = 'flix.wanted.view'
+// Whether the shelf is expanded; closed by default, since the library leads the page.
+const WANTED_OPEN_KEY = 'flix.wanted.open'
 
 function ViewToggle({ view, onChange }: { view: WantedView; onChange: (v: WantedView) => void }) {
   const views: [WantedView, string, typeof LayoutGrid][] = [
@@ -141,26 +149,49 @@ function ViewToggle({ view, onChange }: { view: WantedView; onChange: (v: Wanted
 }
 
 // The shelf for a performer or studio page: their scenes that are not in the library, from
-// StashDB's catalogue (pages) or, without it, Whisparr's list.
+// StashDB's catalogue (pages) or, without it, Whisparr's list. It sits below the library and
+// starts collapsed to its heading and count ("Not in your library yet · 24+ on StashDB"); a tap
+// expands it into the Row or Grid view, and open/closed is remembered per browser. The first
+// page is fetched for the count either way, but no cover is rendered while it is closed.
 export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: string }) {
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useWanted(kind, id)
   const [view, setView] = useStored<WantedView>(WANTED_VIEW_KEY, oneOf(WANTED_VIEWS, 'row'))
+  const [open, setOpen] = useStored(WANTED_OPEN_KEY, asBool(false))
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
   const items = data?.pages.flatMap((p) => p.items) ?? []
   if (!items.length) return null
   const source = data?.pages[0]?.source === 'stashdb' ? 'StashDB' : 'Whisparr'
-  const title = 'Not in your library yet'
-  const hint = `${items.length}${hasNextPage ? '+' : ''} on ${source} · Get fetches one scene`
+  const count = `${items.length}${hasNextPage ? '+' : ''} on ${source}`
+  const title = (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={() => setOpen((v) => !v)}
+      className="-ml-1.5 flex min-h-11 items-center gap-1.5 rounded-lg px-1.5 text-left hover:text-accent"
+    >
+      <ChevronRight size={18} className={clsx('shrink-0 text-muted transition-transform', open && 'rotate-90')} />
+      <span>Not in your library yet</span>
+      <span className="font-normal text-muted">· {count}</span>
+    </button>
+  )
+  if (!open) {
+    return (
+      <section className="mt-10">
+        <Heading title={title} />
+      </section>
+    )
+  }
+  const hint = 'Get fetches one scene'
   const toggle = <ViewToggle view={view} onChange={setView} />
   if (view === 'grid') {
     return (
-      <section className="mb-8">
+      <section className="mt-10 mb-8">
         <Heading title={title} hint={hint} right={toggle} />
         <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 2xl:grid-cols-5">
           {items.map((w) => (
-            <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} />
+            <WantedCard key={w.stashdbId ?? w.whisparrId} scene={w} sizes={GRID_SIZES} />
           ))}
         </div>
         <Sentinel onVisible={loadMore} disabled={!hasNextPage} />
@@ -170,6 +201,7 @@ export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: st
   }
   return (
     <WantedRow
+      className="mt-10"
       title={title}
       hint={hint}
       items={items}

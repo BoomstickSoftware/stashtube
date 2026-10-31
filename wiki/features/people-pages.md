@@ -9,14 +9,23 @@ updated: 2026-10-31
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
 code: [apps/web/src/pages/Directories.tsx, apps/web/src/pages/Performer.tsx, apps/web/src/pages/Studio.tsx, apps/web/src/pages/Tag.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/components/People.tsx, apps/server/src/api.ts]
-related: [browse-and-filters, whisparr-shelf, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations]
+related: [browse-and-filters, whisparr-shelf, library-before-wanted-shelf, categories-and-us-spelling, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations]
 ---
 
 # Performer, studio and tag pages
 
 Each entity page is a header, actions, the entity's videos through the shared list
-([[browse-and-filters]]), and for performers and studios a "Not in your library yet" shelf
-([[whisparr-shelf]]).
+([[browse-and-filters]]), and for performers and studios, below the videos, a collapsed "Not
+in your library yet" shelf ([[whisparr-shelf]], [[library-before-wanted-shelf]]).
+
+The grid renders, and fetches, from the first paint: `SceneBrowser`'s `base` needs only the
+id, so it does not wait for the record. Until the record arrives the header is a
+`HeaderSkeleton` (`EntityHeader.tsx`) of the same shape as the real one (portrait or logo
+block, name bar, facts line, three button pills), so nothing moves when the name fills in;
+_until 2026-10-31_ the whole page was a centred spinner until `/api/<kind>/:id` answered, and
+the first scenes request started only then. A failed record still shows the `ErrorBox` alone.
+The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" until
+2026-10-31_).
 
 ## Actions on an entity
 

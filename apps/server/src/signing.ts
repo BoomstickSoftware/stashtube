@@ -1,6 +1,10 @@
-// Signed playback links. AirPlay receivers (and other players that fetch the URL themselves)
-// have no session cookie, so a scene's playback URLs carry `st=<expiry>.<hmac>`: valid for
-// that one scene's video (direct file, HLS playlist and segments), nothing else.
+// Signed media links.
+// - Playback: AirPlay receivers (and other players that fetch the URL themselves) have no
+//   session cookie, so a scene's playback URLs carry `st=<expiry>.<hmac>`: valid for that one
+//   scene's video (direct file, HLS playlist and segments), nothing else.
+// - Remote covers: `/media/remote/<token>` names an upstream URL (a StashDB cover) as
+//   `<base64url(url)>.<hmac>`, so only URLs the server itself handed out can be asked for; the
+//   host allowlist (remote.ts) is checked as well, since without a password the key is fixed.
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { config } from './config.ts'
 
@@ -25,6 +29,27 @@ export function verifyScene(sceneId: string, token: string | undefined | null): 
   const a = Buffer.from(sig)
   const b = Buffer.from(mac(sceneId, exp))
   return a.length === b.length && timingSafeEqual(a, b)
+}
+
+const macRemote = (url: string) => createHmac('sha256', key()).update(`media:remote:${url}`).digest('base64url')
+
+// A token for `/media/remote/<token>`. No expiry: a cover's URL is stable and the browser may
+// keep the image for a week; what bounds the proxy is the allowlist, not the clock.
+export function signRemote(url: string): string {
+  return `${Buffer.from(url).toString('base64url')}.${macRemote(url)}`
+}
+
+// The URL a remote token names, or null when it was not made here.
+export function verifyRemote(token: string | undefined | null): string | null {
+  if (!token) return null
+  const dot = token.lastIndexOf('.')
+  if (dot <= 0 || dot === token.length - 1) return null
+  const encoded = token.slice(0, dot)
+  const url = Buffer.from(encoded, 'base64url').toString('utf8')
+  if (!url || Buffer.from(url).toString('base64url') !== encoded) return null
+  const a = Buffer.from(token.slice(dot + 1))
+  const b = Buffer.from(macRemote(url))
+  return a.length === b.length && timingSafeEqual(a, b) ? url : null
 }
 
 // The scene a /media path plays, if it is a playback path (not images or sprites).

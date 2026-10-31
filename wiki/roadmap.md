@@ -32,6 +32,7 @@ Done, by date (each page says what changed and how it was verified):
 - [[2026-10-31-review-round]], [[2026-10-31-home-speed-and-stations]], [[2026-10-31-scripts-library]],
   [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]],
   [[2026-10-31-ux-copy-settings-errors]]
+  [[2026-10-31-covers-shelf-skeletons]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 
@@ -88,9 +89,8 @@ freshness items in their own initiatives the same day._
 - The Whisparr list: store a 15-field projection, not the 41 MB array; patch it after a Get
   instead of dropping it; check whether Whisparr v3 can filter `/movie` by performer or studio
   (nas repo, `arr.py`) (F2).
-- StashDB covers through the media proxy (`/media/remote/<id>?w=640`, allowlist stashdb.org,
-  7-day cache) so the browser never leaves the LAN and a shelf page is ~0.5 MB not 6.7 MB
-  (server F3, client F5); cheap first step: pick the smallest image ≥ 640 px.
+- ~~StashDB covers through the media proxy (server F3, client F5)~~ done:
+  [[2026-10-31-covers-shelf-skeletons]].
 - Cache the finished `HomeRow[]` per visit seed (F7); `hono/etag` on `/api/*` so background
   refetches become 304s (client F10); drop `performers[].image` from `SCENE_CARD` (F9).
 
@@ -101,9 +101,9 @@ _Shipped 2026-10-31 ([[2026-10-31-ux-phase2-3-web]]); the Player's time state fo
 - `content-visibility: auto` on cards and rows, or virtualise the grid, so append cost stops
   growing (F1); render Home rows below the fold lazily, or 12 cards per row with "See all"
   (F2, a product choice); Tags page tiles in chunks on a sentinel with tile-sized `sizes` (F3).
-- No layout shift: ship station resumes in the home payload or reserve the row's height;
-  reserve the wanted shelf's height while it loads, or render it below the grid (F4); entity
-  header skeletons with the grid fetching in parallel instead of a spinner (F6, phone 11).
+- No layout shift: ~~reserve the station row's height (done, [[2026-10-31-ux-phase2-3-web]]);
+  the wanted shelf below the grid (F4); entity header skeletons with the grid fetching in
+  parallel instead of a spinner (F6, phone 11)~~ done: [[2026-10-31-covers-shelf-skeletons]].
 - ~~`time`/`buffered` out of the Player's state into the SeekBar or an external store (F11).~~
   Done: `createClock()` in `lib/playback.ts`, subscribed by the SeekBar, the time readout and
   the mini progress line ([[player]]).
@@ -116,8 +116,8 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 - One-row filter bar on phones: Filters · sort · "⋯" (Select, Pin, Station), count inline;
   Cleanup's chips likewise (phone 3).
-- The wanted shelf below the library, or collapsed to its heading with the count (phone 3,
-  desktop 1; decision below).
+- ~~The wanted shelf below the library, collapsed to its heading with the count (phone 3,
+  desktop 1)~~ done: [[2026-10-31-covers-shelf-skeletons]].
 - Card actions: one 44 px "⋯" on touch opening the long-press sheet; "Save to playlist…" in
   the sheet; Delete out of the sheet and out of the scene page's main row, into the details
   card (phone 4, 5).
@@ -126,7 +126,8 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 - Labels on touch: Discreet/Private first-use toast, "+" as "Filter" chips on the scene page,
   "2 filters" chip on Browse instead of a bare badge (phone 7); Browse density toggle 1/2
   columns (phone 10, taste); playlist rows without Move up/down on phones (phone 16);
-  History remove with Undo (phone 17); skeletons for performer/studio/playlist headers.
+  History remove with Undo (phone 17); a skeleton for the playlist header (performer, studio
+  and tag headers have one: [[2026-10-31-covers-shelf-skeletons]]).
 
 ### Phase 4: desktop polish and accessibility (S–M)
 

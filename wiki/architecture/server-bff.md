@@ -4,7 +4,7 @@ kind: architecture
 summary: Module map of apps/server, how it runs (Node 26 executes .ts natively, erasable TypeScript), what the tests cover, and what /healthz and /readyz mean.
 tags: [server, hono, node, tests]
 status: current
-verified: 2026-10-30
+verified: 2026-10-31
 updated: 2026-10-31
 code: [apps/server/src/index.ts, apps/server/src/api.ts, apps/server/src/stash.ts]
 related: [stash-layer, caching, media-proxy, data-model, coding-conventions, run-checks]
@@ -26,8 +26,9 @@ One process serves `/api/*`, `/media/*` and, in production, the built web app (`
 | `api.ts` | Every `/api` route, zod-validated |
 | `stash.ts` | Every Stash GraphQL call and the Stash→flix mapping; nothing else knows Stash's schema ([[stash-layer]]) |
 | `stash.schema.ts` | Generated from `stash.schema.graphql` (Stash v0.31.1); 5.5 k lines, never edited by hand ([[regenerate-stash-schema]]) |
-| `media.ts` | `/media/stash/*` proxy and `/media/play/:id` direct file ([[media-proxy]]) |
-| `signing.ts` | HMAC playback tokens `st=<expiry>.<hmac>`, 24 h, per scene |
+| `media.ts` | `/media/stash/*` proxy, `/media/remote/:token` StashDB covers, `/media/play/:id` direct file ([[media-proxy]]) |
+| `remote.ts` | The remote-cover allowlist (`stashdb.org`), the proxied URL the mappers hand out, the redirect-bounded fetch ([[media-proxy]]) |
+| `signing.ts` | HMAC playback tokens `st=<expiry>.<hmac>`, 24 h, per scene; remote-cover tokens `<base64url(url)>.<hmac>`, no expiry |
 | `files.ts` | Byte-range serving of files found through `MEDIA_PATH_MAP` |
 | `cache/memory.ts`, `cache/assets.ts` | Query cache and disk asset cache, resized WebP copies with sharp (a native dependency; its Alpine build adds ~23 MB to the image) ([[caching]]) |
 | `warm.ts` | Boot and nightly pre-fetch of artwork, home feed, facets, tiles |

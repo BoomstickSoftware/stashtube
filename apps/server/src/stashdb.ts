@@ -1,5 +1,6 @@
 import type { WantedScene } from '@flix/shared'
 import { config } from './config.ts'
+import { remoteImageUrl } from './remote.ts'
 import { dataCache, stashBoxes } from './stash.ts'
 
 // StashDB (stash-box) is the catalogue: every scene a performer or studio has, whether or not
@@ -103,7 +104,7 @@ export async function scenesOf(by: { performers?: string[]; studios?: string[] }
   })
 }
 
-// The widest cover StashDB has; the shelf hotlinks it.
+// The widest cover StashDB has; the proxy resizes it (remote.ts), so the shelf never hotlinks.
 const cover = (images: SdbScene['images']) => images.reduce<SdbScene['images'][number] | null>((best, i) => (!best || i.width > best.width ? i : best), null)?.url ?? null
 
 // A StashDB scene as a shelf card that nothing has fetched yet.
@@ -115,7 +116,7 @@ export function toRemote(s: SdbScene): WantedScene {
     date: s.release_date ? s.release_date.slice(0, 10) : null,
     studio: s.studio?.name ?? null,
     performers: s.performers.map((p) => p.as || p.performer.name),
-    image: cover(s.images),
+    image: remoteImageUrl(cover(s.images)),
     runtime: s.duration ? Math.round(s.duration / 60) : null,
     state: 'remote',
   }

@@ -1,6 +1,7 @@
 import type { WantedList, WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
 import { VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
+import { remoteImageUrl } from './remote.ts'
 import { dataCache, sceneStashIdMap } from './stash.ts'
 import * as stashdb from './stashdb.ts'
 
@@ -137,7 +138,7 @@ export function toWanted(m: Movie, a: Activity): WantedScene {
     date: m.releaseDate ? m.releaseDate.slice(0, 10) : null,
     studio: m.studioTitle || null,
     performers: m.performerNames ?? [],
-    image: img?.remoteUrl || null,
+    image: remoteImageUrl(img?.remoteUrl), // through /media/remote, never hotlinked
     runtime: m.runtime || null,
     state: stateOf(m, a),
   }

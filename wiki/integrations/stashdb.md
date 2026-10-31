@@ -4,10 +4,10 @@ kind: integration
 summary: flix reads a performer's or studio's whole scene catalogue from StashDB with Stash's own stash-box credentials, 24 a page, cached 10 minutes, to label what is not in the library; TPDB is a possible second source later.
 tags: [stashdb, catalogue, whisparr, api]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
-code: [apps/server/src/stashdb.ts, apps/server/src/stashdb.test.ts]
-related: [whisparr-shelf, whisparr-api, stash-api, config-env]
+verified: 2026-10-31
+updated: 2026-10-31
+code: [apps/server/src/stashdb.ts, apps/server/src/stashdb.test.ts, apps/server/src/remote.ts]
+related: [whisparr-shelf, whisparr-api, stash-api, media-proxy, config-env]
 ---
 
 # StashDB
@@ -21,8 +21,10 @@ the executor that downloads.
 - `queryScenes` filtered by a performer's or studio's StashDB ids (taken from the Stash entity's
   `stash_ids`, `stashIdsOf` in [[stash-layer]]), newest first, **24 a page** ("Show more"
   pages further).
-- Each scene's cover is `images[].url` (the StashDB CDN; Whisparr's `images[].remoteUrl` is the
-  same CDN).
+- Each scene's cover is `images[].url` on `stashdb.org` (Whisparr's `images[].remoteUrl` points
+  at the same host; 24/24 on the live shelf, 2026-10-31). flix takes the widest and hands the
+  browser `/media/remote/<token>` instead, fetched, resized and cached by the server
+  ([[media-proxy]]); _hotlinked full size until 2026-10-31_.
 - Results are cached 10 minutes (tag `stashdb`); a page is ~8 KB and goes into the snapshot
   (_memory only, `VOLATILE`, until 2026-10-31_) ([[caching]]).
 - `stashdb.test.ts` pins the exact queries.

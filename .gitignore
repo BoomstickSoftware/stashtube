@@ -8,3 +8,6 @@ dist
 
 # agent worktrees
 .claude/worktrees/
+
+# server tests write their asset cache here
+.cache-test
