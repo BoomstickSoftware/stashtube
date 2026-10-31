@@ -154,7 +154,7 @@ function SceneView({ id }: { id: string }) {
               hide.mutate({ id: scene.id, hidden })
               if (hidden)
                 showToast(
-                  'Hidden from flix',
+                  'Marked not interested',
                   <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
                     Undo
                   </button>,
@@ -167,7 +167,7 @@ function SceneView({ id }: { id: string }) {
               scene.hidden ? 'bg-red-500/15 text-red-300' : 'bg-raised',
             )}
           >
-            <EyeOff size={17} /> {scene.hidden ? 'Hidden' : 'Not interested'}
+            <EyeOff size={17} /> {scene.hidden ? 'Not interested ✓' : 'Not interested'}
           </button>
           {features?.deleteScenes && (
             <button

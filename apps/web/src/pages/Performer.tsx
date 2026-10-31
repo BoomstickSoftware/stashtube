@@ -48,7 +48,7 @@ export function PerformerPage(): JSX.Element {
                 <Stars value={p.rating} onChange={(rating) => rate.mutate({ id, rating })} />
               </div>
               <AddFilterButton kind="performer" id={id} name={p.name} variant="button" />
-              <BlockButton kind="performer" id={id} />
+              <BlockButton kind="performer" id={id} name={p.name} />
               <button onClick={() => setMore((v) => !v)} className="px-2 text-sm text-muted hover:text-fg">
                 {more ? 'Less' : 'About'}
               </button>

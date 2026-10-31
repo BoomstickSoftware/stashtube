@@ -1,7 +1,7 @@
 import type { Playlist, PlaylistDetail } from '@flix/shared'
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from './db/index.ts'
-import { playlistItems, playlists } from './db/schema.ts'
+import { playlistItems, playlists, stationResume } from './db/schema.ts'
 import { findScenesByIds } from './stash.ts'
 
 const touch = (id: number) => db.update(playlists).set({ updatedAt: new Date() }).where(eq(playlists.id, id))
@@ -65,6 +65,7 @@ export async function updatePlaylist(id: number, name: string, description: stri
 
 export async function deletePlaylist(id: number) {
   await db.delete(playlists).where(and(eq(playlists.id, id), sql`${playlists.kind} is null`)) // Favorites stays
+  await db.delete(stationResume).where(eq(stationResume.key, `pl:${id}`)) // its station's place, like deleteStation
 }
 
 // --- favorites: the built-in playlist behind the heart on videos -----------------

@@ -113,3 +113,11 @@ Ratings, O, edits and favourites drop one entity and expire lists ([[ratings-exp
 `maxVolatile` 60 and StashDB pages out of VOLATILE; `LIST_TTL` 15 min; the re-warm waits for two
 quiet polls and 5 min; resized and generated assets get a weak ETag → [[caching]], [[whisparr-shelf]],
 [[stashdb]], [[whisparr-api]], [[stash-layer]].
+## [2026-10-31] ingest | Phase 0 freshness quick wins
+Global failed-write toast from the `MutationCache`; station edits invalidate previews and
+resumes; remove-from-history and title/tag edits reach `scene`, `home`, `related`; deleting a
+playlist deletes its `pl:<id>` resume row and nameless rows are dropped; Block gets Undo; the
+pressed label is "Not interested ✓"; Shuffle plays a shuffled playlist station (`shuffle=1`)
+and never rewrites the order. The gender-switch item was dropped by the owner →
+[[web-app]], [[stations]], [[playlists-and-favorites]], [[people-pages]], [[scene-page]],
+[[playlist-shuffle-plays-shuffled]], [[roadmap]].

@@ -70,6 +70,7 @@ interface Config {
   query: SceneQuery
   from?: string
   playlist?: number // play this playlist in order
+  shuffle?: boolean // …or in a random order (Shuffle on the playlist page)
   prefs: StationPrefs
   key: string // where its resume point is saved
   resume?: { sceneId: string; seconds: number } // start here
@@ -78,7 +79,7 @@ interface Config {
 // /station?id=<saved station>, or ad hoc: a filter set, or from=<scene id>. unwatched=1 on a
 // saved station plays only its unwatched videos; start=resume picks up where it was left.
 export function Station(): JSX.Element {
-  const { id, from, playlist, start, ...q } = route.useSearch()
+  const { id, from, playlist, shuffle, start, ...q } = route.useSearch()
   const stations = useStations()
   const resumes = useStationResumes()
   const playlists = usePlaylists()
@@ -99,14 +100,14 @@ export function Station(): JSX.Element {
     if (playlists.isPending) return wait
     const p = playlists.data?.find((x) => x.id === playlist)
     if (!p) return <div className="py-24 text-center text-muted">That playlist no longer exists.</div>
-    config = { name: p.name, query: {}, playlist, prefs: loadPrefs() }
+    config = { name: p.name, query: {}, playlist, shuffle, prefs: loadPrefs() }
   } else config = { query: stationQuery(q), from, prefs: loadPrefs() }
   const key = stationKey(config)
   if (start === 'resume' && resumes.isPending) return wait
   const r = start === 'resume' ? resumes.data?.find((x) => x.key === key) : undefined
   return (
     <StationPlayer
-      key={JSON.stringify([key, start, q.unwatched])}
+      key={JSON.stringify([key, start, shuffle, q.unwatched])}
       config={{ ...config, key, resume: r && { sceneId: r.scene.id, seconds: r.seconds } }}
     />
   )
@@ -155,7 +156,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const lastT = useRef(0)
   const [fallen, setFallen] = useState<string | null>(null) // the scene whose direct play errored: use HLS
   const hideTimer = useRef<number>(undefined)
-  const [queue] = useState(() => new StationQueue(config.query, config.from, config.playlist))
+  const [queue] = useState(() => new StationQueue(config.query, config.from, config.playlist, config.shuffle))
   useEffect(() => {
     introRef.current = settings?.introSkip ?? {}
   }, [settings])

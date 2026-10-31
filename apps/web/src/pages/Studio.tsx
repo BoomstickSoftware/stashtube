@@ -38,7 +38,7 @@ export function StudioPage(): JSX.Element {
           <div className="mt-4 flex flex-wrap gap-2">
             <FollowButton favorite={s.favorite} onToggle={() => fav.mutate({ id, favorite: !s.favorite })} />
             <AddFilterButton kind="studio" id={id} name={s.name} variant="button" />
-            <BlockButton kind="studio" id={id} />
+            <BlockButton kind="studio" id={id} name={s.name} />
           </div>
           {s.children.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">

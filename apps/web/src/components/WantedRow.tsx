@@ -83,10 +83,7 @@ function WantedCard({ scene: w, className }: { scene: WantedScene; className?: s
             <button
               type="button"
               onClick={() => {
-                getScene.mutate(w, {
-                  onSuccess: () => showToast(`Getting “${w.title}”`),
-                  onError: (e) => showToast(e instanceof Error ? e.message : 'Whisparr refused'),
-                })
+                getScene.mutate(w, { onSuccess: () => showToast(`Getting “${w.title}”`) }) // a failure is toasted by the client
               }}
               className="inline-flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1.5 text-xs font-semibold text-fg ring-1 ring-white/15 hover:bg-accent touch:py-2"
             >

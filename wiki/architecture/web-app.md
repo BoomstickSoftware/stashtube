@@ -71,6 +71,30 @@ no reload button). A scene is prefetched on intent by its route's loader, and th
 card a list already holds while the full record loads ([[scene-page]]). React Query is deduped in
 `vite.config.ts` ([[vite-duplicate-react-query]]).
 
+## Writes and freshness
+
+Every mutation that fails shows a toast, once, from the `MutationCache` in `lib/api/client.ts`:
+the `ApiError` message when the server passed a reason on ("Stash: database is locked"),
+"Couldn't save that" otherwise. The cache's `onError` runs even for hooks with their own
+`onError` (a per-hook `onError` would *replace* a `defaultOptions.mutations.onError`, which is
+why the cache hook is used); a hook whose UI renders the error itself opts out with
+`meta: { silent: true }` (`useDeleteScenes`). _Until 2026-10-31_ only Get, Delete, Settings and
+the station editor surfaced a failed write. Rolling optimistic updates back on error is still
+per hook and mostly missing ([[roadmap]], Phase 5).
+
+What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
+
+- Block and Not interested: every list (`invalidateLists`: blocklist, scenes, home, performers,
+  studios, tags, search, related), plus `hidden` and `scene:<id>`.
+- Station add / update / remove / reorder: `stations` and `station-previews`; remove also
+  `station-resume` ([[stations]]).
+- Remove from history: `scenes`, `home` and `scene:<id>` (its view count and resume pill).
+- Title or tag edit: `scene:<id>`, `scenes`, `home` (persisted) and `related`.
+- Settings: `people` → everything but settings; `featured` → `home`; anything else → `search`.
+
+The server side is in [[caching]]; the per-action freshness table from the 2026-10-31 audit is
+`docs/audits/2026-10-31-ux/ia.md` §3.
+
 ## Checks
 
 `pnpm --filter @flix/web lint` (oxlint), `pnpm typecheck`, `pnpm --filter @flix/web build`.

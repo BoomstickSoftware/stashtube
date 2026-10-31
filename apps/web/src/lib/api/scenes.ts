@@ -169,9 +169,10 @@ export function useRemoveFromHistory() {
   return useMutation({
     mutationFn: (id: string) => send('DELETE', `/history/${id}`),
     onMutate: (id) => qc.setQueryData<HistoryEntry[]>(['scenes', 'history'], (d) => d?.filter((e) => e.scene.id !== id)),
-    onSettled: () => {
+    onSettled: (_r, _e, id) => {
       qc.invalidateQueries({ queryKey: ['scenes'] })
       qc.invalidateQueries({ queryKey: ['home'] })
+      qc.invalidateQueries({ queryKey: ['scene', id] }) // its play count and resume point are gone
     },
   })
 }
@@ -187,7 +188,12 @@ export function useSceneEdits(id: string) {
   return {
     update: useMutation({
       mutationFn: (patch: { title?: string; tagIds?: string[] }) => send('PATCH', `/scenes/${id}`, patch),
-      onSuccess: refresh,
+      onSuccess: () => {
+        refresh()
+        // the title and tags also sit on Home's cards (persisted) and in related rows
+        qc.invalidateQueries({ queryKey: ['home'] })
+        qc.invalidateQueries({ queryKey: ['related'] })
+      },
     }),
     addMarker: useMutation({
       mutationFn: (b: { seconds: number; title: string; tagId?: string }) => send<Marker>('POST', `/scenes/${id}/markers`, b),
@@ -220,6 +226,7 @@ export const useJob = (jobId: string | null) =>
 export function useDeleteScenes() {
   const qc = useQueryClient()
   return useMutation({
+    meta: { silent: true }, // the dialog shows the error itself
     mutationFn: async ({ ids, onProgress }: { ids: string[]; onProgress?: (done: number) => void }) => {
       const results: DeleteResult[] = []
       for (const id of ids) {

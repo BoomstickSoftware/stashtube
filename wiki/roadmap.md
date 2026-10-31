@@ -72,8 +72,10 @@ freshness items in their own initiatives the same day._
   and `React.memo(Row)` (F2); a `sizes` prop on `SceneCard` for rows and tag tiles (F3, F9);
   `HOVER_DELAY` 500 ms, VTT after the delay, `preload="metadata"` on previews (F8).
 - Freshness: global `mutations.onError` toast in `client.ts` (IA F1); station mutations also
-  invalidate `station-previews` and `station-resume` (F8); `performerGender` invalidates like
-  `people` (F7); remove-from-history invalidates `['scene', id]`; title/tag edits invalidate
+  invalidate `station-previews` and `station-resume` (F8); ~~`performerGender` invalidates like
+  `people` (F7)~~ dropped 2026-10-31: the owner wants the Women/Men/Everyone switch to affect
+  only the Performers page, so the setting is to be decoupled from Home, Stats and search in
+  its own initiative instead; remove-from-history invalidates `['scene', id]`; title/tag edits invalidate
   `['home']` and `['related']`; `deletePlaylist` deletes its `pl:<id>` resume row (F4); Block
   gets the Undo toast Hide has (F11); "Hidden" pressed label → "Not interested ✓" (F13).
 
@@ -139,8 +141,8 @@ freshness items in their own initiatives the same day._
   third "Save"; "Save station" (IA F19).
 - Optimistic rollbacks on error for rating, follow, pin and performer rating; Moments' Undo
   toast on success only (IA F1); progress and Continue badge patched after `saveActivity`
-  (IA F3); Identify polled server-side until finished (IA F6); Playlist Shuffle plays
-  shuffled without rewriting the order (IA F5); a "Requested" state on wanted cards between
+  (IA F3); Identify polled server-side until finished (IA F6); ~~Playlist Shuffle plays
+  shuffled without rewriting the order (IA F5)~~ done in Phase 0; a "Requested" state on wanted cards between
   Get and the grab (IA row 18).
 - Actionable errors: map "Stash: …" 502s to "Stash is busy or down (a scan locks it for a
   few minutes). Cached pages still work.", network failures to "No connection to flix"; client
@@ -158,7 +160,8 @@ freshness items in their own initiatives the same day._
 2. Does the wanted shelf lead a performer page, or follow the library / collapse to a heading
    (phone 3, desktop 1, client F4)?
 3. "Categories" or "Tags"; US spelling in the UI with the wiki staying UK (IA F2, F12)?
-4. Playlist Shuffle: play shuffled only, never rewrite the stored order (IA F5)?
+4. ~~Playlist Shuffle: play shuffled only, never rewrite the stored order (IA F5)?~~ Decided
+   2026-10-31: [[playlist-shuffle-plays-shuffled]].
 5. Ad hoc Station entry points: keep the list/entity "Station" chip, drop the card-sheet
    duplicate (open since [[stations-only-user-made]])?
 6. Panic key on phones: a touch gesture, or desktop-only and hidden on touch (IA F10)?
