@@ -61,8 +61,9 @@ export function Stars({
             onClick={() => onChange?.(value === n ? null : n)}
           >
             <Star size={size} className="text-white/25" strokeWidth={1.5} />
+            {/* the fill's inset matches the button's padding, or it sits up and left of its outline */}
             {fill > 0 && (
-              <span className="absolute inset-0.5 overflow-hidden" style={{ width: fill === 1 ? undefined : size / 2 }}>
+              <span className="absolute inset-0.5 overflow-hidden touch:inset-2.5" style={{ width: fill === 1 ? undefined : size / 2 }}>
                 <Star size={size} className="fill-star text-star" strokeWidth={1.5} />
               </span>
             )}

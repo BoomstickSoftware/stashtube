@@ -8,9 +8,14 @@ import { nowPlaying, useNowPlaying, useNowPlayingStatus } from '../lib/nowPlayin
 import { Player } from './Player'
 
 // The scene page's placeholder: the host below lays the one Player over it. `children` is
-// whatever the page draws on top of the picture (the up-next countdown).
+// whatever the page draws on top of the picture (the up-next countdown). The ref's cleanup
+// detaches this element only, so a page unmounting after the next one mounted (React detaches
+// before it attaches, but the store should not depend on it) cannot take the new slot away.
 export function PlayerSlot({ theater, children }: { theater: boolean; children?: ReactNode }) {
-  const attach = useCallback((el: HTMLDivElement | null) => nowPlaying.attach(el), [])
+  const attach = useCallback((el: HTMLDivElement) => {
+    nowPlaying.attach(el)
+    return () => nowPlaying.detach(el)
+  }, [])
   return (
     <div className="relative">
       <div ref={attach} className={theater ? 'aspect-video max-h-[calc(100dvh-8rem)] w-full' : 'aspect-video'} />

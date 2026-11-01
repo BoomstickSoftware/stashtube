@@ -62,8 +62,16 @@ export const nowPlaying = {
     // the slot stays: the new page attached it during its commit, before this effect ran
     set({ scene, startAt: opts.startAt, autoStart: opts.autoStart, theater: opts.theater, handlers: {} })
   },
-  attach(slot: HTMLElement | null) {
+  // The scene page's slot comes and goes with the page: its ref attaches it on mount and
+  // detaches it on unmount (detach, so that an element that is no longer current, because the
+  // next page's slot attached first, is left alone). Nothing else clears the slot: when a page
+  // leaves, React has already detached its slot, and the next scene page, if that is where we
+  // are going, has already attached its own.
+  attach(slot: HTMLElement) {
     if (state.slot !== slot) set({ slot })
+  },
+  detach(slot: HTMLElement) {
+    if (state.slot === slot) set({ slot: null })
   },
   setHandlers(handlers: Handlers) {
     set({ handlers })
@@ -72,18 +80,21 @@ export const nowPlaying = {
     if (state.theater !== theater) set({ theater })
   },
   // The scene page is going away. The video docks if it has been playing and the setting allows
-  // it; a video that never started just closes.
+  // it; a video that never started just closes. The slot is not touched here: this runs in the
+  // old page's effect cleanup, after the next page's slot (scene to scene, or Back to a cached
+  // page) has attached, and clearing it docked the next video over its own empty page
+  // (2026-10-31; dev's StrictMode remount hid it, production showed it on every related tap).
   leave(sceneId: string) {
     if (state.scene?.id !== sceneId) return
     const keep = readStored(KEEP_PLAYING_KEY, asBool(true))
     if (!keep || (!status.playing && status.time < 1) || status.ended) nowPlaying.close()
-    else set({ slot: null, handlers: {} })
+    else set({ handlers: {} })
   },
   close() {
     if (!state.scene) return
     status = IDLE
     statusListeners.forEach((l) => l())
-    set({ scene: null, slot: null, handlers: {}, startAt: undefined })
+    set({ scene: null, handlers: {}, startAt: undefined })
   },
   // the Player's handle, for the page's chapter chips and the O button
   setHandle(h: PlayerHandle | null) {

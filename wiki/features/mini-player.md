@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-10-31
 code: [apps/web/src/lib/nowPlaying.ts, apps/web/src/components/NowPlaying.tsx, apps/web/src/components/Layout.tsx, apps/web/src/pages/Scene.tsx]
-related: [player, scene-page, stations, private-session, mobile-checks, diagnostics]
+related: [player, scene-page, stations, private-session, mobile-checks, diagnostics, next-video-opens-docked-over-its-own-page]
 ---
 
 # Mini-player
@@ -32,14 +32,17 @@ same `<video>` node is used wherever it shows, so nothing reloads.
   `<a href>` still gets there, by a full load, if the script's click handling fails. Each tap
   is logged for Settings → [[diagnostics]] (`dock: tap Expand|title|picture`), with the
   player's dock/undock transitions and every navigation.
-- **The iPhone problem (open)**: the user reports that on the phone Expand, the title and the
-  picture do nothing, while play/pause and Stop in the same bar work. Headless Chrome
-  (`scripts/mini-check.mjs`) and real WebKit with iPhone emulation
-  (`scripts/webkit-mini-check.mjs`, [[mobile-checks]]) both restore by all three paths, with
-  the video playing, so the cause is on the device itself. The picture overlay's `z-10`
-  (WebKit composites an inline video on its own layer and can hit-test it over a transparent
-  sibling) was the first guess and is kept; the links and the diagnostics log are the second
-  round, to be read off the phone.
+- **The slot belongs to its ref.** `PlayerSlot`'s ref attaches the element on mount and its
+  cleanup detaches that element only; `leave()` and `close()` never clear the slot. Scene to
+  scene (a related card, Back to a cached page) React attaches the new page's slot before it
+  runs the old page's effect cleanup, so a `leave()` that cleared the slot docked the new video
+  over its own empty page. That was "the iPhone problem" of 2026-10-31 (Expand, the title and
+  the picture "did nothing" because they led to the page already shown, and Stop left the gap):
+  production only, since dev's StrictMode remount re-attached the slot, which is why neither
+  headless engine reproduced it through Vite dev
+  ([[next-video-opens-docked-over-its-own-page]]). `scripts/mini-check.mjs` now covers the
+  scene-to-scene paths and runs against a production build ([[mobile-checks]]). The picture
+  overlay's `z-10` and the links instead of `navigate()` from the earlier rounds are kept.
 - Both placements share one element skeleton, so coming back to the scene finds it still
   playing. Verified 2026-10-30: a marker set on the node survived Home and back, and the time
   stayed monotonic.

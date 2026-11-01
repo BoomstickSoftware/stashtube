@@ -56,8 +56,8 @@ message; every control on the phone at least 44 px; one word per concept.
 and measured: Filters and Categories 7–9 ms right after a deploy, a phone performer page
 254 KB, CLS 0.02 on Home and 0 on entity pages, every failed write toasts, 44 px controls,
 one vocabulary. Priority from here: the phone first ([[iphone-first-polish]]). Not re-measured: the Browse append at 800 cards (cards now skip layout
-off-screen). Still open: the iPhone mini-player restore bug
-(waiting for a Diagnostics copy, [[mini-player]]); History remove keeps its confirm and has
+off-screen). The iPhone mini-player bug is found and fixed (the next video opened docked
+over its own page, [[next-video-opens-docked-over-its-own-page]]). Still open: History remove keeps its confirm and has
 no Undo, since Stash cannot restore a removed play; the optional inline facts in the
 performer header at `lg`; a History-list skeleton.
 
@@ -253,10 +253,6 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 ## Open questions
 
 - The twelve decisions listed under the UX audit roadmap above ([[2026-10-31-ux-audit]]).
-
-- Why do the mini-player's restore controls do nothing on the iPhone when play/pause and Stop
-  beside them work, and both headless Chrome and real WebKit restore fine? Next evidence: the
-  phone's Settings → Diagnostics copy after a tap on Expand ([[mini-player]], [[diagnostics]]).
 
 - Does Whisparr's daily `RefreshStudios` still add newly released scenes to a studio whose
   new-items flag is off? Baseline for a later diff: 9,363 scenes across 36 studios at

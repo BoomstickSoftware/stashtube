@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-10-31
 code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs, scripts/webkit-mini-check.mjs, scripts/phone-flow.mjs, scripts/desktop-check.mjs]
-related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs]
+related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs, next-video-opens-docked-over-its-own-page]
 ---
 
 # Run the headless mobile checks
@@ -31,8 +31,13 @@ node scripts/touch-check.mjs /tmp/t http://localhost:5174 /scene/<id>
 # drag-to-preview on scene cards (drags 25 px: Chrome holds touchmoves inside its ~15 px slop)
 node scripts/card-check.mjs /tmp/c http://localhost:5174 /browse
 
-# the mini-player round trip: play, tap Home (docks), tap the picture / title / Expand (restores)
-node scripts/mini-check.mjs /tmp/mp http://localhost:5174 /scene/<id>
+# the mini-player round trip: play, tap Home (docks), tap the picture / title / Expand (restores),
+# then a related card, Back and the card again (each on its own page, never docked). Run it
+# against a PRODUCTION BUILD: dev's StrictMode remount hides the scene-to-scene slot bug
+# (next-video-opens-docked-over-its-own-page); against Vite dev only the Home steps mean anything
+pnpm --filter @flix/web exec vite build
+FLIX_SERVER=http://flix.lan pnpm --filter @flix/web exec vite preview --port 5175 --strictPort &   # proxies /api and /media like dev
+node scripts/mini-check.mjs /tmp/mp http://localhost:5175 /scene/<id>
 
 # the same round trip in real WebKit (iPhone 15 Pro Max emulation, touch), with the page's
 # console, page errors and failed requests printed; needs Playwright, see below

@@ -196,3 +196,11 @@ and what remains added at the top of the audit section → [[roadmap]].
 The user: the iPhone 17 Pro Max is the primary client, polish it over everything else →
 [[iphone-first-polish]] (CLAUDE.md rule 6 reworded). Decisions 11 and 12 of the audit answered:
 [[image-variant-480]], [[browse-two-columns-on-phones]].
+
+## [2026-10-31] correct | The iPhone mini-player bug was the slot, not the taps
+Scene to scene the leaving page's `leave()` cleared the slot the next page had attached, so the
+next video opened docked over its own empty page; production only (StrictMode hid it in dev).
+Fixed in `nowPlaying.ts` (the slot's ref owns it); `mini-check` drives scene to scene against a
+production build → [[next-video-opens-docked-over-its-own-page]], [[mini-player]],
+[[2026-10-31-mini-player-expand]], [[mobile-checks]], [[roadmap]]. Same commit: star fills
+8 px off their outlines on touch screens (`touch:inset-2.5`).

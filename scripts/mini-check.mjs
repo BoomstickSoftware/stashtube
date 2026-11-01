@@ -1,6 +1,7 @@
 // Checks the mini-player round trip with real touch events in headless Chrome (iPhone size):
 // play a scene, tap the Home tab (the player docks), tap the docked picture (back to the
-// scene, un-docked), and again via the title and the Expand button. Prints the path and the dock state after each
+// scene, un-docked), again via the title and the Expand button, then tap a related card (the
+// next video opens on its own page, not docked). Prints the path and the dock state after each
 // step and saves a screenshot per step. Plays and progress are blocked, so nothing is
 // recorded in Stash.
 // usage: node scripts/mini-check.mjs <outdir> http://localhost:5174 /scene/<id>
@@ -112,6 +113,34 @@ for (const [name, sel] of [['title', '[role=region][aria-label="Now playing"] a.
   const s = await step(`tap dock ${name}`, () => tap(r.x, r.y))
   if (s.path === path && !s.docked) console.log(`ok: ${name} tap restored the full player`)
   else { console.log(`FAIL: ${name} tap -> path ${s.path}, docked ${s.docked}`); failed = true }
+}
+// Scene to scene: a tap on a related card below the player must open that video on its own
+// page, not dock it, and so must Back and a second tap, when the page's record is already
+// cached and its slot mounts at once (2026-10-31: the leaving page's cleanup wiped the slot the
+// new page had just attached, so the next video showed as a mini-player over its own empty page).
+const findCard = () => evaluate(`(() => { const a = [...document.querySelectorAll('a[href^="/scene/"]')].find((el) => el.getAttribute('href').split('?')[0] !== location.pathname); if (!a) return null; a.scrollIntoView({ block: 'center' }); const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), x: r.left + r.width / 2, y: r.top + r.height / 2 } })()`)
+const onPage = (s, target) => s.path === target && !s.docked && s.video
+if ((await state()).path === path) {
+  const card = await findCard()
+  if (!card) { console.log('FAIL: no related card to tap'); failed = true }
+  else {
+    const target = card.href.split('?')[0]
+    await sleep(300)
+    const s1 = await step('tap related card', () => tap(card.x, card.y))
+    if (onPage(s1, target)) console.log('ok: the related video opened on its own page, un-docked')
+    else { console.log(`FAIL: related card -> path ${s1.path} (wanted ${target}), docked ${s1.docked}, video ${s1.video}`); failed = true }
+    const s2 = await step('back (cached page)', async () => { await evaluate('history.back()'); await sleep(STEP) })
+    if (onPage(s2, path)) console.log('ok: Back found the first video on its page, un-docked')
+    else { console.log(`FAIL: Back -> path ${s2.path} (wanted ${path}), docked ${s2.docked}, video ${s2.video}`); failed = true }
+    const again = await findCard()
+    if (again) {
+      await sleep(300)
+      const s3 = await step('tap related (cached)', () => tap(again.x, again.y))
+      const t3 = again.href.split('?')[0]
+      if (onPage(s3, t3)) console.log('ok: the cached related video opened on its own page, un-docked')
+      else { console.log(`FAIL: cached related card -> path ${s3.path} (wanted ${t3}), docked ${s3.docked}, video ${s3.video}`); failed = true }
+    }
+  }
 }
 console.log(failed ? 'FAILED' : 'all restore paths work')
 ws.close()
