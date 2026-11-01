@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-10-31
 code: [scripts/deploy-check.mjs]
-related: [forgejo-ci, kubernetes-deployment, run-checks, caching, one-commit-per-initiative, scripts-library, trivy-db-download-timed-out]
+related: [deploy-run-waiting-runners-busy, forgejo-ci, kubernetes-deployment, run-checks, caching, one-commit-per-initiative, scripts-library, trivy-db-download-timed-out]
 ---
 
 # Deploy and verify a change
@@ -57,6 +57,11 @@ no image for the sha. Read the build step's log (Forgejo run page, expand the st
 ([[trivy-db-download-timed-out]]); **Re-run all jobs** on the run page, then
 `TIMEOUT=1200 node scripts/deploy-check.mjs` (the default 600 s wait is too short for a
 re-run started by hand after the push).
+
+If instead the run shows `waiting` with no start time, the cluster's runners are serving
+another repo's jobs and the flix job is queued, not broken; `TIMEOUT=1200` is not enough
+either, poll `/healthz` for the sha and run `deploy-check --no-wait` afterwards
+([[deploy-run-waiting-runners-busy]]).
 
 ## If the smoke test fails
 

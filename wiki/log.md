@@ -204,3 +204,9 @@ Fixed in `nowPlaying.ts` (the slot's ref owns it); `mini-check` drives scene to 
 production build → [[next-video-opens-docked-over-its-own-page]], [[mini-player]],
 [[2026-10-31-mini-player-expand]], [[mobile-checks]], [[roadmap]]. Same commit: star fills
 8 px off their outlines on touch screens (`touch:inset-2.5`).
+
+## [2026-11-01] ingest | Deploy run queued behind another repo's jobs
+c842bab's run sat `waiting` for over an hour while all three runners served tradesmanagerpro;
+how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], [[deploy-and-verify]].
+
+## [2026-11-01] query | Forgejo queue drained: run 6474 succeeded, c842bab live, smoke routes 200
