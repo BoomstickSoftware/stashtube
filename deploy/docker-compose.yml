@@ -1,0 +1,48 @@
+# Run stashtube (the flix image) next to a Postgres, built from this checkout.
+#
+#   cp .env.example .env                     # STASH_URL, STASH_API_KEY; optional WHISPARR_*, MEDIA_PATH_MAP
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#   curl -s http://localhost:8080/healthz
+#
+# DATABASE_URL and CACHE_DIR are set here and override .env. For direct play of the originals,
+# uncomment the media mount and set MEDIA_PATH_MAP=<stash's prefix>=/media in .env.
+services:
+  flix:
+    build:
+      context: ..
+      args:
+        GIT_SHA: compose
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      DATABASE_URL: postgres://flix:flix@db:5432/flix
+      CACHE_DIR: /cache
+    ports:
+      - "8080:8080"
+    volumes:
+      - flix-cache:/cache
+      # - /path/to/your/library:/media:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:18.0-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flix
+      POSTGRES_PASSWORD: flix
+      POSTGRES_DB: flix
+    volumes:
+      - flix-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flix -d flix"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  flix-cache:
+  flix-db:

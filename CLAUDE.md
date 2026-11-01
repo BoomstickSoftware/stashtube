@@ -9,7 +9,7 @@ tells you how to use it and the few rules that must be in every session.
 
 | Repo | Owns |
 |------|------|
-| this (`~/code/flix`) | flix code, Dockerfile, CI workflow, **`wiki/`** (the knowledge base) |
+| this (`~/code/flix`) | flix code, Dockerfile, CI workflow, **`wiki/`** (the knowledge base). `origin` is Forgejo and deploys; `github` is the public mirror BoomstickSoftware/stashtube, pushed by hand after origin (`wiki/decisions/github-public-mirror.md`) |
 | `~/code/nas` | Stash and Whisparr themselves (config, library operations, API facts about the NAS side), the NFS export flix reads. `docs/services.md`, `docs/known-issues.md` |
 | `~/code/flotilla` | The compose stack that runs Stash and Whisparr on the NAS |
 | `~/code/k8s` | Where flix runs: `infra/flix/` manifests, secrets script, CNPG database, `docs/flix.md` |

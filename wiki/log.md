@@ -210,3 +210,6 @@ c842bab's run sat `waiting` for over an hour while all three runners served trad
 how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], [[deploy-and-verify]].
 
 ## [2026-11-01] query | Forgejo queue drained: run 6474 succeeded, c842bab live, smoke routes 200
+
+## [2026-11-01] decide | Public GitHub repo BoomstickSoftware/stashtube; Forgejo stays the deploy remote; README and deploy/docker-compose.yml for newcomers
+## [2026-11-01] ingest | README screenshots recipe (discreet mode + injected text blur, phone-flow against production)
