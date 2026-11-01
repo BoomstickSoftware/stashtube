@@ -213,3 +213,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 
 ## [2026-11-01] decide | Public GitHub repo BoomstickSoftware/stashtube; Forgejo stays the deploy remote; README and deploy/docker-compose.yml for newcomers
 ## [2026-11-01] ingest | README screenshots recipe (discreet mode + injected text blur, phone-flow against production)
+## [2026-11-01] decide | MIT license for the public repo; the app keeps the name flix for now

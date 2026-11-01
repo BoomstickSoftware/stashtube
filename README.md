@@ -170,3 +170,7 @@ assistant as much as for a person; `wiki/roadmap.md` has the status and backlog.
 In daily use since 2026-10-26 by one person on one library. Expect assumptions that fit that
 library (adult content tagged through StashDB, Whisparr as the downloader, a NAS mount) and
 open issues in `wiki/roadmap.md`. Issues and pull requests are welcome.
+
+## License
+
+[MIT](LICENSE).

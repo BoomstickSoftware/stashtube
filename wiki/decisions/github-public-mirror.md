@@ -38,5 +38,7 @@ options around the words flix, stash, vids and tube. GitHub crowding at the time
 ## Consequences
 
 - [[deploy-and-verify]] gains a last step: push the mirror.
-- A README that lets someone else run it from scratch, `deploy/docker-compose.yml`, and a
-  license are owed to the public repo (license: open, the user's choice).
+- The public repo carries a README that lets someone else run it from scratch, phone
+  screenshots made with [[readme-screenshots]], `deploy/docker-compose.yml` and an **MIT**
+  license (user's choice, 2026-11-01). The app keeps the name flix for now (user's choice,
+  same day); a rename would be its own initiative.
