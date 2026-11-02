@@ -52,6 +52,9 @@ about, old ones included (a newly watched studio's whole catalogue), and `afterD
   run that would watch under half of what was watched (with 4 or more) is refused unless
   `--force`: that looks like Stash answering wrongly. Turning things off is otherwise
   unlimited, since it cannot start a download.
+- **What flix watches is its own record** (`whisparr_watch`), never the `flix` tag: Whisparr
+  copies tags and flags to the studios and co-performers it adds while refreshing a watched
+  performer ([[whisparr-watch-cascades-to-studios-and-performers]]).
 - **Order**: performers and studios off first, then scenes, then on, so a failure part-way
   leaves less monitored, not more. Watch starts are written before anything is turned on.
 - **Writes** are one at a time: GET the object, change the flags and tags, PUT it back; no

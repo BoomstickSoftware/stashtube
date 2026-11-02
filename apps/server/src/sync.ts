@@ -1,8 +1,9 @@
 // The Whisparr sync: Stash favourites decide everything Whisparr monitors.
 // - Followed performers and studios (Stash favourites, minus the blocklist) are watched for new
 //   releases: `monitored` + `whisparrMonitorNewItems` on, tagged `flix`. No search, ever.
-// - Every other performer and studio has both flags off (Whisparr turns "new items" on for
-//   everything it adds; the sync turns it off again).
+// - Every other performer and studio has both flags off. Whisparr turns "new items" on for
+//   everything it adds, and refreshing a watched performer adds their studios and co-performers
+//   with that performer's flags and tags; the sync turns all of those off again.
 // - Scenes: Whisparr's "new items" also monitors OLD scenes it learns about later (a newly
 //   watched studio's whole catalogue). So a monitored scene stays monitored only if it is a
 //   Get from flix, is downloading or grabbed, or belongs to a watched performer or studio and
@@ -216,7 +217,10 @@ async function run({ apply, asked = false, force = false }: { apply?: boolean; a
   }
   let tagId = tags.find((t) => t.label === TAG)?.id ?? null
   tagCache = tagId
-  const watchedBefore = entities.filter((e) => watchedFully(e) && tagId !== null && e.tags.includes(tagId)).length
+  // What flix itself started watching (its own rows), not what carries the tag: refreshing a
+  // watched performer, Whisparr adds their studios and co-performers with the same flags AND
+  // tags (2026-11-02: 43 followed became 149 tagged in one run), so the tag over-counts.
+  const watchedBefore = since.size
   const plan = planSync({ favourites, blocked, entities, movies, busy, gets, since, tagId, now: Date.now() })
   const items = itemsOf(plan)
   const summary = summaryOf(plan)
