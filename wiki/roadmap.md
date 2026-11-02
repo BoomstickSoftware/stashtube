@@ -5,7 +5,7 @@ summary: Where flix stands, what is left on the backlog, what is deferred, the k
 tags: [roadmap, backlog]
 status: current
 verified: 2026-10-30
-updated: 2026-10-31
+updated: 2026-11-02
 related: [overview, log, 2026-10-31-ux-audit]
 ---
 
@@ -213,6 +213,28 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 10. ~~A persistent "Stash is busy" pill~~ Decided: the toast only ([[failed-writes-toast-only]]).
 11. ~~A 480-px image variant for desktop grids (client Q3)?~~ Yes: [[image-variant-480]] (2026-10-31).
 12. ~~Browse on the phone: one column or two (phone 10)?~~ Two for now: [[browse-two-columns-on-phones]] (2026-10-31).
+
+## Stash and Whisparr operations (moved from the nas repo, 2026-11-02)
+
+Stash and Whisparr are run from here now (`private/wiki/integrations/stash-instance.md`, `private/wiki/integrations/whisparr-instance.md`,
+[[stash-and-whisparr-clients]]). Open items that came with them, from the nas repo's do-later list:
+
+- **Whisparr collections** (`private/wiki/history/2026-10-25-whisparr-collections.md`): finish the paced bulk fill and
+  write its outcome there; in a few weeks re-crawl for new uploads and retry per-scene searches
+  for the ~630 still unmatched. Under the current policy ([[whisparr-nothing-monitored]]) any
+  such fill is one scene at a time.
+- **Whisparr v2 leftovers**: delete `/volume1/Flotilla/.flotilla/whisparr`, SABnzbd's `adult`
+  category (v3 uses `adult3`), and in the Portainer stack env remove `WHISPARR_UI_PORT`, add
+  `STASH_UI_PORT` and `WHISPARR3_UI_PORT` (the nas repo's `nas-portainer.py drift` reports them).
+- **Keys in flix's `.env`**: `scripts/stash.py` and `scripts/whisparr.py` need `STASH_URL`,
+  `STASH_API_KEY`, `WHISPARR_URL`, `WHISPARR_API_KEY` there (filled by hand). Not yet tested
+  live from flix.
+- **nas repo cleanup**: replace its Stash and Whisparr sections with pointers here (services rows,
+  known-issues #38 and #40, the two operations runbooks, three history files, the arr.py and
+  stash.py rows, `browser/`, `inventory/arr/whisparr3/`, media policy 4, the CONTINUE items).
+  Not done: the nas folder has no git, so nothing there is changed without the user.
+- **Flix–Stash–Whisparr sync**: proposals in [[stash-whisparr-sync-options]], waiting on the
+  user's choices.
 
 ## Backlog
 

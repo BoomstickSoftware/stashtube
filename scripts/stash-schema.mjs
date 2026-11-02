@@ -6,7 +6,7 @@
 //   node scripts/stash-schema.mjs introspection.json   # from a saved introspection result
 //
 // The second form takes the `data` object of the standard introspection query (what
-// ~/code/nas/scripts/stash.py prints), for when the key is not in this shell's env.
+// scripts/stash.py prints), for when the key is not in this shell's env.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'

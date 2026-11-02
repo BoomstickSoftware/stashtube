@@ -7,7 +7,7 @@ status: current
 decided: 2026-11-01
 by: user
 verified: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 related: [forgejo-ci, deploy-and-verify, one-commit-per-initiative, readme-screenshots]
 ---
 
@@ -42,3 +42,24 @@ options around the words flix, stash, vids and tube. GitHub crowding at the time
   screenshots made with [[readme-screenshots]], `deploy/docker-compose.yml` and an **MIT**
   license (user's choice, 2026-11-01). The app keeps the name flix for now (user's choice,
   same day); a rename would be its own initiative.
+
+## Library content stays out of git (2026-11-02)
+
+When the Stash and Whisparr operations moved here from the nas repo, the user chose: notes that
+name library content go in a **gitignored folder in this repo**, and such names are **scrubbed
+from version control**.
+
+- `private/` is gitignored. `private/wiki/<kind>/` holds wiki pages that name performers,
+  studios, scenes, indexers or downloads (the Stash and Whisparr instance pages, their gotchas,
+  runbooks and history). `scripts/wiki.mjs` loads them when present, indexes them into
+  `private/wiki/index.md` (never `wiki/index.md`) and fails lint when a tracked page links one.
+  `private/ops/` holds the Whisparr config snapshots and the browser filter.
+- `scripts/privacy-check.mjs`, run by `check.mjs`, fails on any whole-word, case-sensitive match
+  of a library name in a tracked or new file. Terms: `private/denylist.auto.txt` (every
+  performer and studio name and alias in Stash, from flix's API: `privacy-check.mjs refresh`),
+  `private/denylist.txt` (by hand: indexers, Whisparr's own performers and studios),
+  minus `private/allowlist.txt`. A fresh clone without `private/` passes with a notice.
+- The first scan (5,645 terms, 360 files) found 12 names already in tracked files (a test
+  fixture path, two code comments, the 2026-10-31 UX audits, this wiki); all were replaced by
+  placeholders. Older commits still hold them; rewriting published history is a separate step.
+- `private/` is not backed up by git. It lives only on this Mac.

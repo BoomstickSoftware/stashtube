@@ -24,7 +24,7 @@ STASH_URL=http://192.168.0.10:9999 STASH_API_KEY=… pnpm --filter @flix/server 
 ```
 
    or from a saved introspection result when the key is not in this shell (the `data` object of
-   the standard introspection query, which `~/code/nas/scripts/stash.py` can print):
+   the standard introspection query, which `scripts/stash.py` can print):
 
 ```sh
 pnpm --filter @flix/server schema path/to/introspection.json

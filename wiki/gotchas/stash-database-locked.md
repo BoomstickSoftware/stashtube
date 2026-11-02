@@ -37,5 +37,5 @@ and an Identify through its Stash connection, so a bulk import builds a long que
 ## Avoid
 
 Expect it after any import. When checking whether a Stash query works, look at the Stash
-job queue first (Stash UI, or `~/code/nas/scripts/stash.py jobs`). Details on the cache's
+job queue first (Stash UI, or `scripts/stash.py jobs`). Details on the cache's
 behaviour in [[caching]]; the NAS-side facts live in the nas repo (`nas:docs/services.md`).

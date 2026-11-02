@@ -69,4 +69,4 @@ against the stash-box, `configuration.general.stashBoxes` ([[stashdb]]).
 - `Stash HTTP 4xx` from a filter means a criterion the type lacks
   ([[stash-filters-have-no-id-criterion]]).
 - Nested `AND` exclusions ~0.2 s; `random_<seed>` sort is stable for paging (spike 2026-10-26).
-- Introspect by hand: `~/code/nas/scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'` ([[gather-context]]).
+- Introspect by hand: `scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'` ([[gather-context]]).

@@ -7,7 +7,7 @@
       "does": "Lists, searches and lints this manifest: the way to find out whether a script already exists before doing a thing by hand.",
       "usage": [
         "node scripts/scripts.mjs list",
-        "node scripts/scripts.mjs search <words\u2026>",
+        "node scripts/scripts.mjs search <words…>",
         "node scripts/scripts.mjs show <name>",
         "node scripts/scripts.mjs lint"
       ],
@@ -23,7 +23,7 @@
       "file": "scripts/wiki.mjs",
       "does": "Searches, indexes and lints the wiki/ knowledge base; run `search` before reading pages by hand, `index` then `lint` after any wiki edit.",
       "usage": [
-        "node scripts/wiki.mjs search <words\u2026> [--kind k] [--tag t] [-n 10]",
+        "node scripts/wiki.mjs search <words…> [--kind k] [--tag t] [-n 10]",
         "node scripts/wiki.mjs index",
         "node scripts/wiki.mjs lint",
         "node scripts/wiki.mjs tags",
@@ -165,7 +165,7 @@
       "file": "scripts/stash-schema.mjs",
       "does": "Refreshes apps/server/stash.schema.graphql from a running Stash (or a saved introspection JSON) so codegen can regenerate stash.schema.ts after a Stash upgrade.",
       "usage": [
-        "STASH_URL=http://stash:9999 STASH_API_KEY=\u2026 node scripts/stash-schema.mjs",
+        "STASH_URL=http://stash:9999 STASH_API_KEY=… node scripts/stash-schema.mjs",
         "node scripts/stash-schema.mjs introspection.json"
       ],
       "env": {
@@ -239,7 +239,7 @@
         "STEPS": "JSON array of steps",
         "W": "viewport width (440)",
         "H": "viewport height (956)",
-        "STUB": "JSON map of GET API pathname \u2192 JSON answer, stubbed in the browser (reads only)"
+        "STUB": "JSON map of GET API pathname → JSON answer, stubbed in the browser (reads only)"
       },
       "writes": "screenshots under <outdir>",
       "tags": [
@@ -305,28 +305,65 @@
         "checks"
       ],
       "wiki": "perf-checks"
-    }
-  ],
-  "external": [
-    {
-      "name": "stash.py",
-      "repo": "nas",
-      "file": "~/code/nas/scripts/stash.py",
-      "does": "Runs a GraphQL query against the real Stash with the real key (never printed). Read-only use from flix: schema introspection, 'why did this query fail'.",
-      "usage": [
-        "~/code/nas/scripts/stash.py q '{ __type(name:\"TagFilterType\"){ inputFields { name } } }'"
-      ],
-      "wiki": "gather-context"
     },
     {
-      "name": "arr.py",
-      "repo": "nas",
-      "file": "~/code/nas/scripts/arr.py",
-      "does": "Reads a Servarr API. From flix only `get` on whisparr3 (movie, studio, queue); never add, monitor or search.",
+      "name": "whisparr",
+      "file": "scripts/whisparr.py",
+      "does": "Whisparr v3 API client (moved from the nas repo's arr.py): ping, status, queue, history, wanted, logs, config, snapshot to private/ops/inventory/whisparr3/, raw get, and dry-run-by-default writes (set, put, post, delete, cmd).",
       "usage": [
-        "~/code/nas/scripts/arr.py whisparr3 get movie|studio|queue --json"
+        "scripts/whisparr.py ping",
+        "scripts/whisparr.py get movie --json",
+        "scripts/whisparr.py set performer/<id> whisparrMonitorNewItems=false   # dry run; add --apply"
       ],
-      "wiki": "gather-context"
+      "env": [
+        "WHISPARR_URL",
+        "WHISPARR_API_KEY"
+      ],
+      "writes": "Whisparr, only with --apply (Backup first unless --no-backup); snapshot writes private/ops/inventory/whisparr3/",
+      "tags": [
+        "whisparr",
+        "operations",
+        "nas"
+      ],
+      "wiki": "stash-and-whisparr-clients"
+    },
+    {
+      "name": "stash",
+      "file": "scripts/stash.py",
+      "does": "Stash GraphQL client (moved from the nas repo): ping, status, redacted config, job queue, and any query; a mutation is a dry run unless --apply.",
+      "usage": [
+        "scripts/stash.py ping",
+        "scripts/stash.py q '{ version { version } }'",
+        "scripts/stash.py jobs --wait"
+      ],
+      "env": [
+        "STASH_URL",
+        "STASH_API_KEY"
+      ],
+      "writes": "Stash, only for a mutation with --apply",
+      "tags": [
+        "stash",
+        "operations",
+        "nas"
+      ],
+      "wiki": "stash-and-whisparr-clients"
+    },
+    {
+      "name": "privacy-check",
+      "file": "scripts/privacy-check.mjs",
+      "does": "Fails when a tracked or new file names a performer, studio or indexer from the library (the repo is mirrored publicly); refresh rebuilds the generated denylist from flix's API.",
+      "usage": [
+        "node scripts/privacy-check.mjs",
+        "node scripts/privacy-check.mjs refresh [http://flix.lan]"
+      ],
+      "writes": "refresh writes private/denylist.auto.txt; the check writes nothing",
+      "tags": [
+        "privacy",
+        "git",
+        "check"
+      ],
+      "wiki": "github-public-mirror"
     }
-  ]
+  ],
+  "external": []
 }

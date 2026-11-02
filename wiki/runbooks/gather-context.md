@@ -5,8 +5,8 @@ summary: Where to look, and which read-only tools to use, when a question is abo
 tags: [context, nas, k8s, stash, whisparr, tools]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
-related: [overview, stash-api, whisparr-api, kubernetes-deployment, forgejo-ci, k8s-clone-on-side-branch]
+updated: 2026-11-02
+related: [overview, stash-api, whisparr-api, stash-and-whisparr-clients, kubernetes-deployment, forgejo-ci, k8s-clone-on-side-branch]
 ---
 
 # Gather context from the other systems
@@ -19,8 +19,8 @@ the owning wiki page with a `sources:` pointer and a date.
 
 | About | Look in |
 |---|---|
-| Stash config, libraries, scans, Identify, its container | `~/code/nas/docs/services.md` (stash row), `nas:docs/operations.md`; summary here: [[stash-api]], [[stash-library]] |
-| Whisparr config, profiles, indexers, import problems, the monitoring incident | `~/code/nas/docs/services.md` (whisparr3 row), `nas:docs/known-issues.md` #38 and #40; summary here: [[whisparr-api]] |
+| Stash config, libraries, scans, Identify, its container | here since 2026-11-02: `private/wiki/integrations/stash-instance.md`, [[stash-api]], [[stash-library]], `scripts/stash.py` |
+| Whisparr config, profiles, indexers, import problems, the monitoring incident | here since 2026-11-02: `private/wiki/integrations/whisparr-instance.md`, [[whisparr-api]], `private/wiki/gotchas/whisparr-matches-by-studio-and-date.md`, `private/wiki/gotchas/whisparr-bulk-search-stalls-imports.md`, `scripts/whisparr.py` |
 | The media library policy (what may be monitored, where adult titles live) | `~/code/nas/CLAUDE.md`, "Media library policy" |
 | The NFS export, NAS ports and addresses | `nas:docs/network.md`; here: [[nfs-media]] |
 | The cluster side: manifests, secrets, CNPG, backups, MetalLB, Argo | `~/code/k8s/docs/flix.md`, `docs/cnpg.md`, `docs/nas-backups.md`, `infra/flix/`; here: [[kubernetes-deployment]], [[postgres-cnpg]] |
@@ -30,13 +30,13 @@ the owning wiki page with a `sources:` pointer and a date.
 
 ```sh
 # Stash GraphQL with the real key (schema introspection, reproduce a failing query)
-~/code/nas/scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'
-~/code/nas/scripts/stash.py status
+scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'
+scripts/stash.py status
 
-# Whisparr, read-only (never post/put from here; the nas repo owns writes)
-~/code/nas/scripts/arr.py whisparr3 get movie --json | head -c 2000
-~/code/nas/scripts/arr.py whisparr3 get studio --json
-~/code/nas/scripts/arr.py whisparr3 get queue --json
+# Whisparr: reads here; writes only for an operations task the user asked for, with --apply ([[stash-and-whisparr-clients]])
+scripts/whisparr.py get movie --json | head -c 2000
+scripts/whisparr.py get studio --json
+scripts/whisparr.py get queue --json
 
 # k8s manifests: always origin/main, the clone may be on a side branch
 git -C ~/code/k8s show origin/main:infra/flix/deployment.yaml

@@ -44,4 +44,4 @@ filter inputs are generated from Stash's own schema.
   smoke list locally or hit every first-paint route in production: `/api/home`,
   `/api/tags/tiles`, `/api/tags`, `/api/search?q=a`, `/api/scenes/facets`, `/api/performers`,
   `/api/studios` (the CI smoke test now does this, see [[forgejo-ci]]).
-- To check a filter type by hand: `~/code/nas/scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'`.
+- To check a filter type by hand: `scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'`.

@@ -197,7 +197,7 @@ describe('WarmDebounce', () => {
 describe('groupFolder', () => {
   it('is the folder above the scene\'s own folder, never the library itself', () => {
     assert.equal(groupFolder('/data/adult/scenes/Net/Studio/2023 - Title [id]/f.mp4'), '/data/adult/scenes/Net/Studio')
-    assert.equal(groupFolder('/data/adult/scenes/Serenity Cox/2023-08-05 - Wife [6719]/clip.mp4'), '/data/adult/scenes/Serenity Cox') // a pack
+    assert.equal(groupFolder('/data/adult/scenes/Jane Doe/2023-08-05 - Wife [6719]/clip.mp4'), '/data/adult/scenes/Jane Doe') // a pack
     assert.equal(groupFolder('/data/adult/scenes/loose/f.mp4'), null) // would be the library
     assert.equal(groupFolder('/data/adult/scenes/f.mp4'), null)
     assert.equal(groupFolder(undefined), null)

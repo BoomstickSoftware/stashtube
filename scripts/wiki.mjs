@@ -7,12 +7,15 @@
 //   node scripts/wiki.mjs tags           # tag counts
 //   node scripts/wiki.mjs stale [days]   # pages whose `verified` is older than days (30)
 //   node scripts/wiki.mjs show <slug>    # print a page's path and frontmatter
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const WIKI = join(ROOT, 'wiki')
+// Pages that name library content (performers, studios, indexers, download history) live in the
+// gitignored private/wiki/ with the same layout; loaded when present, never in wiki/index.md.
+const PRIVATE = join(ROOT, 'private', 'wiki')
 const KINDS = ['architecture', 'feature', 'integration', 'decision', 'runbook', 'gotcha', 'history', 'hub']
 const KIND_DIR = {
   architecture: 'architecture',
@@ -93,8 +96,10 @@ const SPECIAL = new Set(['index', 'log'])
 
 function loadPages() {
   const pages = []
-  for (const path of walk(WIKI)) {
-    const rel = relative(WIKI, path)
+  const sources = [[WIKI, false]]
+  if (existsSync(PRIVATE)) sources.push([PRIVATE, true])
+  for (const [base, priv] of sources) for (const path of walk(base)) {
+    const rel = relative(base, path)
     const file = rel.split('/').pop()
     if (GENERATED.has(rel)) continue
     const text = readFileSync(path, 'utf8')
@@ -102,6 +107,8 @@ function loadPages() {
     pages.push({
       path,
       rel,
+      private: priv,
+      where: `${priv ? 'private/wiki' : 'wiki'}/${rel}`,
       dir: rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '.',
       slug: file.replace(/\.md$/, ''),
       fm: fm ?? {},
@@ -183,9 +190,9 @@ function lint(pages) {
   const slugs = new Map()
   const inbound = new Map(pages.map((p) => [p.slug, 0]))
   for (const p of pages) {
-    const where = `wiki/${p.rel}`
-    if (slugs.has(p.slug)) errors.push(`${where}: duplicate slug "${p.slug}" (also wiki/${slugs.get(p.slug)})`)
-    slugs.set(p.slug, p.rel)
+    const where = p.where
+    if (slugs.has(p.slug)) errors.push(`${where}: duplicate slug "${p.slug}" (also ${slugs.get(p.slug)})`)
+    slugs.set(p.slug, p.where)
     if (!/^[a-z0-9][a-z0-9-]*$/.test(p.slug) && p.slug !== 'CONVENTIONS') errors.push(`${where}: slug must be lower-kebab`)
     if (p.error) {
       errors.push(`${where}: ${p.error}`)
@@ -212,7 +219,9 @@ function lint(pages) {
     if (bodyLines > MAX_BODY_LINES && p.fm.kind !== 'hub') warnings.push(`${where}: ${bodyLines} body lines (limit ${MAX_BODY_LINES}); split it`)
     for (const l of p.links) {
       if (SPECIAL.has(l)) continue
-      if (!pages.some((q) => q.slug === l)) errors.push(`${where}: broken link [[${l}]]`)
+      const target = pages.find((q) => q.slug === l)
+      if (!target) errors.push(`${where}: broken link [[${l}]]`)
+      else if (target.private && !p.private) errors.push(`${where}: links private page [[${l}]]; tracked pages must not (a fresh clone has no private/)`)
       else if (l !== p.slug) inbound.set(l, (inbound.get(l) ?? 0) + 1)
     }
     for (const k of ['related', 'superseded_by']) {
@@ -220,16 +229,17 @@ function lint(pages) {
       for (const l of Array.isArray(v) ? v : v ? [v] : [])
         if (SPECIAL.has(l)) continue
         else if (!pages.some((q) => q.slug === l)) errors.push(`${where}: ${k} names unknown page "${l}"`)
+        else if (pages.find((q) => q.slug === l).private && !p.private) errors.push(`${where}: ${k} names private page "${l}"; tracked pages must not`)
         else inbound.set(l, (inbound.get(l) ?? 0) + 1)
     }
     if (p.fm.verified && daysAgo(p.fm.verified) > STALE_DAYS) warnings.push(`${where}: verified ${p.fm.verified}, over ${STALE_DAYS} days ago`)
   }
   for (const p of pages)
     if (!p.error && p.fm.kind !== 'hub' && p.fm.kind !== 'history' && (inbound.get(p.slug) ?? 0) === 0)
-      warnings.push(`wiki/${p.rel}: orphan (no [[link]] or related: from any other page)`)
+      warnings.push(`${p.where}: orphan (no [[link]] or related: from any other page)`)
   try {
     const current = readFileSync(join(WIKI, 'index.md'), 'utf8')
-    if (stripDates(current) !== stripDates(renderIndex(pages))) errors.push('wiki/index.md is out of date: run `node scripts/wiki.mjs index`')
+    if (stripDates(current) !== stripDates(renderIndex(pages.filter((p) => !p.private)))) errors.push('wiki/index.md is out of date: run `node scripts/wiki.mjs index`')
   } catch {
     errors.push('wiki/index.md is missing: run `node scripts/wiki.mjs index`')
   }
@@ -309,8 +319,14 @@ function main(argv) {
   const pages = loadPages()
   switch (cmd) {
     case 'index': {
-      writeFileSync(join(WIKI, 'index.md'), renderIndex(pages))
-      console.log(`wiki/index.md: ${pages.length} pages`)
+      const pub = pages.filter((p) => !p.private)
+      writeFileSync(join(WIKI, 'index.md'), renderIndex(pub))
+      console.log(`wiki/index.md: ${pub.length} pages`)
+      const priv = pages.filter((p) => p.private)
+      if (priv.length) {
+        writeFileSync(join(PRIVATE, 'index.md'), renderIndex(priv).replace('title: Index', 'title: Private index').replace('Generated catalogue of every wiki page', 'Generated catalogue of the private (gitignored) pages'))
+        console.log(`private/wiki/index.md: ${priv.length} pages`)
+      }
       return 0
     }
     case 'lint': {
@@ -328,7 +344,7 @@ function main(argv) {
     }
     case 'stale': {
       const days = Number(rest[0] ?? 30)
-      for (const p of pages) if (p.fm.verified && daysAgo(p.fm.verified) > days) console.log(`${p.fm.verified}  wiki/${p.rel}`)
+      for (const p of pages) if (p.fm.verified && daysAgo(p.fm.verified) > days) console.log(`${p.fm.verified}  ${p.where}`)
       return 0
     }
     case 'show': {
@@ -337,7 +353,7 @@ function main(argv) {
         console.error(`no page "${rest[0]}"`)
         return 1
       }
-      console.log(`wiki/${p.rel}`)
+      console.log(p.where)
       for (const [k, v] of Object.entries(p.fm)) console.log(`${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
       return 0
     }
@@ -356,7 +372,7 @@ function main(argv) {
         return 0
       }
       for (const { p, score, lines } of results) {
-        console.log(`${String(score).padStart(4)}  wiki/${p.rel}  [${p.fm.kind}]  ${p.fm.title}`)
+        console.log(`${String(score).padStart(4)}  ${p.where}  [${p.fm.kind}]  ${p.fm.title}`)
         console.log(`      ${p.fm.summary ?? ''}`)
         for (const { l, i } of lines) console.log(`      ${i + 1}: ${l.trim().slice(0, 140)}`)
       }

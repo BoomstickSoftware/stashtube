@@ -214,3 +214,10 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-01] decide | Public GitHub repo BoomstickSoftware/stashtube; Forgejo stays the deploy remote; README and deploy/docker-compose.yml for newcomers
 ## [2026-11-01] ingest | README screenshots recipe (discreet mode + injected text blur, phone-flow against production)
 ## [2026-11-01] decide | MIT license for the public repo; the app keeps the name flix for now
+
+## [2026-11-02] correct | Whisparr studios reset to unmonitored (178/178, new items off); 4,844 scenes still monitored
+## [2026-11-02] correct | Whisparr scenes, movies and performers unmonitored too; performer/editor returns 400, cleared one by one
+## [2026-11-02] decide | Favourite performers (30) monitored in Whisparr for new scenes only; back catalogue stays unmonitored
+## [2026-11-02] ingest | Stash and Whisparr operations moved from the nas repo: clients, config snapshot, browser filter, service pages, two gotchas, two runbooks, three history pages
+## [2026-11-02] query | Sync options between flix, Stash and Whisparr written up as a proposal
+## [2026-11-02] decide | Library content stays out of git: gitignored private/ for named pages and snapshots, privacy-check in check.mjs, 12 tracked names scrubbed

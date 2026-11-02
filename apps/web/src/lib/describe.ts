@@ -67,7 +67,7 @@ export function describeQuery(q: SceneQuery, names: Names): QueryPart[] {
   return out
 }
 
-// One line: "Riley Reyes · Gangbang · no Anal · 1080p+ · Unwatched".
+// One line: "Jane Doe · Gangbang · no Anal · 1080p+ · Unwatched".
 export const summarize = (parts: QueryPart[]) => parts.map((p) => (p.tone === 'exclude' ? `no ${p.label}` : p.label)).join(' · ')
 
 // A pinned row's default title: the summary, else the sort, else a placeholder; kept short.

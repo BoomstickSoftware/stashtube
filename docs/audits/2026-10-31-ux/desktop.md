@@ -28,7 +28,7 @@ Script worth keeping: `…/desktop/desktop-cdp.mjs` (scenario JSON → real CDP 
 - Right-click opens flix's menu (Play, Station from here, Add to Favorites, Mark as watched, Not interested, Delete…). The native menu is suppressed (`SceneCard.tsx:151`), so "Open link in new tab" and "Copy link" are gone; middle-click still works because the card is a real link.
 - Filters dialog: well structured, live counts, "Show 2,585 videos" CTA, Esc closes. Helper text says "Tap to require one" (`Filters.tsx:318`).
 - Select mode: checkboxes on every card, "Done", "Select all loaded"; no Shift+click range selection.
-- Studio avatar discs: white logos on a white disc vanish (`r1/browse.png` cards 3, 6, 7 show plain white circles; the same studio "Hot Wife XXX" has a white-on-dark logo in `rD/studios_grid.png`). `SceneCard.tsx:230` uses `bg-white`.
+- Studio avatar discs: white logos on a white disc vanish (`r1/browse.png` cards 3, 6, 7 show plain white circles; the same studio has a white-on-dark logo in `rD/studios_grid.png`). `SceneCard.tsx:230` uses `bg-white`.
 - Empty result: "Nothing matches these filters." with no action except the chip's ×; no "Clear filters" button (`SceneBrowser.tsx:91`).
 
 ### Scene (/scene/2775, /scene/2795) — `r1/scene_2775.png`, `rB/scene_top.png`, `rA/scene_hover.png`, `rA/scene_seekhover.png`, `rA/scene_gear.png`, `rA/scene_theater.png`, `rB/scene_theater.png`, `rA/scene_theater_s800.png`, `rA/scene_s700.png`, `rA/scene_s1400.png`, `rC/scene2795_top.png`, `rC/scene2795_s600.png`
@@ -44,12 +44,12 @@ Script worth keeping: `…/desktop/desktop-cdp.mjs` (scenario JSON → real CDP 
 - Header: portrait, name, aka, "57 videos · 45 years old · US · 2009–now", Follow / stars / Add to filters / Block / About. ~300 px of empty black to the right of the name block at 1440.
 - "About" is muted text next to pill buttons; it reads as a label, not a control (`Performer.tsx:53`). Expanded, it shows a facts grid plus 27 external links in a flat wrap with duplicates (two instagram, two iafd).
 - "Not in your library yet" (24 StashDB scenes, Row/Grid toggle) comes before the library. The user's own 57 videos start at y≈810 at 1440×900 (`r1/performer_447.png`) and at y≈810 at 1920×1080 (`rB/performer_top.png`). In Grid view the library is pushed further (`rD/performer_grid_s900.png` is still StashDB).
-- On 807's page each card's performer line repeats "Serenity Cox" (`rC/performer807_s700.png`); the "age 41" meta is a nice desktop detail.
+- On 807's page each card's performer line repeats the performer's own name (`rC/performer807_s700.png`); the "age 41" meta is a nice desktop detail.
 - Header count "57 videos" and filter-bar count "57 videos" appear twice within 400 px.
 
 ### Studio (/studio/6, /studio/17) — `r1/studio_6.png`, `rC/studio17_top.png`
 - Same pattern: shelf first. On /studio/6 the shelf has one item plus a "Show more" slot ("1+ on StashDB"), taking a full row for one card.
-- Parent studio as an eyebrow link ("Brazzers") is good.
+- Parent studio as an eyebrow link (the network name) is good.
 
 ### Tag (/tag/25, /tag/27) — `r1/tag_25.png`, `rC/tag_top.png`
 - "#" accent eyebrow, "Blowjob", "1790 videos" (unformatted, `Tag.tsx:29`) directly above the filter bar's "1,790 videos" (`SceneBrowser.tsx` via `toLocaleString`). Pin / Add to filters / Block.

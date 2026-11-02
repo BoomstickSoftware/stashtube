@@ -53,6 +53,6 @@ Whisparr knows a file as `/volume1/Media/adult/…`; Stash reports `/data/adult/
 
 - A bulk `MoviesSearch` blocks imports for hours and a monitored studio refills the queue
   (incident 2026-10-28, `nas:docs/known-issues.md` #40): the reason for the policy.
-- Read-only inspection from the Mac: `~/code/nas/scripts/arr.py whisparr3 get movie|studio|queue --json` ([[gather-context]]).
+- Read-only inspection from the Mac: `scripts/whisparr.py get movie|studio|queue --json` ([[gather-context]]).
 - Open question (nas #40): whether the daily `RefreshStudios` still adds newly released scenes to
   a studio whose new-items flag is off. Baseline for a diff: 9,363 scenes / 36 studios.

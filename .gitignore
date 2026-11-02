@@ -11,3 +11,7 @@ dist
 
 # server tests write their asset cache here
 .cache-test
+__pycache__/
+
+# Private operations notes: library names, indexers, download history (never committed)
+private/

@@ -2,7 +2,7 @@
 // The pre-commit checks, in the order the wiki's run-checks runbook lists them, stopping at the
 // first failure: server+shared typecheck, the web's tsc (it has no typecheck script), oxlint
 // against the known-warning baseline, the server tests, and with --docker the image build that CI
-// runs. Prints one line per check and a summary. Run from anywhere in the repo.
+// runs, and the privacy check that keeps library names out of git. Prints one line per check and a summary. Run from anywhere in the repo.
 //
 //   node scripts/check.mjs
 //   node scripts/check.mjs --docker
@@ -21,6 +21,7 @@ const steps = [
   ['typecheck (web)', 'npx', ['tsc', '-b'], resolve(ROOT, 'apps/web')],
   ['lint (web)', 'pnpm', ['--filter', '@flix/web', 'lint'], ROOT, lintOk],
   ['tests (server)', 'pnpm', ['test']],
+  ['privacy (no library names in tracked files)', 'node', ['scripts/privacy-check.mjs']],
 ]
 if (docker) steps.push(['docker build', 'docker', ['build', '-t', 'flix', '.']])
 

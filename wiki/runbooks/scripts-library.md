@@ -63,7 +63,7 @@ node scripts/scripts.mjs lint
 | `wiki.mjs` | wiki search, index, lint ([[CONVENTIONS]]) |
 | `scripts.mjs` | this registry |
 
-`external` lists `~/code/nas/scripts/stash.py` and `arr.py`, used read-only ([[gather-context]]).
+`external` listed the nas repo's `stash.py` and `arr.py` until 2026-11-02; they now live here as `scripts/stash.py` and `scripts/whisparr.py` ([[stash-and-whisparr-clients]]).
 `pnpm` scripts (`typecheck`, `test`, `db:up`, …) stay in `package.json`; they are building
 blocks, not operations.
 

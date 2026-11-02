@@ -10,7 +10,7 @@ tells you how to use it and the few rules that must be in every session.
 | Repo | Owns |
 |------|------|
 | this (`~/code/flix`) | flix code, Dockerfile, CI workflow, **`wiki/`** (the knowledge base). `origin` is Forgejo and deploys; `github` is the public mirror BoomstickSoftware/stashtube, pushed by hand after origin (`wiki/decisions/github-public-mirror.md`) |
-| `~/code/nas` | Stash and Whisparr themselves (config, library operations, API facts about the NAS side), the NFS export flix reads. `docs/services.md`, `docs/known-issues.md` |
+| `~/code/nas` | The NAS itself: OS, disks, the NFS export flix reads, the other arr apps, Prowlarr, SABnzbd, qBittorrent. **Stash and Whisparr are operated from this repo since 2026-11-02**: `scripts/stash.py`, `scripts/whisparr.py`, `private/wiki/integrations/stash-instance.md`, `private/wiki/integrations/whisparr-instance.md` |
 | `~/code/flotilla` | The compose stack that runs Stash and Whisparr on the NAS |
 | `~/code/k8s` | Where flix runs: `infra/flix/` manifests, secrets script, CNPG database, `docs/flix.md` |
 
@@ -41,11 +41,20 @@ limit, a number, a failure mode, a user preference or decision):
    a dated `history/` page (what changed, how verified, snags) and an update to `wiki/roadmap.md`.
    Current behaviour lives in `features/` or `architecture/`, never in a history page.
 6. A fact about another system belongs in `integrations/` only as far as flix needs it, with a
-   `sources:` pointer to the owning repo's doc. Do not restate the nas or k8s docs.
+   `sources:` pointer to the owning repo's doc. Do not restate the nas or k8s docs. **Exception:
+   Stash and Whisparr are owned here** (moved from the nas repo 2026-11-02): their whole
+   configuration and operations live in `private/wiki/integrations/{stash,whisparr}-instance.md`,
+   the private runbooks and gotchas they link, and `private/ops/`.
 7. Append a `log.md` entry (`## [YYYY-MM-DD] ingest|correct|decide|query | title`). Then run
    `node scripts/wiki.mjs index && node scripts/wiki.mjs lint` and fix what it reports. Do this
    before ending any session that edited the wiki.
-8. An answer you assembled from several pages that someone will ask again is worth filing as a page
+8. **Library content never enters git.** The repo is mirrored publicly
+   (`wiki/decisions/github-public-mirror.md`). A page or file that names a performer, studio,
+   scene, indexer or download goes in the gitignored `private/wiki/<kind>/` (same frontmatter;
+   searched, indexed into `private/wiki/index.md` and linted with the rest). A tracked page never
+   links a private one; it may name the path in backticks. `node scripts/privacy-check.mjs` (run
+   by `check.mjs`) fails on any library name in a tracked file.
+9. An answer you assembled from several pages that someone will ask again is worth filing as a page
    (`query` op). Chat history is not memory; the wiki is.
 
 Auto-memory (`~/.claude/projects/...`) is for cross-repo user preferences only. Project facts go here.
@@ -76,9 +85,9 @@ Record only the flix-facing fact in `wiki/integrations/`; link the source. Detai
 
 | Question | Where to look | Command (read-only) |
 |---|---|---|
-| What does Stash's schema accept? Why did a query fail? | Stash GraphQL via the nas repo's client (real key, never printed) | `~/code/nas/scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'` |
-| What is Whisparr's state, what does its API return? | nas repo | `~/code/nas/scripts/arr.py whisparr3 get movie\|studio\|queue --json`; `nas:docs/services.md` whisparr3 row, `nas:docs/known-issues.md` #40 |
-| Stash config, library layout, scans, NFS export | nas repo | `nas:docs/services.md` stash row, `nas:docs/network.md`, `nas:docs/operations.md` |
+| What does Stash's schema accept? Why did a query fail? | Stash GraphQL via `scripts/stash.py` (key from flix's `.env`, never printed) | `scripts/stash.py q '{ __type(name:"TagFilterType"){ inputFields { name } } }'` |
+| What is Whisparr's state, what does its API return? | `scripts/whisparr.py` (key from flix's `.env`) | `scripts/whisparr.py get movie\|studio\|queue --json`; `private/wiki/integrations/whisparr-instance.md` |
+| Stash config, library layout, scans | this repo: `private/wiki/integrations/stash-instance.md`, `scripts/stash.py status` | NFS export: nas repo | `nas:docs/services.md` stash row, `nas:docs/network.md`, `nas:docs/operations.md` |
 | How is flix deployed, which secrets, which IP, backups | k8s repo (its clone may be on a side branch) | `cd ~/code/k8s && git show origin/main:infra/flix/deployment.yaml`, `git show origin/main:docs/flix.md` |
 | What is running right now | the cluster | `kubectl -n flix get deploy flix -o wide`, `kubectl -n flix logs deploy/flix --since=5m`, `curl -s http://192.168.1.152/healthz` |
 | Did the last push deploy | Forgejo | `tea actions runs` (status per run, newest first); the run of `.forgejo/workflows/deploy.yml` at git.lan:3000/zbmowrey/flix/actions; a failure is posted to the forge Discord channel |
@@ -134,7 +143,11 @@ Layout (details in `wiki/architecture/server-bff.md` and `wiki/architecture/web-
 apps/server      Hono BFF, Node 26 runs .ts natively; src/stash.ts is the only Stash-aware module
 apps/web         Vite + React 19 + Tailwind 4 + TanStack Router (file routes) / Query
 packages/shared  API contract types and the few values both sides need; shipped in the image
-scripts/         the scripts library, registered in scripts/manifest.json (`node scripts/scripts.mjs list`)
+scripts/         the scripts library, registered in scripts/manifest.json (`node scripts/scripts.mjs list`);
+                 stash.py and whisparr.py operate Stash and Whisparr (Python, stdlib)
+private/         GITIGNORED, never committed: pages and files that name library content (performers,
+                 studios, indexers, download history): private/wiki/ (searched and linted with the
+                 wiki), private/ops/inventory/ (Whisparr config snapshots), private/ops/browser/
 wiki/            the knowledge base (start at wiki/index.md)
 ```
 

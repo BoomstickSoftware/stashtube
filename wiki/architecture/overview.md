@@ -5,7 +5,7 @@ summary: flix is a React web app plus a small Hono BFF in front of a headless St
 tags: [architecture, repos, scope]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-02
 related: [stash-stays-headless, server-bff, web-app, kubernetes-deployment, gather-context]
 ---
 
@@ -35,7 +35,7 @@ The browser never talks to Stash ([[media-proxy]]). The web app knows only the t
 | Repo | Owns |
 |---|---|
 | `~/code/flix` (this) | flix code, Dockerfile, CI workflow, this wiki |
-| `~/code/nas` | Stash's config and the NAS side: the NFS export flix reads, Stash and Whisparr API facts, the media library policy |
+| `~/code/nas` | The NAS side: the NFS export flix reads, the OS and disks, the other arr apps. Stash and Whisparr have been operated from flix since 2026-11-02 (`private/wiki/integrations/stash-instance.md`, `private/wiki/integrations/whisparr-instance.md`) |
 | `~/code/flotilla` | The compose stack that runs Stash and Whisparr (deployed via Portainer) |
 | `~/code/k8s` | Where flix runs: `infra/flix/` (namespace, Deployment, Service, PV/PVC, secrets script), the CNPG database, ArgoCD |
 
