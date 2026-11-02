@@ -264,6 +264,7 @@ function Picker({ kind, onPick, onClose }: { kind: Kind; onPick: (e: DiscoverEnt
   const label = KINDS.find((k) => k.kind === kind)!.label.toLowerCase()
   return (
     <Sheet title={`Add a ${label}`} onClose={onClose}>
+      <div className="min-h-[40dvh] p-4">
       <input
         autoFocus
         value={term}
@@ -293,6 +294,7 @@ function Picker({ kind, onPick, onClose }: { kind: Kind; onPick: (e: DiscoverEnt
         ))}
       </ul>
       {debounced.trim().length >= 2 && !isFetching && data?.length === 0 && <p className="py-4 text-center text-sm text-muted">No {label} by that name.</p>}
+      </div>
     </Sheet>
   )
 }
