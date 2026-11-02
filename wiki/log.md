@@ -237,3 +237,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] ingest | Whisparr cleanup run in full: 25,457 records deleted, 0 errors; history page for the StashDB mirror initiative
 ## [2026-11-02] ingest | Settings switch on: guard every 15 min, daily discovery; Gets of new scenes add studios and performers with flags on, which the guard turns off
 ## [2026-11-02] decide | Whisparr cleanup widened by the user: every record without a file goes unless downloading or a waiting flix Get; empty studios too
+## [2026-11-02] ingest | Widened Whisparr cleanup run: 10 scenes and 1,270 empty studios deleted; 2,683 records with files and 125 studios remain

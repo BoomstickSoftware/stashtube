@@ -55,3 +55,8 @@ previews or starts (409 while one runs).
 One studio first: 31 file-less records deleted after a completed Backup, `RefreshStudios`
 completed, **0 came back**, and its 4 records with files were untouched. An unmonitored studio's
 refresh does not re-learn deleted scenes ([[whisparr-unwatched-studios-stop-learning-scenes]]).
+
+Widened run (2026-11-02, late): the studio delete tested first on one empty studio (gone, scene
+records and files unchanged), then in full: 10 scene records and 1,270 studios deleted, 0
+failures. Whisparr then held 2,707 scene records (2,683 with files, 24 downloading or waiting
+Gets) and 125 studios.
