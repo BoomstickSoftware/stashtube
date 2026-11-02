@@ -34,7 +34,7 @@ Pages: 142. Last generated 2026-11-02.
 - [[shared-contract]] — packages/shared is the API contract between BFF and web plus the few values both need; the web never sees Stash shapes, and the package ships in the runtime image. · _shared, types, contract, docker_ · verified 2026-10-30
 - [[stash-layer]] — stash.ts is the only module that knows Stash's GraphQL schema; its types are generated from Stash v0.31.1's own schema, so an unknown filter criterion is a compile error, and blocked ids are dropped after the query. · _stash, graphql, codegen, server_ · verified 2026-10-31
 - [[web-app]] — Layout of apps/web, which is Vite + React 19 + Tailwind 4 + TanStack Router and Query, with file-based routes, lazy pages, one API-hook module per domain and persisted queries. · _web, react, vite, tanstack, routing_ · verified 2026-10-31
-- [[whisparr-sync]] — Following a performer makes Whisparr watch their new releases and blocking unmonitors, through a guarded reconcile loop no outage can break; plus the declined workflows. · _sync, stash, whisparr, architecture_ · verified 2026-11-02
+- [[whisparr-sync]] — Stash favourite performers and studios are watched for new releases, everything else in Whisparr is unmonitored and old scenes are trimmed, by a guarded reconcile loop run from a script or a timer. · _sync, stash, whisparr, architecture_ · verified 2026-11-02
 
 ## Features: what the user can do
 
@@ -103,7 +103,7 @@ Pages: 142. Last generated 2026-11-02.
 - [[stash-owns-activity]] — Ratings, plays, resume points, O-counts, markers, performer/studio/tag favourites, titles and tags are written to Stash; flix's database keeps playlists, blocklist, pinned rows, stations and settings. · _architecture, stash, database, data_ · verified 2026-10-30
 - [[stash-stays-headless]] — Neither fork nor rewrite Stash; it stays on the NAS as the engine (scans, StashDB, generated assets, VAAPI transcodes) and flix is a new front end plus a small BFF. · _architecture, stash, gpu, nas_ · verified 2026-10-30
 - [[stations-only-user-made]] — A station started from a video, a list, a performer page or a quick start plays and leaves nothing behind; only saved stations and playlists keep a resume point and appear under "Pick up a station". · _stations, resume, home, ux_ · verified 2026-10-31
-- [[whisparr-nothing-monitored]] — Whisparr monitors only followed performers, for new releases, through flix's follow sync; flix never searches a studio or performer and fetches one scene per click. · _whisparr, downloads, policy_ · verified 2026-11-02
+- [[whisparr-nothing-monitored]] — Stash favourites (performers and studios) decide everything Whisparr monitors, for new releases only, through flix's sync; nothing else is monitored and nothing is searched. · _whisparr, downloads, policy_ · verified 2026-11-02
 
 ## Runbooks: how to do things
 

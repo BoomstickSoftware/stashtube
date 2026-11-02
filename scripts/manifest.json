@@ -363,6 +363,23 @@
         "check"
       ],
       "wiki": "github-public-mirror"
+    },
+    {
+      "name": "whisparr-sync",
+      "file": "scripts/whisparr-sync.mjs",
+      "does": "Runs the Whisparr sync on the flix server: Stash favourite performers and studios are watched for new releases, everything else is unmonitored, old scenes Whisparr monitored on its own are trimmed; prints the plan or the result. Dry run unless --apply.",
+      "usage": [
+        "node scripts/whisparr-sync.mjs",
+        "node scripts/whisparr-sync.mjs --apply",
+        "node scripts/whisparr-sync.mjs http://flix.lan --apply --force"
+      ],
+      "writes": "Whisparr monitoring flags and tags, and flix's whisparr_watch rows, only with --apply",
+      "tags": [
+        "whisparr",
+        "sync",
+        "operations"
+      ],
+      "wiki": "whisparr-sync"
     }
   ],
   "external": []

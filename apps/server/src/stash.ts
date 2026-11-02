@@ -1470,6 +1470,14 @@ export async function favoritePerformers(): Promise<{ id: string; name: string; 
   return d.findPerformers.performers.map((p) => ({ id: p.id, name: p.name, stashIds: p.stash_ids.map((s) => s.stash_id) }))
 }
 
+// The favourite studios with their StashDB ids, for the follow sync; uncached like the above.
+export async function favoriteStudios(): Promise<{ id: string; name: string; stashIds: string[] }[]> {
+  const d = await gql<Pick<Query, 'findStudios'>>(
+    `{ findStudios(filter: { per_page: -1 }, studio_filter: { favorite: true }) { studios { id name stash_ids { stash_id } } } }`,
+  )
+  return d.findStudios.studios.map((s) => ({ id: s.id, name: s.name, stashIds: s.stash_ids.map((x) => x.stash_id) }))
+}
+
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes

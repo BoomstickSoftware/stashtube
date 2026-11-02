@@ -1,7 +1,7 @@
 ---
 title: Whisparr monitors nothing; downloads are chosen one scene at a time
 kind: decision
-summary: Whisparr monitors only followed performers, for new releases, through flix's follow sync; flix never searches a studio or performer and fetches one scene per click.
+summary: Stash favourites (performers and studios) decide everything Whisparr monitors, for new releases only, through flix's sync; nothing else is monitored and nothing is searched.
 tags: [whisparr, downloads, policy]
 status: current
 decided: 2026-10-28
@@ -88,3 +88,19 @@ studio, and the watch state shows in flix. Rule 9 of `CLAUDE.md` narrowed accord
   command, never a studio turned on (blocked studios are only turned off).
 - Studios stay unmonitored (the user declined "follow a studio monitors it").
 - A Settings switch, off by default, turns writing on; off, the sync only plans.
+
+## Favourites decide everything (2026-11-02, evening)
+
+The user asked for a script that unmonitors everything in Whisparr and then watches the new
+releases of the **favourite performers and studios** in Stash, to run on request. Built as the
+same sync with a wider rule (studios included, everything else off, old scenes trimmed) and
+`scripts/whisparr-sync.mjs` to run it. This reverses the earlier "follow a studio: no".
+
+Found the same day: Whisparr's "monitor new items" also monitors **old** scenes it learns about
+later. 54 studios Whisparr added with that flag on had all 106 of their scenes (2015 onwards)
+monitored, and 7 studios monitored by hand brought 1,028; 1,170 monitored scenes in all, nearly
+all old and missing. `afterDate` is unset everywhere and untested. So the sync keeps a watch-start
+date per performer and studio (`whisparr_watch`) and unmonitors their scenes released more than
+14 days before it; Gets from flix (`whisparr_gets`) and downloads in progress are never touched.
+The automatic timer was switched off for the change; runs are by the script unless the user
+turns the Settings switch back on.

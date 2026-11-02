@@ -79,3 +79,24 @@ export const stationResume = pgTable('station_resume', {
   seconds: integer('seconds').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// Whisparr scenes fetched with Get (one scene per click). The follow sync (sync.ts) never
+// unmonitors these, so a scene waiting for a release keeps waiting; the row goes once Whisparr
+// has the file.
+export const whisparrGets = pgTable('whisparr_gets', {
+  movieId: integer('movie_id').primaryKey(),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// When the follow sync started watching a performer or studio (StashDB id). Whisparr's "new
+// items" also monitors OLD scenes it learns about later, so the sync unmonitors any of their
+// scenes released before this date (less a short grace), keeping only real new releases.
+export const whisparrWatch = pgTable(
+  'whisparr_watch',
+  {
+    kind: text('kind').notNull(), // performer | studio
+    foreignId: text('foreign_id').notNull(),
+    since: timestamp('since', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.foreignId] })],
+)

@@ -6,9 +6,9 @@ import { useFeatures, usePerformerWatch, useRunSync, useSettings, useSyncStatus,
 import { ago } from '../lib/format'
 import { Button, Switch } from './ui'
 
-// Settings → Library: the follow sync (server sync.ts). On: Whisparr watches the new releases of
-// every followed performer, and nothing blocked stays monitored. Off: the sync only plans, and
-// this shows what it would do. Hidden without Whisparr.
+// Settings → Library: the Whisparr sync (server sync.ts). On: followed performers and studios are
+// watched for new releases and everything else in Whisparr is unmonitored. Off: the sync only
+// plans, and this shows what it would do. Hidden without Whisparr.
 export function WhisparrSyncSetting(): JSX.Element | null {
   const { data: features } = useFeatures()
   const { data: settings } = useSettings()
@@ -26,11 +26,11 @@ export function WhisparrSyncSetting(): JSX.Element | null {
       <label className="flex max-w-xl cursor-pointer items-start justify-between gap-4">
         <span>
           <span className="flex items-center gap-2 text-sm font-medium">
-            <Radar size={16} className="text-accent" /> Watch followed performers for new scenes
+            <Radar size={16} className="text-accent" /> Let follows decide what Whisparr monitors
           </span>
           <span className="mt-0.5 block text-sm text-muted">
-            Whisparr monitors the new releases of everyone you follow, never their older scenes and never with a search, and
-            anything you block is unmonitored. Off: flix only shows what it would change.
+            Whisparr watches the performers and studios you follow for new releases, never their older scenes and never with a
+            search. Everything else is unmonitored, except videos you fetch with Get. Off: flix only shows what it would change.
           </span>
         </span>
         <Switch on={on} disabled={!settings} onChange={(v) => save.mutate({ whisparrSync: v })} className="mt-0.5" />
@@ -42,6 +42,7 @@ export function WhisparrSyncSetting(): JSX.Element | null {
               <div className="font-medium">
                 {s.running ? 'Checking Whisparr…' : s.lastRun ? `Last checked ${ago(s.lastRun)}` : 'Not checked yet'}
                 {s.managed > 0 && <span className="text-muted"> · watching {s.managed}</span>}
+                {s.scenes > 0 && <span className="text-muted"> · {s.scenes} old scenes {s.outcome === 'applied' ? 'unmonitored' : 'to unmonitor'}</span>}
               </div>
               {s.detail && <div className={s.outcome === 'failed' || s.outcome === 'skipped' ? 'mt-0.5 text-amber-300' : 'mt-0.5 text-muted'}>{s.detail}</div>}
             </div>

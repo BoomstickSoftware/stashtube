@@ -189,7 +189,7 @@ export function toWanted(m: Movie, a: Activity): WantedScene {
 
 const byDateDesc = (a: Movie, b: Movie) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '')
 
-async function activity(): Promise<Activity> {
+export async function activity(): Promise<Activity> {
   const [q, h] = await Promise.all([queue(), grabbed()])
   return activityOf(q, h)
 }
@@ -381,4 +381,12 @@ export async function performerWatch(stashdbIds: string[], tagId: number | null)
   const busy = new Set([...a.downloading, ...a.grabbedAt.keys()])
   const downloading = all.filter((m) => busy.has(m.id) && !m.hasFile && m.performerForeignIds?.some((f) => ids.has(f))).length
   return { watching: p.monitored && p.whisparrMonitorNewItems, managed: tagId !== null && p.tags.includes(tagId), downloading }
+}
+
+// Unmonitor these scenes (the follow sync's trim), in chunks; no command, so no search. The
+// cached list is patched rather than refetched (it is ~40 MB).
+export async function unmonitorMovies(ids: number[]) {
+  for (let i = 0; i < ids.length; i += 500) await call('PUT', '/movie/editor', { movieIds: ids.slice(i, i + 500), monitored: false })
+  const gone = new Set(ids)
+  dataCache.patch<Movie[]>('whisparr:movies', (list) => list.map((m) => (gone.has(m.id) ? { ...m, monitored: false } : m)))
 }

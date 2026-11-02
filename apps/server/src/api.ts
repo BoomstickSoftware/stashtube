@@ -12,7 +12,7 @@ import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
-import { flixTagId, kickSync, runSync, syncStatus } from './sync.ts'
+import { flixTagId, kickSync, rememberGet, runSync, syncStatus } from './sync.ts'
 import { genderCriterion, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 import { dataCache, daySeed, HOME, HOME_TTL, POOL } from './stash.ts'
@@ -666,7 +666,12 @@ api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity
 
 // The follow sync (sync.ts): its last run, and a run now (applies only when Settings allows).
 api.get('/sync', async (c) => c.json(await syncStatus()))
-api.post('/sync/run', async (c) => c.json(await runSync()))
+// From Settings (no body): follows the switch. From scripts/whisparr-sync.mjs: {apply, force};
+// a person asked, so the timer's size limit is off.
+api.post('/sync/run', async (c) => {
+  const b = parse(z.object({ apply: z.boolean().optional(), force: z.boolean().optional() }), await c.req.json().catch(() => ({})))
+  return c.json(await runSync(b.apply === undefined ? {} : { apply: b.apply, force: b.force, asked: true }))
+})
 // "Watching for new scenes" on a performer page; Whisparr down or unset reads as not watching.
 api.get('/whisparr/watch/performer/:id', async (c) => {
   const none = { watching: false, managed: false, downloading: 0 }
@@ -684,7 +689,9 @@ api.post('/whisparr/get/:id', async (c) => {
   const raw = c.req.param('id')
   if (!/^\d{1,9}$/.test(raw)) throw new HTTPException(400, { message: 'one Whisparr scene id is required' })
   try {
-    return c.json(await whisparr.getScene(Number(raw)))
+    const w = await whisparr.getScene(Number(raw))
+    await rememberGet(w.whisparrId)
+    return c.json(w)
   } catch (e) {
     if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
     throw e
@@ -697,7 +704,9 @@ api.post('/whisparr/get-remote/:stashdbId', async (c) => {
   const raw = c.req.param('stashdbId')
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) throw new HTTPException(400, { message: 'one StashDB scene id is required' })
   try {
-    return c.json(await whisparr.getRemote(raw))
+    const w = await whisparr.getRemote(raw)
+    await rememberGet(w.whisparrId)
+    return c.json(w)
   } catch (e) {
     if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
     throw e
