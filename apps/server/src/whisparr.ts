@@ -432,6 +432,13 @@ export async function deleteRecords(ids: number[]) {
   listChanged((all) => all.filter((m) => !gone.has(m.id)))
 }
 
+// Delete one studio record. Only called for a studio with no scene records left, so there is no
+// file it could reach; files are refused explicitly anyway.
+export async function deleteStudio(id: number) {
+  await call('DELETE', `/studio/${id}?deleteFiles=false&addImportExclusion=false`)
+  dataCache.invalidate('whisparr:people')
+}
+
 // Fetch the movie list now, not from the cache (the cleanup must plan from what Whisparr holds).
 export async function freshMovies(): Promise<Movie[]> {
   forgetLists()

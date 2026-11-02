@@ -35,7 +35,7 @@ Pages: 148. Last generated 2026-11-02.
 - [[stash-layer]] — stash.ts is the only module that knows Stash's GraphQL schema; its types are generated from Stash v0.31.1's own schema, so an unknown filter criterion is a compile error, and blocked ids are dropped after the query. · _stash, graphql, codegen, server_ · verified 2026-10-31
 - [[stashdb-mirror]] — One rate-limited queue for every StashDB call, a Postgres mirror so each record is fetched once, and the paced queue that fetches picked scenes through Whisparr one at a time. · _stashdb, whisparr, caching, architecture, downloads_ · verified 2026-11-02
 - [[web-app]] — Layout of apps/web, which is Vite + React 19 + Tailwind 4 + TanStack Router and Query, with file-based routes, lazy pages, one API-hook module per domain and persisted queries. · _web, react, vite, tanstack, routing_ · verified 2026-10-31
-- [[whisparr-cleanup]] — Deletes Whisparr's scene records that have no file and that nothing is fetching, after a Backup, 100 at a time, never files and with no import exclusion. · _whisparr, cleanup, operations_ · verified 2026-11-02
+- [[whisparr-cleanup]] — Deletes every Whisparr scene record without a file unless it is downloading, a waiting Get or queued, then every studio left with no scene, after a Backup; never files, never records with files. · _whisparr, cleanup, operations_ · verified 2026-11-02
 - [[whisparr-sync]] — A reconcile loop keeps every Whisparr performer and studio unmonitored and every scene unmonitored unless flix fetched it or it is downloading; follows are flix's own record and drive flix's discovery, not Whisparr's. · _sync, stash, whisparr, architecture_ · verified 2026-11-02
 
 ## Features: what the user can do

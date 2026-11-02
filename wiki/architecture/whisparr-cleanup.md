@@ -1,7 +1,7 @@
 ---
-title: Whisparr cleanup (delete scene records nothing is fetching)
+title: Whisparr cleanup (only records backed by a file or a fetch in flight stay)
 kind: architecture
-summary: Deletes Whisparr's scene records that have no file and that nothing is fetching, after a Backup, 100 at a time, never files and with no import exclusion.
+summary: Deletes every Whisparr scene record without a file unless it is downloading, a waiting Get or queued, then every studio left with no scene, after a Backup; never files, never records with files.
 tags: [whisparr, cleanup, operations]
 status: current
 verified: 2026-11-02
@@ -19,25 +19,33 @@ without a file that nothing is fetching only slows Whisparr's 41 MB list.
 
 ## What goes, what stays
 
-| Record | |
+The rule is the user's (2026-11-02): "clean up everything that doesn't have an underlying file on
+disk unless a download is in progress or we recently requested it through flix. Same for
+studios", without removing files or the metadata of files that exist.
+
+| Scene record | |
 |---|---|
 | Has a file | kept |
-| Monitored (a Get waiting for a release) | kept |
-| Downloading or grabbed | kept |
-| In `whisparr_gets` or the Get queue | kept |
-| A feature film (`itemType: 'movie'`) | kept |
-| Anything else | deleted: `DELETE /movie/editor` with `deleteFiles: false`, `addImportExclusion: false` |
+| Downloading or grabbed (last 48 h) | kept |
+| A Get from flix still waiting (`whisparr_gets`) | kept |
+| In flix's Get queue | kept |
+| Anything else, monitored or not, scene or feature film | deleted: `DELETE /movie/editor`, `deleteFiles: false`, `addImportExclusion: false` |
+
+Then studios, read fresh after the scene deletes: a studio with **no scene record left** is
+deleted (`DELETE /studio/:id?deleteFiles=false`), so a studio with any file keeps its record.
+Performers are not touched.
 
 No import exclusion, so a deleted scene can be fetched again later. Existing exclusions (from
-deletes of watched scenes) are untouched.
+deletes of watched scenes) are untouched. _Until 2026-11-02 (late) monitored records and feature
+films without files were kept, and studios were not cleaned._
 
 ## Running it
 
 `node scripts/whisparr-cleanup.mjs` prints the plan; `--studio <stashdb-id>` narrows it to one
 studio; `--apply` runs it on the server in the background and the script prints progress.
-Each run starts with Whisparr's `Backup` command and stops if it does not complete. Deletes go
-100 at a time, 5 s apart. With `--studio`, the server then refreshes that studio
-(`RefreshStudios`) and reports how many scene records came back.
+Each run starts with Whisparr's `Backup` command and stops if it does not complete. Scene
+deletes go 100 at a time, 5 s apart; studio deletes one at a time, and five failures in a row stop
+the run. With `--studio`, only that studio's scene records and then the studio itself.
 
 `GET /api/whisparr/cleanup` is the status; `POST /api/whisparr/cleanup {apply?, studio?}`
 previews or starts (409 while one runs).
