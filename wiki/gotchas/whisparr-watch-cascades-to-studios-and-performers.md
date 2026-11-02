@@ -1,7 +1,7 @@
 ---
 title: Watching one performer makes Whisparr watch their studios and co-performers too
 kind: gotcha
-summary: Refreshing a monitored performer, Whisparr adds the studios and co-performers of their scenes with the same monitoring flags and tags, and their old scenes come in monitored; the sync must not trust its own tag to know what it watches.
+summary: Refreshing a monitored performer, Whisparr adds their studios and co-performers with the same flags and tags, and their old scenes arrive monitored.
 tags: [whisparr, sync, monitoring]
 symptom: "watched studios and performers keep growing after a sync; tagged flix but not followed"
 found: 2026-11-02
