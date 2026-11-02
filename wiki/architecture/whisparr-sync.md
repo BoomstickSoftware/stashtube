@@ -23,6 +23,10 @@ same night, when discovery moved to flix ([[whisparr-nothing-monitored]], [[stas
 | A monitored scene downloading or grabbed | left alone |
 | Any other monitored scene | unmonitored (`PUT movie/editor`) |
 
+A Get of a scene Whisparr did not hold adds its studio and performers with Whisparr's defaults,
+flags on: 3 such after the first discovery run (2026-11-02). The guard turns them off within
+15 minutes; nothing is searched meanwhile, since global "monitor new items" is off.
+
 Follows stay Stash favourites. Their start dates (`whisparr_watch`) belong to flix's discovery,
 which finds new releases in the StashDB mirror and fetches them one scene at a time
 ([[stashdb-mirror]] "Getting"). The guard forgets the start date of anything no longer followed

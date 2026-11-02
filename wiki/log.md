@@ -235,3 +235,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] ingest | Whisparr cleanup: delete file-less records nothing is fetching, after a Backup, tested on one studio first (architecture/whisparr-cleanup)
 ## [2026-11-02] correct | Discover cards kept Requested after a Get only on shelves; now patched everywhere, and a repeat Get within the hour searches nothing
 ## [2026-11-02] ingest | Whisparr cleanup run in full: 25,457 records deleted, 0 errors; history page for the StashDB mirror initiative
+## [2026-11-02] ingest | Settings switch on: guard every 15 min, daily discovery; Gets of new scenes add studios and performers with flags on, which the guard turns off
