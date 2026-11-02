@@ -279,6 +279,9 @@ export async function getScene(whisparrId: unknown): Promise<WantedScene> {
   const m = await call<Movie>('GET', `/movie/${id}`)
   if (m.itemType && m.itemType !== 'scene') throw new RangeError('only scenes can be fetched from flix')
   if (!m.monitored) await call('PUT', `/movie/${id}`, { ...m, monitored: true })
+  // A second Get within the hour (a double tap, a stale card) searches nothing again.
+  const last = requested.get(id)
+  if (m.monitored && last && Date.now() - last < REQUESTED_FOR) return toWanted(m, await activity())
   await call('POST', '/command', { name: 'MoviesSearch', movieIds: [id] })
   listChanged((all) => all.map((x) => (x.id === id ? { ...x, monitored: true } : x)))
   requested.set(id, Date.now())

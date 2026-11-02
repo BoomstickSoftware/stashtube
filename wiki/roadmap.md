@@ -237,11 +237,8 @@ Stash and Whisparr are run from here now (`private/wiki/integrations/stash-insta
   Whisparr monitors only scenes flix fetched; discovery and Discover run on the StashDB mirror
   ([[stashdb-mirror]], [[discover]]). Open: adding performers Whisparr lacks is no longer needed
   (flix adds scenes by StashDB id).
-- **Whisparr cleanup** (next): Whisparr still holds ~28k scenes, ~1.4k studios and ~6.8k
-  performers it learned while things were watched. Plan: back up Whisparr, test on one studio
-  that a deleted file-less scene is not re-added by a refresh, then delete file-less unmonitored
-  scenes that are not a Get or downloading (`DELETE /movie/editor`, no import exclusion), paced,
-  dry run first.
+- **Whisparr cleanup**: done 2026-11-02 ([[whisparr-cleanup]]): 25,457 file-less records deleted.
+  Open: Whisparr still lists ~1.4k studios and ~6.8k performers, most now without scenes.
 
 ## Backlog
 

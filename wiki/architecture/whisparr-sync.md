@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-02
 updated: 2026-11-02
 code: [apps/server/src/sync.ts, apps/server/src/getqueue.ts, apps/server/src/whisparr.ts, apps/server/src/api.ts, apps/web/src/components/WhisparrSync.tsx, scripts/whisparr-sync.mjs, apps/server/src/db/schema.ts]
-related: [stashdb-mirror, discover, whisparr-nothing-monitored, stash-owns-activity, people-pages, delete-via-whisparr, whisparr-shelf, blocklist-and-exclusions, settings-page, stash-and-whisparr-clients]
+related: [stashdb-mirror, discover, whisparr-cleanup, whisparr-nothing-monitored, stash-owns-activity, people-pages, delete-via-whisparr, whisparr-shelf, blocklist-and-exclusions, settings-page, stash-and-whisparr-clients]
 ---
 # Whisparr guard (Whisparr monitors only the scenes flix fetched)
 

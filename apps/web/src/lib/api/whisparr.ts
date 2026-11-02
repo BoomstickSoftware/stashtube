@@ -33,13 +33,14 @@ export function useWhisparrNew() {
 }
 
 // The card as the server now sees it (state 'requested', a Whisparr id for a remote scene), in
-// every shelf page and the Home row that holds it.
+// every shelf page, the Home row and every Discover page that holds it.
 function patchWanted(qc: QueryClient, w: WantedScene) {
   const same = (x: WantedScene) => (w.stashdbId !== null && x.stashdbId === w.stashdbId) || (w.whisparrId !== null && x.whisparrId === w.whisparrId)
   const fix = (items: WantedScene[]) => items.map((x) => (same(x) ? w : x))
-  qc.setQueriesData<{ pages: WantedList[] } | WantedScene[]>({ queryKey: ['whisparr'] }, (d) =>
-    Array.isArray(d) ? fix(d) : d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: fix(p.items) })) } : d,
-  )
+  for (const key of ['whisparr', 'discover'])
+    qc.setQueriesData<{ pages: { items: WantedScene[] }[] } | WantedScene[]>({ queryKey: [key] }, (d) =>
+      Array.isArray(d) ? fix(d) : d?.pages ? { ...d, pages: d.pages.map((p) => ({ ...p, items: fix(p.items) })) } : d,
+    )
 }
 
 // Fetch one scene. A scene Whisparr lists is monitored and searched; one only StashDB lists is
@@ -53,6 +54,8 @@ export function useGetScene() {
     onSuccess: (w) => {
       patchWanted(qc, w)
       qc.invalidateQueries({ queryKey: ['whisparr'] })
+      qc.invalidateQueries({ queryKey: ['discover'] })
+      qc.invalidateQueries({ queryKey: ['waiting'] })
     },
   })
 }

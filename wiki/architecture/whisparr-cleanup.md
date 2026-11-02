@@ -1,7 +1,7 @@
 ---
 title: Whisparr cleanup (delete scene records nothing is fetching)
 kind: architecture
-summary: Deletes Whisparr's file-less scene records that are not monitored, downloading, a Get or queued, after a Backup, 100 at a time, never files and with no import exclusion; a one-studio mode tests whether a refresh brings them back.
+summary: Deletes Whisparr's scene records that have no file and that nothing is fetching, after a Backup, 100 at a time, never files and with no import exclusion.
 tags: [whisparr, cleanup, operations]
 status: current
 verified: 2026-11-02
@@ -41,3 +41,9 @@ Each run starts with Whisparr's `Backup` command and stops if it does not comple
 
 `GET /api/whisparr/cleanup` is the status; `POST /api/whisparr/cleanup {apply?, studio?}`
 previews or starts (409 while one runs).
+
+## Verified (2026-11-02)
+
+One studio first: 31 file-less records deleted after a completed Backup, `RefreshStudios`
+completed, **0 came back**, and its 4 records with files were untouched. An unmonitored studio's
+refresh does not re-learn deleted scenes ([[whisparr-unwatched-studios-stop-learning-scenes]]).
