@@ -43,6 +43,13 @@
       "when": 1793645446375,
       "tag": "0005_flaky_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793657828013,
+      "tag": "0006_worried_stardust",
+      "breakpoints": true
     }
   ]
 }

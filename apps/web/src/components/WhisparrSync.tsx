@@ -6,9 +6,10 @@ import { useFeatures, usePerformerWatch, useRunSync, useSettings, useSyncStatus,
 import { ago } from '../lib/format'
 import { Button, Switch } from './ui'
 
-// Settings → Library: the Whisparr sync (server sync.ts). On: followed performers and studios are
-// watched for new releases and everything else in Whisparr is unmonitored. Off: the sync only
-// plans, and this shows what it would do. Hidden without Whisparr.
+// Settings → Library: the Whisparr guard (server sync.ts) and flix's own discovery (getqueue.ts).
+// On: every performer and studio in Whisparr is unmonitored, only scenes flix fetched stay
+// monitored, and once a day flix fetches new StashDB releases of followed performers and studios.
+// Off: the guard only plans, and this shows what it would do. Hidden without Whisparr.
 export function WhisparrSyncSetting(): JSX.Element | null {
   const { data: features } = useFeatures()
   const { data: settings } = useSettings()
@@ -29,9 +30,9 @@ export function WhisparrSyncSetting(): JSX.Element | null {
             <Radar size={16} className="text-accent" /> Let follows decide what Whisparr monitors
           </span>
           <span className="mt-0.5 block text-sm text-muted">
-            Whisparr discovers new scenes from the performers and studios you follow, and flix fetches each new release (one
-            search per scene, never their older scenes). Everything else is unmonitored, except videos you fetch with Get. Off:
-            flix only shows what it would change.
+            Once a day flix looks on StashDB for new releases of the performers and studios you follow and fetches each one
+            (one search per scene, never their older scenes). Whisparr monitors only the scenes flix fetched; every performer
+            and studio there stays unmonitored. Off: flix only shows what it would change.
           </span>
         </span>
         <Switch on={on} disabled={!settings} onChange={(v) => save.mutate({ whisparrSync: v })} className="mt-0.5" />
@@ -42,9 +43,9 @@ export function WhisparrSyncSetting(): JSX.Element | null {
             <div className="min-w-0">
               <div className="font-medium">
                 {s.running ? 'Checking Whisparr…' : s.lastRun ? `Last checked ${ago(s.lastRun)}` : 'Not checked yet'}
-                {s.managed > 0 && <span className="text-muted"> · watching {s.managed}</span>}
+                {s.managed > 0 && <span className="text-muted"> · following {s.managed}</span>}
                 {s.fetched > 0 && <span className="text-muted"> · {s.fetched} new {s.fetched === 1 ? 'scene' : 'scenes'} fetched</span>}
-                {s.scenes > 0 && <span className="text-muted"> · {s.scenes} old scenes {s.outcome === 'applied' ? 'unmonitored' : 'to unmonitor'}</span>}
+                {s.scenes > 0 && <span className="text-muted"> · {s.scenes} other scenes {s.outcome === 'applied' ? 'unmonitored' : 'to unmonitor'}</span>}
               </div>
               {s.detail && <div className={s.outcome === 'failed' || s.outcome === 'skipped' ? 'mt-0.5 text-amber-300' : 'mt-0.5 text-muted'}>{s.detail}</div>}
             </div>

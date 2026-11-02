@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// Runs the Whisparr sync on the flix server and prints what it did or would do. Stash favourites
-// (performers and studios) are Whisparr's discovery sources and every other performer and studio
-// is off; each new release of a followed one is fetched (monitored, one search per scene, spaced);
-// monitored scenes that are not a Get, not downloading and not such a new release are
-// unmonitored (wiki/architecture/whisparr-sync.md). No performer- or studio-wide search, ever.
+// Runs the Whisparr guard on the flix server and prints what it did or would do: every performer
+// and studio in Whisparr is unmonitored (flix discovers followed ones' new releases from its
+// StashDB mirror and fetches them itself), and a monitored scene stays monitored only if flix
+// fetched it or it is downloading (wiki/architecture/whisparr-sync.md). Never a search.
 // Needs no keys: the server has them.
 //
 //   node scripts/whisparr-sync.mjs [server]            # dry run (default http://flix.lan)
@@ -36,7 +35,6 @@ show(apply ? 'Watched now' : 'Would watch', by('monitor'))
 show(apply ? 'Tagged' : 'Would tag (already watched)', by('adopt'))
 show(apply ? 'Unmonitored' : 'Would unmonitor', by('unmonitor'))
 show('Followed but not in Whisparr (add them there)', by('missing'))
-show(apply ? 'Fetched (new releases)' : 'Would fetch (new releases)', by('fetch'))
-console.log(`\nwatching ${s.managed} performers and studios; scenes ${apply ? 'unmonitored' : 'to unmonitor'}: ${s.scenes}; new scenes fetched: ${s.fetched ?? 0}`)
+console.log(`\nfollowing ${s.managed} performers and studios; other scenes ${apply ? 'unmonitored' : 'to unmonitor'}: ${s.scenes}`)
 if (!apply && s.outcome === 'planned') console.log('dry run: nothing changed; add --apply to do it')
 process.exit(s.outcome === 'failed' || s.outcome === 'skipped' ? 1 : 0)

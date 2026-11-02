@@ -1,13 +1,13 @@
 ---
 title: StashDB
 kind: integration
-summary: flix reads a performer's or studio's whole scene catalogue from StashDB with Stash's own stash-box credentials, 24 a page, cached 10 minutes, to label what is not in the library; TPDB is a possible second source later.
+summary: flix reads StashDB with Stash's own stash-box credentials, through one rate-limited queue, for the performer and studio shelves and for Discover (backed by a Postgres mirror); TPDB is a possible second source later.
 tags: [stashdb, catalogue, whisparr, api]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-02
+updated: 2026-11-02
 code: [apps/server/src/stashdb.ts, apps/server/src/stashdb.test.ts, apps/server/src/remote.ts]
-related: [whisparr-shelf, whisparr-api, stash-api, media-proxy, config-env]
+related: [stashdb-mirror, discover, whisparr-shelf, whisparr-api, stash-api, media-proxy, config-env]
 ---
 
 # StashDB
@@ -17,6 +17,9 @@ StashDB (`https://stashdb.org/graphql`) is the metadata source Stash identifies 
 the executor that downloads.
 
 ## What flix reads
+
+Every call goes through the single rate-limited queue, and Discover's answers are kept in a
+Postgres mirror ([[stashdb-mirror]]). The shelf on performer and studio pages reads:
 
 - `queryScenes` filtered by a performer's or studio's StashDB ids (taken from the Stash entity's
   `stash_ids`, `stashIdsOf` in [[stash-layer]]), newest first, **24 a page** ("Show more"

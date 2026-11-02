@@ -1,0 +1,40 @@
+---
+title: Discover (browse StashDB, pick scenes, Get them)
+kind: feature
+summary: /discover browses StashDB through flix's mirror by performer, studio, category and words; Select picks up to 200 scenes for the paced Get queue; the Waiting tab lists fetched scenes still without a file.
+tags: [stashdb, whisparr, discover, ui]
+status: current
+verified: 2026-11-02
+updated: 2026-11-02
+code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx]
+related: [stashdb-mirror, whisparr-shelf, whisparr-sync, mobile-first-ui]
+---
+
+# Discover
+
+Reached from the Compass icon in the phone header (the tab bar is full), "Discover" in the
+desktop nav, and "Filter on StashDB" on an open performer or studio shelf. The server does all
+StashDB work ([[stashdb-mirror]]).
+
+## The StashDB tab
+
+- Filters live in the URL: `q`, `performers`, `studios`, `tags` (StashDB ids, comma-separated, at
+  most 10 each; performers and categories must all match, studios any), `sort` (Newest, Just
+  added, Trending). Chips name the filters (`selected` from the server); tap one to remove it.
+- "+ Performer", "+ Studio", "+ Category" open a sheet that searches StashDB names (400 ms
+  debounce, 2 letters minimum) and shows whether the library has that one.
+- One entity selected: a card with its picture, network and StashDB count, and "In library"
+  linking to the flix page when Stash has it.
+- Cards carry the scene's state: Get, Queued, Waiting, Downloading, In library (opens the scene),
+  Deleted before. Get on a card fetches that one scene at once.
+- **Select**: tap cards to pick (only ones that can be fetched); a bar over the tab bar offers
+  "All N" (the loaded ones, up to 200) and "Get N", which queues them; the server fetches one
+  every 8 s.
+- The footer says how many scenes match, whether the page came from the mirror or StashDB, and how
+  many blocked ones were left out.
+
+## The Waiting tab
+
+Queued selections (with the queue's last error) and fetched scenes still without a file, newest
+first: "Search again" (refused within an hour), "Give up" (unmonitor and forget), remove from
+the queue. "Find new releases" runs discovery for followed performers and studios now.

@@ -1,14 +1,14 @@
 ---
 title: Whisparr monitors nothing; downloads are chosen one scene at a time
 kind: decision
-summary: Stash favourites (performers and studios) decide everything Whisparr monitors, for new releases only, through flix's sync; nothing else is monitored and nothing is searched.
+summary: Whisparr monitors only the scenes flix fetched; every performer and studio stays unmonitored; flix finds followed ones' new releases on StashDB and fetches each scene with one search.
 tags: [whisparr, downloads, policy]
 status: current
 decided: 2026-10-28
 by: user
 verified: 2026-11-02
 updated: 2026-11-02
-related: [whisparr-shelf, whisparr-api, stashdb]
+related: [whisparr-shelf, whisparr-api, stashdb, stashdb-mirror, whisparr-sync, discover]
 sources: [nas:docs/known-issues.md, nas:CLAUDE.md]
 ---
 
@@ -112,3 +112,13 @@ discover their new scenes unmonitored, and nothing downloads on its own. flix's 
 new release of a followed one (one scene, one search), and the user asked to go on with a
 StashDB-backed Discover page in flix, paced multi-scene Get, and a cleanup of what Whisparr holds
 but never fetched. All downloads are now single-scene Gets, by a click or by the sync.
+
+## Only fetched scenes are monitored (2026-11-02, night)
+
+The user confirmed the end state: "the only thing in whisparr that is actually monitored is
+scenes". Every performer and studio in Whisparr is unmonitored, followed ones too, so refreshes
+no longer cascade flags or grow the database. A scene is monitored only when flix fetched it
+(a Get, a Discover selection, or discovery of a followed one's new release), so Whisparr keeps
+watching RSS for it until a release turns up; flix searches each again weekly. The client must
+be "extremely API friendly": every StashDB call goes through one rate-limited queue and what it
+returns is kept in a local mirror ([[stashdb-mirror]]). Picked scenes are fetched one every 8 s.

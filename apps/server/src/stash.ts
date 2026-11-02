@@ -1478,6 +1478,22 @@ export async function favoriteStudios(): Promise<{ id: string; name: string; sta
   return d.findStudios.studios.map((s) => ({ id: s.id, name: s.name, stashIds: s.stash_ids.map((x) => x.stash_id) }))
 }
 
+// The library's performer, studio or tag carrying this StashDB id (Discover's "in your library"
+// link), or null. Cached like any read; a new link shows after the next change check.
+export async function libraryIdForStashId(kind: 'performer' | 'studio' | 'tag', stashId: string): Promise<string | null> {
+  const crit = { stash_id: stashId, modifier: 'EQUALS' }
+  if (kind === 'performer') {
+    const d = await query<Pick<Query, 'findPerformers'>>(`query($c: StashIDCriterionInput) { findPerformers(filter: { per_page: 1 }, performer_filter: { stash_id_endpoint: $c }) { performers { id } } }`, { c: crit }, ['performer'])
+    return d.findPerformers.performers[0]?.id ?? null
+  }
+  if (kind === 'studio') {
+    const d = await query<Pick<Query, 'findStudios'>>(`query($c: StashIDCriterionInput) { findStudios(filter: { per_page: 1 }, studio_filter: { stash_id_endpoint: $c }) { studios { id } } }`, { c: crit }, ['studio'])
+    return d.findStudios.studios[0]?.id ?? null
+  }
+  const d = await query<Pick<Query, 'findTags'>>(`query($c: StashIDCriterionInput) { findTags(filter: { per_page: 1 }, tag_filter: { stash_id_endpoint: $c }) { tags { id } } }`, { c: crit }, ['tag'])
+  return d.findTags.tags[0]?.id ?? null
+}
+
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes

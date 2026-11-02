@@ -168,7 +168,7 @@ export const activityOf = (q: QueueRecord[], h: HistoryRecord[], now = Date.now(
 // Whisparr's own evidence first (a file, the queue, a grab); "requested" only fills the gap
 // between flix's Get and the grab, which the user otherwise saw as a Get button again.
 export const stateOf = (m: Movie, a: Activity): WantedState =>
-  m.hasFile ? 'downloaded' : a.downloading.has(m.id) ? 'downloading' : a.grabbedAt.has(m.id) ? 'grabbed' : a.requestedAt.has(m.id) ? 'requested' : 'available'
+  m.hasFile ? 'downloaded' : a.downloading.has(m.id) ? 'downloading' : a.grabbedAt.has(m.id) ? 'grabbed' : a.requestedAt.has(m.id) ? 'requested' : m.monitored ? 'waiting' : 'available'
 
 const cover = (m: Movie) => m.images?.find((i) => i.coverType === 'screenshot') ?? m.images?.find((i) => i.coverType === 'poster') ?? m.images?.[0]
 
@@ -385,10 +385,16 @@ export async function performerWatch(stashdbIds: string[], tagId: number | null)
 
 // Unmonitor these scenes (the follow sync's trim), in chunks; no command, so no search. The
 // cached list is patched rather than refetched (it is ~40 MB).
-export async function unmonitorMovies(ids: number[]) {
-  for (let i = 0; i < ids.length; i += 500) await call('PUT', '/movie/editor', { movieIds: ids.slice(i, i + 500), monitored: false })
-  const gone = new Set(ids)
-  dataCache.patch<Movie[]>('whisparr:movies', (list) => list.map((m) => (gone.has(m.id) ? { ...m, monitored: false } : m)))
+export async function setMonitored(ids: number[], monitored: boolean) {
+  for (let i = 0; i < ids.length; i += 500) await call('PUT', '/movie/editor', { movieIds: ids.slice(i, i + 500), monitored })
+  const hit = new Set(ids)
+  dataCache.patch<Movie[]>('whisparr:movies', (list) => list.map((m) => (hit.has(m.id) ? { ...m, monitored } : m)))
+}
+export const unmonitorMovies = (ids: number[]) => setMonitored(ids, false)
+
+// Search again for ONE fetched scene (getqueue.ts's weekly re-search and "Search again").
+export async function searchScene(id: unknown) {
+  await call('POST', '/command', { name: 'MoviesSearch', movieIds: [assertSingleId(id)] })
 }
 
 // The sync must plan from what Whisparr holds now: a watched performer's refresh adds hundreds of
@@ -397,3 +403,7 @@ export async function unmonitorMovies(ids: number[]) {
 export function forgetLists() {
   dataCache.invalidate(LIST, 'whisparr:people')
 }
+
+// StashDB ids Whisparr will not add again (deleted with an import exclusion), cached an hour.
+export const exclusionIds = () =>
+  cached('exclusions', 60 * 60_000, [LIST, VOLATILE], async () => new Set((await call<{ foreignId: string }[]>('GET', '/exclusions')).map((e) => e.foreignId)))

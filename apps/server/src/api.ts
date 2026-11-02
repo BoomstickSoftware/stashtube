@@ -12,7 +12,9 @@ import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
-import { flixTagId, kickSync, rememberGet, runSync, syncStatus } from './sync.ts'
+import { kickSync, rememberGet, runSync, syncStatus } from './sync.ts'
+import * as catalog from './catalog.ts'
+import * as getq from './getqueue.ts'
 import { genderCriterion, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 import { dataCache, daySeed, HOME, HOME_TTL, POOL } from './stash.ts'
@@ -682,18 +684,79 @@ api.get('/sync', async (c) => c.json(await syncStatus()))
 // a person asked, so the timer's size limit is off.
 api.post('/sync/run', async (c) => {
   const b = parse(z.object({ apply: z.boolean().optional(), force: z.boolean().optional() }), await c.req.json().catch(() => ({})))
-  return c.json(await runSync(b.apply === undefined ? {} : { apply: b.apply, force: b.force, asked: true }))
+  return c.json(await runSync(b.apply === undefined ? {} : { apply: b.apply, force: b.force }))
 })
-// "Watching for new scenes" on a performer page; Whisparr down or unset reads as not watching.
+// "Watching for new scenes" on a performer page: followed (flix's discovery looks for their new
+// releases) and what of theirs is downloading. Whisparr down reads as nothing downloading.
 api.get('/whisparr/watch/performer/:id', async (c) => {
-  const none = { watching: false, managed: false, downloading: 0 }
-  if (!config.whisparr) return c.json(none)
+  const id = c.req.param('id')
+  const [p, ids, settings] = await Promise.all([stash.getPerformer(id), stash.stashIdsOf('performer', id).catch(() => [] as string[]), getSettings()])
+  const watching = !!config.whisparr && settings.whisparrSync && !!p?.favorite
+  const downloading = config.whisparr ? (await whisparr.performerWatch(ids, null).catch(() => ({ downloading: 0 }))).downloading : 0
+  return c.json({ watching, managed: watching, downloading })
+})
+
+// --- Discover: StashDB through flix's mirror (catalog.ts) ------------------------------------
+
+const idList = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v.split(',').filter(Boolean).slice(0, 10) : []))
+const discoverQuery = z.object({
+  q: z.string().max(100).optional(),
+  performers: idList,
+  studios: idList,
+  tags: idList,
+  sort: z.enum(['date', 'added', 'trending']).optional(),
+  page: z.coerce.number().int().min(1).max(200).optional(),
+  unblocked: z.enum(['1']).optional(),
+})
+api.get('/discover', async (c) => {
+  if (!(await stashdb.available())) throw new HTTPException(404, { message: 'StashDB is not configured' })
+  const q = parse(discoverQuery, c.req.query())
+  return c.json(await catalog.discover({ ...q, unblocked: q.unblocked === '1' }))
+})
+api.get('/discover/names', async (c) => {
+  const q = parse(z.object({ kind: z.enum(['performer', 'studio', 'tag']), q: z.string().max(100) }), c.req.query())
+  return c.json(await catalog.searchNames(q.kind, q.q))
+})
+api.get('/discover/entity/:kind/:id', async (c) => {
+  const kind = parse(z.enum(['performer', 'studio', 'tag']), c.req.param('kind'))
+  return c.json((await catalog.entity(kind, c.req.param('id'))) ?? notFound())
+})
+// The StashDB ids of a library performer or studio, for "Browse on StashDB" links.
+api.get('/discover/from/:kind/:id', async (c) => {
+  const kind = parse(z.enum(['performer', 'studio']), c.req.param('kind'))
+  return c.json({ ids: await stash.stashIdsOf(kind, c.req.param('id')).catch(() => [] as string[]) })
+})
+// Find followed ones' new releases now (also daily when the Settings switch is on).
+api.post('/discover/run', async (c) => c.json({ queued: await getq.discoverNew() }))
+
+// --- the paced Get queue and the scenes still waiting for a release (getqueue.ts) ------------
+
+api.post('/whisparr/get-many', async (c) => {
+  if (!config.whisparr) throw new HTTPException(404, { message: 'Whisparr is not configured' })
+  const { stashdbIds } = parse(z.object({ stashdbIds: z.array(z.string().regex(/^[0-9a-f-]{36}$/i)).min(1).max(getq.MAX_SELECTION) }), await c.req.json())
+  return c.json({ queued: await getq.enqueue(stashdbIds) }, 202)
+})
+api.get('/whisparr/waiting', async (c) => c.json(config.whisparr ? await getq.waiting() : []))
+api.get('/whisparr/queue-status', (c) => c.json(getq.queueStatus))
+api.post('/whisparr/waiting/:movieId/search', async (c) => {
   try {
-    const [ids, tag] = await Promise.all([stash.stashIdsOf('performer', c.req.param('id')), flixTagId()])
-    return c.json(await whisparr.performerWatch(ids, tag))
-  } catch {
-    return c.json(none)
+    await getq.searchNow(Number(parse(z.string().regex(/^\d{1,9}$/), c.req.param('movieId'))))
+    return c.body(null, 204)
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
+    throw e
   }
+})
+api.delete('/whisparr/waiting/:movieId', async (c) => {
+  await getq.giveUp(Number(parse(z.string().regex(/^\d{1,9}$/), c.req.param('movieId'))))
+  return c.body(null, 204)
+})
+api.delete('/whisparr/queue/:stashdbId', async (c) => {
+  await getq.cancel(c.req.param('stashdbId'))
+  return c.body(null, 204)
 })
 
 api.post('/whisparr/get/:id', async (c) => {

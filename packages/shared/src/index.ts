@@ -457,7 +457,9 @@ export interface Features {
 // may still be running, or found nothing), grabbed (sent to the download client in the last two
 // days), downloading (in Whisparr's queue), downloaded (has a file; shown only while the state
 // settles).
-export type WantedState = 'remote' | 'available' | 'requested' | 'grabbed' | 'downloading' | 'downloaded'
+// owned: in Stash already (Discover shows it, linked); excluded: deleted before (Whisparr's import
+// exclusion); queued: in flix's paced Get queue; waiting: fetched and monitored, no release found yet.
+export type WantedState = 'remote' | 'available' | 'requested' | 'queued' | 'waiting' | 'grabbed' | 'downloading' | 'downloaded' | 'owned' | 'excluded'
 export interface WantedScene {
   whisparrId: number | null // null for a remote scene
   stashdbId: string | null // StashDB's uuid; Whisparr files scenes under it too
@@ -468,6 +470,7 @@ export interface WantedScene {
   image: string | null // StashDB's cover through the proxy (/media/remote/<token>, resizable with ?w=)
   runtime: number | null // minutes
   state: WantedState
+  sceneId?: string | null // the Stash scene, when owned
 }
 // A page of a performer's or studio's missing scenes: StashDB's catalogue when it answers,
 // otherwise only what Whisparr lists.
@@ -505,6 +508,44 @@ export interface PerformerWatch {
   watching: boolean // Whisparr monitors this performer's new releases
   managed: boolean // because they are followed in flix (tagged `flix`), not set by hand in Whisparr
   downloading: number // their scenes queued or grabbed right now
+}
+
+// Discover: StashDB browsed through flix's mirror (architecture/stashdb-mirror).
+export type DiscoverSort = 'date' | 'added' | 'trending'
+export interface DiscoverQuery {
+  q?: string
+  performers?: string[] // StashDB ids, all of them
+  studios?: string[] // any of them
+  tags?: string[] // all of them
+  sort?: DiscoverSort
+  page?: number
+  unblocked?: boolean
+}
+export interface DiscoverEntity {
+  kind: 'performer' | 'studio' | 'tag'
+  id: string // StashDB uuid
+  name: string
+  disambiguation: string | null
+  image: string | null // through the proxy
+  parent: string | null // a studio's network
+  sceneCount: number | null
+  libraryId: string | null // the same performer/studio/tag in Stash, when the library has it
+}
+export interface DiscoverPage {
+  items: WantedScene[]
+  count: number
+  page: number
+  hasMore: boolean
+  source: 'mirror' | 'stashdb' // answered from the local mirror, or StashDB was asked
+  selected: DiscoverEntity[] // the filter chips, named
+  hidden: number // blocked results left out of this page
+}
+// Scenes fetched and still without a file, and selections still in the paced Get queue.
+export interface WaitingScene {
+  scene: WantedScene
+  since: string // when it was fetched or queued
+  searchedAt: string | null // the last search flix started
+  error: string | null // the queue's last failure
 }
 
 export interface WhisparrActivity {

@@ -1,79 +1,64 @@
 ---
-title: Whisparr sync (Stash favourites decide what Whisparr monitors)
+title: Whisparr guard (Whisparr monitors only the scenes flix fetched)
 kind: architecture
-summary: Stash favourite performers and studios are watched for new releases, everything else in Whisparr is unmonitored and old scenes are trimmed, by a guarded reconcile loop run from a script or a timer.
+summary: A reconcile loop keeps every Whisparr performer and studio unmonitored and every scene unmonitored unless flix fetched it or it is downloading; follows are flix's own record and drive flix's discovery, not Whisparr's.
 tags: [sync, stash, whisparr, architecture]
 status: current
 verified: 2026-11-02
 updated: 2026-11-02
-code: [apps/server/src/sync.ts, apps/server/src/whisparr.ts, apps/server/src/api.ts, apps/web/src/components/WhisparrSync.tsx, scripts/whisparr-sync.mjs, apps/server/src/db/schema.ts]
-related: [whisparr-nothing-monitored, stash-owns-activity, people-pages, delete-via-whisparr, whisparr-shelf, blocklist-and-exclusions, settings-page, stash-and-whisparr-clients]
+code: [apps/server/src/sync.ts, apps/server/src/getqueue.ts, apps/server/src/whisparr.ts, apps/server/src/api.ts, apps/web/src/components/WhisparrSync.tsx, scripts/whisparr-sync.mjs, apps/server/src/db/schema.ts]
+related: [stashdb-mirror, discover, whisparr-nothing-monitored, stash-owns-activity, people-pages, delete-via-whisparr, whisparr-shelf, blocklist-and-exclusions, settings-page, stash-and-whisparr-clients]
 ---
+# Whisparr guard (Whisparr monitors only the scenes flix fetched)
 
-# Whisparr sync (Stash favourites decide what Whisparr monitors)
-
-Built 2026-11-02; widened the same evening to studios and to "everything else off"
-([[whisparr-nothing-monitored]]).
+Built 2026-11-02 as a follow sync that made Whisparr watch favourites; turned into a guard the
+same night, when discovery moved to flix ([[whisparr-nothing-monitored]], [[stashdb-mirror]]).
 
 ## The rule
 
-| In Stash / flix | Whisparr ends up |
+| In Whisparr | The guard makes it |
 |---|---|
-| Favourite performer or studio (the heart; Stash's own UI too) | `monitored` + `whisparrMonitorNewItems`, tagged `flix`; watch start recorded |
-| Anything else, including what Whisparr adds on its own with "new items" on | both flags off, tag removed |
-| Blocked in flix | off, even if it is a favourite |
-| A monitored scene that is a Get from flix, or downloading or grabbed | left alone |
-| A monitored scene of a watched one, released after its watch start (less 14 days) | left alone: a real new release |
-| Any other monitored scene | unmonitored (`PUT movie/editor`, 500 at a time) |
-| A favourite Whisparr does not know | listed, to add in Whisparr |
+| Any performer or studio with `monitored` or `whisparrMonitorNewItems` on, or the old `flix` tag | both off, tag removed, followed or not |
+| A monitored scene flix fetched (`whisparr_gets`) | left alone until its file arrives, then the Get row is dropped |
+| A monitored scene downloading or grabbed | left alone |
+| Any other monitored scene | unmonitored (`PUT movie/editor`) |
 
-Why scenes are trimmed: Whisparr's "monitor new items" monitors every scene it newly learns
-about, old ones included (a newly watched studio's whole catalogue), and `afterDate` is untested.
-
-## New releases are fetched by flix
-
-With the global "monitor new items" off, a followed one's new scenes arrive in Whisparr
-unmonitored. Each run Gets every unmonitored scene that belongs to a watched performer or studio,
-was released after its watch start (less 14 days), has no file, is not downloading or a Get
-already, and is not in Stash: monitor it and run one `MoviesSearch` for that one id, recorded in
-`whisparr_gets`. Newest first, 5 s apart, at most 10 per timer run and 25 per script run; the
-rest wait for the next run. Shown as "Fetch" items and "N new scenes fetched".
+Follows stay Stash favourites. Their start dates (`whisparr_watch`) belong to flix's discovery,
+which finds new releases in the StashDB mirror and fetches them one scene at a time
+([[stashdb-mirror]] "Getting"). The guard forgets the start date of anything no longer followed
+or now blocked. It never starts a search.
 
 ## Running it
 
-- `node scripts/whisparr-sync.mjs` (dry run) and `--apply`; `--force` when it would watch far
-  fewer than before on purpose. No keys needed: it calls `POST /api/sync/run` on flix.
+- `node scripts/whisparr-sync.mjs` (dry run) and `--apply`; `--force` when far fewer follows
+  than recorded is right. No keys needed: it calls `POST /api/sync/run` on flix.
 - Settings → Library switch: on, a timer applies it 3 min after start, every 15 min, and 10 s
-  after a follow or block. Off (since the evening of 2026-11-02), the timer only plans.
+  after a follow or block, and daily discovery runs. Off, the timer only plans and discovery
+  runs only from "Find new releases".
 
 ## How it stays loosely coupled
 
 - **A click writes one system.** Follow writes the Stash favourite, Block writes Postgres; each
-  then calls `kickSync()`, which runs the sync 10 s later in the background. A Whisparr outage
+  then calls `kickSync()`, which runs the guard 10 s later in the background. A Whisparr outage
   never fails or slows a click.
-- **Reconcile, don't chain.** `runSync()` reads all three sides each time (Stash favourites,
-  the blocklist, Whisparr's performers, studios and tags), `planSync()` (pure, tested) works
-  out the difference, and only that is written. A failed run is repeated by the next: 3 min
-  after start, every 15 min, and after each kick. One run at a time.
+- **Reconcile, don't chain.** `runSync()` reads every side each time (Stash favourites, the
+  blocklist, the Get rows, Whisparr's performers, studios, scenes and activity, read fresh, not
+  from the 15-min list cache); `planSync()` (pure, tested) works out the difference. A failed
+  run is repeated by the next. One run at a time.
 - **No answer is never "nothing".** Stash, Postgres or Whisparr failing to answer skips the run
-  with a reason; the favourites read is uncached so an outage cannot pass for an empty list.
-- **Bounded.** The timer will not start watching more than 20 at once (the script may). Any
-  run that would watch under half of what was watched (with 4 or more) is refused unless
-  `--force`: that looks like Stash answering wrongly. Turning things off is otherwise
-  unlimited, since it cannot start a download.
-- **What flix watches is its own record** (`whisparr_watch`), never the `flix` tag: Whisparr
-  copies tags and flags to the studios and co-performers it adds while refreshing a watched
-  performer ([[whisparr-watch-cascades-to-studios-and-performers]]).
-- **Order**: performers and studios off first, then scenes, then on, so a failure part-way
-  leaves less monitored, not more. Watch starts are written before anything is turned on.
-- **Writes** are one at a time: GET the object, change the flags and tags, PUT it back; no
-  command, so no search. A failed write is shown against its name; the next run retries.
+  with a reason; the favourites read is uncached.
+- **Bounded.** A run that finds under half as many follows as recorded start dates (4 or more)
+  is refused unless `--force`: that looks like Stash answering wrongly, and would forget dates.
+  Turning things off is otherwise unlimited, since it cannot start a download.
+- **Writes** are one at a time for performers and studios (GET, change flags, PUT); scenes in
+  one editor call. A failed write is shown against its name; the next run retries.
 
 ## Endpoints
 
-`GET /api/sync` (last run: outcome, detail, items, how many watched, scenes trimmed),
-`POST /api/sync/run` (no body: follows the switch; `{apply, force}`: the script), `GET /api/whisparr/watch/performer/:id`
-(`{watching, managed, downloading}`; Whisparr down reads as not watching).
+`GET /api/sync` (last run: outcome, detail, items, follows, scenes unmonitored),
+`POST /api/sync/run` (no body: follows the switch; `{apply, force}`: the script),
+`GET /api/whisparr/watch/performer/:id` (`{watching, managed, downloading}`: watching means
+followed while the switch is on).
 
 ## Considered and declined (2026-11-02)
 
@@ -84,20 +69,3 @@ rest wait for the next run. Shown as "Fetch" items and "N new scenes fetched".
 | Whisparr import → Stash | Already done by Whisparr's own Stash connection (Scan, then Identify) |
 | Delete → import exclusion | Already done (`deleteMovie` passes `addImportExclusion=true`), which keeps RSS from grabbing a deleted new release again |
 | StashDB favourites | Unused |
-
-## Open
-
-- `afterDate` is not used; the scene trim does its job. Between Whisparr adding a catalogue and
-  the next run, RSS could grab an old scene; runs are on request now, so run the script after
-  following a new studio.
-- Followed performers' quality profiles are left as they are (most are "Any").
-- Adding a performer Whisparr lacks is manual.
-- **Proposed 2026-11-02, not built: watch StashDB instead of monitoring in Whisparr.** flix
-  would poll StashDB for followed performers' and studios' scenes released after their watch
-  start, not in Stash and not in Whisparr, and Get each one (the existing single-scene path).
-  Whisparr would then monitor single scenes only: no performer or studio monitoring, no cascade,
-  no trimming, no database growth. Unwatched studios Whisparr never refreshes are already
-  browsable through the shelf ([[whisparr-unwatched-studios-stop-learning-scenes]]).
-- Since 2026-11-02 (evening) the global "monitor new items" is off
-  ([[whisparr-unwatched-studios-stop-learning-scenes]]): watching only makes Whisparr *discover*
-  new scenes, unmonitored. The sync therefore **fetches** them: see "New releases" above.

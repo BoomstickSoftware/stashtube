@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
@@ -26,6 +26,7 @@ const nav = [
   { to: '/tags', label: 'Categories', icon: Tags },
   { to: '/playlists', label: 'Playlists', icon: ListVideo },
   { to: '/stations', label: 'Stations', icon: Radio, desktopOnly: true }, // phones: header icon (the tab bar is full)
+  { to: '/discover', label: 'Discover', icon: Compass, desktopOnly: true }, // phones: header icon
 ] as const
 
 export function Layout(): JSX.Element {
@@ -109,6 +110,9 @@ export function Layout(): JSX.Element {
           <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Search">
             <Search size={20} />
           </button>
+          <Link to="/discover" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Discover on StashDB">
+            <Compass size={20} />
+          </Link>
           <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
             <Radio size={20} />
           </Link>

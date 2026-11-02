@@ -2,7 +2,7 @@
 // mapping, the merge of "already here / in Whisparr / only on StashDB", and the second write,
 // which adds exactly one scene to Whisparr and never touches a studio or performer.
 import assert from 'node:assert/strict'
-import { after, before, beforeEach, describe, it } from 'node:test'
+import { after, before, beforeEach, describe, it, test } from 'node:test'
 import type { SdbScene } from './stashdb.ts'
 import type { Movie } from './whisparr.ts'
 
@@ -185,4 +185,38 @@ describe('getRemote', () => {
     await assert.rejects(getRemote(S1), /only scenes/)
     assert.equal(sent.filter((s) => s.method === 'POST').length, 0)
   })
+})
+
+test('sceneInput: performers and tags must all match, studios any; bad ids are dropped; titles sort A to Z', async () => {
+  const { sceneInput } = await import('./stashdb.ts')
+  const a = '11111111-1111-1111-1111-111111111111'
+  const b = '22222222-2222-2222-2222-222222222222'
+  assert.deepEqual(sceneInput({ text: '  wife ', performers: [a, 'nope'], studios: [b], tags: [a], sort: 'DATE', page: 2, perPage: 40 }), {
+    page: 2,
+    per_page: 40,
+    sort: 'DATE',
+    direction: 'DESC',
+    text: 'wife',
+    performers: { value: [a], modifier: 'INCLUDES_ALL' },
+    studios: { value: [b], modifier: 'INCLUDES' },
+    tags: { value: [a], modifier: 'INCLUDES_ALL' },
+  })
+  assert.equal(sceneInput({ sort: 'TITLE', page: 1, perPage: 40 }).direction, 'ASC')
+})
+
+test('every StashDB request waits its turn: at least MIN_GAP between two starts', async () => {
+  const sdb = await import('./stashdb.ts')
+  const starts: number[] = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = (async () => {
+    starts.push(Date.now())
+    return new Response(JSON.stringify({ data: { searchTag: [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }) as typeof fetch
+  try {
+    await Promise.all([sdb.searchEntities('tag', 'a'), sdb.searchEntities('tag', 'b'), sdb.searchEntities('tag', 'c')])
+  } finally {
+    globalThis.fetch = realFetch
+  }
+  assert.equal(starts.length, 3)
+  for (let i = 1; i < starts.length; i++) assert.ok(starts[i] - starts[i - 1] >= 1_050, `gap ${starts[i] - starts[i - 1]} ms`)
 })

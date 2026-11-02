@@ -183,3 +183,92 @@ export function toRemote(s: SdbScene): WantedScene {
 }
 
 export const isStashDbId = (id: unknown): id is string => typeof id === 'string' && UUID.test(id)
+
+// --- the mirror's reads (catalog.ts) ---------------------------------------------------------
+// Everything below goes through the same rate-limited queue; catalog.ts decides when to ask.
+
+export interface SdbSceneFull extends Omit<SdbScene, 'performers'> {
+  code: string | null
+  created: string | null
+  updated: string | null
+  performers: { performer: { id: string; name: string; disambiguation: string | null }; as: string | null }[]
+  tags: { id: string; name: string }[]
+}
+const SCENE_FULL = `id title release_date duration code created updated studio { id name } performers { performer { id name disambiguation } as } tags { id name } images { url width height }`
+
+export type SceneSort = 'DATE' | 'CREATED_AT' | 'UPDATED_AT' | 'TRENDING' | 'POPULARITY' | 'TITLE'
+export interface SceneQuery {
+  text?: string
+  performers?: string[] // all of them (INCLUDES_ALL)
+  studios?: string[] // any of them (INCLUDES)
+  tags?: string[] // all of them (INCLUDES_ALL)
+  sort: SceneSort
+  page: number
+  perPage: number
+}
+
+export function sceneInput(q: SceneQuery): Record<string, unknown> {
+  const input: Record<string, unknown> = { page: q.page, per_page: q.perPage, sort: q.sort, direction: q.sort === 'TITLE' ? 'ASC' : 'DESC' }
+  if (q.text?.trim()) input.text = q.text.trim()
+  const ids = (xs?: string[]) => (xs ?? []).filter((id) => UUID.test(id))
+  if (ids(q.performers).length) input.performers = { value: ids(q.performers), modifier: 'INCLUDES_ALL' }
+  if (ids(q.studios).length) input.studios = { value: ids(q.studios), modifier: 'INCLUDES' }
+  if (ids(q.tags).length) input.tags = { value: ids(q.tags), modifier: 'INCLUDES_ALL' }
+  return input
+}
+
+export async function queryScenes(q: SceneQuery): Promise<{ count: number; scenes: SdbSceneFull[] }> {
+  const d = await gql<{ queryScenes: { count: number; scenes: SdbSceneFull[] } }>(
+    `query($input: SceneQueryInput!) { queryScenes(input: $input) { count scenes { ${SCENE_FULL} } } }`,
+    { input: sceneInput(q) },
+  )
+  return d.queryScenes
+}
+
+export interface SdbEntity {
+  kind: 'performer' | 'studio' | 'tag'
+  id: string
+  name: string
+  disambiguation: string | null
+  image: string | null
+  parentId: string | null
+  parentName: string | null
+  sceneCount: number | null
+}
+type Img = { url: string; width: number; height: number }[]
+const widest = (images?: Img | null) => (images ?? []).reduce<Img[number] | null>((b, i) => (!b || i.width > b.width ? i : b), null)?.url ?? null
+
+const PERFORMER = `id name disambiguation scene_count images { url width height }`
+const STUDIO = `id name parent { id name } images { url width height }`
+const TAG = `id name`
+type RawPerformer = { id: string; name: string; disambiguation: string | null; scene_count: number | null; images: Img }
+type RawStudio = { id: string; name: string; parent: { id: string; name: string } | null; images: Img }
+type RawTag = { id: string; name: string }
+const fromPerformer = (p: RawPerformer): SdbEntity => ({ kind: 'performer', id: p.id, name: p.name, disambiguation: p.disambiguation, image: widest(p.images), parentId: null, parentName: null, sceneCount: p.scene_count })
+const fromStudio = (s: RawStudio): SdbEntity => ({ kind: 'studio', id: s.id, name: s.name, disambiguation: null, image: widest(s.images), parentId: s.parent?.id ?? null, parentName: s.parent?.name ?? null, sceneCount: null })
+const fromTag = (t: RawTag): SdbEntity => ({ kind: 'tag', id: t.id, name: t.name, disambiguation: null, image: null, parentId: null, parentName: null, sceneCount: null })
+
+// Name search for the filter pickers (a few per term; the caller caches by term).
+export async function searchEntities(kind: SdbEntity['kind'], term: string, limit = 12): Promise<SdbEntity[]> {
+  const t = term.trim().slice(0, 100)
+  if (!t) return []
+  if (kind === 'performer') return (await gql<{ searchPerformers: RawPerformer[] }>(`query($t: String!, $l: Int) { searchPerformers(term: $t, limit: $l) { ${PERFORMER} } }`, { t, l: limit })).searchPerformers.map(fromPerformer)
+  if (kind === 'studio') return (await gql<{ searchStudio: RawStudio[] }>(`query($t: String!, $l: Int) { searchStudio(term: $t, limit: $l) { ${STUDIO} } }`, { t, l: limit })).searchStudio.map(fromStudio)
+  return (await gql<{ searchTag: RawTag[] }>(`query($t: String!, $l: Int) { searchTag(term: $t, limit: $l) { ${TAG} } }`, { t, l: limit })).searchTag.map(fromTag)
+}
+
+export async function findEntity(kind: SdbEntity['kind'], id: string): Promise<SdbEntity | null> {
+  if (!UUID.test(id)) return null
+  if (kind === 'performer') {
+    const p = (await gql<{ findPerformer: RawPerformer | null }>(`query($id: ID!) { findPerformer(id: $id) { ${PERFORMER} } }`, { id })).findPerformer
+    return p ? fromPerformer(p) : null
+  }
+  if (kind === 'studio') {
+    const s = (await gql<{ findStudio: RawStudio | null }>(`query($id: ID!) { findStudio(id: $id) { ${STUDIO} } }`, { id })).findStudio
+    return s ? fromStudio(s) : null
+  }
+  const t = (await gql<{ findTag: RawTag | null }>(`query($id: ID!) { findTag(id: $id) { ${TAG} } }`, { id })).findTag
+  return t ? fromTag(t) : null
+}
+
+export const widestImage = widest

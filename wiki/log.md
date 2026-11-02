@@ -230,3 +230,5 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] query | Whisparr metadata: unwatched studios stop learning scenes; StashDB-driven auto-Get proposed
 ## [2026-11-02] ingest | Whisparr global "monitor new items" switched off by the user: discovery without monitoring or search
 ## [2026-11-02] decide | The sync fetches new releases of followed ones (one Get each); rule 9 restated
+## [2026-11-02] decide | Whisparr monitors only scenes flix fetched; the sync becomes a guard; rule 9 restated
+## [2026-11-02] ingest | StashDB mirror, rate limiter and paced Get queue (architecture/stashdb-mirror); Discover page (features/discover)

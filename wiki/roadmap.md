@@ -233,11 +233,15 @@ Stash and Whisparr are run from here now (`private/wiki/integrations/stash-insta
   known-issues #38 and #40, the two operations runbooks, three history files, the arr.py and
   stash.py rows, `browser/`, `inventory/arr/whisparr3/`, media policy 4, the CONTINUE items).
   Not done: the nas folder has no git, so nothing there is changed without the user.
-- **Follow sync**: built 2026-11-02 ([[whisparr-sync]]); open: `afterDate`, quality profiles for
-  watched performers, adding performers Whisparr lacks.
-- **Whisparr's defaults re-create monitoring**: every studio and performer it adds gets "monitor new
-  items" on (55 of each on 2026-11-02). Decide whether the sync should switch that off on untagged
-  ones, or whether Whisparr's default can be changed.
+- **Follow sync**: built 2026-11-02, turned into the guard the same night ([[whisparr-sync]]):
+  Whisparr monitors only scenes flix fetched; discovery and Discover run on the StashDB mirror
+  ([[stashdb-mirror]], [[discover]]). Open: adding performers Whisparr lacks is no longer needed
+  (flix adds scenes by StashDB id).
+- **Whisparr cleanup** (next): Whisparr still holds ~28k scenes, ~1.4k studios and ~6.8k
+  performers it learned while things were watched. Plan: back up Whisparr, test on one studio
+  that a deleted file-less scene is not re-added by a refresh, then delete file-less unmonitored
+  scenes that are not a Get or downloading (`DELETE /movie/editor`, no import exclusion), paced,
+  dry run first.
 
 ## Backlog
 

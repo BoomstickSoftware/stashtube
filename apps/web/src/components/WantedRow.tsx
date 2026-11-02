@@ -1,13 +1,15 @@
 import type { WantedScene } from '@flix/shared'
 import { sized, srcSet } from '@flix/shared'
 import clsx from 'clsx'
-import { Check, ChevronLeft, ChevronRight, Clock, Download, GalleryHorizontalEnd, LayoutGrid, Loader2 } from 'lucide-react'
+import { Ban, Check, ChevronLeft, ChevronRight, CircleCheck, Clock, Download, GalleryHorizontalEnd, Hourglass, LayoutGrid, ListPlus, Loader2, Play } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useCallback, useRef, type ReactNode } from 'react'
-import { useGetScene, useWanted } from '../lib/api'
+import { useGetScene, useStashDbIds, useWanted } from '../lib/api'
 import { asBool, oneOf, useStored } from '../lib/storage'
 import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
+import { canGetState } from '../lib/wanted'
 
 // How wide a card shows, so the browser picks the resized cover that fits (`srcSet`).
 const ROW_SIZES = '(min-width: 640px) 260px, 66vw'
@@ -63,31 +65,58 @@ function Heading({ title, hint, right }: { title: ReactNode; hint?: string; righ
 }
 
 // 'requested' is flix's own state: Get was pressed and Whisparr has not grabbed it yet, so the
-// card no longer offers Get as if nothing had happened.
+// card no longer offers Get as if nothing had happened. 'queued' waits in flix's paced Get queue;
+// 'waiting' was fetched and Whisparr has found no release yet (flix searches again weekly);
+// 'owned' is in the library; 'excluded' was deleted before (Whisparr's import exclusion).
 const STATE: Record<Exclude<WantedScene['state'], 'available' | 'remote'>, { label: string; icon: ReactNode; tone: string }> = {
   requested: { label: 'Requested', icon: <Clock size={13} />, tone: 'bg-white/15 text-fg/90' },
+  queued: { label: 'Queued', icon: <ListPlus size={13} />, tone: 'bg-white/15 text-fg/90' },
+  waiting: { label: 'Waiting', icon: <Hourglass size={13} />, tone: 'bg-amber-500/20 text-amber-200' },
+  owned: { label: 'In library', icon: <Play size={13} />, tone: 'bg-green-500/20 text-green-300' },
+  excluded: { label: 'Deleted before', icon: <Ban size={13} />, tone: 'bg-red-500/15 text-red-300' },
   grabbed: { label: 'Grabbed', icon: <Loader2 size={13} className="animate-spin" />, tone: 'bg-accent/20 text-accent' },
   downloading: { label: 'Downloading', icon: <Download size={13} />, tone: 'bg-accent/20 text-accent' },
   downloaded: { label: 'In library', icon: <Check size={13} />, tone: 'bg-green-500/20 text-green-300' },
 }
 
 // The cover is a StashDB image through flix's proxy (`/media/remote/…`), resized like any card.
-function WantedCard({ scene: w, sizes, className }: { scene: WantedScene; sizes: string; className?: string }) {
+// With `selecting`, a tap on a card that can be fetched toggles it (Discover's multi-select)
+// instead of the Get button; an owned card always opens the scene.
+export function WantedCard({
+  scene: w,
+  sizes,
+  className,
+  selecting,
+  selected,
+  onToggle,
+}: {
+  scene: WantedScene
+  sizes: string
+  className?: string
+  selecting?: boolean
+  selected?: boolean
+  onToggle?: () => void
+}) {
   const getScene = useGetScene()
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
   const state = busy ? 'requested' : w.state
-  const canGet = state === 'available' || state === 'remote'
-  return (
-    <article className={clsx('flex flex-col gap-2', className)}>
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
+  const canGet = canGetState(state)
+  const pickable = !!selecting && canGet
+  const cover = (
+      <div className={clsx('relative aspect-video overflow-hidden rounded-xl bg-surface ring-1', selected ? 'ring-2 ring-accent' : 'ring-white/5', selecting && !canGet && 'opacity-50')}>
         {w.image ? (
           <img src={sized(w.image, 640)} srcSet={srcSet(w.image)} sizes={sizes} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         ) : (
           <div className="flex size-full items-center justify-center text-xs text-muted">No cover</div>
         )}
         {w.state === 'remote' && <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase ring-1 ring-white/10">StashDB</span>}
-        <div className="absolute right-2 bottom-2">
+        {pickable && (
+          <span className={clsx('absolute top-2 right-2 flex size-7 items-center justify-center rounded-full ring-1', selected ? 'bg-accent text-white ring-accent' : 'bg-black/60 text-transparent ring-white/40')}>
+            <CircleCheck size={18} />
+          </span>
+        )}
+        <div className={clsx('absolute right-2 bottom-2', pickable && 'hidden')}>
           {canGet ? (
             <button
               type="button"
@@ -105,6 +134,20 @@ function WantedCard({ scene: w, sizes, className }: { scene: WantedScene; sizes:
           )}
         </div>
       </div>
+  )
+  return (
+    <article className={clsx('flex flex-col gap-2', className)}>
+      {pickable ? (
+        <button type="button" onClick={onToggle} aria-pressed={selected} aria-label={`Select ${w.title}`} className="block text-left">
+          {cover}
+        </button>
+      ) : state === 'owned' && w.sceneId ? (
+        <Link to="/scene/$id" params={{ id: w.sceneId }} className="block">
+          {cover}
+        </Link>
+      ) : (
+        cover
+      )}
       <div className="min-w-0 px-0.5">
         <div className="line-clamp-2 text-sm leading-snug font-semibold">{w.title}</div>
         {meta && <div className="truncate text-xs text-muted">{meta}</div>}
@@ -160,6 +203,7 @@ export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: st
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useWanted(kind, id)
   const [view, setView] = useStored<WantedView>(WANTED_VIEW_KEY, oneOf(WANTED_VIEWS, 'row'))
   const [open, setOpen] = useStored(WANTED_OPEN_KEY, asBool(false))
+  const sdb = useStashDbIds(kind, id)
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
@@ -187,7 +231,16 @@ export function WantedShelf({ kind, id }: { kind: 'performer' | 'studio'; id: st
     )
   }
   const hint = 'Get downloads one scene'
-  const toggle = <ViewToggle view={view} onChange={setView} />
+  const toggle = (
+    <div className="flex items-center gap-2">
+      {sdb.data?.ids[0] && (
+        <Link to="/discover" search={{ [kind === 'performer' ? 'performers' : 'studios']: sdb.data.ids[0] }} className="rounded-full bg-raised px-3 py-1 text-[13px] text-muted hover:text-fg touch:py-2.5">
+          Filter on StashDB
+        </Link>
+      )}
+      <ViewToggle view={view} onChange={setView} />
+    </div>
+  )
   if (view === 'grid') {
     return (
       <section className="mt-10 mb-8">
