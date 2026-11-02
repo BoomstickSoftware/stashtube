@@ -55,21 +55,81 @@ export const resetStashBox = () => {
 
 export const available = async () => !!(await stashBox())
 
+// Every StashDB request goes through this one queue: one at a time, at least MIN_GAP apart,
+// backing off on 429/503 (Retry-After when given), and pausing all calls after repeated
+// failures. StashDB is a community service; flix must never be the reason it is slow.
+const MIN_GAP = 1_100 // ms between request starts
+const BACKOFF = [5_000, 15_000, 60_000] // ms, when StashDB asks to slow down and gives no Retry-After
+const TRIP_AFTER = 5 // consecutive failures
+const PAUSE = 5 * 60_000 // ms
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export const limiter = { requests: 0, throttled: 0, failures: 0, consecutive: 0, pausedUntil: 0, lastError: null as string | null, since: new Date().toISOString() }
+let lane: Promise<unknown> = Promise.resolve()
+let lastStart = 0
+
+function enqueue<T>(job: () => Promise<T>): Promise<T> {
+  const run = lane.then(async () => {
+    if (Date.now() < limiter.pausedUntil) throw new Error(`StashDB calls paused until ${new Date(limiter.pausedUntil).toISOString()} after repeated failures`)
+    const wait = lastStart + MIN_GAP - Date.now()
+    if (wait > 0) await sleep(wait)
+    lastStart = Date.now()
+    return job()
+  })
+  lane = run.catch(() => {})
+  return run
+}
+
+async function send(b: Box, body: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    limiter.requests++
+    const res = await fetch(b.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ApiKey: b.apiKey, 'User-Agent': 'flix (single-user library front end; rate-limited)' },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT),
+    }).catch((e: Error) => {
+      throw new Error(e.name === 'TimeoutError' ? `StashDB: no answer in ${TIMEOUT / 1000} s` : `StashDB: ${e.message}`)
+    })
+    if ((res.status !== 429 && res.status !== 503) || attempt >= BACKOFF.length) return res
+    limiter.throttled++
+    const after = Number(res.headers.get('retry-after'))
+    await sleep(Number.isFinite(after) && after > 0 ? Math.min(after * 1000, 120_000) : BACKOFF[attempt])
+    lastStart = Date.now()
+  }
+}
+
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
   const b = await stashBox()
   if (!b) throw new Error('StashDB is not configured')
-  const res = await fetch(b.endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ApiKey: b.apiKey },
-    body: JSON.stringify({ query, variables }),
-    signal: AbortSignal.timeout(TIMEOUT),
-  }).catch((e: Error) => {
-    throw new Error(e.name === 'TimeoutError' ? `StashDB: no answer in ${TIMEOUT / 1000} s` : `StashDB: ${e.message}`)
+  return enqueue(async () => {
+    try {
+      const res = await send(b, JSON.stringify({ query, variables }))
+      if (!res.ok) throw new Error(`StashDB HTTP ${res.status}`)
+      const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
+      if (body.errors?.length) throw new Error(`StashDB: ${body.errors.map((e) => e.message).join('; ')}`)
+      limiter.consecutive = 0
+      return body.data as T
+    } catch (e) {
+      limiter.failures++
+      limiter.lastError = (e as Error).message
+      if (++limiter.consecutive >= TRIP_AFTER) {
+        limiter.pausedUntil = Date.now() + PAUSE
+        limiter.consecutive = 0
+      }
+      throw e
+    }
   })
-  if (!res.ok) throw new Error(`StashDB HTTP ${res.status}`)
-  const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
-  if (body.errors?.length) throw new Error(`StashDB: ${body.errors.map((e) => e.message).join('; ')}`)
-  return body.data as T
+}
+
+// For maintenance: what a StashDB type accepts or returns (an introspection query, read-only).
+export async function describeType(name: string) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new RangeError('a GraphQL type name is required')
+  const d = await gql<{ __type: unknown }>(
+    `query($n: String!) { __type(name: $n) { name kind fields { name args { name type { name kind ofType { name kind } } } type { name kind ofType { name kind ofType { name kind } } } } inputFields { name type { name kind ofType { name kind ofType { name } } } } enumValues { name } } }`,
+    { n: name },
+  )
+  return d.__type
 }
 
 // A page is ~8 KB, so it goes into the snapshot like any query; as VOLATILE (_until

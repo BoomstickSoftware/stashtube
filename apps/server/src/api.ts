@@ -664,6 +664,18 @@ api.get('/whisparr/studio/:id', async (c) => c.json(await whisparr.wanted({ stud
 api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await whisparr.recentWanted(await stash.favoritePerformerStashIds()) : []))
 api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
 
+// StashDB maintenance: the rate limiter's counters, and what a schema type looks like
+// (read-only introspection through the same rate-limited client).
+api.get('/admin/stashdb', (c) => c.json(stashdb.limiter))
+api.get('/admin/stashdb/type/:name', async (c) => {
+  try {
+    return c.json(await stashdb.describeType(c.req.param('name')))
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
+    throw e
+  }
+})
+
 // The follow sync (sync.ts): its last run, and a run now (applies only when Settings allows).
 api.get('/sync', async (c) => c.json(await syncStatus()))
 // From Settings (no body): follows the switch. From scripts/whisparr-sync.mjs: {apply, force};
