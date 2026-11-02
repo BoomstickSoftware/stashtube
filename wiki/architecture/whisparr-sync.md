@@ -89,3 +89,8 @@ about, old ones included (a newly watched studio's whole catalogue), and `afterD
   Whisparr would then monitor single scenes only: no performer or studio monitoring, no cascade,
   no trimming, no database growth. Unwatched studios Whisparr never refreshes are already
   browsable through the shelf ([[whisparr-unwatched-studios-stop-learning-scenes]]).
+- **Since 2026-11-02 (evening) the global "monitor new items" is off**
+  ([[whisparr-unwatched-studios-stop-learning-scenes]]): watching a followed performer or
+  studio now only makes Whisparr *discover* their new scenes, unmonitored, with no search. The
+  auto-download half of this sync no longer downloads anything by itself; a Get step for
+  followed ones' new scenes (from Whisparr's list or StashDB) is needed for that.

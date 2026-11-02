@@ -28,6 +28,16 @@ Whisparr, its list stopping 1–2 weeks earlier. Every watched studio was comple
 scenes they do not have; and what they add is monitored ("new items"), old releases included
 ([[whisparr-watch-cascades-to-studios-and-performers]]).
 
+## Global "monitor new items" (off since 2026-11-02)
+
+Whisparr's host setting `whisparrMonitorNewItems` (`GET /api/v3/config/host`; Settings,
+"Monitor new items") decides whether works that a refresh discovers for an entity with
+discovery on are added **monitored, with Search on Add**, or **unmonitored, with no search**.
+It never turns discovery on for a fully unmonitored entity and does not touch import lists
+(there are none). The user switched it off on 2026-11-02; read back as `false` the same day.
+Since then a performer or studio with its own flags on is a *discovery* source only: its new
+scenes appear in Whisparr unmonitored and nothing downloads unless something Gets them.
+
 ## Consequence
 
 Whisparr is not a usable catalogue for anything unwatched. It does not need to be: flix's
