@@ -97,7 +97,7 @@ function PerformerHeader({ id, p }: { id: string; p: PerformerDetail }) {
           <div className="mt-3 text-sm text-white/80">
             {[`${p.sceneCount.toLocaleString()} videos`, age(p.birthdate) && `${age(p.birthdate)} years old`, p.country, years].filter(Boolean).join(' · ')}
           </div>
-          <WatchLine id={id} />
+          <WatchLine id={id} followed={p.favorite} />
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <FollowButton favorite={p.favorite} onToggle={() => fav.mutate({ id, favorite: !p.favorite })} />
             <div className="rounded-full bg-raised px-2 py-1">

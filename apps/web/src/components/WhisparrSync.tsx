@@ -88,16 +88,20 @@ function Items({ title, items }: { title: string; items: SyncItem[] }) {
   )
 }
 
-// A performer page's line under the facts: "Watching for new scenes · 2 downloading".
-export function WatchLine({ id }: { id: string }): JSX.Element | null {
+// A performer page's line under the facts: "Watching for new scenes · 2 downloading". Whisparr
+// can take seconds to answer (its lists are large), so for a followed performer the line's
+// height is held from the start and nothing below it moves when the answer lands.
+export function WatchLine({ id, followed }: { id: string; followed: boolean }): JSX.Element | null {
+  const { data: features } = useFeatures()
   const { data } = usePerformerWatch(id)
-  if (!data || (!data.watching && !data.downloading)) return null
+  const hold = followed && !!features?.whisparr
+  if (!data || (!data.watching && !data.downloading)) return hold && !data ? <div className="mt-2 h-5" aria-hidden /> : null
   const parts = [
     data.watching && (data.managed ? 'Watching for new scenes' : 'Watched for new scenes in Whisparr'),
     data.downloading > 0 && `${data.downloading} downloading`,
   ].filter(Boolean)
   return (
-    <div className="mt-2 flex items-center gap-1.5 text-sm text-accent">
+    <div className="mt-2 flex h-5 items-center gap-1.5 text-sm text-accent">
       <Radar size={14} className="shrink-0" />
       <span>{parts.join(' · ')}</span>
     </div>

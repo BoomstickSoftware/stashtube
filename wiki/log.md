@@ -222,3 +222,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] query | Sync options between flix, Stash and Whisparr written up as a proposal
 ## [2026-11-02] decide | Library content stays out of git: gitignored private/ for named pages and snapshots, privacy-check in check.mjs, 12 tracked names scrubbed
 ## [2026-11-02] decide | Follow sync built: following monitors new releases in Whisparr, blocking unmonitors, watch state shown; rule 9 narrowed
+## [2026-11-02] ingest | History: operations move, privacy check, follow sync; watch line holds its height
