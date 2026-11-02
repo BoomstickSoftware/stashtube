@@ -367,19 +367,36 @@
     {
       "name": "whisparr-sync",
       "file": "scripts/whisparr-sync.mjs",
-      "does": "Runs the Whisparr sync on the flix server: Stash favourite performers and studios are watched for new releases, everything else is unmonitored, old scenes Whisparr monitored on its own are trimmed; prints the plan or the result. Dry run unless --apply.",
+      "does": "Runs the Whisparr guard on the flix server: every performer and studio in Whisparr is unmonitored, and a monitored scene stays monitored only if flix fetched it or it is downloading; prints the plan or the result. Dry run unless --apply.",
       "usage": [
         "node scripts/whisparr-sync.mjs",
         "node scripts/whisparr-sync.mjs --apply",
         "node scripts/whisparr-sync.mjs http://flix.lan --apply --force"
       ],
-      "writes": "Whisparr monitoring flags and tags, and flix's whisparr_watch rows, only with --apply",
+      "writes": "Whisparr monitoring flags, and flix's whisparr_watch and whisparr_gets rows, only with --apply",
       "tags": [
         "whisparr",
         "sync",
         "operations"
       ],
       "wiki": "whisparr-sync"
+    },
+    {
+      "name": "whisparr-cleanup",
+      "file": "scripts/whisparr-cleanup.mjs",
+      "does": "Deletes Whisparr scene records without a file that nothing is fetching (never files, no import exclusion), after a Whisparr Backup, 100 at a time, through the flix server; a one-studio mode refreshes that studio afterwards and counts what came back. Dry run unless --apply.",
+      "usage": [
+        "node scripts/whisparr-cleanup.mjs",
+        "node scripts/whisparr-cleanup.mjs --studio <stashdb-id> --apply",
+        "node scripts/whisparr-cleanup.mjs --apply"
+      ],
+      "writes": "Whisparr: a Backup, then deletes scene records (not files), only with --apply",
+      "tags": [
+        "whisparr",
+        "cleanup",
+        "operations"
+      ],
+      "wiki": "whisparr-cleanup"
     }
   ],
   "external": []

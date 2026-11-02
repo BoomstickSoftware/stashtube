@@ -85,7 +85,7 @@ const cached = <T>(key: string, ttl: number, tags: string[], load: () => Promise
 // Only what flix reads of a movie (toWanted, stateOf, the shelf filters, movieForFile,
 // placementFor): the cache holds this projection, about a quarter of the 41 MB answer, and far
 // fewer objects; `images` is cut to the one cover toWanted picks.
-export const PROJECTED = ['id', 'title', 'path', 'movieFile', 'hasFile', 'monitored', 'releaseDate', 'runtime', 'stashId', 'studioTitle', 'studioForeignId', 'performerNames', 'performerForeignIds', 'images', 'qualityProfileId', 'rootFolderPath'] as const satisfies readonly (keyof Movie)[]
+export const PROJECTED = ['id', 'title', 'path', 'movieFile', 'hasFile', 'monitored', 'itemType', 'releaseDate', 'runtime', 'stashId', 'studioTitle', 'studioForeignId', 'performerNames', 'performerForeignIds', 'images', 'qualityProfileId', 'rootFolderPath'] as const satisfies readonly (keyof Movie)[]
 export function project(m: Movie): Movie {
   const out: Partial<Movie> = {}
   for (const k of PROJECTED) if (m[k] !== undefined) (out as Record<string, unknown>)[k] = m[k]
@@ -407,3 +407,30 @@ export function forgetLists() {
 // StashDB ids Whisparr will not add again (deleted with an import exclusion), cached an hour.
 export const exclusionIds = () =>
   cached('exclusions', 60 * 60_000, [LIST, VOLATILE], async () => new Set((await call<{ foreignId: string }[]>('GET', '/exclusions')).map((e) => e.foreignId)))
+
+// --- the cleanup (cleanup.ts): commands and bulk deletes of records without files ----------
+
+// Run an app command and wait for it to finish (Backup, a studio refresh). Polls every 2 s.
+export async function runCommand(body: { name: string } & Record<string, unknown>, waitMs = 300_000): Promise<string> {
+  const { id } = await call<{ id: number }>('POST', '/command', body)
+  const end = Date.now() + waitMs
+  while (Date.now() < end) {
+    await new Promise((r) => setTimeout(r, 2000))
+    const st = await call<{ status: string }>('GET', `/command/${id}`)
+    if (['completed', 'failed', 'aborted', 'cancelled', 'orphaned'].includes(st.status)) return st.status
+  }
+  return 'timeout'
+}
+
+// Delete scene records (never files, no import exclusion), many at once.
+export async function deleteRecords(ids: number[]) {
+  await call('DELETE', '/movie/editor', { movieIds: ids, deleteFiles: false, addImportExclusion: false })
+  const gone = new Set(ids)
+  listChanged((all) => all.filter((m) => !gone.has(m.id)))
+}
+
+// Fetch the movie list now, not from the cache (the cleanup must plan from what Whisparr holds).
+export async function freshMovies(): Promise<Movie[]> {
+  forgetLists()
+  return movies()
+}

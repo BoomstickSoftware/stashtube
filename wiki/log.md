@@ -232,3 +232,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] decide | The sync fetches new releases of followed ones (one Get each); rule 9 restated
 ## [2026-11-02] decide | Whisparr monitors only scenes flix fetched; the sync becomes a guard; rule 9 restated
 ## [2026-11-02] ingest | StashDB mirror, rate limiter and paced Get queue (architecture/stashdb-mirror); Discover page (features/discover)
+## [2026-11-02] ingest | Whisparr cleanup: delete file-less records nothing is fetching, after a Backup, tested on one studio first (architecture/whisparr-cleanup)

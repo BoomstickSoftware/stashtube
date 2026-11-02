@@ -14,6 +14,7 @@ import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
 import { kickSync, rememberGet, runSync, syncStatus } from './sync.ts'
 import * as catalog from './catalog.ts'
+import * as cleanup from './cleanup.ts'
 import * as getq from './getqueue.ts'
 import { genderCriterion, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
@@ -731,6 +732,20 @@ api.get('/discover/from/:kind/:id', async (c) => {
 })
 // Find followed ones' new releases now (also daily when the Settings switch is on).
 api.post('/discover/run', async (c) => c.json({ queued: await getq.discoverNew() }))
+
+// --- the Whisparr cleanup (cleanup.ts): records without files that nothing is fetching ---------
+
+api.get('/whisparr/cleanup', (c) => c.json(cleanup.cleanupStatus))
+api.post('/whisparr/cleanup', async (c) => {
+  const body = parse(z.object({ apply: z.boolean().optional(), studio: z.string().regex(/^[0-9a-f-]{36}$/i).optional() }), await c.req.json().catch(() => ({})))
+  try {
+    if (!body.apply) return c.json(await cleanup.previewCleanup(body.studio))
+    return c.json(await cleanup.startCleanup(body.studio), 202)
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(409, { message: e.message })
+    throw e
+  }
+})
 
 // --- the paced Get queue and the scenes still waiting for a release (getqueue.ts) ------------
 
