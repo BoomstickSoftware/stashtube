@@ -349,6 +349,7 @@ export interface Settings {
   playOnOpen: boolean // opening a video starts it; off: it waits on the play button
   people: PeopleFilter // performer age and ethnicity defaults for every list
   featured: FeaturedWeights // the Featured row's dials
+  whisparrSync: boolean // follow -> Whisparr watches the performer's new releases; off: the sync only plans
 }
 
 export type StationMode = 'full' | 'moments'
@@ -476,6 +477,34 @@ export interface WantedList {
   page: number
   hasMore: boolean
 }
+// The follow -> Whisparr sync (architecture/whisparr-sync). Stash favourites are the truth; flix
+// mirrors them into Whisparr as "monitor this performer's new releases" on performers it tags
+// `flix`, and makes sure nothing blocked is monitored. Never a back catalogue, never a search.
+export type SyncAction = 'monitor' | 'adopt' | 'unmonitor' | 'missing' | 'unmanaged'
+export interface SyncItem {
+  kind: 'performer' | 'studio'
+  name: string
+  action: SyncAction // monitor/unmonitor/adopt change Whisparr; missing and unmanaged need a hand
+  reason: string
+  error?: string // the write failed (applied runs only)
+}
+export interface SyncStatus {
+  available: boolean // Whisparr is configured
+  enabled: boolean // Settings: apply; off, each run only plans
+  running: boolean
+  lastRun: string | null // ISO time of the last finished run
+  outcome: 'applied' | 'planned' | 'skipped' | 'failed' | null
+  detail: string | null // what was done, or why nothing was
+  items: SyncItem[] // the last run's changes (made or planned) and what needs a hand
+  managed: number // performers flix keeps watched in Whisparr after the last run
+}
+// A performer page's "Watching for new scenes" line.
+export interface PerformerWatch {
+  watching: boolean // Whisparr monitors this performer's new releases
+  managed: boolean // because they are followed in flix (tagged `flix`), not set by hand in Whisparr
+  downloading: number // their scenes queued or grabbed right now
+}
+
 export interface WhisparrActivity {
   downloading: WantedScene[]
   grabbed: WantedScene[]

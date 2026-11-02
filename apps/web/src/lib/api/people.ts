@@ -14,6 +14,7 @@ import type {
 } from '@flix/shared'
 import { keepPreviousData, type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, invalidateLists, qs, send } from './client'
+import { refreshWatchSoon } from './whisparr'
 
 // Performers, studios and tags: lists, one of each, their favourite/rating writes, the
 // blocklist, and the per-studio intro skip.
@@ -82,7 +83,10 @@ export function useFavoritePerformer() {
       return { prev }
     },
     onError: (_e, { id }, ctx) => ctx && patchPerformer(qc, id, { favorite: ctx.prev }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ['home'] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['home'] })
+      refreshWatchSoon(qc) // Whisparr follows the follow a few seconds later (server sync.ts)
+    },
   })
 }
 
@@ -155,6 +159,9 @@ export function useBlock() {
   return useMutation({
     mutationFn: ({ kind, id, blocked }: { kind: BlockKind; id: string; blocked: boolean }) =>
       send(blocked ? 'PUT' : 'DELETE', `/blocklist/${kind}/${id}`),
-    onSuccess: () => invalidateLists(qc),
+    onSuccess: () => {
+      invalidateLists(qc)
+      refreshWatchSoon(qc) // a blocked performer or studio is unmonitored in Whisparr shortly after
+    },
   })
 }

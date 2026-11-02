@@ -233,8 +233,8 @@ Stash and Whisparr are run from here now (`private/wiki/integrations/stash-insta
   known-issues #38 and #40, the two operations runbooks, three history files, the arr.py and
   stash.py rows, `browser/`, `inventory/arr/whisparr3/`, media policy 4, the CONTINUE items).
   Not done: the nas folder has no git, so nothing there is changed without the user.
-- **Flix–Stash–Whisparr sync**: proposals in [[stash-whisparr-sync-options]], waiting on the
-  user's choices.
+- **Follow sync**: built 2026-11-02 ([[whisparr-sync]]); open: `afterDate`, quality profiles for
+  watched performers, adding performers Whisparr lacks.
 
 ## Backlog
 

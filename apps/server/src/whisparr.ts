@@ -1,4 +1,4 @@
-import type { WantedList, WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
+import type { PerformerWatch, WantedList, WantedScene, WantedState, WhisparrActivity } from '@flix/shared'
 import { PINNED, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
@@ -6,10 +6,11 @@ import { dataCache, sceneStashIdMap } from './stash.ts'
 import * as stashdb from './stashdb.ts'
 
 // Whisparr v3 (Radarr-based; scenes are "movies"). flix reads what it knows and has not
-// downloaded, and does exactly one kind of write besides deleting: fetch ONE scene the user
-// clicked. The library policy (nas repo, "Media library policy" 4 and known-issues #40) is that
-// nothing is monitored and downloads are chosen by hand, so there is deliberately no way here
-// to monitor or search a studio or a performer, and `getScene` refuses anything but a single id.
+// downloaded, and writes three things besides deleting: fetch ONE scene the user clicked
+// (`getScene` refuses anything but a single id), and, for the follow sync (sync.ts), a
+// performer's or studio's monitoring flags and tags. The policy (decisions/whisparr-nothing-
+// monitored): only followed performers are monitored, for new releases only; nothing here ever
+// starts a search of a performer or studio, and no flag write touches their back catalogue.
 
 export interface Movie {
   id: number
@@ -325,4 +326,59 @@ export async function getRemote(stashdbId: unknown): Promise<WantedScene> {
   requested.set(added.id, Date.now())
   const a = await activity()
   return toWanted(added, a)
+}
+
+// --- the follow sync's reads and writes (sync.ts) -------------------------------------------
+
+export interface WPerformer {
+  id: number
+  fullName: string
+  foreignId: string // StashDB uuid
+  monitored: boolean
+  whisparrMonitorNewItems: boolean
+  tags: number[]
+}
+export interface WStudio {
+  id: number
+  title: string
+  foreignId: string
+  monitored: boolean
+  whisparrMonitorNewItems: boolean
+  tags: number[]
+}
+
+// ~5,300 performers (2026-11-02); cached briefly for the performer page's watch line, dropped
+// by every sync write.
+const PEOPLE_TTL = 5 * 60_000
+export const listPerformers = () => cached('performers', PEOPLE_TTL, ['whisparr:people'], async () => (await call<WPerformer[]>('GET', '/performer')).map(({ id, fullName, foreignId, monitored, whisparrMonitorNewItems, tags }) => ({ id, fullName, foreignId, monitored, whisparrMonitorNewItems, tags: tags ?? [] })))
+export const listStudios = () => cached('studios', PEOPLE_TTL, ['whisparr:people'], async () => (await call<WStudio[]>('GET', '/studio')).map(({ id, title, foreignId, monitored, whisparrMonitorNewItems, tags }) => ({ id, title, foreignId, monitored, whisparrMonitorNewItems, tags: tags ?? [] })))
+export const listTags = () => call<{ id: number; label: string }[]>('GET', '/tag')
+export const createTag = (label: string) => call<{ id: number; label: string }>('POST', '/tag', { label })
+
+// Change only these fields of one performer or studio: GET the whole object, set them, PUT it
+// back (Whisparr's PUT replaces). No command, so no search.
+type Flags = Partial<Pick<WPerformer, 'monitored' | 'whisparrMonitorNewItems' | 'tags'>>
+export async function patchPerformer(id: number, flags: Flags) {
+  const o = await call<Record<string, unknown>>('GET', `/performer/${id}`)
+  await call('PUT', `/performer/${id}`, { ...o, ...flags })
+  dataCache.invalidate('whisparr:people')
+}
+export async function patchStudio(id: number, flags: Flags) {
+  const o = await call<Record<string, unknown>>('GET', `/studio/${id}`)
+  await call('PUT', `/studio/${id}`, { ...o, ...flags })
+  dataCache.invalidate('whisparr:people')
+}
+
+// The performer page's line: is Whisparr watching them, because of flix, and is anything of
+// theirs downloading.
+export async function performerWatch(stashdbIds: string[], tagId: number | null): Promise<PerformerWatch> {
+  const none = { watching: false, managed: false, downloading: 0 }
+  if (!config.whisparr || !stashdbIds.length) return none
+  const ids = new Set(stashdbIds)
+  const [people, all, a] = await Promise.all([listPerformers(), movies(), activity()])
+  const p = people.find((x) => ids.has(x.foreignId))
+  if (!p) return none
+  const busy = new Set([...a.downloading, ...a.grabbedAt.keys()])
+  const downloading = all.filter((m) => busy.has(m.id) && !m.hasFile && m.performerForeignIds?.some((f) => ids.has(f))).length
+  return { watching: p.monitored && p.whisparrMonitorNewItems, managed: tagId !== null && p.tags.includes(tagId), downloading }
 }

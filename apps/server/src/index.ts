@@ -17,6 +17,7 @@ import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
 import { scheduleSweep } from './sweep.ts'
+import { startSync } from './sync.ts'
 import { scheduleWarm } from './warm.ts'
 import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
 
@@ -145,6 +146,7 @@ const warm = () =>
 warm()
 onStashChange(warm)
 onStashChange(scheduleSweep())
+startSync() // the follow sync: a few minutes after start, then every 15 minutes (sync.ts)
 
 startChangeDetection()
 scheduleWarm()

@@ -12,6 +12,7 @@ import * as savedRows from './rows.ts'
 import * as stations from './stations.ts'
 import * as stashdb from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
+import { flixTagId, kickSync, runSync, syncStatus } from './sync.ts'
 import { genderCriterion, getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
 import { dataCache, daySeed, HOME, HOME_TTL, POOL } from './stash.ts'
@@ -441,6 +442,7 @@ api.get('/performers/:id', async (c) => c.json((await stash.getPerformer(c.req.p
 api.put('/performers/:id/favorite', async (c) => {
   const { favorite } = parse(z.object({ favorite: z.boolean() }), await c.req.json())
   await stash.setPerformerFavorite(c.req.param('id'), favorite)
+  kickSync() // Whisparr follows the follow, a little later and never in this request
   return c.body(null, 204)
 })
 
@@ -517,7 +519,7 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 api.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean() })
       .partial(),
     await c.req.json(),
   )
@@ -525,6 +527,10 @@ api.put('/settings', async (c) => {
   if (b.performerGender) await setSetting('performerGender', b.performerGender)
   if (b.panicUrl) await setSetting('panicUrl', b.panicUrl)
   if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
+  if (b.whisparrSync !== undefined) {
+    await setSetting('whisparrSync', b.whisparrSync)
+    kickSync()
+  }
   if (b.people) await setSetting('people', b.people)
   if (b.featured) await setSetting('featured', sanitizeWeights(b.featured, (await getSettings()).featured))
   if (b.people || b.featured) homeChanged() // the feed was built with the old defaults or dials
@@ -635,16 +641,19 @@ api.put('/blocklist/:kind/:id', async (c) => {
   const name = await stash.namesFor(k, id)
   if (!name) return notFound()
   await block(k, id, name)
+  kickSync() // a blocked performer or studio must not stay monitored in Whisparr
   return c.body(null, 204)
 })
 
 api.delete('/blocklist/:kind/:id', async (c) => {
   await unblock(parse(kind, c.req.param('kind')), c.req.param('id'))
+  kickSync()
   return c.body(null, 204)
 })
 
 // --- Whisparr: scenes it knows but has not downloaded, and one explicit fetch at a time ----
-// Nothing here monitors or searches a performer or a studio (library policy; see whisparr.ts).
+// Nothing here searches a performer or a studio; monitoring follows follows only through the
+// sync (sync.ts, decisions/whisparr-nothing-monitored).
 
 const pageOf = (c: Context) => {
   const n = Number(c.req.query('page') ?? 1)
@@ -654,6 +663,21 @@ api.get('/whisparr/performer/:id', async (c) => c.json(await whisparr.wanted({ p
 api.get('/whisparr/studio/:id', async (c) => c.json(await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }, pageOf(c))))
 api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await whisparr.recentWanted(await stash.favoritePerformerStashIds()) : []))
 api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
+
+// The follow sync (sync.ts): its last run, and a run now (applies only when Settings allows).
+api.get('/sync', async (c) => c.json(await syncStatus()))
+api.post('/sync/run', async (c) => c.json(await runSync()))
+// "Watching for new scenes" on a performer page; Whisparr down or unset reads as not watching.
+api.get('/whisparr/watch/performer/:id', async (c) => {
+  const none = { watching: false, managed: false, downloading: 0 }
+  if (!config.whisparr) return c.json(none)
+  try {
+    const [ids, tag] = await Promise.all([stash.stashIdsOf('performer', c.req.param('id')), flixTagId()])
+    return c.json(await whisparr.performerWatch(ids, tag))
+  } catch {
+    return c.json(none)
+  }
+})
 
 api.post('/whisparr/get/:id', async (c) => {
   if (!config.whisparr) throw new HTTPException(404, { message: 'Whisparr is not configured' })

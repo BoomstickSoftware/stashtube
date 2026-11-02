@@ -1,7 +1,7 @@
 ---
 title: Whisparr monitors nothing; downloads are chosen one scene at a time
 kind: decision
-summary: Whisparr monitors nothing but the favourite performers, for new releases only; flix asks for one scene per click and never monitors a studio or performer.
+summary: Whisparr monitors only followed performers, for new releases, through flix's follow sync; flix never searches a studio or performer and fetches one scene per click.
 tags: [whisparr, downloads, policy]
 status: current
 decided: 2026-10-28
@@ -33,9 +33,9 @@ picks what to download, by hand in Whisparr or one scene at a time from flix
 
 ## Consequences
 
-- flix has **no code path** that monitors or searches a performer or studio. Both Get routes
-  refuse anything but a single scene id (feature films too), and the tests pin the exact
-  requests.
+- flix never **searches** a performer or studio. Both Get routes refuse anything but a single
+  scene id (feature films too), and the tests pin the exact requests. Since 2026-11-02 its one
+  monitoring path is the follow sync below, for new releases of followed performers only.
 - Never re-enable studio monitoring or run a studio-wide search, even to "fill a gap".
 - Expect the shelf to be the main way new scenes arrive.
 - Open question (nas known-issues #40): whether the daily `RefreshStudios` still adds newly
@@ -68,9 +68,7 @@ first: no existing scene became monitored, no command or search started, the que
 grow. So the back catalogue stays unmonitored and only releases found after the change are
 monitored and grabbed by RSS.
 
-- The set is fixed at the moment of the change. Following a performer in flix does **not**
-  monitor them in Whisparr; flix still has no such code path (rule 9 of CLAUDE.md), so a new
-  favourite is added in Whisparr by hand.
+- _Was_ a fixed set needing hand upkeep; superseded the same day by the follow sync below.
 - Their quality profiles were left as they were: 22 on profile 1 "Any" (no upgrades,
   prefers 2160p), 8 on profile 4 "HD-1080p". New grabs take the performer's profile.
 - Studios, scenes and every other performer stay unmonitored.
@@ -78,3 +76,15 @@ monitored and grabbed by RSS.
 ## Revisit if
 
 The user asks to monitor something; even then, prefer per-scene monitoring.
+
+## Follows are synced (2026-11-02)
+
+The user chose to build three workflows from [[whisparr-sync]]: **following a performer monitors
+their new releases** in Whisparr (unfollowing stops it), **blocking unmonitors** a performer or
+studio, and the watch state shows in flix. Rule 9 of `CLAUDE.md` narrowed accordingly:
+
+- The only monitoring flix does is `monitored` + `whisparrMonitorNewItems` on performers it tags
+  `flix`, from Stash favourites minus the blocklist; never a back catalogue, never a search
+  command, never a studio turned on (blocked studios are only turned off).
+- Studios stay unmonitored (the user declined "follow a studio monitors it").
+- A Settings switch, off by default, turns writing on; off, the sync only plans.

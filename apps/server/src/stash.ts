@@ -1461,6 +1461,15 @@ export async function favoritePerformerStashIds(): Promise<string[]> {
   return d.findPerformers.performers.flatMap((p) => p.stash_ids.map((s) => s.stash_id))
 }
 
+// The favourite performers with their StashDB ids, for the follow sync (sync.ts). Uncached, so
+// it throws when Stash is down: the sync then skips its run rather than read "no favourites".
+export async function favoritePerformers(): Promise<{ id: string; name: string; stashIds: string[] }[]> {
+  const d = await gql<Pick<Query, 'findPerformers'>>(
+    `{ findPerformers(filter: { per_page: -1 }, performer_filter: { filter_favorites: true }) { performers { id name stash_ids { stash_id } } } }`,
+  )
+  return d.findPerformers.performers.map((p) => ({ id: p.id, name: p.name, stashIds: p.stash_ids.map((s) => s.stash_id) }))
+}
+
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes

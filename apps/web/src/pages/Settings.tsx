@@ -9,6 +9,7 @@ import { FeaturedDials } from '../components/FeaturedDials'
 import { PeopleControls } from '../components/People'
 import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
+import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
@@ -53,6 +54,7 @@ export function Settings(): JSX.Element {
       <div className="mt-6 space-y-14">
         <Group id="library" title="Library">
           <LibraryTools />
+          <WhisparrSyncSetting />
           <BlocklistSetting />
           <HiddenSetting />
         </Group>

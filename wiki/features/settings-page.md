@@ -5,7 +5,7 @@ summary: One page in five headed groups (Library, Feed, Playback, Privacy, Advan
 tags: [settings, ui, privacy, cleanup]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-02
 routes: [/settings]
 api: [GET /api/settings, PUT /api/settings, GET /api/blocklist, GET /api/scenes/hidden, GET /api/admin/cache]
 code: [apps/web/src/pages/Settings.tsx, apps/web/src/components/Privacy.tsx, apps/web/src/components/FeaturedDials.tsx, apps/web/src/components/CachePanel.tsx, apps/web/src/components/Shortcuts.tsx]
@@ -24,7 +24,7 @@ it was eleven untitled sections in one 3,600 px column that opened on the Clean 
 
 | Group | Holds | Stored |
 |---|---|---|
-| **Library** | the Clean up and Duplicates cards (their only entry points, [[cleanup-page]], [[duplicates-workbench]]); the Blocklist (search to block, chips to unblock, grouped Categories / Performers / Studios, [[blocklist-and-exclusions]]); Not interested (shown only when a video is marked) | Postgres `blocks`; the Not interested tag in Stash |
+| **Library** | the Clean up and Duplicates cards (their only entry points, [[cleanup-page]], [[duplicates-workbench]]); the follow sync switch and its last run (shown only with Whisparr, [[whisparr-sync]]); the Blocklist (search to block, chips to unblock, grouped Categories / Performers / Studios, [[blocklist-and-exclusions]]); Not interested (shown only when a video is marked) | Postgres `blocks` and `settings.whisparrSync`; the Not interested tag in Stash |
 | **Feed** | Performer preferences (age at filming, ethnicity: defaults for every list, the home feed and related videos); Featured dials with a live preview and a Save button that toasts "Saved" ([[featured-ranking]]) | `settings` table (`people`, `featured`) |
 | **Playback** | Start playing when I open a video; Keep playing while browsing ([[mini-player]]). Quality, speed and intro skip are in the player's gear menu | `playOnOpen` shared; Keep playing per browser |
 | **Privacy** | Private session (same switch as the header's ghost, [[private-session]]); Discreet (same switch as the header's eye, [[discreet-mode]]); PIN lock ([[pin-lock]]) | sessionStorage; localStorage `flix.discreet`; localStorage |

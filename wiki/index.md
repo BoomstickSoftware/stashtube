@@ -33,8 +33,8 @@ Pages: 141. Last generated 2026-11-02.
 - [[server-bff]] — Module map of apps/server, how it runs (Node 26 executes .ts natively, erasable TypeScript), what the tests cover, and what /healthz and /readyz mean. · _server, hono, node, tests_ · verified 2026-10-31
 - [[shared-contract]] — packages/shared is the API contract between BFF and web plus the few values both need; the web never sees Stash shapes, and the package ships in the runtime image. · _shared, types, contract, docker_ · verified 2026-10-30
 - [[stash-layer]] — stash.ts is the only module that knows Stash's GraphQL schema; its types are generated from Stash v0.31.1's own schema, so an unknown filter criterion is a compile error, and blocked ids are dropped after the query. · _stash, graphql, codegen, server_ · verified 2026-10-31
-- [[stash-whisparr-sync-options]] — Which flix–Stash–Whisparr workflows are worth syncing (follow, block, delete, imports), which are not, and a reconcile-loop design that keeps a down service from breaking anything; waiting on the user's choices. (PROPOSED) · _sync, stash, whisparr, architecture, proposal_ · verified 2026-11-02
 - [[web-app]] — Layout of apps/web, which is Vite + React 19 + Tailwind 4 + TanStack Router and Query, with file-based routes, lazy pages, one API-hook module per domain and persisted queries. · _web, react, vite, tanstack, routing_ · verified 2026-10-31
+- [[whisparr-sync]] — Following a performer makes Whisparr watch their new releases and blocking unmonitors, through a guarded reconcile loop no outage can break; plus the declined workflows. · _sync, stash, whisparr, architecture_ · verified 2026-11-02
 
 ## Features: what the user can do
 
@@ -103,7 +103,7 @@ Pages: 141. Last generated 2026-11-02.
 - [[stash-owns-activity]] — Ratings, plays, resume points, O-counts, markers, performer/studio/tag favourites, titles and tags are written to Stash; flix's database keeps playlists, blocklist, pinned rows, stations and settings. · _architecture, stash, database, data_ · verified 2026-10-30
 - [[stash-stays-headless]] — Neither fork nor rewrite Stash; it stays on the NAS as the engine (scans, StashDB, generated assets, VAAPI transcodes) and flix is a new front end plus a small BFF. · _architecture, stash, gpu, nas_ · verified 2026-10-30
 - [[stations-only-user-made]] — A station started from a video, a list, a performer page or a quick start plays and leaves nothing behind; only saved stations and playlists keep a resume point and appear under "Pick up a station". · _stations, resume, home, ux_ · verified 2026-10-31
-- [[whisparr-nothing-monitored]] — Whisparr monitors nothing but the favourite performers, for new releases only; flix asks for one scene per click and never monitors a studio or performer. · _whisparr, downloads, policy_ · verified 2026-11-02
+- [[whisparr-nothing-monitored]] — Whisparr monitors only followed performers, for new releases, through flix's follow sync; flix never searches a studio or performer and fetches one scene per click. · _whisparr, downloads, policy_ · verified 2026-11-02
 
 ## Runbooks: how to do things
 
@@ -185,7 +185,7 @@ Pages: 141. Last generated 2026-11-02.
 - **admin** (1): [[cache-admin]]
 - **airplay** (2): [[airplay-not-chromecast]], [[media-proxy]]
 - **api** (4): [[stash-api]], [[stashdb]], [[whisparr-api]], [[whisparr-calendar-empty]]
-- **architecture** (7): [[overview]], [[postgres-not-sqlite]], [[settings-next-to-page]], [[single-user-no-login]], [[stash-owns-activity]], [[stash-stays-headless]], [[stash-whisparr-sync-options]]
+- **architecture** (7): [[overview]], [[postgres-not-sqlite]], [[settings-next-to-page]], [[single-user-no-login]], [[stash-owns-activity]], [[stash-stays-headless]], [[whisparr-sync]]
 - **argocd** (1): [[kubernetes-deployment]]
 - **assets** (1): [[stash-api]]
 - **audit** (6): [[2026-10-31-ux-audit]], [[2026-10-31-ux-copy-settings-errors]], [[2026-10-31-ux-phase0-web]], [[2026-10-31-ux-phase2-3-web]], [[2026-10-31-ux-phase4-desktop-polish]], [[2026-10-31-ux-phase5-freshness]]
@@ -294,7 +294,6 @@ Pages: 141. Last generated 2026-11-02.
 - **privacy** (7): [[2026-10-30-privacy-layers]], [[check-scripts-wrote-plays-to-stash]], [[discreet-mode]], [[panic-key-desktop-only]], [[pin-lock]], [[private-session]], [[settings-page]]
 - **private** (1): [[private-session]]
 - **process** (1): [[one-commit-per-initiative]]
-- **proposal** (1): [[stash-whisparr-sync-options]]
 - **proxy** (1): [[media-proxy]]
 - **public** (2): [[github-public-mirror]], [[readme-screenshots]]
 - **pwa** (2): [[2026-10-30-app-follows-deploys]], [[installable-app]]
@@ -335,14 +334,14 @@ Pages: 141. Last generated 2026-11-02.
 - **spike** (1): [[2026-10-26-spike-and-mvp]]
 - **sprites** (1): [[seek-bar-markers]]
 - **sqlite** (2): [[sqlite-or-chain-overflow]], [[stash-database-locked]]
-- **stash** (23): [[2026-10-26-spike-and-mvp]], [[2026-10-29-typed-stash-layer-and-tag-outage]], [[blocklist-and-exclusions]], [[caching]], [[check-scripts-wrote-plays-to-stash]], [[delete-via-whisparr]], [[failed-writes-toast-only]], [[gather-context]], [[media-proxy]], [[moments]], [[private-session]], [[prod-checks-read-only]], [[regenerate-stash-schema]], [[sqlite-or-chain-overflow]], [[stash-and-whisparr-clients]], [[stash-api]], [[stash-database-locked]], [[stash-filters-have-no-id-criterion]], [[stash-layer]], [[stash-library]], [[stash-owns-activity]], [[stash-stays-headless]], [[stash-whisparr-sync-options]]
+- **stash** (23): [[2026-10-26-spike-and-mvp]], [[2026-10-29-typed-stash-layer-and-tag-outage]], [[blocklist-and-exclusions]], [[caching]], [[check-scripts-wrote-plays-to-stash]], [[delete-via-whisparr]], [[failed-writes-toast-only]], [[gather-context]], [[media-proxy]], [[moments]], [[private-session]], [[prod-checks-read-only]], [[regenerate-stash-schema]], [[sqlite-or-chain-overflow]], [[stash-and-whisparr-clients]], [[stash-api]], [[stash-database-locked]], [[stash-filters-have-no-id-criterion]], [[stash-layer]], [[stash-library]], [[stash-owns-activity]], [[stash-stays-headless]], [[whisparr-sync]]
 - **stashdb** (9): [[2026-10-30-whisparr-and-stashdb]], [[2026-10-31-covers-shelf-skeletons]], [[2026-10-31-shelf-grid-view]], [[library-before-wanted-shelf]], [[media-proxy]], [[scene-page]], [[stash-library]], [[stashdb]], [[whisparr-shelf]]
 - **stations** (8): [[2026-10-28-round-2]], [[2026-10-29-round-3]], [[2026-10-30-markers-previews-api-split]], [[2026-10-31-home-speed-and-stations]], [[keyboard-shortcuts]], [[playlist-shuffle-plays-shuffled]], [[stations]], [[stations-only-user-made]]
 - **stats** (1): [[continue-history-stats]]
 - **storage** (1): [[nfs-media]]
 - **studio** (1): [[library-before-wanted-shelf]]
 - **studios** (4): [[2026-10-31-covers-shelf-skeletons]], [[2026-10-31-shelf-grid-view]], [[people-pages]], [[whisparr-shelf]]
-- **sync** (1): [[stash-whisparr-sync-options]]
+- **sync** (1): [[whisparr-sync]]
 - **tags** (2): [[2026-10-31-covers-shelf-skeletons]], [[people-pages]]
 - **tailwind** (1): [[grid-column-overflow]]
 - **tanstack** (1): [[web-app]]
@@ -363,6 +362,6 @@ Pages: 141. Last generated 2026-11-02.
 - **vocabulary** (1): [[categories-and-us-spelling]]
 - **web** (5): [[filter-popovers-clipped-in-scroll-row]], [[route-api-circular-types]], [[useeffect-return-value-crash]], [[vite-duplicate-react-query]], [[web-app]]
 - **webkit** (1): [[playwright-webkit-install-hangs]]
-- **whisparr** (18): [[2026-10-28-round-2]], [[2026-10-30-whisparr-and-stashdb]], [[2026-10-31-covers-shelf-skeletons]], [[2026-10-31-shelf-grid-view]], [[2026-10-31-ux-phase1-server-caching]], [[2026-10-31-ux-phase5-freshness]], [[delete-via-whisparr]], [[gather-context]], [[library-before-wanted-shelf]], [[phone-flow-tap-below-infinite-grid-lands-on-a-card]], [[prod-checks-read-only]], [[stash-and-whisparr-clients]], [[stash-whisparr-sync-options]], [[stashdb]], [[whisparr-api]], [[whisparr-calendar-empty]], [[whisparr-nothing-monitored]], [[whisparr-shelf]]
+- **whisparr** (18): [[2026-10-28-round-2]], [[2026-10-30-whisparr-and-stashdb]], [[2026-10-31-covers-shelf-skeletons]], [[2026-10-31-shelf-grid-view]], [[2026-10-31-ux-phase1-server-caching]], [[2026-10-31-ux-phase5-freshness]], [[delete-via-whisparr]], [[gather-context]], [[library-before-wanted-shelf]], [[phone-flow-tap-below-infinite-grid-lands-on-a-card]], [[prod-checks-read-only]], [[stash-and-whisparr-clients]], [[stashdb]], [[whisparr-api]], [[whisparr-calendar-empty]], [[whisparr-nothing-monitored]], [[whisparr-shelf]], [[whisparr-sync]]
 - **wiki** (2): [[2026-10-30-wiki-created]], [[CONVENTIONS]]
 - **workflow** (2): [[one-commit-per-initiative]], [[prod-checks-read-only]]

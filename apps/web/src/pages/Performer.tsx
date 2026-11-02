@@ -8,6 +8,7 @@ import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton, Stat } from '
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Avatar, Button, ErrorBox, Stars } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
+import { WatchLine } from '../components/WhisparrSync'
 import { useFavoritePerformer, usePerformer, useRatePerformer } from '../lib/api'
 import { age, ageAt, date } from '../lib/format'
 import { sized } from '@flix/shared'
@@ -96,6 +97,7 @@ function PerformerHeader({ id, p }: { id: string; p: PerformerDetail }) {
           <div className="mt-3 text-sm text-white/80">
             {[`${p.sceneCount.toLocaleString()} videos`, age(p.birthdate) && `${age(p.birthdate)} years old`, p.country, years].filter(Boolean).join(' · ')}
           </div>
+          <WatchLine id={id} />
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <FollowButton favorite={p.favorite} onToggle={() => fav.mutate({ id, favorite: !p.favorite })} />
             <div className="rounded-full bg-raised px-2 py-1">

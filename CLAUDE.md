@@ -117,8 +117,11 @@ Each has a wiki page with the full story; these are the one-line versions.
 8. **Checks against Stash must not write.** The headless check scripts block plays, activity,
    deletes, Whisparr gets, markers, O and ratings; `FLIX_SERVER=http://flix.lan` is for the check
    scripts only (`wiki/decisions/prod-checks-read-only.md`).
-9. **Whisparr: nothing monitored, one scene per click.** flix must never gain a code path that
-   monitors or searches a studio or performer (`wiki/decisions/whisparr-nothing-monitored.md`).
+9. **Whisparr: only followed performers are monitored, for new releases; one scene per click.**
+   flix's single monitoring path is the follow sync (`apps/server/src/sync.ts`): Stash favourites
+   minus the blocklist, on performers it tags `flix`, never a back catalogue or a search, never a
+   studio turned on. Nothing else may monitor or search a studio or performer
+   (`wiki/decisions/whisparr-nothing-monitored.md`, `wiki/architecture/whisparr-sync.md`).
 10. **Every push to `main` deploys.** Work in initiatives: verify (`node scripts/check.mjs`, a
     headless screenshot where UI changed), one commit per initiative with a plain imperative
     subject, push, then `node scripts/deploy-check.mjs`

@@ -1,4 +1,4 @@
-import type { WantedList, WantedScene } from '@flix/shared'
+import type { PerformerWatch, SyncStatus, WantedList, WantedScene } from '@flix/shared'
 import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, send } from './client'
 import { useFeatures } from './settings'
@@ -55,4 +55,42 @@ export function useGetScene() {
       qc.invalidateQueries({ queryKey: ['whisparr'] })
     },
   })
+}
+
+// --- the follow sync (server sync.ts) --------------------------------------------------
+
+// Is Whisparr watching this performer's new releases, and is anything of theirs downloading.
+export function usePerformerWatch(id: string) {
+  const on = useWhisparrOn()
+  return useQuery({ queryKey: ['whisparr', 'watch', id], queryFn: () => get<PerformerWatch>(`/whisparr/watch/performer/${id}`), enabled: on, staleTime: 30_000 })
+}
+
+// The sync's last run; polled while it runs.
+export function useSyncStatus() {
+  const on = useWhisparrOn()
+  return useQuery({
+    queryKey: ['sync'],
+    queryFn: () => get<SyncStatus>('/sync'),
+    enabled: on,
+    refetchInterval: (q) => (q.state.data?.running ? 2000 : 60_000),
+  })
+}
+
+export function useRunSync() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => send<SyncStatus>('POST', '/sync/run'),
+    onSuccess: (s) => {
+      qc.setQueryData(['sync'], s)
+      qc.invalidateQueries({ queryKey: ['whisparr', 'watch'] })
+    },
+  })
+}
+
+// After a follow or block the server syncs ~10 s later; look again once it has.
+export function refreshWatchSoon(qc: QueryClient) {
+  setTimeout(() => {
+    qc.invalidateQueries({ queryKey: ['whisparr', 'watch'] })
+    qc.invalidateQueries({ queryKey: ['sync'] })
+  }, 15_000)
 }
