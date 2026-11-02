@@ -18,7 +18,7 @@ export function WhisparrSyncSetting(): JSX.Element | null {
   const [all, setAll] = useState(false)
   if (!features?.whisparr) return null
   const on = !!settings?.whisparrSync
-  const changes = s?.items.filter((i) => i.action === 'monitor' || i.action === 'adopt' || i.action === 'unmonitor') ?? []
+  const changes = s?.items.filter((i) => i.action === 'monitor' || i.action === 'adopt' || i.action === 'unmonitor' || i.action === 'fetch') ?? []
   const hands = s?.items.filter((i) => i.action === 'missing' || i.action === 'unmanaged') ?? []
   const shown = all ? hands : hands.slice(0, 5)
   return (
@@ -29,8 +29,9 @@ export function WhisparrSyncSetting(): JSX.Element | null {
             <Radar size={16} className="text-accent" /> Let follows decide what Whisparr monitors
           </span>
           <span className="mt-0.5 block text-sm text-muted">
-            Whisparr watches the performers and studios you follow for new releases, never their older scenes and never with a
-            search. Everything else is unmonitored, except videos you fetch with Get. Off: flix only shows what it would change.
+            Whisparr discovers new scenes from the performers and studios you follow, and flix fetches each new release (one
+            search per scene, never their older scenes). Everything else is unmonitored, except videos you fetch with Get. Off:
+            flix only shows what it would change.
           </span>
         </span>
         <Switch on={on} disabled={!settings} onChange={(v) => save.mutate({ whisparrSync: v })} className="mt-0.5" />
@@ -42,6 +43,7 @@ export function WhisparrSyncSetting(): JSX.Element | null {
               <div className="font-medium">
                 {s.running ? 'Checking Whisparr…' : s.lastRun ? `Last checked ${ago(s.lastRun)}` : 'Not checked yet'}
                 {s.managed > 0 && <span className="text-muted"> · watching {s.managed}</span>}
+                {s.fetched > 0 && <span className="text-muted"> · {s.fetched} new {s.fetched === 1 ? 'scene' : 'scenes'} fetched</span>}
                 {s.scenes > 0 && <span className="text-muted"> · {s.scenes} old scenes {s.outcome === 'applied' ? 'unmonitored' : 'to unmonitor'}</span>}
               </div>
               {s.detail && <div className={s.outcome === 'failed' || s.outcome === 'skipped' ? 'mt-0.5 text-amber-300' : 'mt-0.5 text-muted'}>{s.detail}</div>}
@@ -67,7 +69,7 @@ export function WhisparrSyncSetting(): JSX.Element | null {
   )
 }
 
-const VERB: Record<SyncItem['action'], string> = { monitor: 'Watch', adopt: 'Keep watching', unmonitor: 'Stop', missing: 'Not in Whisparr', unmanaged: 'Set by hand' }
+const VERB: Record<SyncItem['action'], string> = { monitor: 'Watch', adopt: 'Keep watching', unmonitor: 'Stop', missing: 'Not in Whisparr', unmanaged: 'Set by hand', fetch: 'Fetch' }
 
 function Items({ title, items }: { title: string; items: SyncItem[] }) {
   return (
@@ -79,7 +81,7 @@ function Items({ title, items }: { title: string; items: SyncItem[] }) {
             <span className="w-28 shrink-0 text-muted">{VERB[i.action]}</span>
             <span className="min-w-0">
               <span className="font-medium">{i.name}</span>
-              {i.kind === 'studio' && <span className="text-muted"> (studio)</span>}
+              {i.kind !== 'performer' && <span className="text-muted"> ({i.kind})</span>}
               <span className="block text-xs text-muted">{i.error ? `failed: ${i.error}` : i.reason}</span>
             </span>
           </li>

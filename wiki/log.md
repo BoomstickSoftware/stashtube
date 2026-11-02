@@ -229,3 +229,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] correct | The sync reads Whisparr fresh each run; a cached list missed the cascade
 ## [2026-11-02] query | Whisparr metadata: unwatched studios stop learning scenes; StashDB-driven auto-Get proposed
 ## [2026-11-02] ingest | Whisparr global "monitor new items" switched off by the user: discovery without monitoring or search
+## [2026-11-02] decide | The sync fetches new releases of followed ones (one Get each); rule 9 restated

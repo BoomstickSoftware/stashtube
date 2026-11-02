@@ -480,9 +480,9 @@ export interface WantedList {
 // The Whisparr sync (architecture/whisparr-sync). Stash favourites (performers and studios) decide
 // everything Whisparr monitors: those are watched for new releases (tagged `flix`), all else is
 // unmonitored, and old scenes Whisparr monitored on its own are trimmed. Never a search.
-export type SyncAction = 'monitor' | 'adopt' | 'unmonitor' | 'missing' | 'unmanaged'
+export type SyncAction = 'monitor' | 'adopt' | 'unmonitor' | 'missing' | 'unmanaged' | 'fetch'
 export interface SyncItem {
-  kind: 'performer' | 'studio'
+  kind: 'performer' | 'studio' | 'scene'
   name: string
   action: SyncAction // monitor/unmonitor/adopt change Whisparr; missing and unmanaged need a hand
   reason: string
@@ -498,6 +498,7 @@ export interface SyncStatus {
   items: SyncItem[] // the last run's changes (made or planned) and what needs a hand
   managed: number // performers and studios watched in Whisparr after the last run
   scenes: number // monitored scenes the last run unmonitored (or would)
+  fetched: number // new scenes of followed ones the last run fetched (Get)
 }
 // A performer page's "Watching for new scenes" line.
 export interface PerformerWatch {

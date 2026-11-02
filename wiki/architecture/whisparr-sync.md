@@ -30,6 +30,15 @@ Built 2026-11-02; widened the same evening to studios and to "everything else of
 Why scenes are trimmed: Whisparr's "monitor new items" monitors every scene it newly learns
 about, old ones included (a newly watched studio's whole catalogue), and `afterDate` is untested.
 
+## New releases are fetched by flix
+
+With the global "monitor new items" off, a followed one's new scenes arrive in Whisparr
+unmonitored. Each run Gets every unmonitored scene that belongs to a watched performer or studio,
+was released after its watch start (less 14 days), has no file, is not downloading or a Get
+already, and is not in Stash: monitor it and run one `MoviesSearch` for that one id, recorded in
+`whisparr_gets`. Newest first, 5 s apart, at most 10 per timer run and 25 per script run; the
+rest wait for the next run. Shown as "Fetch" items and "N new scenes fetched".
+
 ## Running it
 
 - `node scripts/whisparr-sync.mjs` (dry run) and `--apply`; `--force` when it would watch far
@@ -89,8 +98,6 @@ about, old ones included (a newly watched studio's whole catalogue), and `afterD
   Whisparr would then monitor single scenes only: no performer or studio monitoring, no cascade,
   no trimming, no database growth. Unwatched studios Whisparr never refreshes are already
   browsable through the shelf ([[whisparr-unwatched-studios-stop-learning-scenes]]).
-- **Since 2026-11-02 (evening) the global "monitor new items" is off**
-  ([[whisparr-unwatched-studios-stop-learning-scenes]]): watching a followed performer or
-  studio now only makes Whisparr *discover* their new scenes, unmonitored, with no search. The
-  auto-download half of this sync no longer downloads anything by itself; a Get step for
-  followed ones' new scenes (from Whisparr's list or StashDB) is needed for that.
+- Since 2026-11-02 (evening) the global "monitor new items" is off
+  ([[whisparr-unwatched-studios-stop-learning-scenes]]): watching only makes Whisparr *discover*
+  new scenes, unmonitored. The sync therefore **fetches** them: see "New releases" above.

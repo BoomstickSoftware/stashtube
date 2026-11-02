@@ -8,6 +8,9 @@
 //   watched studio's whole catalogue). So a monitored scene stays monitored only if it is a
 //   Get from flix, is downloading or grabbed, or belongs to a watched performer or studio and
 //   came out after that one's watch started (less GRACE). Everything else is unmonitored.
+// - New releases of watched ones are fetched: with Whisparr's global "monitor new items" off
+//   (2026-11-02) discovery adds them unmonitored, so the sync Gets each one (monitor + one
+//   search), one at a time, a few per run. Not when already in Stash, monitored or downloading.
 // Level-triggered: each run reads every side and applies the difference; a failed run is
 // repeated by the next. A click never waits on Whisparr. architecture/whisparr-sync.
 import type { SyncItem, SyncStatus } from '@flix/shared'
@@ -27,6 +30,10 @@ export const GRACE = 14 * 86_400_000 // a release this much older than the watch
 export const MAX_TURN_ON = 20
 // Watching fewer than this share of what was watched looks like a wrong answer from Stash.
 export const MIN_KEEP_SHARE = 0.5
+// Gets per run: the timer's runs (every 15 min) and a person's run. One at a time, spaced, so
+// Whisparr never sees a burst of searches (the October bulk-search incident).
+export const MAX_AUTO_GET = { timer: 10, asked: 25 }
+const GET_SPACING = 5_000
 const EVERY = 15 * 60_000
 const FIRST_AFTER = 3 * 60_000
 const KICK_AFTER = 10_000
@@ -54,6 +61,7 @@ export interface Plan {
   off: { e: Entity; reason: string }[] // watched (or tagged) and not followed, or blocked
   missing: (Favourite & { kind: Kind })[] // followed, unknown to Whisparr
   scenes: number[] // monitored scenes to unmonitor
+  fetch: { id: number; title: string; releaseDate: string | null }[] // new releases of watched ones to Get
   sceneReasons: Record<string, number>
   watchStart: { kind: Kind; foreignId: string }[] // newly watched: record the start
   watchEnd: { kind: Kind; foreignId: string }[] // no longer watched: forget the start
@@ -69,16 +77,17 @@ export function planSync(input: {
   favourites: { performer: Favourite[]; studio: Favourite[] }
   blocked: { performer: Set<string>; studio: Set<string> } // StashDB ids
   entities: Entity[] // Whisparr's performers and studios
-  movies: Pick<Movie, 'id' | 'monitored' | 'hasFile' | 'releaseDate' | 'performerForeignIds' | 'studioForeignId'>[]
+  movies: Pick<Movie, 'id' | 'title' | 'stashId' | 'monitored' | 'hasFile' | 'releaseDate' | 'performerForeignIds' | 'studioForeignId'>[]
+  owned?: Set<string> // StashDB ids of scenes already in Stash
   busy: Set<number> // scenes downloading or grabbed
   gets: Set<number> // scenes fetched with Get
   since: Map<string, number> // kind:foreignId -> ms the watch started
   tagId: number | null
   now: number
 }): Plan {
-  const { favourites, blocked, entities, movies, busy, gets, since, tagId, now } = input
+  const { favourites, blocked, entities, movies, busy, gets, since, tagId, now, owned = new Set<string>() } = input
   const tagged = (e: Entity) => tagId !== null && e.tags.includes(tagId)
-  const plan: Plan = { on: [], adopt: [], off: [], missing: [], scenes: [], sceneReasons: {}, watchStart: [], watchEnd: [], getsDone: [], watched: 0 }
+  const plan: Plan = { on: [], adopt: [], off: [], missing: [], scenes: [], fetch: [], sceneReasons: {}, watchStart: [], watchEnd: [], getsDone: [], watched: 0 }
   const desired = new Map<string, Entity>() // key -> entity
   for (const kind of ['performer', 'studio'] as const) {
     const byForeign = new Map(entities.filter((e) => e.kind === kind).map((e) => [e.foreignId, e]))
@@ -111,17 +120,24 @@ export function planSync(input: {
   const count = (r: string) => (plan.sceneReasons[r] = (plan.sceneReasons[r] ?? 0) + 1)
   for (const m of movies) {
     if (m.hasFile && gets.has(m.id)) plan.getsDone.push(m.id)
-    if (!m.monitored || busy.has(m.id) || gets.has(m.id)) continue
     const released = m.releaseDate ? Date.parse(m.releaseDate) : NaN
     const starts = [...(m.performerForeignIds ?? []).map((f) => startOf('performer', f)), m.studioForeignId ? startOf('studio', m.studioForeignId) : null].filter((x): x is number => x !== null)
+    const isNew = starts.length > 0 && released >= Math.min(...starts) - GRACE
+    if (!m.monitored) {
+      // discovered unmonitored: fetch it when it is a watched one's new release we do not own
+      if (isNew && !m.hasFile && !busy.has(m.id) && !gets.has(m.id) && !(m.stashId && owned.has(m.stashId))) plan.fetch.push({ id: m.id, title: m.title, releaseDate: m.releaseDate ?? null })
+      continue
+    }
+    if (busy.has(m.id) || gets.has(m.id)) continue
     if (!starts.length) {
       plan.scenes.push(m.id)
       count('not from a followed performer or studio')
-    } else if (!(released >= Math.min(...starts) - GRACE)) {
+    } else if (!isNew) {
       plan.scenes.push(m.id)
       count('released before the watch started')
     }
   }
+  plan.fetch.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '')) // newest first
   plan.watched = desired.size
   return plan
 }
@@ -140,15 +156,16 @@ export function itemsOf(plan: Plan): SyncItem[] {
     ...plan.adopt.map((e) => ({ kind: e.kind, name: e.name, action: 'adopt' as const, reason: 'followed, already watched in Whisparr' })),
     ...plan.off.map(({ e, reason }) => ({ kind: e.kind, name: e.name, action: 'unmonitor' as const, reason })),
     ...plan.missing.map((f) => ({ kind: f.kind, name: f.name, action: 'missing' as const, reason: 'followed, but Whisparr does not know it: add it in Whisparr' })),
+    ...plan.fetch.map((m) => ({ kind: 'scene' as const, name: m.title, action: 'fetch' as const, reason: `new release${m.releaseDate ? ` (${m.releaseDate.slice(0, 10)})` : ''} of someone you follow` })),
   ]
 }
 
 export const summaryOf = (p: Plan) =>
-  `${p.on.length} to watch, ${p.adopt.length} to tag, ${p.off.length} performers or studios to unmonitor, ${p.scenes.length} scenes to unmonitor`
+  `${p.on.length} to watch, ${p.adopt.length} to tag, ${p.off.length} performers or studios to unmonitor, ${p.scenes.length} scenes to unmonitor, ${p.fetch.length} new scenes to fetch`
 
 // ---------- the runner ----------
 
-let status: SyncStatus = { available: false, enabled: false, running: false, lastRun: null, outcome: null, detail: null, items: [], managed: 0, scenes: 0 }
+let status: SyncStatus = { available: false, enabled: false, running: false, lastRun: null, outcome: null, detail: null, items: [], managed: 0, scenes: 0, fetched: 0 }
 let running: Promise<SyncStatus> | null = null
 let tagCache: number | null = null
 
@@ -178,8 +195,8 @@ export function runSync(opts: { apply?: boolean; asked?: boolean; force?: boolea
 async function run({ apply, asked = false, force = false }: { apply?: boolean; asked?: boolean; force?: boolean }): Promise<SyncStatus> {
   const enabled = (await getSettings().catch(() => null))?.whisparrSync ?? false
   const writing = apply ?? enabled
-  const done = (outcome: SyncStatus['outcome'], detail: string, items: SyncItem[] = status.items, managed = status.managed, scenes = 0) => {
-    status = { available: !!config.whisparr, enabled, running: false, lastRun: new Date().toISOString(), outcome, detail, items, managed, scenes }
+  const done = (outcome: SyncStatus['outcome'], detail: string, items: SyncItem[] = status.items, managed = status.managed, scenes = 0, fetched = 0) => {
+    status = { available: !!config.whisparr, enabled, running: false, lastRun: new Date().toISOString(), outcome, detail, items, managed, scenes, fetched }
     if (outcome === 'failed' || outcome === 'skipped') console.warn(`sync: ${outcome}: ${detail}`)
     return status
   }
@@ -205,10 +222,11 @@ async function run({ apply, asked = false, force = false }: { apply?: boolean; a
   } catch (e) {
     return done('skipped', `Stash or Postgres did not answer (${(e as Error).message}); nothing changed`)
   }
-  let entities: Entity[], movies: Movie[], busy: Set<number>, tags: { id: number; label: string }[]
+  let entities: Entity[], movies: Movie[], busy: Set<number>, tags: { id: number; label: string }[], owned: Set<string>
   try {
     whisparr.forgetLists() // plan from what Whisparr holds now, not a cached copy
-    const [performers, studios, m, a, t] = await Promise.all([whisparr.listPerformers(), whisparr.listStudios(), whisparr.movies(), whisparr.activity(), whisparr.listTags()])
+    const [performers, studios, m, a, t, inStash] = await Promise.all([whisparr.listPerformers(), whisparr.listStudios(), whisparr.movies(), whisparr.activity(), whisparr.listTags(), stash.sceneStashIdMap()])
+    owned = new Set(inStash.keys())
     entities = [...performers.map(fromPerformer), ...studios.map(fromStudio)]
     movies = m
     busy = new Set([...a.downloading, ...a.grabbedAt.keys()])
@@ -222,10 +240,10 @@ async function run({ apply, asked = false, force = false }: { apply?: boolean; a
   // watched performer, Whisparr adds their studios and co-performers with the same flags AND
   // tags (2026-11-02: 43 followed became 149 tagged in one run), so the tag over-counts.
   const watchedBefore = since.size
-  const plan = planSync({ favourites, blocked, entities, movies, busy, gets, since, tagId, now: Date.now() })
+  const plan = planSync({ favourites, blocked, entities, movies, busy, gets, since, tagId, now: Date.now(), owned })
   const items = itemsOf(plan)
   const summary = summaryOf(plan)
-  const changes = plan.on.length + plan.adopt.length + plan.off.length + plan.scenes.length
+  const changes = plan.on.length + plan.adopt.length + plan.off.length + plan.scenes.length + plan.fetch.length
   const why = refusal(plan, watchedBefore, asked, force)
   if (why) return done('skipped', why, items, watchedBefore, plan.scenes.length)
   if (!writing) return done('planned', changes ? `${apply === false ? 'dry run' : 'sync is off'}; it would: ${summary}` : 'Whisparr already matches', items, watchedBefore, plan.scenes.length)
@@ -254,14 +272,25 @@ async function run({ apply, asked = false, force = false }: { apply?: boolean; a
   if (plan.scenes.length) await attempt('scenes', () => whisparr.unmonitorMovies(plan.scenes))
   for (const e of plan.on) await attempt(e.name, () => patch(e, { monitored: true, whisparrMonitorNewItems: true, tags: [...new Set([...e.tags, t])] }))
   for (const e of plan.adopt) await attempt(e.name, () => patch(e, { tags: [...new Set([...e.tags, t])] }))
+  // New releases of watched ones: Get each (monitor + one search), spaced; the rest next run.
+  const fetchNow = plan.fetch.slice(0, asked ? MAX_AUTO_GET.asked : MAX_AUTO_GET.timer)
+  for (const [i, m] of fetchNow.entries()) {
+    if (i) await new Promise((r) => setTimeout(r, GET_SPACING))
+    await attempt(m.title, async () => {
+      await whisparr.getScene(m.id)
+      await rememberGet(m.id)
+    })
+  }
+  const deferred = plan.fetch.length - fetchNow.length
   await attempt('bookkeeping', async () => {
     for (const w of plan.watchEnd) await db.delete(whisparrWatch).where(and(eq(whisparrWatch.kind, w.kind), eq(whisparrWatch.foreignId, w.foreignId)))
     for (const id of plan.getsDone) await db.delete(whisparrGets).where(eq(whisparrGets.movieId, id))
   })
   const withErrors = items.map((i) => (errors.has(i.name) ? { ...i, error: errors.get(i.name) } : i))
   const sceneError = errors.get('scenes')
-  const detail = errors.size ? `${summary}; ${errors.size} failed${sceneError ? ` (scenes: ${sceneError})` : ''}` : summary
-  return done(errors.size ? 'failed' : 'applied', changes ? detail : 'Whisparr already matches', withErrors, plan.watched, plan.scenes.length)
+  const later = deferred > 0 ? `; ${deferred} more new scenes next run` : ''
+  const detail = (errors.size ? `${summary}; ${errors.size} failed${sceneError ? ` (scenes: ${sceneError})` : ''}` : summary) + later
+  return done(errors.size ? 'failed' : 'applied', changes ? detail : 'Whisparr already matches', withErrors.filter((i) => i.action !== 'fetch' || fetchNow.some((m) => m.title === i.name) || i.error), plan.watched, plan.scenes.length, fetchNow.length)
 }
 
 // A follow or a block changed what Whisparr should do: run soon, once for a burst of clicks.

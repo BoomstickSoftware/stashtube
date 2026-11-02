@@ -8,8 +8,10 @@ const DAY = 86_400_000
 const ent = (kind: Kind, id: number, foreignId: string, o: Partial<Entity> = {}): Entity => ({ kind, id, name: `${kind}${id}`, foreignId, monitored: false, whisparrMonitorNewItems: false, tags: [], ...o })
 const watched = { monitored: true, whisparrMonitorNewItems: true }
 const fav = (name: string, ...stashIds: string[]) => ({ name, stashIds })
-const scene = (id: number, o: { monitored?: boolean; hasFile?: boolean; released?: number; performers?: string[]; studio?: string } = {}) => ({
+const scene = (id: number, o: { monitored?: boolean; hasFile?: boolean; released?: number; performers?: string[]; studio?: string; stashId?: string } = {}) => ({
   id,
+  title: `scene${id}`,
+  stashId: o.stashId ?? null,
   monitored: o.monitored ?? true,
   hasFile: o.hasFile ?? false,
   releaseDate: o.released === undefined ? null : new Date(o.released).toISOString().slice(0, 10),
@@ -144,4 +146,40 @@ test('items say what each change is and why', () => {
       ['Gone', 'missing'],
     ],
   )
+})
+
+test('fetch: an unmonitored new release of a watched one is fetched, newest first', () => {
+  const p = plan({
+    favourites: { performer: [fav('A', 'a')], studio: [fav('S', 's')] },
+    entities: [ent('performer', 1, 'a', { ...watched, tags: [TAG] }), ent('studio', 2, 's', { ...watched, tags: [TAG] })],
+    since: new Map([['performer:a', NOW - 10 * DAY], ['studio:s', NOW - 10 * DAY]]),
+    movies: [
+      scene(40, { monitored: false, performers: ['a'], released: NOW - 3 * DAY }), // fetch
+      scene(41, { monitored: false, studio: 's', released: NOW - DAY }), // fetch, newer
+      scene(42, { monitored: false, studio: 's', released: NOW - 400 * DAY }), // old: no
+      scene(43, { monitored: false, studio: 'x', released: NOW - DAY }), // not followed: no
+      scene(44, { monitored: false, studio: 's', released: NOW - DAY, hasFile: true }), // has the file: no
+      scene(45, { monitored: false, studio: 's', released: NOW - DAY, stashId: 'in-stash' }), // already in Stash: no
+      scene(46, { monitored: true, studio: 's', released: NOW - DAY }), // already monitored: no
+    ],
+    owned: new Set(['in-stash']),
+  })
+  assert.deepEqual(p.fetch.map((m) => m.id), [41, 40])
+  assert.deepEqual(p.scenes, []) // the monitored new release stays
+})
+
+test('fetch: nothing that is downloading, already a Get, or blocked', () => {
+  const p = plan({
+    favourites: { performer: [fav('A', 'a'), fav('B', 'b')], studio: [] },
+    blocked: { performer: new Set(['b']), studio: new Set() },
+    entities: [ent('performer', 1, 'a', { ...watched, tags: [TAG] }), ent('performer', 2, 'b')],
+    movies: [
+      scene(50, { monitored: false, performers: ['a'], released: NOW - DAY }),
+      scene(51, { monitored: false, performers: ['a'], released: NOW - DAY }),
+      scene(52, { monitored: false, performers: ['b'], released: NOW - DAY }),
+    ],
+    busy: new Set([50]),
+    gets: new Set([51]),
+  })
+  assert.deepEqual(p.fetch, [])
 })

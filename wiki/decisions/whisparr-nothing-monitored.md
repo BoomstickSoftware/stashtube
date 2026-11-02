@@ -104,3 +104,11 @@ date per performer and studio (`whisparr_watch`) and unmonitors their scenes rel
 14 days before it; Gets from flix (`whisparr_gets`) and downloads in progress are never touched.
 The automatic timer was switched off for the change; runs are by the script unless the user
 turns the Settings switch back on.
+
+## Discovery and fetching split (2026-11-02, night)
+
+The user switched Whisparr's global "monitor new items" off: followed performers and studios
+discover their new scenes unmonitored, and nothing downloads on its own. flix's sync now Gets each
+new release of a followed one (one scene, one search), and the user asked to go on with a
+StashDB-backed Discover page in flix, paced multi-scene Get, and a cleanup of what Whisparr holds
+but never fetched. All downloads are now single-scene Gets, by a click or by the sync.
