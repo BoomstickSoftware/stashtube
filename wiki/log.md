@@ -226,3 +226,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] decide | Whisparr sync widened: favourite studios too, everything else unmonitored, old scenes trimmed; run by scripts/whisparr-sync.mjs
 ## [2026-11-02] ingest | Follow from every list: one heart on performer, studio (all views) and category cards; categories say Follow, not Pin
 ## [2026-11-02] ingest | Whisparr cascades a watched performer's flags and tags to their studios and co-performers; the sync counts its own watch rows
+## [2026-11-02] correct | The sync reads Whisparr fresh each run; a cached list missed the cascade

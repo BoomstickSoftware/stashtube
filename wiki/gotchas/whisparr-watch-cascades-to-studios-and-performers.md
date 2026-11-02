@@ -35,6 +35,10 @@ monitored scenes released before the watch start. Its safety check ("would watch
 before") counts flix's own `whisparr_watch` rows, not tagged entries; counting tags made the
 next run look like a collapse (43 wanted against 149 tagged) and refuse.
 
+A run must also read Whisparr's lists fresh: the first runs planned from the cached movie list
+(up to 15 minutes old) and left 1,311 scenes monitored right after unmonitoring 653. Since then
+every run drops the cached lists first (`forgetLists()`).
+
 ## Avoid
 
 - Never decide what flix owns from a Whisparr tag; Whisparr copies tags.

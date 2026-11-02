@@ -207,6 +207,7 @@ async function run({ apply, asked = false, force = false }: { apply?: boolean; a
   }
   let entities: Entity[], movies: Movie[], busy: Set<number>, tags: { id: number; label: string }[]
   try {
+    whisparr.forgetLists() // plan from what Whisparr holds now, not a cached copy
     const [performers, studios, m, a, t] = await Promise.all([whisparr.listPerformers(), whisparr.listStudios(), whisparr.movies(), whisparr.activity(), whisparr.listTags()])
     entities = [...performers.map(fromPerformer), ...studios.map(fromStudio)]
     movies = m

@@ -390,3 +390,10 @@ export async function unmonitorMovies(ids: number[]) {
   const gone = new Set(ids)
   dataCache.patch<Movie[]>('whisparr:movies', (list) => list.map((m) => (gone.has(m.id) ? { ...m, monitored: false } : m)))
 }
+
+// The sync must plan from what Whisparr holds now: a watched performer's refresh adds hundreds of
+// studios, performers and monitored scenes in minutes (gotchas/whisparr-watch-cascades-...), and
+// a list cached 15 minutes ago misses them. Drop the cached lists so the next reads fetch.
+export function forgetLists() {
+  dataCache.invalidate(LIST, 'whisparr:people')
+}
