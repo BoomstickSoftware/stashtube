@@ -83,3 +83,9 @@ about, old ones included (a newly watched studio's whole catalogue), and `afterD
   following a new studio.
 - Followed performers' quality profiles are left as they are (most are "Any").
 - Adding a performer Whisparr lacks is manual.
+- **Proposed 2026-11-02, not built: watch StashDB instead of monitoring in Whisparr.** flix
+  would poll StashDB for followed performers' and studios' scenes released after their watch
+  start, not in Stash and not in Whisparr, and Get each one (the existing single-scene path).
+  Whisparr would then monitor single scenes only: no performer or studio monitoring, no cascade,
+  no trimming, no database growth. Unwatched studios Whisparr never refreshes are already
+  browsable through the shelf ([[whisparr-unwatched-studios-stop-learning-scenes]]).
