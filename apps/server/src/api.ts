@@ -737,10 +737,12 @@ api.post('/discover/run', async (c) => c.json({ queued: await getq.discoverNew()
 
 api.get('/whisparr/cleanup', (c) => c.json(cleanup.cleanupStatus))
 api.post('/whisparr/cleanup', async (c) => {
-  const body = parse(z.object({ apply: z.boolean().optional(), studio: z.string().regex(/^[0-9a-f-]{36}$/i).optional() }), await c.req.json().catch(() => ({})))
+  const uuid = z.string().regex(/^[0-9a-f-]{36}$/i).optional()
+  const body = parse(z.object({ apply: z.boolean().optional(), studio: uuid, performer: uuid }), await c.req.json().catch(() => ({})))
+  if (body.studio && body.performer) throw new HTTPException(400, { message: 'one of studio or performer' })
   try {
-    if (!body.apply) return c.json(await cleanup.previewCleanup(body.studio))
-    return c.json(await cleanup.startCleanup(body.studio), 202)
+    if (!body.apply) return c.json(await cleanup.previewCleanup(body.studio, body.performer))
+    return c.json(await cleanup.startCleanup(body.studio, body.performer), 202)
   } catch (e) {
     if (e instanceof RangeError) throw new HTTPException(409, { message: e.message })
     throw e

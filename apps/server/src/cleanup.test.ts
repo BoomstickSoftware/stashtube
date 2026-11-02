@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { emptyStudios, planCleanup } from './cleanup.ts'
+import { emptyPerformers, emptyStudios, planCleanup } from './cleanup.ts'
 
 const m = (id: number, o: Partial<{ hasFile: boolean; stashId: string; studioForeignId: string }> = {}) => ({ id, hasFile: false, stashId: `s${id}`, studioForeignId: 'x', ...o })
 
@@ -18,4 +18,16 @@ test('only studios with no scene record left go', () => {
   const studios = [{ id: 1, foreignId: 'a' }, { id: 2, foreignId: 'b' }, { id: 3, foreignId: 'c' }]
   assert.deepEqual(emptyStudios(studios, [{ studioForeignId: 'a' }]), [2, 3])
   assert.deepEqual(emptyStudios(studios, [{ studioForeignId: 'a' }], 'b'), [2])
+})
+
+test('a performer stays while a remaining scene names them, by id or by name', () => {
+  const performers = [
+    { id: 1, foreignId: 'a', fullName: 'A' },
+    { id: 2, foreignId: 'b', fullName: 'B' },
+    { id: 3, foreignId: 'c', fullName: 'C' },
+  ]
+  const movies = [{ performerForeignIds: ['a'], performerNames: ['A'] }, { performerForeignIds: [], performerNames: ['B'] }]
+  assert.deepEqual(emptyPerformers(performers, movies), [3])
+  assert.deepEqual(emptyPerformers(performers, movies, 'c'), [3])
+  assert.deepEqual(emptyPerformers(performers, movies, 'a'), [])
 })

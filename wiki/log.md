@@ -238,3 +238,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] ingest | Settings switch on: guard every 15 min, daily discovery; Gets of new scenes add studios and performers with flags on, which the guard turns off
 ## [2026-11-02] decide | Whisparr cleanup widened by the user: every record without a file goes unless downloading or a waiting flix Get; empty studios too
 ## [2026-11-02] ingest | Widened Whisparr cleanup run: 10 scenes and 1,270 empty studios deleted; 2,683 records with files and 125 studios remain
+## [2026-11-02] decide | Whisparr cleanup covers performers too: one with no remaining scene (by id or name) is deleted

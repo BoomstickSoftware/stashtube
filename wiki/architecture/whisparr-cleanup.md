@@ -1,7 +1,7 @@
 ---
 title: Whisparr cleanup (only records backed by a file or a fetch in flight stay)
 kind: architecture
-summary: Deletes every Whisparr scene record without a file unless it is downloading, a waiting Get or queued, then every studio left with no scene, after a Backup; never files, never records with files.
+summary: Deletes every Whisparr scene record without a file unless it is downloading, a waiting Get or queued, then every studio and performer left with no scene, after a Backup; never files.
 tags: [whisparr, cleanup, operations]
 status: current
 verified: 2026-11-02
@@ -33,7 +33,10 @@ studios", without removing files or the metadata of files that exist.
 
 Then studios, read fresh after the scene deletes: a studio with **no scene record left** is
 deleted (`DELETE /studio/:id?deleteFiles=false`), so a studio with any file keeps its record.
-Performers are not touched.
+Performers the same way (`DELETE /performer/:id?deleteFiles=false`), added at the user's request
+the same night. A performer is kept if any remaining scene names them by id **or by name**: 4 of
+2,707 scene records listed performer names without ids, and 5 otherwise empty performers shared
+a name with a scene.
 
 No import exclusion, so a deleted scene can be fetched again later. Existing exclusions (from
 deletes of watched scenes) are untouched. _Until 2026-11-02 (late) monitored records and feature
@@ -44,8 +47,9 @@ films without files were kept, and studios were not cleaned._
 `node scripts/whisparr-cleanup.mjs` prints the plan; `--studio <stashdb-id>` narrows it to one
 studio; `--apply` runs it on the server in the background and the script prints progress.
 Each run starts with Whisparr's `Backup` command and stops if it does not complete. Scene
-deletes go 100 at a time, 5 s apart; studio deletes one at a time, and five failures in a row stop
-the run. With `--studio`, only that studio's scene records and then the studio itself.
+deletes go 100 at a time, 5 s apart; studio and performer deletes one at a time, and five failures in a row stop
+the run. With `--studio`, only that studio's scene records and then the studio itself; with `--performer`,
+only that performer, if no scene names them.
 
 `GET /api/whisparr/cleanup` is the status; `POST /api/whisparr/cleanup {apply?, studio?}`
 previews or starts (409 while one runs).

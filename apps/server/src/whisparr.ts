@@ -439,6 +439,12 @@ export async function deleteStudio(id: number) {
   dataCache.invalidate('whisparr:people')
 }
 
+// Delete one performer record, only one with no scene record left; never files.
+export async function deletePerformer(id: number) {
+  await call('DELETE', `/performer/${id}?deleteFiles=false&addImportExclusion=false`)
+  dataCache.invalidate('whisparr:people')
+}
+
 // Fetch the movie list now, not from the cache (the cleanup must plan from what Whisparr holds).
 export async function freshMovies(): Promise<Movie[]> {
   forgetLists()

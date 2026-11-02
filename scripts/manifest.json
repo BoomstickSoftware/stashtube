@@ -384,13 +384,14 @@
     {
       "name": "whisparr-cleanup",
       "file": "scripts/whisparr-cleanup.mjs",
-      "does": "Deletes Whisparr scene records without a file unless downloading or grabbed, a waiting Get from flix or queued, then every studio left with no scene record; never files, no import exclusion, never a record with a file; starts with a Whisparr Backup; runs on the flix server. Dry run unless --apply.",
+      "does": "Deletes Whisparr scene records without a file unless downloading or grabbed, a waiting Get from flix or queued, then every studio and performer left with no scene record; never files, no import exclusion, never a record with a file; starts with a Whisparr Backup; runs on the flix server. Dry run unless --apply.",
       "usage": [
         "node scripts/whisparr-cleanup.mjs",
         "node scripts/whisparr-cleanup.mjs --studio <stashdb-id> --apply",
+        "node scripts/whisparr-cleanup.mjs --performer <stashdb-id> --apply",
         "node scripts/whisparr-cleanup.mjs --apply"
       ],
-      "writes": "Whisparr: a Backup, then deletes scene and studio records (not files), only with --apply",
+      "writes": "Whisparr: a Backup, then deletes scene, studio and performer records (not files), only with --apply",
       "tags": [
         "whisparr",
         "cleanup",
