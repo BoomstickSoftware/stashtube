@@ -4,11 +4,12 @@ import { type Page, performerSorts, type PerformerGender, type PerformerSort, ty
 import { useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Pin, Search, Star, Table as TableIcon } from 'lucide-react'
+import { FollowHeart } from '../components/EntityHeader'
+import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Search, Star, Table as TableIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Avatar, Bone, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
-import { oneOf, useStored } from '../lib/storage'
+import { asBool, oneOf, useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useStudios, useTagTiles } from '../lib/api'
 import { sized, srcSet } from '@flix/shared'
 
@@ -89,21 +90,7 @@ export function Performers(): JSX.Element {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault() // the tile is a link
-                    fav.mutate({ id: p.id, favorite: !p.favorite })
-                  }}
-                  title={p.favorite ? 'Unfollow' : 'Follow'}
-                  aria-label={p.favorite ? `Unfollow ${p.name}` : `Follow ${p.name}`}
-                  aria-pressed={p.favorite}
-                  className={clsx(
-                    'absolute top-2 right-2 rounded-full bg-black/40 p-1.5 backdrop-blur transition hover:scale-110 hover:bg-black/60',
-                    !p.favorite && '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100',
-                  )}
-                >
-                  <Heart size={18} className={p.favorite ? 'fill-accent text-accent' : 'text-white'} />
-                </button>
+                <FollowHeart following={p.favorite} name={p.name} onToggle={() => fav.mutate({ id: p.id, favorite: !p.favorite })} className="top-2 right-2" />
               </div>
             </Link>
           ))}
@@ -173,6 +160,12 @@ export function Studios(): JSX.Element {
   const setPrefs = (patch: Partial<StudioPrefs>) => setPrefsState((p) => ({ ...p, ...patch }))
   const dq = useDebounced(q, 200)
   const fav = useFavoriteStudio()
+  // Follow from any of the three views: the hook updates the studio page's cache; the list here
+  // is patched at once and refetched after.
+  const follow = (s: StudioCard) => {
+    qc.setQueriesData<Page<StudioCard>>({ queryKey: ['studios'] }, (d) => d && { ...d, items: d.items.map((x) => (x.id === s.id ? { ...x, favorite: !s.favorite } : x)) })
+    fav.mutate({ id: s.id, favorite: !s.favorite }, { onSettled: () => qc.invalidateQueries({ queryKey: ['studios'] }) })
+  }
   const qc = useQueryClient()
   const { data, error, isLoading } = useStudios({ q: dq || undefined })
   const all = useMemo(() => {
@@ -281,9 +274,9 @@ export function Studios(): JSX.Element {
                 <span className="text-sm font-normal text-muted">{groups.count(f)} videos</span>
               </h2>
               <StudioGrid>
-                {f.head && <StudioTile s={f.head} label={`All of ${f.name}`} />}
+                {f.head && <StudioTile s={f.head} label={`All of ${f.name}`} onFollow={follow} />}
                 {f.members.map((s) => (
-                  <StudioTile key={s.id} s={s} />
+                  <StudioTile key={s.id} s={s} onFollow={follow} />
                 ))}
               </StudioGrid>
             </section>
@@ -293,7 +286,7 @@ export function Studios(): JSX.Element {
               <h2 className="mb-3 text-lg font-bold">Independent</h2>
               <StudioGrid>
                 {groups.solo.map((s) => (
-                  <StudioTile key={s.id} s={s} />
+                  <StudioTile key={s.id} s={s} onFollow={follow} />
                 ))}
               </StudioGrid>
             </section>
@@ -302,7 +295,7 @@ export function Studios(): JSX.Element {
       ) : view === 'grid' ? (
         <StudioGrid>
           {all.map((s) => (
-            <StudioTile key={s.id} s={s} showParent />
+            <StudioTile key={s.id} s={s} showParent onFollow={follow} />
           ))}
         </StudioGrid>
       ) : (
@@ -311,13 +304,7 @@ export function Studios(): JSX.Element {
           sort={prefs.sort}
           dir={prefs.dir}
           onSort={(sort) => setPrefs(sort === prefs.sort ? { dir: prefs.dir === 'asc' ? 'desc' : 'asc' } : { sort, dir: sort === 'name' ? 'asc' : 'desc' })}
-          onFavorite={(s) => {
-            // the hook updates the studio page's cache; the list here is patched and refetched
-            qc.setQueriesData<Page<StudioCard>>({ queryKey: ['studios'] }, (d) =>
-              d && { ...d, items: d.items.map((x) => (x.id === s.id ? { ...x, favorite: !s.favorite } : x)) },
-            )
-            fav.mutate({ id: s.id, favorite: !s.favorite }, { onSettled: () => qc.invalidateQueries({ queryKey: ['studios'] }) })
-          }}
+          onFavorite={follow}
         />
       )}
     </div>
@@ -406,12 +393,12 @@ function StudioTileSkeleton() {
   )
 }
 
-function StudioTile({ s, label, showParent }: { s: StudioCard; label?: string; showParent?: boolean }) {
+function StudioTile({ s, label, showParent, onFollow }: { s: StudioCard; label?: string; showParent?: boolean; onFollow: (s: StudioCard) => void }) {
   return (
     <Link
       to="/studio/$id"
       params={{ id: s.id }}
-      className={clsx('group min-w-0 rounded-2xl bg-surface p-3 ring-1 transition hover:bg-raised', label ? 'ring-accent/40' : 'ring-white/5')}
+      className={clsx('group relative min-w-0 rounded-2xl bg-surface p-3 ring-1 transition hover:bg-raised', label ? 'ring-accent/40' : 'ring-white/5')}
     >
       <div className="flex aspect-[2/1] items-center justify-center rounded-xl p-4">
         {s.image ? (
@@ -422,10 +409,12 @@ function StudioTile({ s, label, showParent }: { s: StudioCard; label?: string; s
       </div>
       <div className="mt-2.5 flex items-center gap-2 px-1">
         <span className="truncate font-semibold">{label ?? s.name}</span>
-        {s.favorite && <Heart size={14} className="shrink-0 fill-accent text-accent" />}
-        <span className="ml-auto shrink-0 text-xs text-muted">{s.sceneCount}</span>
+        <FollowHeart following={s.favorite} name={s.name} onToggle={() => onFollow(s)} size={16} inline className="ml-auto" />
       </div>
-      {showParent && s.parent && <div className="truncate px-1 text-xs text-muted">{s.parent.name}</div>}
+      {/* the count on its own line, so the name keeps the row next to the heart */}
+      <div className="truncate px-1 text-xs text-muted">
+        {s.sceneCount} {s.sceneCount === 1 ? 'video' : 'videos'}{showParent && s.parent ? ` · ${s.parent.name}` : ''}
+      </div>
     </Link>
   )
 }
@@ -434,18 +423,20 @@ export function Tags(): JSX.Element {
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<'popular' | 'name'>('popular')
   const { data, error, isLoading } = useTagTiles()
-  const pin = useFavoriteTag()
+  const followTag = useFavoriteTag()
+  const [followingOnly, setFollowingOnly] = useStored('flix.categories.following', asBool(false))
   const tiles = useMemo(() => {
     const needle = q.trim().toLowerCase()
     const list = (data ?? []).filter((t) => !needle || t.name.toLowerCase().includes(needle))
     return sort === 'name' ? [...list].sort((a, b) => a.name.localeCompare(b.name)) : list
   }, [data, q, sort])
-  const pinned = tiles.filter((t) => t.favorite)
+  const followed = tiles.filter((t) => t.favorite)
   // Big tiles for the categories that matter; the long tail as a compact grid.
   const FEATURED = 24
-  const featured = sort === 'popular' && !q ? tiles.filter((t) => !t.favorite).slice(0, FEATURED) : []
-  const rest = featured.length ? tiles.filter((t) => !t.favorite && !featured.includes(t)) : tiles.filter((t) => !t.favorite)
-  const onPin = (t: TagTile) => pin.mutate({ id: t.id, favorite: !t.favorite })
+  // "Following" shows only the followed ones, like the Performers and Studios chips.
+  const featured = sort === 'popular' && !q && !followingOnly ? tiles.filter((t) => !t.favorite).slice(0, FEATURED) : []
+  const rest = followingOnly ? [] : featured.length ? tiles.filter((t) => !t.favorite && !featured.includes(t)) : tiles.filter((t) => !t.favorite)
+  const onFollow = (t: TagTile) => followTag.mutate({ id: t.id, favorite: !t.favorite })
   // 1,100 tiles at once cost 11k nodes and a 120 ms task on a phone: render them a screenful at a time
   const [shown, setShown] = useState(TILE_PAGE)
   const showMore = useCallback(() => setShown((n) => n + TILE_PAGE), [])
@@ -461,6 +452,9 @@ export function Tags(): JSX.Element {
           </Chip>
           <Chip tone={sort === 'name' ? 'active' : 'default'} onClick={() => setSort('name')}>
             A–Z
+          </Chip>
+          <Chip tone={followingOnly ? 'active' : 'default'} onClick={() => setFollowingOnly(!followingOnly)}>
+            <Heart size={13} /> Following
           </Chip>
         </div>
       </div>
@@ -484,14 +478,15 @@ export function Tags(): JSX.Element {
         <Empty>No tags match.</Empty>
       ) : (
         <>
-          {pinned.length > 0 && (
+          {followingOnly && !followed.length && <Empty>No followed categories.</Empty>}
+          {followed.length > 0 && (
             <section className="mb-8">
               <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                <Pin size={16} className="fill-accent text-accent" /> Pinned
+                <Heart size={16} className="fill-accent text-accent" /> Following
               </h2>
               <div className={BIG_TILE_GRID}>
-                {pinned.map((t) => (
-                  <TagTileCard key={t.id} tile={t} big onPin={onPin} />
+                {followed.map((t) => (
+                  <TagTileCard key={t.id} tile={t} big onFollow={onFollow} />
                 ))}
               </div>
             </section>
@@ -499,13 +494,13 @@ export function Tags(): JSX.Element {
           {featured.length > 0 && (
             <div className={clsx(BIG_TILE_GRID, 'mb-8')}>
               {featured.map((t) => (
-                <TagTileCard key={t.id} tile={t} big onPin={onPin} />
+                <TagTileCard key={t.id} tile={t} big onFollow={onFollow} />
               ))}
             </div>
           )}
           <div className={SMALL_TILE_GRID}>
             {rest.slice(0, shown).map((t) => (
-              <TagTileCard key={t.id} tile={t} onPin={onPin} />
+              <TagTileCard key={t.id} tile={t} onFollow={onFollow} />
             ))}
           </div>
           <Sentinel onVisible={showMore} disabled={shown >= rest.length} />
@@ -519,7 +514,7 @@ const TILE_PAGE = 72
 const BIG_TILE_GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6'
 const SMALL_TILE_GRID = 'grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8'
 
-function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin: (t: TagTile) => void }) {
+function TagTileCard({ tile, big, onFollow }: { tile: TagTile; big?: boolean; onFollow: (t: TagTile) => void }) {
   return (
     <Link
       to="/tag/$id"
@@ -541,22 +536,7 @@ function TagTileCard({ tile, big, onPin }: { tile: TagTile; big?: boolean; onPin
         <div className={clsx('truncate font-bold', big ? 'text-base' : 'text-[13px]', !big && 'pr-6 touch:pr-8')}>{tile.name}</div>
         <div className="text-[11px] text-white/70">{tile.sceneCount} videos</div>
       </div>
-      <button
-        onClick={(e) => {
-          e.preventDefault() // the tile is a link
-          onPin(tile)
-        }}
-        title={tile.favorite ? 'Unpin' : 'Pin to the top'}
-        aria-label={tile.favorite ? `Unpin ${tile.name}` : `Pin ${tile.name}`}
-        aria-pressed={tile.favorite}
-        className={clsx(
-          'absolute right-1.5 rounded-full bg-black/40 backdrop-blur transition hover:scale-110 hover:bg-black/60',
-          big ? 'top-1.5 p-1.5' : 'top-1/2 -translate-y-1/2 p-1 touch:p-1.5',
-          !tile.favorite && '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100',
-        )}
-      >
-        <Pin size={big ? 16 : 13} className={tile.favorite ? 'fill-accent text-accent' : 'text-white'} />
-      </button>
+      <FollowHeart following={tile.favorite} name={tile.name} onToggle={() => onFollow(tile)} size={big ? 16 : 13} className={big ? 'top-1.5 right-1.5' : 'top-1/2 right-1.5 -translate-y-1/2 p-1'} />
     </Link>
   )
 }

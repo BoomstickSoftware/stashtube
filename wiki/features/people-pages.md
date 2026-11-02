@@ -27,6 +27,16 @@ the first scenes request started only then. A failed record still shows the `Err
 The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" until
 2026-10-31_).
 
+## Follow from any list
+
+Every list of performers, studios or categories carries the same heart as the entity page's
+Follow button (`FollowHeart` in `EntityHeader.tsx`, since 2026-11-02): over the picture on
+performer cards and category tiles, in the name row on studio tiles (so logos stay whole; the
+count moved to the line below), and in the table's own column. On touch screens it always
+shows, 44 px; with a mouse it appears on hover unless followed. A tap follows without opening
+the page. Each directory also has a "Following" chip. Before this, studios could be followed
+only from their page or the table view.
+
 ## Actions on an entity
 
 - **Follow** (heart): Stash's performer or studio favourite, so Stash's UI agrees
@@ -50,7 +60,7 @@ The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" unt
   here") while one of the studio's videos plays (`Player.tsx`, `useIntroSkip`); the studio
   page itself has no control for it (_this page said it did until 2026-10-31_). A studio page
   includes its sub-studios.
-- Tags: **Pin** = Stash's tag favourite; pinned tags head the Categories page.
+- Tags: **Follow** = Stash's tag favourite (_"Pin" until 2026-11-02_); followed categories head the Categories page.
 
 ## Directories
 
@@ -66,7 +76,7 @@ The tag page's eyebrow says "Category" ([[categories-and-us-spelling]]; _"#" unt
   combined feed; independents last; a text filter shows the flat grid), **Grid** and **Table**
   views; sort by Most videos or Name; Following. Kept per browser. Counts include sub-studios
   (`scene_count(depth: -1)`). Studio tiles are transparent logos.
-- **Categories** (tags): tag tiles with a picture, warmed at boot ([[caching]]); pinned first.
+- **Categories** (tags): tag tiles with a picture, warmed at boot ([[caching]]); followed first, and a "Following" chip (kept per browser) shows only those.
 - While a directory's first page loads it shows **tile skeletons** in its own grid (12
   portraits; 10 studio tiles, or 10 table rows in Table view; 12 big and 16 small category
   tiles), `role="status"`, pulsing, still under reduced motion (since 2026-10-31, _a lone

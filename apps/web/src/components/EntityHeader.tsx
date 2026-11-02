@@ -100,6 +100,35 @@ export function FollowButton({ favorite, onToggle }: { favorite: boolean; onTogg
   )
 }
 
+// The heart on a card in a list (performers, studios, categories): the same follow as the
+// entity page's button, one tap from any list. It sits inside the card's link, so the tap must
+// not open the page. On touch screens it always shows with a 44 px target; with a mouse it
+// appears on hover unless already followed. `inline` sits in a row (a studio tile's name line,
+// so the logo stays whole) instead of over the picture.
+export function FollowHeart({ following, name, onToggle, size = 18, inline, className }: { following: boolean; name: string; onToggle: () => void; size?: number; inline?: boolean; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onToggle()
+      }}
+      title={following ? 'Unfollow' : 'Follow'}
+      aria-label={following ? `Unfollow ${name}` : `Follow ${name}`}
+      aria-pressed={following}
+      className={clsx(
+        'flex shrink-0 items-center justify-center rounded-full p-1.5 transition hover:scale-110 touch:size-11 touch:p-0',
+        inline ? '-my-1.5 -mr-1.5 hover:bg-white/10 touch:-my-2.5' : 'absolute z-10 bg-black/40 backdrop-blur hover:bg-black/60',
+        !following && '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100',
+        className,
+      )}
+    >
+      <Heart size={size} className={following ? 'fill-accent text-accent' : inline ? 'text-muted' : 'text-white'} />
+    </button>
+  )
+}
+
 export function BlockedNotice({ kind, id }: { kind: BlockKind; id: string }) {
   if (!useIsBlocked(kind, id)) return null
   return (

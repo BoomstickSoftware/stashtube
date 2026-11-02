@@ -224,3 +224,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] decide | Follow sync built: following monitors new releases in Whisparr, blocking unmonitors, watch state shown; rule 9 narrowed
 ## [2026-11-02] ingest | History: operations move, privacy check, follow sync; watch line holds its height
 ## [2026-11-02] decide | Whisparr sync widened: favourite studios too, everything else unmonitored, old scenes trimmed; run by scripts/whisparr-sync.mjs
+## [2026-11-02] ingest | Follow from every list: one heart on performer, studio (all views) and category cards; categories say Follow, not Pin

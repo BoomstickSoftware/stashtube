@@ -14,7 +14,7 @@ const DIALS: { key: keyof FeaturedWeights; label: string; hint: string }[] = [
   { key: 'shelfAge', label: 'Downloaded long ago', hint: 'Older additions first' },
   { key: 'fresh', label: 'Newly added', hint: 'The opposite: recent additions first' },
   { key: 'performer', label: 'Performers you follow', hint: 'Followed performers, and the ones you watch most' },
-  { key: 'tag', label: 'Pinned categories', hint: 'Pinned categories, and the ones your plays share' },
+  { key: 'tag', label: 'Categories you follow', hint: 'Categories you follow, and the ones your plays share' },
   { key: 'studio', label: 'Studios you follow', hint: 'Followed studios, and the ones you watch most' },
   { key: 'watched', label: 'Watched a lot', hint: 'Left of center prefers rarely watched videos' },
   { key: 'marked', label: 'Many markers', hint: 'Videos you have marked moments in' },

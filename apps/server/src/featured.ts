@@ -176,7 +176,7 @@ function phrase(k: Signal, neg: boolean, c: Candidate, raw: Record<Signal, numbe
     case 'performer':
       return neg ? 'new faces' : c.favPerformer ? 'a performer you follow' : 'a performer you watch'
     case 'tag':
-      return neg ? 'different categories' : c.favTag ? 'a pinned category' : 'categories you watch'
+      return neg ? 'different categories' : c.favTag ? 'a category you follow' : 'categories you watch'
     case 'studio':
       return neg ? 'a studio you rarely watch' : c.favStudio ? 'a studio you follow' : 'a studio you watch'
     case 'watched':

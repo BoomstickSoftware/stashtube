@@ -1,11 +1,10 @@
 import type { SceneQuery, TagDetail } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { Pin } from 'lucide-react'
 import { AddFilterButton } from '../components/AddFilter'
-import { BlockButton, BlockedNotice, HeaderSkeleton } from '../components/EntityHeader'
+import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
-import { Button, Chip, ErrorBox } from '../components/ui'
+import { Chip, ErrorBox } from '../components/ui'
 import { useFavoriteTag, useTag } from '../lib/api'
 
 const route = getRouteApi('/tag/$id')
@@ -44,9 +43,7 @@ function TagHeader({ id, t }: { id: string; t: TagDetail }) {
       </div>
       {t.description && <p className="mt-2 max-w-3xl text-sm text-white/70">{t.description}</p>}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button variant={t.favorite ? 'solid' : 'ghost'} onClick={() => pin.mutate({ id, favorite: !t.favorite })} title="Pinned categories head the Categories page">
-          <Pin size={16} className={t.favorite ? 'fill-accent text-accent' : ''} /> {t.favorite ? 'Pinned' : 'Pin'}
-        </Button>
+        <FollowButton favorite={t.favorite} onToggle={() => pin.mutate({ id, favorite: !t.favorite })} />
         <AddFilterButton kind="tag" id={id} name={t.name} variant="button" />
         <BlockButton kind="tag" id={id} name={t.name} />
         {[...t.parents, ...t.children].map((r) => (
