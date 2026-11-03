@@ -749,6 +749,18 @@ api.post('/whisparr/cleanup', async (c) => {
   }
 })
 
+// Put back a feature film's record at its folder on disk (unmonitored, no search, rescanned).
+api.post('/whisparr/restore-film', async (c) => {
+  if (!config.whisparr) throw new HTTPException(404, { message: 'Whisparr is not configured' })
+  const body = parse(z.object({ tmdbId: z.number().int().positive(), path: z.string().startsWith('/volume1/Media/adult/movies/').max(400) }), await c.req.json())
+  try {
+    return c.json(await whisparr.restoreFilm(body.tmdbId, body.path))
+  } catch (e) {
+    if (e instanceof RangeError) throw new HTTPException(400, { message: e.message })
+    throw e
+  }
+})
+
 // --- the paced Get queue and the scenes still waiting for a release (getqueue.ts) ------------
 
 api.post('/whisparr/get-many', async (c) => {

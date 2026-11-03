@@ -11,11 +11,13 @@
 //   node scripts/whisparr-cleanup.mjs [server] --studio <id> --apply    # the test: that studio's records, then the studio
 //   node scripts/whisparr-cleanup.mjs [server] --performer <id> --apply # the test: that performer only, if no scene names them
 //   node scripts/whisparr-cleanup.mjs [server] --apply                  # everything; waits and prints progress
+//   node scripts/whisparr-cleanup.mjs [server] --restore-film <tmdbId> <path>  # put a film's record back at its folder
 const args = process.argv.slice(2)
 const valueOf = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined)
 const studio = valueOf('--studio')
 const performer = valueOf('--performer')
-const values = new Set([studio, performer].filter(Boolean))
+const film = args.includes('--restore-film') ? [args[args.indexOf('--restore-film') + 1], args[args.indexOf('--restore-film') + 2]] : null
+const values = new Set([studio, performer, ...(film ?? [])].filter(Boolean))
 const server = (args.find((a) => !a.startsWith('--') && !values.has(a)) ?? 'http://flix.lan').replace(/\/$/, '')
 const apply = args.includes('--apply')
 
@@ -33,6 +35,11 @@ const call = async (method, path, body) => {
   return res.json()
 }
 
+if (film) {
+  const r = await call('POST', '/whisparr/restore-film', { tmdbId: Number(film[0]), path: film[1] })
+  console.log(`restored as ${r.id}; file linked: ${r.hasFile}`)
+  process.exit(r.hasFile ? 0 : 1)
+}
 const first = await call('POST', '/whisparr/cleanup', { apply, studio, performer })
 if (!apply) {
   console.log(`scenes: ${first.total} records in all; would delete ${first.remove}`)

@@ -20,14 +20,16 @@ test('only studios with no scene record left go', () => {
   assert.deepEqual(emptyStudios(studios, [{ studioForeignId: 'a' }], 'b'), [2])
 })
 
-test('a performer stays while a remaining scene names them, by id or by name', () => {
+test('a performer stays while a remaining record names them by id or name, or credits them', () => {
   const performers = [
     { id: 1, foreignId: 'a', fullName: 'A' },
     { id: 2, foreignId: 'b', fullName: 'B' },
     { id: 3, foreignId: 'c', fullName: 'C' },
+    { id: 4, foreignId: 'd', fullName: 'D' },
   ]
   const movies = [{ performerForeignIds: ['a'], performerNames: ['A'] }, { performerForeignIds: [], performerNames: ['B'] }]
-  assert.deepEqual(emptyPerformers(performers, movies), [3])
-  assert.deepEqual(emptyPerformers(performers, movies, 'c'), [3])
-  assert.deepEqual(emptyPerformers(performers, movies, 'a'), [])
+  const credited = new Set([4]) // a film's cast
+  assert.deepEqual(emptyPerformers(performers, movies, credited), [3])
+  assert.deepEqual(emptyPerformers(performers, movies, credited, 'c'), [3])
+  assert.deepEqual(emptyPerformers(performers, movies, credited, 'a'), [])
 })

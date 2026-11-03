@@ -445,6 +445,35 @@ export async function deletePerformer(id: number) {
   dataCache.invalidate('whisparr:people')
 }
 
+// The Whisparr performer ids credited on a record. Feature films keep their cast here, not in
+// `performerForeignIds`, and deleting a credited performer deletes the film's record too
+// (found 2026-11-02: 5 film records went with their performers; the files stayed).
+export async function creditedPerformers(movieId: number): Promise<number[]> {
+  return (await call<{ performerId?: number }[]>('GET', `/credit?movieId=${movieId}`)).map((c) => c.performerId).filter((x): x is number => typeof x === 'number')
+}
+
+// Put back the record of a feature film whose folder is on disk: added unmonitored, no search,
+// then rescanned so Whisparr links the file already there.
+export async function restoreFilm(tmdbId: number, path: string): Promise<{ id: number; hasFile: boolean }> {
+  const [hit] = await call<Lookup[]>('GET', `/movie/lookup?term=tmdb:${tmdbId}`)
+  if (!hit || hit.itemType !== 'movie') throw new RangeError('no feature film with that id')
+  if (hit.id > 0) throw new RangeError('Whisparr already has that film')
+  const sibling = (await movies()).find((m) => m.itemType === 'movie' && m.qualityProfileId && m.rootFolderPath)
+  if (!sibling) throw new Error('no film in Whisparr to copy a quality profile and root folder from')
+  const added = await call<Movie>('POST', '/movie', {
+    ...hit,
+    path,
+    qualityProfileId: sibling.qualityProfileId,
+    rootFolderPath: sibling.rootFolderPath,
+    monitored: false,
+    addOptions: { searchForMovie: false, monitor: 'none' },
+  })
+  await runCommand({ name: 'RescanMovie', movieId: added.id }, 120_000)
+  const m = await call<Movie>('GET', `/movie/${added.id}`)
+  forgetLists()
+  return { id: m.id, hasFile: !!m.hasFile }
+}
+
 // Fetch the movie list now, not from the cache (the cleanup must plan from what Whisparr holds).
 export async function freshMovies(): Promise<Movie[]> {
   forgetLists()

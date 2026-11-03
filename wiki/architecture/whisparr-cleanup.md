@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-02
 updated: 2026-11-02
 code: [apps/server/src/cleanup.ts, apps/server/src/cleanup.test.ts, apps/server/src/whisparr.ts, scripts/whisparr-cleanup.mjs]
-related: [whisparr-sync, stashdb-mirror, whisparr-nothing-monitored, whisparr-watch-cascades-to-studios-and-performers]
+related: [whisparr-performer-delete-takes-film-records, whisparr-sync, stashdb-mirror, whisparr-nothing-monitored, whisparr-watch-cascades-to-studios-and-performers]
 ---
 
 # Whisparr cleanup
@@ -34,9 +34,10 @@ studios", without removing files or the metadata of files that exist.
 Then studios, read fresh after the scene deletes: a studio with **no scene record left** is
 deleted (`DELETE /studio/:id?deleteFiles=false`), so a studio with any file keeps its record.
 Performers the same way (`DELETE /performer/:id?deleteFiles=false`), added at the user's request
-the same night. A performer is kept if any remaining scene names them by id **or by name**: 4 of
-2,707 scene records listed performer names without ids, and 5 otherwise empty performers shared
-a name with a scene.
+the same night. A performer is kept if any remaining record names them by id **or by name**, or
+**credits** them: 4 of 2,707 scene records listed performer names without ids, and feature films
+keep their cast only in credits; deleting a credited performer deletes the film's record
+([[whisparr-performer-delete-takes-film-records]]).
 
 No import exclusion, so a deleted scene can be fetched again later. Existing exclusions (from
 deletes of watched scenes) are untouched. _Until 2026-11-02 (late) monitored records and feature
@@ -64,3 +65,7 @@ Widened run (2026-11-02, late): the studio delete tested first on one empty stud
 records and files unchanged), then in full: 10 scene records and 1,270 studios deleted, 0
 failures. Whisparr then held 2,707 scene records (2,683 with files, 24 downloading or waiting
 Gets) and 125 studios.
+
+Performer run (2026-11-02, late): 5,124 deleted, 0 failures, 1,711 left. It also took 5 feature
+film records with it (files untouched); the credit check was added afterwards and the 5 records
+were restored with `--restore-film`.

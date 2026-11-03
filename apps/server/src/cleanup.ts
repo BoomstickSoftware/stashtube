@@ -4,7 +4,8 @@
 // - Scenes: a record without a file goes unless it is downloading or grabbed, a Get from flix
 //   still waiting (`whisparr_gets`), or in the Get queue. Monitored or not, scene or film.
 // - Studios, then performers: after the scenes, one with no scene record left goes. A performer
-//   is kept if a remaining scene names them by id or, for the few records without ids, by name.
+//   is kept if a remaining record names them by id, by name, or credits them: feature films keep
+//   their cast only in credits, and deleting a credited performer deletes the film's record.
 // Never a file (`deleteFiles: false`), never an import exclusion, never a record with a file.
 // Each run starts with a Whisparr Backup and deletes in paced chunks, in the background.
 // `studio` or `performer` narrows a run to that one (the test before a full run).
@@ -45,11 +46,18 @@ export function emptyStudios(studios: Pick<WStudio, 'id' | 'foreignId'>[], movie
   return studios.filter((s) => (!studio || s.foreignId === studio) && !used.has(s.foreignId)).map((s) => s.id)
 }
 
-// Pure: performers no remaining scene names, by id or by name.
-export function emptyPerformers(performers: Pick<WPerformer, 'id' | 'foreignId' | 'fullName'>[], movies: Pick<Movie, 'performerForeignIds' | 'performerNames'>[], performer?: string): number[] {
+// Pure: performers no remaining record names (by StashDB id or name) or credits (Whisparr id).
+export function emptyPerformers(performers: Pick<WPerformer, 'id' | 'foreignId' | 'fullName'>[], movies: Pick<Movie, 'performerForeignIds' | 'performerNames'>[], credited: Set<number>, performer?: string): number[] {
   const ids = new Set(movies.flatMap((m) => m.performerForeignIds ?? []))
   const names = new Set(movies.flatMap((m) => m.performerNames ?? []))
-  return performers.filter((p) => (!performer || p.foreignId === performer) && !ids.has(p.foreignId) && !names.has(p.fullName)).map((p) => p.id)
+  return performers.filter((p) => (!performer || p.foreignId === performer) && !credited.has(p.id) && !ids.has(p.foreignId) && !names.has(p.fullName)).map((p) => p.id)
+}
+
+// Credits of every remaining film, and of any record that names performers without ids.
+async function creditsOf(movies: Pick<Movie, 'id' | 'itemType' | 'performerForeignIds'>[]): Promise<Set<number>> {
+  const out = new Set<number>()
+  for (const m of movies.filter((x) => x.itemType === 'movie' || !x.performerForeignIds?.length)) for (const id of await whisparr.creditedPerformers(m.id)) out.add(id)
+  return out
 }
 
 export interface CleanupStatus {
@@ -84,7 +92,7 @@ export async function previewCleanup(studio?: string, performer?: string) {
   const [movies, studios, performers] = await Promise.all([whisparr.movies(), whisparr.listStudios(), whisparr.listPerformers()])
   const left = movies.filter((m) => !gone.has(m.id))
   const studiosGone = performer ? [] : emptyStudios(studios, left, studio)
-  const performersGone = studio ? [] : emptyPerformers(performers, left, performer)
+  const performersGone = studio ? [] : emptyPerformers(performers, left, await creditsOf(left), performer)
   return {
     total: p.total,
     remove: p.remove.length,
@@ -156,6 +164,6 @@ async function run(studio?: string, performer?: string) {
   }
   if (!studio) {
     cleanupStatus.phase = 'deleting performers'
-    await deleteEach(emptyPerformers(performers, movies, performer), whisparr.deletePerformer, cleanupStatus.performers)
+    await deleteEach(emptyPerformers(performers, movies, await creditsOf(movies), performer), whisparr.deletePerformer, cleanupStatus.performers)
   }
 }
