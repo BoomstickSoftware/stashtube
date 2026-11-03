@@ -4,11 +4,11 @@ kind: feature
 summary: Why and how a delete goes to Whisparr first (it owns the files), then removes the Stash scene and playlist rows, and when it refuses to touch anything.
 tags: [delete, whisparr, stash, files]
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-11-02
+updated: 2026-11-02
 api: [POST /api/scenes/delete, GET /api/features]
 code: [apps/server/src/delete.ts, apps/server/src/whisparr.ts, apps/server/src/stash.ts, apps/web/src/components/DeleteScenes.tsx]
-related: [whisparr-api, nfs-media, stash-library, duplicates-workbench, cleanup-page, playlists-and-favorites]
+related: [deleted-scenes-never-refetched-automatically, whisparr-api, nfs-media, stash-library, duplicates-workbench, cleanup-page, playlists-and-favorites]
 ---
 
 # Deleting a video through Whisparr
@@ -32,9 +32,12 @@ which needs `WHISPARR_URL`, `WHISPARR_API_KEY` and `WHISPARR_PATH_MAP`
    movie list ([[whisparr-api]]). `WHISPARR_PATH_MAP` turns Stash's `/data/adult/…` into
    Whisparr's `/volume1/Media/adult/…`.
 3. If any file has **no Whisparr entry, nothing is touched**, unless that file is already gone
-   from disk (checked on the read-only mount): then only the Stash scene is left to remove.
-4. Delete each Whisparr movie **with its files and an import exclusion**, so it is never
-   grabbed again.
+   from disk (checked on the read-only mount): then the Stash scene is removed and its StashDB
+   ids (StashDB's endpoint only) are added to Whisparr's exclusions (`exclude`, `POST /exclusions`).
+4. Delete each Whisparr movie **with its files and an import exclusion**, so discovery never
+   fetches it again ([[deleted-scenes-never-refetched-automatically]]). A scene fetched again
+   after a delete is excluded already; then no second exclusion is asked for. The delete drops
+   the cached exclusion list.
 5. `sceneDestroy` the Stash scene with its generated files and file record. If Stash is busy
    (a scan locks its database, [[stash-database-locked]]) the file is gone and the answer says
    to delete again later.

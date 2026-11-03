@@ -901,11 +901,12 @@ export async function updateScene(id: string, patch: { title?: string; tagIds?: 
 }
 
 // What deleting a scene needs: its files and StashDB links. Uncached, so it sees the scene as it is now.
-export async function sceneForDeletion(id: string): Promise<{ title: string; paths: string[]; stashIds: string[] } | null> {
-  const d = await gql<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { id title files { path } stash_ids { stash_id } } }`, { id })
+// `stashDbIds`: only the ids from StashDB's endpoint (Whisparr's exclusions are keyed by them).
+export async function sceneForDeletion(id: string): Promise<{ title: string; paths: string[]; stashIds: string[]; stashDbIds: string[] } | null> {
+  const d = await gql<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { id title files { path } stash_ids { stash_id endpoint } } }`, { id })
   const s = d.findScene
   if (!s) return null
-  return { title: sceneTitle(s), paths: s.files.map((f) => f.path), stashIds: s.stash_ids.map((x) => x.stash_id) }
+  return { title: sceneTitle(s), paths: s.files.map((f) => f.path), stashIds: s.stash_ids.map((x) => x.stash_id), stashDbIds: s.stash_ids.filter((x) => /stashdb\.org/.test(x.endpoint)).map((x) => x.stash_id) }
 }
 
 // Drops the scene and its generated sprites and previews. The file is Whisparr's to delete:

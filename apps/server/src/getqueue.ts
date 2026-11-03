@@ -7,7 +7,8 @@
 //   so flix searches each again RESEARCH_AFTER after its last search, a few per hour.
 // - Discovery: once a day, each followed performer's and studio's newest StashDB scenes (through
 //   the mirror) are checked; a release after the follow started that the library and Whisparr
-//   lack, and that was never deleted, joins the queue.
+//   lack, and that was never deleted (no import exclusion, read fresh each run), joins the queue.
+//   A Get pressed by hand is respected even for a scene deleted before.
 import type { WaitingScene } from '@flix/shared'
 import { asc, eq, lt, or } from 'drizzle-orm'
 import { db } from './db/index.ts'
@@ -105,7 +106,7 @@ export async function discoverNew(now = Date.now()): Promise<number> {
     db.select().from(blocks),
     stash.sceneStashIdMap(),
     whisparr.movies(),
-    whisparr.exclusionIds().catch(() => new Set<string>()),
+    whisparr.exclusionIds(true), // fresh, and no answer stops the run: never fetch a deleted scene
   ])
   const since = new Map(starts.map((r) => [`${r.kind}:${r.foreignId}`, r.since.getTime()]))
   const blockedIds = async (kind: 'performer' | 'studio') => new Set((await Promise.all(blockRows.filter((r) => r.kind === kind).map((r) => stash.stashIdsOf(kind, r.stashId)))).flat())
@@ -120,7 +121,7 @@ export async function discoverNew(now = Date.now()): Promise<number> {
         if (!since.has(`${kind}:${id}`)) await db.insert(whisparrWatch).values({ kind, foreignId: id, since: new Date(now) }).onConflictDoNothing()
         const after = new Date(start - GRACE).toISOString().slice(0, 10)
         for (const r of await catalog.recentOf(kind, id, after))
-          if (!owned.has(r.id) && !known.has(r.id) && !excluded.has(r.id) && !r.performerIds.some((p) => blocked.performer.has(p)) && !(r.studioId && blocked.studio.has(r.studioId))) picked.add(r.id)
+          if (!owned.has(r.id) && !known.has(r.id) && !excluded.has(r.id.toLowerCase()) && !r.performerIds.some((p) => blocked.performer.has(p)) && !(r.studioId && blocked.studio.has(r.studioId))) picked.add(r.id)
       }
     }
   }

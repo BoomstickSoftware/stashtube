@@ -3,13 +3,14 @@ import { stat } from 'node:fs/promises'
 import { localPath } from './media.ts'
 import { forgetScene } from './playlists.ts'
 import { destroyScene, sceneForDeletion } from './stash.ts'
-import { deleteMovie, movieForFile } from './whisparr.ts'
+import { deleteMovie, exclude, movieForFile } from './whisparr.ts'
 
 // Deletes a scene everywhere: its file and Whisparr entry (with an import exclusion, so it is
 // not downloaded again), the Stash scene with its generated files, and its playlist entries.
 // Whisparr must own every file of the scene; if one is not found, nothing is touched, unless
-// the file is already gone from disk (e.g. Whisparr deleted it but Stash was busy): then only
-// the Stash scene is left to remove.
+// the file is already gone from disk (e.g. Whisparr deleted it but Stash was busy): then the
+// Stash scene is removed and its StashDB ids are excluded in Whisparr, so discovery never
+// fetches it again.
 export async function deleteScene(id: string): Promise<DeleteResult> {
   const scene = await sceneForDeletion(id)
   if (!scene) return { id, title: null, ok: false, error: 'not in Stash' }
@@ -18,13 +19,14 @@ export async function deleteScene(id: string): Promise<DeleteResult> {
     return { id, title: scene.title, ok: false, error }
   }
   try {
-    const movies = new Map<number, string>()
+    const movies = new Map<number, string | null>()
     for (const path of scene.paths) {
       const movie = await movieForFile(path, scene.stashIds)
-      if (movie) movies.set(movie.id, movie.title)
+      if (movie) movies.set(movie.id, movie.stashId ?? null)
       else if (!(await gone(path))) return fail(`Whisparr has no entry for ${path.split('/').pop()}; nothing was deleted`)
     }
-    for (const movieId of movies.keys()) await deleteMovie(movieId)
+    for (const [movieId, stashId] of movies) await deleteMovie(movieId, stashId)
+    if (!movies.size) await exclude(scene.stashDbIds, scene.title)
     try {
       await destroyScene(id)
     } catch (e) {

@@ -42,7 +42,8 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
   asked of StashDB once per page and kept (`source: 'stashdb'`).
 - Name search for the filter picker is cached 24 h per term, at most 12 answers.
 - Labels come from local state only: owned (Stash's StashDB ids), Whisparr's list (waiting,
-  downloading, downloaded), the Get queue, Whisparr's import exclusions (1 h cache). Blocked
+  downloading, downloaded), the Get queue, Whisparr's import exclusions (1 h cache, dropped by a delete; discovery reads them fresh and
+  skips them, [[deleted-scenes-never-refetched-automatically]]). Blocked
   performers and studios are left out unless `unblocked=1` (`hidden` counts them).
 
 ## Getting (`getqueue.ts`)

@@ -114,6 +114,8 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
       return n
     })
   const fetchable = items.filter((w) => canGetState(w.state) && w.stashdbId)
+  // "All" leaves out scenes deleted before; a tap on one still picks it.
+  const allPick = fetchable.filter((w) => !w.deletedBefore)
   const stopSelecting = () => {
     setSelecting(false)
     setPicked(new Set())
@@ -207,9 +209,9 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
             <button
               type="button"
               className="rounded-full px-3 py-2 text-sm text-muted hover:text-fg"
-              onClick={() => setPicked(new Set(fetchable.slice(0, 200).map((w) => w.stashdbId!)))}
+              onClick={() => setPicked(new Set(allPick.slice(0, 200).map((w) => w.stashdbId!)))}
             >
-              All {Math.min(fetchable.length, 200)}
+              All {Math.min(allPick.length, 200)}
             </button>
             <button
               type="button"

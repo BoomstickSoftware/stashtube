@@ -213,8 +213,8 @@ async function blockedSets() {
   return { performers: await ids('performer'), studios: await ids('studio'), tagNames: new Set(rows.filter((r) => r.kind === 'tag').map((r) => r.name.toLowerCase())) }
 }
 
-// Each scene as a card: owned (in Stash), what Whisparr is doing with it, queued here, or
-// deleted before (an import exclusion).
+// Each scene as a card: owned (in Stash), what Whisparr is doing with it, or queued here; one
+// deleted before (an import exclusion) is marked, and a Get by hand may still fetch it.
 export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
   const [owned, movies, a, excluded, queued] = await Promise.all([
     stash.sceneStashIdMap(),
@@ -236,13 +236,13 @@ export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
       image: remoteImageUrl(r.image),
       runtime: r.duration ? Math.round(r.duration / 60) : null,
       state: 'remote',
+      ...(excluded.has(r.id.toLowerCase()) ? { deletedBefore: true } : {}),
     }
     const sceneId = owned.get(r.id)
     if (sceneId) return { ...base, state: 'owned', sceneId }
     const m = byStash.get(r.id)
     if (m && a) return { ...base, whisparrId: m.id, state: whisparr.stateOf(m, a) }
     if (inQueue.has(r.id)) return { ...base, state: 'queued' }
-    if (excluded.has(r.id)) return { ...base, state: 'excluded' }
     return base
   })
 }

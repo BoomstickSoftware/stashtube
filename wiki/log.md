@@ -240,3 +240,4 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] ingest | Widened Whisparr cleanup run: 10 scenes and 1,270 empty studios deleted; 2,683 records with files and 125 studios remain
 ## [2026-11-02] decide | Whisparr cleanup covers performers too: one with no remaining scene (by id or name) is deleted
 ## [2026-11-02] correct | Performer cleanup deleted 5 feature film records (files kept): films keep cast in credits; cleanup now keeps credited performers, records restored
+## [2026-11-02] decide | Deleted scenes are never fetched again automatically (fresh exclusions in discovery, exclusion for gone files); a Get by hand is respected, cards show "Deleted before"

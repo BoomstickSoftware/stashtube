@@ -136,11 +136,23 @@ export async function movieForFile(stashPath: string, stashIds: string[]): Promi
   return (await movies()).find((m) => fileOf(m) === want) ?? null
 }
 
-// Deletes the entry with its folder and files, and adds an import exclusion so no search
-// grabs it again.
-export async function deleteMovie(id: number) {
-  await call('DELETE', `/movie/${id}?deleteFiles=true&addImportExclusion=true`)
+// Deletes the entry with its folder and files, and adds an import exclusion so flix's discovery
+// never fetches it again (a Get pressed by hand still may: the card says "Deleted before").
+// A scene fetched again after a delete is excluded already, so no second exclusion is asked for.
+export async function deleteMovie(id: number, stashId?: string | null) {
+  const already = !!stashId && (await exclusionIds(true)).has(stashId)
+  await call('DELETE', `/movie/${id}?deleteFiles=true&addImportExclusion=${!already}`)
   listChanged((all) => all.filter((m) => m.id !== id))
+  dataCache.invalidate(EXCLUSIONS)
+}
+
+// Excludes scenes Whisparr has no record of (their file was already gone when flix deleted the
+// Stash scene), so discovery skips them like any other deleted scene.
+export async function exclude(stashIds: string[], title: string) {
+  const have = await exclusionIds(true)
+  for (const foreignId of new Set(stashIds.map((x) => x.toLowerCase())))
+    if (stashdb.isStashDbId(foreignId) && !have.has(foreignId)) await call('POST', '/exclusions', { foreignId, movieTitle: title, type: 'scene' })
+  dataCache.invalidate(EXCLUSIONS)
 }
 
 // --- wanted scenes ---------------------------------------------------------------------
@@ -214,6 +226,10 @@ export async function wantedInWhisparr(by: { performers?: string[]; studios?: st
 // state), or only on StashDB (`remote`). Falls back to Whisparr's own list when StashDB is not
 // configured or does not answer.
 export async function wanted(by: { performers?: string[]; studios?: string[] }, page = 1): Promise<WantedList> {
+  const list = await wantedList(by, page)
+  return { ...list, items: await markDeleted(list.items) }
+}
+async function wantedList(by: { performers?: string[]; studios?: string[] }, page: number): Promise<WantedList> {
   if (!config.whisparr) return { source: 'whisparr', items: [], page, hasMore: false }
   if (!(await stashdb.available())) return { source: 'whisparr', items: await wantedInWhisparr(by), page, hasMore: false }
   try {
@@ -243,11 +259,13 @@ export async function recentWanted(performers: string[], days = 60, limit = 24):
   const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
   const perf = new Set(performers)
   const [all, a] = await Promise.all([movies(), activity()])
-  return all
-    .filter((m) => !m.hasFile && (m.releaseDate ?? '') >= since && m.performerForeignIds?.some((id) => perf.has(id)))
-    .sort(byDateDesc)
-    .slice(0, limit)
-    .map((m) => toWanted(m, a))
+  return markDeleted(
+    all
+      .filter((m) => !m.hasFile && (m.releaseDate ?? '') >= since && m.performerForeignIds?.some((id) => perf.has(id)))
+      .sort(byDateDesc)
+      .slice(0, limit)
+      .map((m) => toWanted(m, a)),
+  )
 }
 
 // What is moving right now: Whisparr's queue, and grabs of the last two days that have not
@@ -407,9 +425,20 @@ export function forgetLists() {
   dataCache.invalidate(LIST, 'whisparr:people')
 }
 
-// StashDB ids Whisparr will not add again (deleted with an import exclusion), cached an hour.
-export const exclusionIds = () =>
-  cached('exclusions', 60 * 60_000, [LIST, VOLATILE], async () => new Set((await call<{ foreignId: string }[]>('GET', '/exclusions')).map((e) => e.foreignId)))
+// StashDB ids of scenes deleted before (Whisparr's import exclusions), cached an hour for the
+// labels; `fresh` reads Whisparr now (discovery and deletes). A delete drops the cache.
+const EXCLUSIONS = 'whisparr:exclusions'
+export const exclusionIds = (fresh = false) => {
+  if (fresh) dataCache.invalidate(EXCLUSIONS)
+  return cached('exclusions', 60 * 60_000, [LIST, EXCLUSIONS, VOLATILE], async () => new Set((await call<{ foreignId: string }[]>('GET', '/exclusions')).map((e) => e.foreignId.toLowerCase())))
+}
+
+// Marks scenes deleted before; a missing answer marks nothing (the badge is information only).
+export async function markDeleted<T extends WantedScene>(items: T[]): Promise<T[]> {
+  if (!config.whisparr || !items.length) return items
+  const ex = await exclusionIds().catch(() => null)
+  return ex ? items.map((w) => (w.stashdbId && ex.has(w.stashdbId.toLowerCase()) ? { ...w, deletedBefore: true } : w)) : items
+}
 
 // --- the cleanup (cleanup.ts): commands and bulk deletes of records without files ----------
 

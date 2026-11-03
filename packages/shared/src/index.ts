@@ -457,9 +457,8 @@ export interface Features {
 // may still be running, or found nothing), grabbed (sent to the download client in the last two
 // days), downloading (in Whisparr's queue), downloaded (has a file; shown only while the state
 // settles).
-// owned: in Stash already (Discover shows it, linked); excluded: deleted before (Whisparr's import
-// exclusion); queued: in flix's paced Get queue; waiting: fetched and monitored, no release found yet.
-export type WantedState = 'remote' | 'available' | 'requested' | 'queued' | 'waiting' | 'grabbed' | 'downloading' | 'downloaded' | 'owned' | 'excluded'
+// owned: in Stash already (Discover shows it, linked); queued: in flix's paced Get queue; waiting: fetched and monitored, no release found yet.
+export type WantedState = 'remote' | 'available' | 'requested' | 'queued' | 'waiting' | 'grabbed' | 'downloading' | 'downloaded' | 'owned'
 export interface WantedScene {
   whisparrId: number | null // null for a remote scene
   stashdbId: string | null // StashDB's uuid; Whisparr files scenes under it too
@@ -471,6 +470,7 @@ export interface WantedScene {
   runtime: number | null // minutes
   state: WantedState
   sceneId?: string | null // the Stash scene, when owned
+  deletedBefore?: boolean // deleted from the library before (Whisparr's import exclusion): discovery skips it, a Get by hand still fetches it
 }
 // A page of a performer's or studio's missing scenes: StashDB's catalogue when it answers,
 // otherwise only what Whisparr lists.

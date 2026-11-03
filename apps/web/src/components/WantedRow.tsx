@@ -67,13 +67,13 @@ function Heading({ title, hint, right }: { title: ReactNode; hint?: string; righ
 // 'requested' is flix's own state: Get was pressed and Whisparr has not grabbed it yet, so the
 // card no longer offers Get as if nothing had happened. 'queued' waits in flix's paced Get queue;
 // 'waiting' was fetched and Whisparr has found no release yet (flix searches again weekly);
-// 'owned' is in the library; 'excluded' was deleted before (Whisparr's import exclusion).
+// 'owned' is in the library. A scene deleted before keeps its Get (a tap is the user's intent;
+// only discovery skips it) and carries a "Deleted before" badge.
 const STATE: Record<Exclude<WantedScene['state'], 'available' | 'remote'>, { label: string; icon: ReactNode; tone: string }> = {
   requested: { label: 'Requested', icon: <Clock size={13} />, tone: 'bg-white/15 text-fg/90' },
   queued: { label: 'Queued', icon: <ListPlus size={13} />, tone: 'bg-white/15 text-fg/90' },
   waiting: { label: 'Waiting', icon: <Hourglass size={13} />, tone: 'bg-amber-500/20 text-amber-200' },
   owned: { label: 'In library', icon: <Play size={13} />, tone: 'bg-green-500/20 text-green-300' },
-  excluded: { label: 'Deleted before', icon: <Ban size={13} />, tone: 'bg-red-500/15 text-red-300' },
   grabbed: { label: 'Grabbed', icon: <Loader2 size={13} className="animate-spin" />, tone: 'bg-accent/20 text-accent' },
   downloading: { label: 'Downloading', icon: <Download size={13} />, tone: 'bg-accent/20 text-accent' },
   downloaded: { label: 'In library', icon: <Check size={13} />, tone: 'bg-green-500/20 text-green-300' },
@@ -110,7 +110,14 @@ export function WantedCard({
         ) : (
           <div className="flex size-full items-center justify-center text-xs text-muted">No cover</div>
         )}
-        {w.state === 'remote' && <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase ring-1 ring-white/10">StashDB</span>}
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+          {w.state === 'remote' && <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase ring-1 ring-white/10">StashDB</span>}
+          {w.deletedBefore && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-red-300 uppercase ring-1 ring-red-400/30">
+              <Ban size={11} /> Deleted before
+            </span>
+          )}
+        </div>
         {pickable && (
           <span className={clsx('absolute top-2 right-2 flex size-7 items-center justify-center rounded-full ring-1', selected ? 'bg-accent text-white ring-accent' : 'bg-black/60 text-transparent ring-white/40')}>
             <CircleCheck size={18} />

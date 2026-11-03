@@ -25,14 +25,15 @@ StashDB work ([[stashdb-mirror]]).
   debounce, 2 letters minimum) and shows whether the library has that one.
 - One entity selected: a card with its picture, network and StashDB count, and "In library"
   linking to the flix page when Stash has it.
-- Cards carry the scene's state: Get, Queued, Waiting, Downloading, In library (opens the scene),
-  Deleted before. Get on a card fetches that one scene at once. After a Get the card says
+- Cards carry the scene's state: Get, Queued, Waiting, Downloading, In library (opens the scene).
+  A scene deleted before carries a red "Deleted before" badge and keeps Get
+  ([[deleted-scenes-never-refetched-automatically]]). Get on a card fetches that one scene at once. After a Get the card says
   Requested (the server's memory, an hour, lost on restart), then Waiting (monitored, from
   Whisparr) until a download shows; it never offers Get again. A second Get of the same scene
   within the hour starts no second search. _Until 2026-11-02 a Discover card went back to Get
   once the request returned: only the shelf's cached cards were patched._
 - **Select**: tap cards to pick (only ones that can be fetched); a bar over the tab bar offers
-  "All N" (the loaded ones, up to 200) and "Get N", which queues them; the server fetches one
+  "All N" (the loaded ones, up to 200, without those deleted before) and "Get N", which queues them; the server fetches one
   every 8 s.
 - The footer says how many scenes match, whether the page came from the mirror or StashDB, and how
   many blocked ones were left out.
