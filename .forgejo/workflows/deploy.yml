@@ -19,15 +19,20 @@ jobs:
           IMAGE: git.lan:3000/zbmowrey/flix
           SHA: ${{ github.sha }}
           # Write token (write:repository, write:package): registry push + the k8s commit.
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
+          # Registry push and the clone of this repo: a write:package + read:repository
+          # token. The k8s tag bump uses deploy-bot, which can push only the image-pin
+          # files on k8s main (k8s docs/argocd.md, Branch protection). CI_TOKEN is the
+          # pre-2026-11 fallback until it's deleted.
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN || secrets.CI_TOKEN }}
+          K8S_DEPLOY_TOKEN: ${{ secrets.K8S_DEPLOY_TOKEN || secrets.CI_TOKEN }}
           DOCKER_BUILDKIT: '1'
         run: |
           set -e
           apk add --no-cache git
           rm -rf src k8s
-          git clone "http://oauth2:${CI_TOKEN}@git.lan:3000/zbmowrey/flix.git" src
+          git clone "http://oauth2:${REGISTRY_TOKEN}@git.lan:3000/zbmowrey/flix.git" src
           cd src && git checkout "$SHA"
-          echo "$CI_TOKEN" | docker login git.lan:3000 -u zbmowrey --password-stdin
+          echo "$REGISTRY_TOKEN" | docker login git.lan:3000 -u zbmowrey --password-stdin
           # GIT_SHA is what /healthz reports, which the smoke step below waits for.
           docker build --pull --build-arg "GIT_SHA=$SHA" -t "$IMAGE:$SHA" .
           # Scan before pushing, so a failed scan publishes nothing.
@@ -73,7 +78,7 @@ jobs:
             || { echo "no sha256 digest for the pushed image (got '$DIGEST'); refusing to bump k8s"; exit 1; }
           echo "image: $IMAGE:$SHA@$DIGEST"
           cd ..
-          git clone "http://oauth2:${CI_TOKEN}@git.lan:3000/zbmowrey/k8s.git" k8s
+          git clone "http://oauth2:${K8S_DEPLOY_TOKEN}@git.lan:3000/zbmowrey/k8s.git" k8s
           cd k8s
           sed -i "s|^          image: git.lan:3000/zbmowrey/flix.*|          image: ${IMAGE}:${SHA}@${DIGEST}|" infra/flix/deployment.yaml
           grep -q "image: ${IMAGE}:${SHA}@${DIGEST}" infra/flix/deployment.yaml \
