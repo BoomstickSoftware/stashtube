@@ -5,7 +5,7 @@ summary: The library flix shows: the two scanned folders, the path-based saved f
 tags: [stash, library, stashdb, media]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-04
 sources: [nas:docs/services.md, nas:docs/operations.md, nas:docs/history/2026-10-29-agent-red-girl-import.md]
 related: [stash-api, nfs-media, whisparr-api, stashdb, delete-via-whisparr, duplicates-workbench]
 ---
@@ -44,11 +44,15 @@ flix assumes about the library.
   ([[whisparr-shelf]], [[delete-via-whisparr]]).
 - Feature films have **no** StashDB entry (StashDB has no full films; Whisparr matched them by
   TMDB), so 22 films carry title, date, studio and synopsis copied from Whisparr instead.
-- Identify honours an existing `stash_id` (verified 2026-10-29): 363 unlinked scenes were linked
-  from Whisparr's `stashId` and then identified in one pass. A scene whose fingerprint StashDB
-  lacks gets no title or cover from a plain Identify; Stash then serves the 733-byte placeholder
-  `screenshot` and `is_missing:"cover"` lists it. Two scenes (2132, 2256) carry a different
-  StashDB id from Whisparr's; both are StashDB duplicate entries, left as is.
+- Identify matches StashDB by fingerprint only; a `stash_id` set beforehand does not make it
+  find the scene (verified 2026-11-04: 101 linked scenes stayed bare, 3 freshly scanned ones
+  with known phashes identified; _until then this page said Identify honours an existing id,
+  from the 2026-10-29 run of 363 linked scenes, whose fingerprints StashDB knew_). A scene
+  whose fingerprint StashDB lacks gets no title or cover from Identify; Stash then serves the
+  733-byte placeholder `screenshot` and `is_missing:"cover"` lists it. The way in is a scrape
+  by uuid and a `sceneUpdate`: `scripts/library-reconcile.mjs --fill`
+  ([[library-reconcile]], [[identify-leaves-linked-scene-bare]]). 47 scenes carry a StashDB id
+  different from Whisparr's (2026-11-04; StashDB duplicates or Whisparr mismatches), left as is.
 - The Whisparr → Stash connection queues a Scan and then an Identify per imported file (path map
   `/volume1/Media/adult`→`/data/adult`), so a bulk import builds a long Stash queue (~50 min for
   102 jobs on 2026-10-29) during which reads may hit `database is locked`

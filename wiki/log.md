@@ -241,3 +241,10 @@ how to tell a queue from a dead runner → [[deploy-run-waiting-runners-busy]], 
 ## [2026-11-02] decide | Whisparr cleanup covers performers too: one with no remaining scene (by id or name) is deleted
 ## [2026-11-02] correct | Performer cleanup deleted 5 feature film records (files kept): films keep cast in credits; cleanup now keeps credited performers, records restored
 ## [2026-11-02] decide | Deleted scenes are never fetched again automatically (fresh exclusions in discovery, exclusion for gone files); a Get by hand is respected, cards show "Deleted before"
+
+## [2026-11-04] ingest | Library reconciled: disk, Stash and Whisparr are one set again
+`scripts/library-reconcile.mjs` (runs in the flix pod) found 3 unscanned imports, 1 film Whisparr
+lacked and 101 scenes without their StashDB link; scanned, added, linked and filled them. Identify
+matches by fingerprint only, the wiki said otherwise → [[identify-leaves-linked-scene-bare]],
+[[library-reconcile]], [[stash-library]] corrected; names and numbers in
+`private/wiki/history/2026-11-04-library-reconcile.md`.

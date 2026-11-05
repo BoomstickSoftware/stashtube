@@ -52,7 +52,7 @@ node scripts/scripts.mjs lint
    registered, an entry whose file or `wiki` page does not exist, a duplicate name or a
    missing key.
 
-## What is in it (2026-10-31)
+## What is in it (2026-11-04)
 
 | Script | Does |
 |---|---|
@@ -60,6 +60,7 @@ node scripts/scripts.mjs lint
 | `deploy-check.mjs` | waits for the pushed sha on `/healthz`, hits the smoke routes ([[deploy-and-verify]]) |
 | `mobile-check.mjs`, `touch-check.mjs`, `card-check.mjs` | the headless phone checks ([[mobile-checks]]) |
 | `stash-schema.mjs` | refreshes the Stash schema ([[regenerate-stash-schema]]) |
+| `library-reconcile.mjs` | disk vs Stash vs Whisparr, run inside the flix pod; `--scan`, `--link` ([[library-reconcile]]) |
 | `wiki.mjs` | wiki search, index, lint ([[CONVENTIONS]]) |
 | `scripts.mjs` | this registry |
 

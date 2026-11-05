@@ -398,6 +398,28 @@
         "operations"
       ],
       "wiki": "whisparr-cleanup"
+    },
+    {
+      "name": "library-reconcile",
+      "file": "scripts/library-reconcile.mjs",
+      "does": "Reconciles the video files on disk with Stash and Whisparr: files Stash never scanned, files Whisparr does not track, records whose file is gone, Stash scenes without a StashDB id that Whisparr's folder name supplies, linked scenes Identify left bare, and ids that differ between the two. Runs inside the flix pod (keys and NFS mount there, no .env needed). Report only unless --scan (Stash scan of the unscanned folders), --link (set the ids, one Identify) or --fill (scrape bare linked scenes by id and write title, studio, performers, tags, cover).",
+      "usage": [
+        "kubectl -n flix exec -i deploy/flix -- node - < scripts/library-reconcile.mjs",
+        "kubectl -n flix exec -i deploy/flix -- node - --scan < scripts/library-reconcile.mjs",
+        "kubectl -n flix exec -i deploy/flix -- node - --link < scripts/library-reconcile.mjs",
+        "kubectl -n flix exec -i deploy/flix -- node - --fill < scripts/library-reconcile.mjs"
+      ],
+      "env": {
+        "DISK_ROOT": "the library mount to walk (default: the local side of MEDIA_PATH_MAP)"
+      },
+      "writes": "Stash only, and only with a flag: --scan queues metadataScan for the unscanned folders; --link runs sceneUpdate(stash_ids) on the linkable scenes and queues metadataIdentify; --fill scrapes each bare linked scene from StashDB and runs sceneUpdate, creating missing studios, performers and tags. Whisparr is never written.",
+      "tags": [
+        "stash",
+        "whisparr",
+        "library",
+        "operations"
+      ],
+      "wiki": "library-reconcile"
     }
   ],
   "external": []
