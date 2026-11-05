@@ -248,3 +248,8 @@ lacked and 101 scenes without their StashDB link; scanned, added, linked and fil
 matches by fingerprint only, the wiki said otherwise → [[identify-leaves-linked-scene-bare]],
 [[library-reconcile]], [[stash-library]] corrected; names and numbers in
 `private/wiki/history/2026-11-04-library-reconcile.md`.
+
+## [2026-11-04] correct | The 47 Stash/Whisparr id conflicts resolved in Stash
+The file decides (release name, runtime, fingerprint); 32 relinked, 4 pack files unlinked, 23 left
+on purpose; `--link` now skips ids another scene holds → [[library-reconcile]] (conflict rules),
+[[stash-library]]; names in `private/wiki/history/2026-11-04-library-reconcile.md`.

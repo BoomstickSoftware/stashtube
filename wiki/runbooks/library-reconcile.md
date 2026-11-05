@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-04
 updated: 2026-11-04
 code: [scripts/library-reconcile.mjs]
-related: [stash-and-whisparr-clients, scripts-library, nfs-media, stash-layer, whisparr-nothing-monitored, identify-leaves-linked-scene-bare]
+related: [stash-and-whisparr-clients, scripts-library, nfs-media, stash-layer, whisparr-nothing-monitored, identify-leaves-linked-scene-bare, delete-via-whisparr, stash-library]
 ---
 
 # Reconcile the library (disk, Stash, Whisparr)
@@ -25,8 +25,9 @@ kubectl -n flix exec -i deploy/flix -- node - < scripts/library-reconcile.mjs
 ```
 
 Expected: `disk N videos | Stash N scenes | Whisparr … with a file` with the same N, every
-list at 0 but "Whisparr records without a file" (the Get queue's scenes still downloading) and
-"StashDB id differs" (StashDB duplicates and Whisparr mismatches, left alone on purpose).
+list at 0 but "Whisparr records without a file" (the Get queue's scenes still downloading),
+"StashDB id differs" (each one reviewed, see below) and "Whisparr id already on another
+scene" (files whose Whisparr label is provably wrong, left unlinked; `--link` skips them).
 
 ```sh
 # 2. files on disk Stash never scanned: queue the scan (sprites and phashes for a 2160p file take minutes)
@@ -57,6 +58,32 @@ kubectl -n flix exec -i deploy/flix -- node - --fill < scripts/library-reconcile
 - A scene with no id anywhere: scrape by text instead of by id
   (`private/wiki/runbooks/whisparr-import-into-chosen-scene.md`, step 5).
 - Specific runs, with names and numbers: `private/wiki/history/`.
+
+## When Stash and Whisparr disagree on the StashDB id
+
+Neither side wins by default. For each disagreement scrape both ids
+(`scrapeSingleScene(input:{query:"<uuid>"})`) and compare date, studio, title, performers and
+runtime with the file's release name and duration:
+
+- **Whisparr is right** when the release name and runtime match its entry; Stash's fingerprint
+  then landed on a reissue, remaster, dubbed copy, behind-the-scenes cut or a neighbouring
+  episode. A Stash id that another Stash scene also carries is wrong for the second file. Fix in
+  Stash: set Whisparr's id and write the scraped fields (title, date, studio, performers, tags,
+  cover).
+- **Stash is right** when its entry matches the file. Leave it: Whisparr's label is wrong, but
+  flix's delete finds the Whisparr record by file path, so moving files between Whisparr records
+  buys little and risks overwriting. Note it in the private history.
+- **Both wrong** (Whisparr imported the wrong release for a studio and date): search StashDB by
+  text from the release name (`input:{query:"<Studio> <Performer> <Title>"}`); an exact runtime
+  is the confirmation.
+- **Same scene twice on StashDB** (same title, date and performers): leave it.
+- Two files claiming one id: compare their phashes (`files { fingerprints }`; hex, Hamming
+  distance over 64 bits, ~30 means unrelated). The fingerprint-matched one keeps the id; the
+  other is unlinked, keeps studio and performer, and gets its title from the file name and a
+  cover from `sceneGenerateScreenshot`.
+
+Snapshot every scene first (`private/ops/stash/<date>-*.json`); the 2026-11-04 run's numbers and
+names are in `private/wiki/history/2026-11-04-library-reconcile.md`.
 
 ## If it fails
 

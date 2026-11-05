@@ -60,8 +60,13 @@ const notInWhisparr = [...disk].filter((p) => !byWhisparrPath.has(p)).sort()
 const stashGone = [...byStashPath.keys()].filter((p) => !disk.has(p)).sort()
 const whisparrGone = [...byWhisparrPath.keys()].filter((p) => !disk.has(p)).sort()
 const unlinked = scenes.filter((s) => !s.stash_ids.length && s.files.length)
-const linkable = unlinked.map((s) => ({ s, m: byWhisparrPath.get(s.files[0].path) })).filter(({ m }) => isUuid(m?.stashId ?? m?.foreignId))
-const rest = unlinked.filter((s) => !linkable.some((l) => l.s === s))
+// an id another Stash scene already holds is not linked again: that scene's fingerprint or a
+// resolved conflict says it is that video, so Whisparr's label on this file is wrong
+const held = new Set(scenes.flatMap((s) => s.stash_ids.map((x) => x.stash_id)))
+const candidates = unlinked.map((s) => ({ s, m: byWhisparrPath.get(s.files[0].path) })).filter(({ m }) => isUuid(m?.stashId ?? m?.foreignId))
+const linkable = candidates.filter(({ m }) => !held.has(m.stashId ?? m.foreignId))
+const taken = candidates.filter(({ m }) => held.has(m.stashId ?? m.foreignId))
+const rest = unlinked.filter((s) => !candidates.some((l) => l.s === s))
 // StashDB has no feature films (Whisparr matches those by TMDB), so a film without an id is normal
 const films = rest.filter((s) => s.files[0].path.startsWith(`${stashPrefix}/movies/`))
 const unlinkable = rest.filter((s) => !films.includes(s))
@@ -76,6 +81,7 @@ show('On disk, not in Whisparr (a film: add it by hand, GET movie/lookup?term=<t
 show('In Stash, file gone from disk', stashGone)
 show('In Whisparr, file gone from disk', whisparrGone)
 show('Stash scenes without a StashDB id that Whisparr can supply (--link)', linkable, ({ s, m }) => `${s.id} -> ${m.stashId ?? m.foreignId}  ${s.files[0].path.split('/').slice(-2, -1)[0].slice(0, 70)}`)
+show("Stash scenes without a StashDB id whose Whisparr id is already on another scene (Whisparr's label is wrong; left unlinked)", taken, ({ s, m }) => `${s.id} (Whisparr says ${m.stashId ?? m.foreignId})  ${s.files[0].path.split('/').pop().slice(0, 60)}`)
 show('Stash scenes without a StashDB id and none in Whisparr either (scrape by hand)', unlinkable, (s) => `${s.id}  ${s.files[0].path.replace(stashPrefix, '').slice(0, 90)}`)
 console.log(`\nFeature films without a StashDB id (normal, StashDB has no films): ${films.length}`)
 show('StashDB id differs between Stash and Whisparr (left as is; StashDB duplicates or a Whisparr mismatch)', disagree, ({ s, m }) => `${s.id} ${s.stash_ids[0].stash_id} vs ${m.stashId ?? m.foreignId}  ${s.title.slice(0, 50)}`)

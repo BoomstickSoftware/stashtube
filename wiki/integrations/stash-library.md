@@ -51,8 +51,15 @@ flix assumes about the library.
   whose fingerprint StashDB lacks gets no title or cover from Identify; Stash then serves the
   733-byte placeholder `screenshot` and `is_missing:"cover"` lists it. The way in is a scrape
   by uuid and a `sceneUpdate`: `scripts/library-reconcile.mjs --fill`
-  ([[library-reconcile]], [[identify-leaves-linked-scene-bare]]). 47 scenes carry a StashDB id
-  different from Whisparr's (2026-11-04; StashDB duplicates or Whisparr mismatches), left as is.
+  ([[library-reconcile]], [[identify-leaves-linked-scene-bare]]).
+- When Stash's id and Whisparr's disagree, the file decides: the release name (studio, date,
+  performers) and the runtime against each StashDB entry, and Stash's fingerprint. Stash's
+  fingerprint match lands on a reissue, remaster, dub, behind-the-scenes cut or neighbouring
+  episode often enough that it is not the default winner; an id already on another Stash scene
+  is never the right one for a second file. Resolved 2026-11-04 in Stash only: 23 disagreements
+  stay because Whisparr's label is the wrong one, and flix's delete finds the Whisparr record by
+  file path, so a wrong Whisparr id cannot delete the wrong file ([[delete-via-whisparr]],
+  [[library-reconcile]]).
 - The Whisparr → Stash connection queues a Scan and then an Identify per imported file (path map
   `/volume1/Media/adult`→`/data/adult`), so a bulk import builds a long Stash queue (~50 min for
   102 jobs on 2026-10-29) during which reads may hit `database is locked`
