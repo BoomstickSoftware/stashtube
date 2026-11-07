@@ -52,6 +52,13 @@ flix assumes about the library.
   733-byte placeholder `screenshot` and `is_missing:"cover"` lists it. The way in is a scrape
   by uuid and a `sceneUpdate`: `scripts/library-reconcile.mjs --fill`
   ([[library-reconcile]], [[identify-leaves-linked-scene-bare]]).
+- **Untagged scenes are untagged on StashDB** (_verified 2026-11-07_): about 195 linked scenes
+  have no tags in Stash (most from the 2026-10-24..31 bulk fills of three studios' older
+  catalogue; names in `private/wiki/integrations/stash-instance.md`), and StashDB has none for any of them now; Whisparr's
+  `genres` are empty too. No scene added since 2026-11-01 lacks tags, and StashDB had added no
+  tags after import for any of 931 scenes compared (one exception, 11 tags against 31). Not a flix
+  bug: the scene page shows every tag Stash holds. Filling them needs another source (TPDB, a
+  backlog item on the [[roadmap]]) or tagging by hand.
 - When Stash's id and Whisparr's disagree, the file decides: the release name (studio, date,
   performers) and the runtime against each StashDB entry, and Stash's fingerprint. Stash's
   fingerprint match lands on a reissue, remaster, dub, behind-the-scenes cut or neighbouring

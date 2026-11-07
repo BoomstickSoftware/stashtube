@@ -253,3 +253,7 @@ matches by fingerprint only, the wiki said otherwise → [[identify-leaves-linke
 The file decides (release name, runtime, fingerprint); 32 relinked, 4 pack files unlinked, 23 left
 on purpose; `--link` now skips ids another scene holds → [[library-reconcile]] (conflict rules),
 [[stash-library]]; names in `private/wiki/history/2026-11-04-library-reconcile.md`.
+
+## [2026-11-07] query | Scenes without categories: StashDB has none for them
+195 untagged linked scenes, all untagged on StashDB itself and in Whisparr; no late tagging after
+import; flix renders every tag → [[stash-library]].
