@@ -5,7 +5,7 @@ summary: What to do after pushing to main — follow the Forgejo run, confirm th
 tags: [deploy, k8s, verify, rollback]
 status: current
 verified: 2026-10-31
-updated: 2026-11-01
+updated: 2026-11-07
 code: [scripts/deploy-check.mjs]
 related: [deploy-run-waiting-runners-busy, forgejo-ci, github-public-mirror, kubernetes-deployment, run-checks, caching, one-commit-per-initiative, scripts-library, trivy-db-download-timed-out]
 ---
@@ -18,7 +18,8 @@ Every push to `main` goes live within minutes ([[forgejo-ci]]). Push only after
 ## Steps
 
 0. The public mirror is not the deploy: `origin` is Forgejo and `main` tracks it. After a push
-   to origin, also `git push github main` ([[github-public-mirror]]).
+   to origin, run `node scripts/privacy-check.mjs history` (every line the unmirrored commits
+   add; exit 1 on a library name) and only then `git push github main` ([[github-public-mirror]]).
 
 
 1. `git push`. `tea actions runs` (the tea CLI, logged in to git.lan; `-o json` for scripts)

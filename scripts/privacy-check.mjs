@@ -4,6 +4,9 @@
 // such notes live in the gitignored private/ folder.
 //
 //   node scripts/privacy-check.mjs                      # scan tracked + new (not ignored) files; exit 1 on a hit
+//   node scripts/privacy-check.mjs history [range]      # scan every line ADDED by each commit in a git range
+//                                                       # (default github/main..HEAD: what the next mirror push
+//                                                       # would publish, including names added then removed)
 //   node scripts/privacy-check.mjs refresh [server]     # rebuild private/denylist.auto.txt from flix's API
 //                                                       # (every performer and studio Stash knows; read-only GETs)
 //
@@ -52,17 +55,25 @@ async function refresh(server = 'http://flix.lan') {
   console.log(`private/denylist.auto.txt: ${list.length} names`)
 }
 
-function check() {
+function matcher() {
   const allow = new Set(readTerms(ALLOW))
   const terms = [...new Set([...readTerms(AUTO), ...readTerms(MANUAL)])].filter((t) => t.length >= MIN_LEN && !allow.has(t))
   if (!terms.length) {
     console.log('privacy: no denylist in private/ (fresh clone?); run `node scripts/privacy-check.mjs refresh` to build one')
-    return 0
+    return null
   }
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   // Longest first, so "Jane Doe Studio" wins over "Jane Doe".
-  const re = new RegExp(`(?<![\\p{L}\\p{N}])(?:${terms.sort((a, b) => b.length - a.length).map(esc).join('|')})(?![\\p{L}\\p{N}])`, 'gu')
-  const git = (args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).stdout.split('\n').filter(Boolean)
+  return { count: terms.length, re: new RegExp(`(?<![\\p{L}\\p{N}])(?:${terms.sort((a, b) => b.length - a.length).map(esc).join('|')})(?![\\p{L}\\p{N}])`, 'gu') }
+}
+
+const git = (args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).stdout.split('\n').filter(Boolean)
+
+function check() {
+  const m = matcher()
+  if (!m) return 0
+  const { re, count } = m
+  const terms = { length: count }
   const files = [...new Set([...git(['ls-files']), ...git(['ls-files', '--others', '--exclude-standard'])])].filter(
     (f) => !SKIP.some((r) => r.test(f)) && existsSync(join(ROOT, f)),
   )
@@ -78,6 +89,25 @@ function check() {
   return hits.length ? 1 : 0
 }
 
+// Every line a commit in the range adds (binary and skipped files aside), so a name that was added
+// and removed later still counts: the mirror push publishes history, not just the last tree.
+function history(range = 'github/main..HEAD') {
+  const m = matcher()
+  if (!m) return 0
+  const hits = []
+  let commit = '', file = ''
+  for (const line of git(['log', '-p', '--no-color', '--format=@@commit %h %s', range])) {
+    if (line.startsWith('@@commit ')) { commit = line.slice(9); continue }
+    if (line.startsWith('+++ ')) { file = line.replace(/^\+\+\+ (b\/)?/, ''); continue }
+    if (!line.startsWith('+') || SKIP.some((r) => r.test(file))) continue
+    for (const x of line.matchAll(m.re)) hits.push(`${commit.slice(0, 60)} | ${file}: ${x[0]}`)
+  }
+  for (const h of hits) console.log(h)
+  console.log(`privacy history ${range}: ${git(['rev-list', range]).length} commits, ${m.count} terms, ${hits.length} hit(s)`)
+  return hits.length ? 1 : 0
+}
+
 const [cmd, arg] = process.argv.slice(2)
 if (cmd === 'refresh') await refresh(arg)
+else if (cmd === 'history') process.exit(history(arg))
 else process.exit(check())

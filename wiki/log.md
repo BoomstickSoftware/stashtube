@@ -257,3 +257,8 @@ on purpose; `--link` now skips ids another scene holds → [[library-reconcile]]
 ## [2026-11-07] query | Scenes without categories: StashDB has none for them
 195 untagged linked scenes, all untagged on StashDB itself and in Whisparr; no late tagging after
 import; flix renders every tag → [[stash-library]].
+
+## [2026-11-07] correct | A studio name reached a commit; history rewritten before the mirror saw it
+Two unmirrored commits folded into one clean one and force-pushed to origin; `privacy-check.mjs
+history` now scans what the next mirror push publishes, and the push step runs it →
+[[github-public-mirror]], [[deploy-and-verify]].

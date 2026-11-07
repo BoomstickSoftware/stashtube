@@ -7,7 +7,7 @@ status: current
 decided: 2026-11-01
 by: user
 verified: 2026-11-01
-updated: 2026-11-02
+updated: 2026-11-07
 related: [forgejo-ci, deploy-and-verify, one-commit-per-initiative, readme-screenshots]
 ---
 
@@ -29,7 +29,10 @@ options around the words flix, stash, vids and tube. GitHub crowding at the time
   says so in its first lines.
 - `origin` stays `git@git.lan:zbmowrey/flix.git`, because every push to it deploys
   ([[forgejo-ci]]). GitHub is the remote `github`, pushed by hand after a push to origin:
-  `git push github main`. `main` tracks `origin/main`; `git push -u github` once moved the
+  `node scripts/privacy-check.mjs history && git push github main`. The history scan reads
+  every line each unmirrored commit adds (`github/main..HEAD`), because the push publishes
+  history: a name added in one commit and removed in the next is still public (2026-11-07,
+  below). `main` tracks `origin/main`; `git push -u github` once moved the
   upstream to GitHub, which would have sent a bare `git push` away from the deploy, and was
   reverted.
 - Before the first push the history was scanned: `gitleaks git` over all 108 commits found no
@@ -63,3 +66,13 @@ from version control**.
   fixture path, two code comments, the 2026-10-31 UX audits, this wiki); all were replaced by
   placeholders. Older commits still hold them; rewriting published history is a separate step.
 - `private/` is not backed up by git. It lives only on this Mac.
+
+## A name that reached a commit (2026-11-07)
+
+A wiki note named three studios in a tracked page; the tree check flagged it after the commit
+was pushed to origin, and a fix-forward commit removed the names. Both commits were still only
+on Forgejo, so they were folded into one clean commit and `main` was force-pushed to origin with
+`--force-with-lease`; the mirror never saw the names. Since then `privacy-check.mjs history`
+scans the range the next mirror push would publish, and the push step above runs it first.
+**If a name reaches the mirror itself**, the fix is a history rewrite and force-push on GitHub
+too: ask the user first.

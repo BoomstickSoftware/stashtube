@@ -351,9 +351,10 @@
     {
       "name": "privacy-check",
       "file": "scripts/privacy-check.mjs",
-      "does": "Fails when a tracked or new file names a performer, studio or indexer from the library (the repo is mirrored publicly); refresh rebuilds the generated denylist from flix's API.",
+      "does": "Fails when a tracked or new file names a performer, studio or indexer from the library (the repo is mirrored publicly); history scans every line the commits in a range add (default github/main..HEAD, what the next mirror push publishes); refresh rebuilds the generated denylist from flix's API.",
       "usage": [
         "node scripts/privacy-check.mjs",
+        "node scripts/privacy-check.mjs history [github/main..HEAD]",
         "node scripts/privacy-check.mjs refresh [http://flix.lan]"
       ],
       "writes": "refresh writes private/denylist.auto.txt; the check writes nothing",
