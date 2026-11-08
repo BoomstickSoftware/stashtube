@@ -5,7 +5,7 @@ summary: How the Featured row and Tonight's pick are scored from ten signals and
 tags: [home, ranking, settings, recommendations]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-07
 routes: [/, /settings]
 api: [GET /api/featured, POST /api/featured/preview]
 code: [apps/server/src/featured.ts, apps/server/src/featured.test.ts, apps/server/src/stash.ts, packages/shared/src/index.ts, apps/web/src/components/FeaturedDials.tsx]
@@ -41,7 +41,8 @@ hard-coded sort on 2026-10-30 at the user's request.
 - **Caps**: at most two picks per performer and three per studio. Every pick carries a `why`
   line in words ("A performer you follow · not seen in 7 months"; _"Favourite performer" until
   2026-10-31_, [[categories-and-us-spelling]]).
-- **Seed**: the page's (made at load; Shuffle draws another); without one, the day's.
+- **Seed**: the browser's, kept 1 hour (`homeSeed()`, [[home-feed]]; Shuffle draws another);
+  without one, the day's. With `surprise` 0.7 a new seed changes nearly the whole row.
 - **Weights** are saved under the `featured` key of the `settings` table, so they are shared
   across devices ([[single-user-no-login]]). Settings previews the top 12 live while dragging
   through `POST /api/featured/preview` with unsaved weights.

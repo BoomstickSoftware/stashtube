@@ -262,3 +262,7 @@ import; flix renders every tag → [[stash-library]].
 Two unmirrored commits folded into one clean one and force-pushed to origin; `privacy-check.mjs
 history` now scans what the next mirror push publishes, and the push step runs it →
 [[github-public-mirror]], [[deploy-and-verify]].
+
+## [2026-11-07] ingest | Shuffle everything on Home; Featured rolls hourly
+Stations were already shuffled; Home gained a one-tap whole-library station card, and the Featured
+seed is kept 1 h instead of 6 → [[home-feed]], [[stations]], [[featured-ranking]].

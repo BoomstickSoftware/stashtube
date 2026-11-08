@@ -51,7 +51,7 @@ export function Home(): JSX.Element {
   return (
     <div className="space-y-10">
       <Hero order={order} seed={seed} more={!!featuredRow} />
-      {!featuredRow && <PickUpStations />}
+      {!featuredRow && <PickUpStations cover={order.at(-1)} />}
       {data.map((r) =>
         r.savedId ? (
           <PinnedRow key={r.key} row={r} order={data.filter((x) => x.savedId).map((x) => x.savedId!)} />
@@ -66,7 +66,7 @@ export function Home(): JSX.Element {
                 </button>
               }
             />
-            <PickUpStations />
+            <PickUpStations cover={order.at(-1)} />
           </Fragment>
         ) : (
           <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
@@ -89,27 +89,51 @@ const HERO_EVERY = 12_000 // ms a pick stays up before the next one
 
 const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 1000, 7) / 1000
 
-// Stations left part-way, most recent first: tap one to pick it up where it was.
-function PickUpStations() {
+// One tap into a station of the whole library in a fresh random order, then the stations left
+// part-way, most recent first (tap one to pick it up where it was). The shuffle card is always
+// there, so the row shows even with nothing in progress. `cover`: a picture for it from the
+// feed (the last Featured pick, so not the hero's).
+function PickUpStations({ cover }: { cover?: SceneCard }) {
   const { data: resumes, isLoading } = useStationResumes()
   const recent = (resumes ?? []).slice(0, 6)
   // the row arrives after the feed paints; hold its height so the rows below do not jump
   if (isLoading && !resumes) return <section aria-hidden className="h-[calc(62vw*9/16+4.75rem)] sm:h-[calc(260px*9/16+4.75rem)]" />
-  if (!recent.length) return null
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl">Pick up a station</h2>
+        <h2 className="text-lg font-bold tracking-tight sm:text-xl">{recent.length ? 'Pick up a station' : 'Stations'}</h2>
         <Link to="/stations" className="text-sm text-muted hover:text-accent">
           All stations
         </Link>
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+      <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6">
+        <ShuffleCard cover={cover} />
         {recent.map((r) => (
           <ResumeCard key={r.key} resume={r} />
         ))}
       </div>
     </section>
+  )
+}
+
+// The whole library as a station, shuffled with a fresh seed on every start (the Stations page's
+// "Everything" quick start, without its resume).
+function ShuffleCard({ cover }: { cover?: SceneCard }) {
+  return (
+    <Link to="/station" search={{}} className="group w-[62vw] shrink-0 snap-start sm:w-[260px]">
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
+        {cover && <img src={sized(cover.screenshot, 640)} alt="" loading="lazy" className="size-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-[1.03]" />}
+        <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+          <span className="flex size-12 items-center justify-center rounded-full bg-white/90 text-black shadow-xl transition-transform group-hover:scale-105">
+            <Shuffle size={20} />
+          </span>
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold">
+        <Radio size={13} className="shrink-0 text-accent" />
+        <span className="truncate">Shuffle everything</span>
+      </div>
+    </Link>
   )
 }
 

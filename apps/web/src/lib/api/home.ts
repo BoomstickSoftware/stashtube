@@ -6,9 +6,11 @@ import { get, HOME_SEED_KEY, queryClient, send } from './client'
 // The Home page: its rows, the Featured dials' live preview, and the pinned rows.
 
 // The Featured row and hero keep their order while `seed` stays. It is kept (per browser)
-// across visits for SEED_HOURS, so a return to Home or a cold open finds its feed in the
+// across visits for SEED_HOURS, so a return to Home within the hour finds its feed in the
 // cache and paints at once, scrolled where it was; then it rolls, and Shuffle rolls it now.
-const SEED_HOURS = 6
+// A new seed brings a nearly new row (2026-11-07: 0–3 of 24 shared between seeds), so this is
+// how often Featured changes by itself (6 h until 2026-11-07, the user asked for more often).
+const SEED_HOURS = 1
 const rollSeed = () => {
   const seed = Math.random().toString(36).slice(2, 10)
   writeStored(HOME_SEED_KEY, { seed, at: Date.now() })

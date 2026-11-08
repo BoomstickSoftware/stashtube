@@ -5,7 +5,7 @@ summary: The rows the Home page shows, in order, where each comes from, and how 
 tags: [home, rows, recommendations, caching]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-07
 routes: [/]
 api: [GET /api/home?seed=, GET /api/rows, POST /api/rows, PUT /api/rows/order, PUT /api/rows/:id, DELETE /api/rows/:id]
 code: [apps/server/src/api.ts, apps/server/src/rows.ts, apps/server/src/stash.ts, apps/web/src/pages/Home.tsx, apps/web/src/lib/api/home.ts]
@@ -38,7 +38,7 @@ show, even empty, so they can be managed); the web slots "Pick up a station" in 
 | **New from performers you follow** | favourite (followed) performers, newest first; _titled "New from your favourites" until 2026-10-31_ ([[categories-and-us-spelling]]) |
 | Recently added, Discover (random, unwatched), Top rated (★4+), Latest releases, Most watched | plain filtered lists |
 | **New from your favourites, not downloaded** | Whisparr's recent releases from favourite performers, from 3 items; see [[whisparr-shelf]] |
-| **Pick up a station** | stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]]. Rendered **right after Featured** (since 2026-10-31; _the first row under the hero before_, which put Featured below the fold at 1440×900), or first when there is no Featured row |
+| **Pick up a station** | first a **Shuffle everything** card (the whole library as a station, fresh random order each start; always there, so the row shows with nothing in progress, titled "Stations" then; since 2026-11-07), then stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]]. Rendered **right after Featured** (since 2026-10-31; _the first row under the hero before_, which put Featured below the fold at 1440×900), or first when there is no Featured row |
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
 The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]);
@@ -49,9 +49,10 @@ with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
 
 Random rows use `daySeed()` (the day number), so they are stable through a day. Featured takes
 the browser's seed: `homeSeed()` in `lib/api/home.ts` keeps one in localStorage `flix.homeSeed`
-for 6 hours, so returning to Home or a cold open finds its feed already cached (painted at once,
-at the same scroll position); Shuffle on the Featured row rolls a new one, and after 6 hours it
-rolls by itself, with the newest cached feed standing in until the new one arrives. A request
+for 1 hour, so returning to Home within the hour finds its feed already cached (painted at
+once, at the same scroll position); Shuffle on the Featured row rolls a new one, and after an
+hour it rolls by itself (_6 hours until 2026-11-07_; the user asked for Featured to change more
+often, and a new seed brings a nearly new row: 0–3 of 24 shared between seeds), with the newest cached feed standing in until the new one arrives. A request
 without a seed (the warm, curl) gets the day's. _Until 2026-10-31_ every visit made a new seed,
 so the cached feed was never used and Back to Home lost its place.
 
