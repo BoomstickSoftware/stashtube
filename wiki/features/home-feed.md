@@ -5,7 +5,7 @@ summary: The rows the Home page shows, in order, where each comes from, and how 
 tags: [home, rows, recommendations, caching]
 status: current
 verified: 2026-10-31
-updated: 2026-11-07
+updated: 2026-11-09
 routes: [/]
 api: [GET /api/home?seed=, GET /api/rows, POST /api/rows, PUT /api/rows/order, PUT /api/rows/:id, DELETE /api/rows/:id]
 code: [apps/server/src/api.ts, apps/server/src/rows.ts, apps/server/src/stash.ts, apps/web/src/pages/Home.tsx, apps/web/src/lib/api/home.ts]
@@ -41,7 +41,8 @@ show, even empty, so they can be managed); the web slots "Pick up a station" in 
 | **Pick up a station** | first a **Shuffle everything** card (the whole library as a station, fresh random order each start; always there, so the row shows with nothing in progress, titled "Stations" then; since 2026-11-07), then stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]]. Rendered **right after Featured** (since 2026-10-31; _the first row under the hero before_, which put Featured below the fold at 1440×900), or first when there is no Featured row |
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
-The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]);
+The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]),
+and Edu videos are held out of every row unless a pinned row names an Edu category ([[edu-section]]);
 the Performers page's Women / Men / Everyone switch does not (_it steered "For you" and "More
 with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
 

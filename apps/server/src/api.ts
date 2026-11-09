@@ -3,6 +3,7 @@ import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
+import { addEduTag, curated, eduTagList, relatedSide, removeEduTag } from './edu.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
 import { toGroup } from './duplicates.ts'
@@ -49,6 +50,8 @@ const sceneQuery = z.object({
   inProgress: flag,
   favorites: flag,
   unblocked: flag,
+  edu: flag,
+  noEdu: flag,
   maxHeight: num,
   maxRating: z.coerce.number().min(1).max(5).optional(),
   unmatched: flag,
@@ -149,8 +152,8 @@ const toCandidate = (s: Scene): Candidate => ({
 
 // The Featured row: the library scored by the saved (or given) dials, for this seed.
 async function featured(weights: FeaturedWeights, seed: string, limit: number, offset = 0): Promise<SceneCard[]> {
-  const blocked = await exclusions()
-  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities()])
+  const blocked = curated(await exclusions())
+  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities(blocked.eduTags)])
   const affinity: Affinity = aff
     ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
     : NO_AFFINITY
@@ -180,7 +183,8 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
   if (!last) return null
   const r = await stash.getScene(last.id)
   if (!r) return null
-  const related = await stash.relatedScenes(last.id, r.performerIds, r.studioId, r.tagIds, blocked)
+  const side = relatedSide(r.tagIds, blocked)
+  const related = await stash.relatedScenes(last.id, r.performerIds, r.studioId, r.tagIds, side.ex, null, side.within)
   const items = [...related.filter((s) => !s.playCount), ...related.filter((s) => s.playCount)].slice(0, 24)
   if (items.length < 3) return null
   const title = last.title.length > 48 ? `${last.title.slice(0, 46).trimEnd()}…` : last.title
@@ -200,7 +204,8 @@ export function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
 }
 
 async function buildHomeRows(visitSeed: string): Promise<HomeRow[]> {
-  const blocked = await exclusions()
+  // Edu videos stay off Home; a pinned row that names an Edu category still shows them
+  const blocked = curated(await exclusions())
   const row = async (key: string, title: string, query: SceneQuery): Promise<HomeRow> => {
     const f = query.sort === 'random' && !query.seed ? { ...query, seed: daySeed() } : query
     const r = await stash.findScenes(stash.findFilter({ ...f, perPage: 24 }), stash.sceneFilter(f, blocked))
@@ -355,7 +360,8 @@ api.get('/scenes/:id/related', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, await exclusions(), r.group))
+  const side = relatedSide(r.tagIds, await exclusions())
+  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, side.ex, r.group, side.within))
 })
 
 const ratingBody = z.object({ rating: z.number().min(0).max(5).nullable() })
@@ -651,6 +657,23 @@ api.put('/blocklist/:kind/:id', async (c) => {
 api.delete('/blocklist/:kind/:id', async (c) => {
   await unblock(parse(kind, c.req.param('kind')), c.req.param('id'))
   kickSync()
+  return c.body(null, 204)
+})
+
+// --- the Edu section's categories (edu.ts) -----------------------------------------
+
+api.get('/edu/tags', async (c) => c.json(await eduTagList()))
+
+api.put('/edu/tags/:id', async (c) => {
+  const id = c.req.param('id')
+  const name = await stash.namesFor('tag', id)
+  if (!name) return notFound()
+  await addEduTag(id, name)
+  return c.body(null, 204)
+})
+
+api.delete('/edu/tags/:id', async (c) => {
+  await removeEduTag(c.req.param('id'))
   return c.body(null, 204)
 })
 

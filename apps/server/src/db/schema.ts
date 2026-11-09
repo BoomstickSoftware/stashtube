@@ -43,6 +43,14 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.kind, t.stashId] })],
 )
 
+// The categories that make up the Edu section (edu.ts): their videos stay out of Home, Featured,
+// For you, related videos and stations, and are listed on /edu.
+export const eduTags = pgTable('edu_tags', {
+  stashId: text('stash_id').primaryKey(), // Stash tag id
+  name: text('name').notNull(), // display name when added, so Settings renders without Stash
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 // Small UI preferences, kept next to the page they affect (e.g. the performer gender switch).
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),

@@ -5,9 +5,9 @@ summary: Blocked tags, performers and studios, plus the "Not interested" tag, ar
 tags: [blocklist, filters, stash, settings]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 code: [apps/server/src/blocklist.ts, apps/server/src/stash.ts]
-related: [data-model, stash-layer, stash-filters-have-no-id-criterion, people-pages]
+related: [data-model, stash-layer, stash-filters-have-no-id-criterion, people-pages, edu-section]
 ---
 
 # Blocklist and exclusions
@@ -40,8 +40,15 @@ studio and its parent; not the People defaults, which shape what lists offer rat
 was watched): History, Stats, "Because you watched" on Home, and the station resume points on
 Home and Stations. _Until 2026-10-31_ those showed blocked and "Not interested" videos.
 
+## The Edu hold
+
+`exclusions()` also carries the Edu categories (`eduTags`). They are held out only where a view
+asks (`holdEdu`, set by `curated()` or `noEdu`): Home, Featured, related videos, stations. Browse
+and search show them. A named Edu category lifts the hold for that query ([[edu-section]]).
+
 ## Avoid
 
-Any new finder or feed must call `exclusions()` (scenes) or `dropBlocked()` (entities) and be
+Any new finder or feed must call `exclusions()` (scenes) or `dropBlocked()` (entities), and a
+feed or picker `curated()` too ([[edu-section]]), and be
 hit by the smoke list after deploy; the 2026-10-29 outage came from checking only the routes
 that were edited.

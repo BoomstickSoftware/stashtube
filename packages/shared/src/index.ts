@@ -219,6 +219,10 @@ export interface Blocklist {
 
 export type BlockKind = 'tag' | 'performer' | 'studio'
 
+// The categories whose videos form the Edu section: kept out of Home, Featured, For you, related
+// videos and stations, shown on /edu (wiki features/edu-section).
+export type EduTags = Ref[]
+
 export const sceneSorts = {
   date: 'Release date',
   created_at: 'Recently added',
@@ -252,6 +256,8 @@ export interface SceneQuery {
   inProgress?: boolean // started, not finished (has a resume point)
   favorites?: boolean // only scenes with a favourite performer
   unblocked?: boolean // ignore the blocklist
+  edu?: boolean // only Edu videos (any of the Edu categories); the Edu page
+  noEdu?: boolean // hold Edu videos out (stations); naming an Edu category, or `edu`, overrides it
   // Cleanup filters
   maxHeight?: number // below this: 720, 1080, 2160
   maxRating?: number // rated, at most this many stars

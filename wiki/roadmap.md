@@ -5,7 +5,7 @@ summary: Where flix stands, what is left on the backlog, what is deferred, the k
 tags: [roadmap, backlog]
 status: current
 verified: 2026-10-30
-updated: 2026-11-02
+updated: 2026-11-09
 related: [overview, log, 2026-10-31-ux-audit]
 ---
 
@@ -33,6 +33,7 @@ Done, by date (each page says what changed and how it was verified):
   [[2026-10-31-shelf-grid-view]], [[2026-10-31-mini-player-expand]],
   [[2026-10-31-ux-copy-settings-errors]], [[2026-10-31-ux-phase5-freshness]]
   [[2026-10-31-covers-shelf-skeletons]]
+- [[2026-11-09-edu-section]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 

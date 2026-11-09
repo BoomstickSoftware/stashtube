@@ -266,3 +266,13 @@ history` now scans what the next mirror push publishes, and the push step runs i
 ## [2026-11-07] ingest | Shuffle everything on Home; Featured rolls hourly
 Stations were already shuffled; Home gained a one-tap whole-library station card, and the Featured
 seed is kept 1 h instead of 6 → [[home-feed]], [[stations]], [[featured-ranking]].
+
+## [2026-11-08] query | How daily discovery picks scenes to fetch
+Read `discoverNew`/`startGetQueue` in getqueue.ts; added its limits (timer from start, first-seen follow window, 5-page and 200 caps, tag blocks not applied) to stashdb-mirror.
+
+## [2026-11-09] decide | Edu section
+User chose: Edu videos held out of Home, Featured, For you, related and stations but shown in
+Browse and search; Edu plays do not steer recommendations; "Edu" at /edu with a phone header
+icon; categories managed on their page and in Settings → [[edu-section]],
+[[edu-section-held-out-of-curated-views]], [[2026-11-09-edu-section]]; updated
+[[blocklist-and-exclusions]], [[home-feed]], [[related-videos]], [[stations]], [[data-model]].

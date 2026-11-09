@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from 'react'
 import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Ban, ChevronRight, Copy, Search, Trash2, X } from 'lucide-react'
+import { Ban, ChevronRight, Copy, GraduationCap, Search, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
@@ -13,7 +13,7 @@ import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
-import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { authApi, useBlock, useBlocklist, useEduTags, useSearch, useSetEdu, useSettings, useTags, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
 import { showToast } from '../lib/toast'
@@ -55,6 +55,7 @@ export function Settings(): JSX.Element {
         <Group id="library" title="Library">
           <LibraryTools />
           <WhisparrSyncSetting />
+          <EduSetting />
           <BlocklistSetting />
           <HiddenSetting />
         </Group>
@@ -131,6 +132,65 @@ function LibraryTools() {
         <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
       </Link>
     </div>
+  )
+}
+
+// The Edu section's categories: add from a search, remove with the chip's ×.
+function EduSetting() {
+  const { data } = useEduTags()
+  const set = useSetEdu()
+  const [q, setQ] = useState('')
+  const dq = useDebounced(q.trim(), 150)
+  const { data: found } = useTags({ q: dq || undefined, unblocked: true }, dq.length >= 2)
+  const inEdu = new Set(data?.map((t) => t.id))
+  return (
+    <section>
+      <h3 className="flex items-center gap-2 text-lg font-bold">
+        <GraduationCap size={20} className="text-accent" /> Edu section
+      </h3>
+      <p className="mt-1 text-sm text-muted">
+        Videos in these categories are listed under <Link to="/edu" className="text-fg underline decoration-line underline-offset-2 hover:text-accent">Edu</Link> and
+        kept out of Home, Featured, For you, related videos and stations; watching them does not steer recommendations. Browse,
+        search and the performer and studio pages still show them.
+      </p>
+      <label className="mt-4 flex h-10 items-center gap-2 rounded-full bg-raised px-4 ring-1 ring-white/5 focus-within:ring-accent/60 touch:h-11">
+        <Search size={16} className="text-muted" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Find a category to add"
+          className="w-full bg-transparent text-base outline-none placeholder:text-muted sm:text-sm"
+        />
+      </label>
+      {dq.length >= 2 && (
+        <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+          {found?.items.slice(0, 12).map((t) => (
+            <div key={t.id} className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-white/5">
+              <Link to="/tag/$id" params={{ id: t.id }} className="hover:text-accent">
+                {t.name}
+              </Link>
+              <span className="text-xs text-muted">{t.sceneCount.toLocaleString()} videos</span>
+              <button
+                onClick={() => set.mutate({ id: t.id, edu: true })}
+                disabled={inEdu.has(t.id)}
+                className="ml-auto rounded-full px-3 py-1 text-xs text-accent hover:bg-accent/15 disabled:text-muted disabled:hover:bg-transparent touch:min-h-11"
+              >
+                {inEdu.has(t.id) ? 'In Edu' : 'Add'}
+              </button>
+            </div>
+          ))}
+          {found && !found.items.length && <div className="px-4 py-3 text-sm text-muted">No matches</div>}
+        </div>
+      )}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {data?.map((t) => (
+          <Chip key={t.id} tone="include" onClick={() => set.mutate({ id: t.id, edu: false })}>
+            {t.name} <X size={13} aria-label={`Remove ${t.name}`} />
+          </Chip>
+        ))}
+        {data && !data.length && <span className="text-sm text-muted/70">None yet. Add one above, or tap Edu on a category's page.</span>}
+      </div>
+    </section>
   )
 }
 

@@ -72,6 +72,18 @@ describe('sceneFilter', () => {
     assert.deepEqual(levels(f), [{}])
   })
 
+  it('holds Edu videos out only when asked, and lets a named Edu category or edu=1 back in', () => {
+    const edu = { tags: [], performers: [], studios: [], eduTags: ['3', '4'] }
+    const out = { tags: { value: ['3', '4'], modifier: 'EXCLUDES', depth: 0 } }
+    assert.deepEqual(levels(sceneFilter({}, edu)), [{}], 'Browse shows Edu videos')
+    assert.deepEqual(levels(sceneFilter({}, { ...edu, holdEdu: true })), [{}, out], 'a curated view holds them out')
+    assert.deepEqual(levels(sceneFilter({ noEdu: true }, edu)), [{}, out], 'stations hold them out')
+    assert.deepEqual(levels(sceneFilter({ noEdu: true, tags: '4' }, edu)).length, 1, 'naming an Edu category lets them in')
+    assert.deepEqual(levels(sceneFilter({ edu: true }, { ...edu, holdEdu: true })), [{}, { tags: { value: ['3', '4'], modifier: 'INCLUDES', depth: 0 } }], 'the Edu page')
+    assert.deepEqual(levels(sceneFilter({ edu: true }, { ...edu, eduTags: [] })), [{}, { id: { value: 0, modifier: 'EQUALS' } }], 'no Edu categories: nothing')
+    assert.deepEqual(levels(sceneFilter({ edu: true, unblocked: true }, { ...edu, tags: ['9'] })).length, 2, 'Show blocked keeps the Edu requirement')
+  })
+
   it('puts the people criterion (an OR chain) last, with at most 16 date buckets', () => {
     const f = sceneFilter({ maxHeight: 720 }, { ...none, people: { gender: { value: 'FEMALE', modifier: 'INCLUDES' }, firstYear: 1990, minAge: 18, maxAge: 25 } })
     const last = levels(f).at(-1)!
@@ -109,6 +121,8 @@ describe('isBlocked', () => {
     assert.equal(isBlocked(scene({ studio: { id: '7' } }), ex), true)
     assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '7' } } }), ex), true)
     assert.equal(isBlocked(scene({ tags: [{ id: '1' }], performers: [{ id: '2' }], studio: { id: '3' } }), ex), false)
+    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, eduTags: ['4'] }), false, 'Edu shows unless held out')
+    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, eduTags: ['4'], holdEdu: true }), true)
   })
 })
 

@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, GraduationCap, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
@@ -27,6 +27,7 @@ const nav = [
   { to: '/playlists', label: 'Playlists', icon: ListVideo },
   { to: '/stations', label: 'Stations', icon: Radio, desktopOnly: true }, // phones: header icon (the tab bar is full)
   { to: '/discover', label: 'Discover', icon: Compass, desktopOnly: true }, // phones: header icon
+  { to: '/edu', label: 'Edu', icon: GraduationCap, desktopOnly: true }, // phones: header icon
 ] as const
 
 export function Layout(): JSX.Element {
@@ -75,7 +76,9 @@ export function Layout(): JSX.Element {
     // hidden, keeps the sticky header working)
     <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
       <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
-        <div className="mx-auto flex h-full max-w-[1920px] items-center gap-4 px-4 sm:px-6">
+        {/* no gap on phones: the 44 px icons carry their own spacing, and seven of them plus Back
+            (standalone) fill a 440 px row (wiki features/edu-section) */}
+        <div className="mx-auto flex h-full max-w-[1920px] items-center gap-0 px-4 sm:gap-4 sm:px-6">
           {canGoBack && (
             <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Back">
               <ChevronLeft size={22} />
@@ -115,6 +118,9 @@ export function Layout(): JSX.Element {
           </Link>
           <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
             <Radio size={20} />
+          </Link>
+          <Link to="/edu" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Edu">
+            <GraduationCap size={20} />
           </Link>
           <button
             onClick={() => {

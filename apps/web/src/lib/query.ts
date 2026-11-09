@@ -32,6 +32,7 @@ export function parseSceneQuery(s: Record<string, unknown>): SceneQuery {
     inProgress: bool(s.inProgress),
     favorites: bool(s.favorites),
     unblocked: bool(s.unblocked),
+    edu: bool(s.edu), // the Edu page's station
     maxHeight: num(s.maxHeight),
     maxRating: num(s.maxRating),
     unmatched: bool(s.unmatched),

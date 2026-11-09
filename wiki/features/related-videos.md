@@ -5,10 +5,10 @@ summary: How the BFF scores related videos from up to 120 candidates sharing per
 tags: [related, recommendations, scene]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 api: [GET /api/scenes/:id/related]
 code: [apps/server/src/stash.ts, apps/web/src/pages/Scene.tsx]
-related: [scene-page, home-feed, stations, blocklist-and-exclusions]
+related: [scene-page, home-feed, stations, blocklist-and-exclusions, edu-section]
 ---
 
 # Related videos
@@ -21,7 +21,9 @@ a phone; [[scene-page]]), and the seed of a drifting station ([[stations]]) and 
 
 - `relatedScenes()` in `stash.ts` runs up to three Stash queries of 40 each (scenes sharing a
   performer, the same studio at depth 0, any of the first 20 tags), so up to 120 candidates,
-  the scene itself and exclusions left out ([[blocklist-and-exclusions]]).
+  the scene itself and exclusions left out ([[blocklist-and-exclusions]]). Related videos stay on
+  the scene's side of the Edu line: an Edu video's are Edu only, others' leave Edu out
+  ([[edu-section]], since 2026-11-09).
 - Score in the BFF: 10 per shared performer, 4 for the same studio, 0.25 per shared tag, plus
   the rating (0..1, 0.5 when unrated). The top 24 are returned.
 - Candidates are fetched with `random_<daySeed>`, so the mix reshuffles daily; before Round 4

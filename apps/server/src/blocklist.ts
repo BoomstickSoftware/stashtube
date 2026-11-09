@@ -2,6 +2,7 @@ import type { BlockKind, Blocklist } from '@flix/shared'
 import { and, eq } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { blocks } from './db/schema.ts'
+import { eduTagIds } from './edu.ts'
 import { getSettings } from './settings.ts'
 import { dataCache, type Exclusions, firstSceneYear, hiddenTag, HOME } from './stash.ts'
 
@@ -19,12 +20,14 @@ export async function exclusions(): Promise<Exclusions> {
     }
   }
   // videos marked "Not interested" stay out like a blocked tag
-  const [settings, hidden, firstYear] = await Promise.all([getSettings(), hiddenTag(), firstSceneYear()])
+  const [settings, hidden, firstYear, eduTags] = await Promise.all([getSettings(), hiddenTag(), firstSceneYear(), eduTagIds()])
   return {
     ...cache,
     tags: hidden ? [...cache.tags, hidden] : cache.tags,
     // no gender: the Performers page's switch is that page's alone (gender-switch-performers-page-only)
     people: { firstYear, ...settings.people },
+    // known to every query (the Edu page asks for them); held out only where curated() says so
+    eduTags,
   }
 }
 

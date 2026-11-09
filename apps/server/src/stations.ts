@@ -1,6 +1,7 @@
 import type { SavedStation, SceneQuery, StationInput, StationMode, StationPreview, StationPreviews, StationResume } from '@flix/shared'
 import { and, asc, desc, eq, inArray, notInArray, notLike, sql } from 'drizzle-orm'
 import { exclusions } from './blocklist.ts'
+import { relatedSide } from './edu.ts'
 import { db } from './db/index.ts'
 import { playlists, stationResume, stations } from './db/schema.ts'
 import { mapBounded, previewSeed } from './previews.ts'
@@ -10,7 +11,7 @@ import * as stash from './stash.ts'
 async function cover(s: { id: number; query: SceneQuery; fromScene: string | null }): Promise<string | null> {
   try {
     if (s.fromScene) return (await stash.findScenesByIds([s.fromScene]))[0]?.screenshot ?? null
-    const q: SceneQuery = { ...s.query, sort: 'random', seed: s.id * 7919 }
+    const q: SceneQuery = { ...s.query, sort: 'random', seed: s.id * 7919, noEdu: true }
     const r = await stash.findScenes(stash.findFilter({ ...q, perPage: 1 }), stash.sceneFilter(q, await exclusions()))
     return r.items[0]?.screenshot ?? null
   } catch {
@@ -74,13 +75,14 @@ export async function previews(day: number, queries: { key: string; query: Scene
   const blocked = await exclusions()
   const rows = await db.select({ id: stations.id, query: stations.query, fromScene: stations.fromScene }).from(stations)
   const byQuery = async (q: SceneQuery): Promise<StationPreview> => {
-    const shuffled: SceneQuery = { ...q, sort: 'random', seed: previewSeed(day, q) }
+    const shuffled: SceneQuery = { ...q, sort: 'random', seed: previewSeed(day, q), noEdu: true }
     const r = await stash.findScenes(stash.findFilter({ ...shuffled, perPage: PREVIEW_ITEMS }), stash.sceneFilter(shuffled, blocked))
     return { total: r.total, items: r.items }
   }
   const byScene = async (from: string): Promise<StationPreview> => {
     const r = await stash.getScene(from)
-    const items = r ? await stash.relatedScenes(from, r.performerIds, r.studioId, r.tagIds, blocked) : []
+    const side = r && relatedSide(r.tagIds, blocked)
+    const items = r && side ? await stash.relatedScenes(from, r.performerIds, r.studioId, r.tagIds, side.ex, null, side.within) : []
     return { total: null, items: items.slice(0, PREVIEW_ITEMS) }
   }
   const safe = (p: Promise<StationPreview>) => p.catch((): StationPreview => ({ total: null, items: [] }))

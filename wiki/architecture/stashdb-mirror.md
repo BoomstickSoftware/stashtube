@@ -4,8 +4,8 @@ kind: architecture
 summary: One rate-limited queue for every StashDB call, a Postgres mirror so each record is fetched once, and the paced queue that fetches picked scenes through Whisparr one at a time.
 tags: [stashdb, whisparr, caching, architecture, downloads]
 status: current
-verified: 2026-11-02
-updated: 2026-11-02
+verified: 2026-11-08
+updated: 2026-11-08
 code: [apps/server/src/stashdb.ts, apps/server/src/catalog.ts, apps/server/src/getqueue.ts, apps/server/src/db/schema.ts, apps/server/src/api.ts]
 related: [stashdb, discover, whisparr-unwatched-studios-stop-learning-scenes, whisparr-sync, whisparr-nothing-monitored, caching, whisparr-shelf]
 ---
@@ -59,6 +59,11 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
   the blocklist), the scenes released since its follow start (less 14 days), through the mirror;
   anything not owned, not in Whisparr with a file or monitored, never deleted and not blocked is
   queued. Daily while the Settings switch is on; `POST /api/discover/run` runs it by hand.
+  Limits read from the code (2026-11-08): "daily" is a timer from process start (5 min after
+  each pod start, then every 24 h), so every deploy runs it; a follow seen for the first time
+  starts its window *now*, so its back catalogue is never queued; `recentOf` reads at most 5 pages
+  (500 scenes) per follow; one run queues at most 200 (`MAX_SELECTION`, the rest are dropped,
+  not deferred); only performer and studio blocks apply, not tag blocks.
 
 ## Endpoints
 

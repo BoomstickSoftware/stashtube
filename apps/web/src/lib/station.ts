@@ -208,7 +208,8 @@ export class StationQueue {
       this.exhausted = true
       return p.items.length > 0
     }
-    const r = await get<Page<SceneCard>>(`/scenes${qs({ ...this.query, sort: 'random', seed: this.seed, page: this.page, perPage: 40 })}`)
+    // noEdu: a station leaves the Edu section out unless its filters name an Edu category (or Edu)
+    const r = await get<Page<SceneCard>>(`/scenes${qs({ ...this.query, noEdu: true, sort: 'random', seed: this.seed, page: this.page, perPage: 40 })}`)
     this.page++
     const known = new Set(this.pool.map((s) => s.id))
     this.pool.push(...r.items.filter((s) => !known.has(s.id)))

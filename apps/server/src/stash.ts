@@ -415,6 +415,8 @@ export interface Exclusions {
   performers: string[]
   studios: string[]
   people?: People
+  eduTags?: string[] // the Edu section's categories (edu.ts)
+  holdEdu?: boolean // leave Edu videos out (views flix assembles: edu.ts curated())
 }
 
 // Performer attributes a scene must have: one performer (of `gender`, when one is given; the
@@ -483,6 +485,7 @@ function withExclusions(filter: SceneFilterType, ex: Exclusions, extra: SceneFil
   if (ex.tags.length) parts.push({ tags: { value: ex.tags, modifier: 'EXCLUDES', depth: -1 } })
   if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
   if (ex.studios.length) parts.push({ studios: { value: ex.studios, modifier: 'EXCLUDES', depth: -1 } })
+  if (ex.holdEdu && ex.eduTags?.length) parts.push({ tags: { value: ex.eduTags, modifier: 'EXCLUDES', depth: 0 } })
   // last: it may hold an OR, and Stash allows no AND beside an OR
   if (people) parts.push(people)
   let node = filter
@@ -530,7 +533,13 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): SceneFilterType
   }
   if (q.duplicates) extra.push({ duplicated: { duplicated: true, phash: true, distance: 8 } })
 
-  const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [] } : { ...blocked }
+  const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [], eduTags: blocked.eduTags, holdEdu: blocked.holdEdu } : { ...blocked }
+  // Edu: the Edu page asks for only those videos; naming an Edu category lets them in, as a
+  // named blocked id does; `noEdu` (stations) holds them out otherwise.
+  const edu = blocked.eduTags ?? []
+  if (q.edu || tags.some((t) => edu.includes(t))) ex.holdEdu = false
+  else if (q.noEdu) ex.holdEdu = true
+  if (q.edu) extra.push(edu.length ? { tags: { value: edu, modifier: 'INCLUDES', depth: 0 } } : { id: { value: 0, modifier: 'EQUALS' } })
   // The list's own age or ethnicity filter replaces the Settings defaults; Show blocked drops them.
   if (blocked.people) {
     const own = q.minAge || q.maxAge || q.ethnicities
@@ -678,10 +687,12 @@ export async function relatedScenes(
   tagIds: string[],
   blocked: Exclusions,
   group: string | null = null,
+  within: string[] | null = null, // only scenes with one of these tags (an Edu video's related ones)
 ): Promise<SceneCard[]> {
   const fields = `${SCENE_CARD} tags { id }`
   const queries: Promise<Pick<Query, 'findScenes'>>[] = []
-  const notSelf = (f: SceneFilterType) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked })
+  const inside = (): SceneFilterType[] => (within?.length ? [{ tags: { value: within, modifier: 'INCLUDES', depth: 0 } }] : [])
+  const notSelf = (f: SceneFilterType) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked }, inside())
   const run = (f: SceneFilterType) =>
     query<Pick<Query, 'findScenes'>>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
       s: notSelf(f),
@@ -1211,9 +1222,9 @@ const BLOCK_FIELDS = 'tags { id } performers { id } studio { id parent_studio { 
 // Does the blocklist (or "Not interested") exclude this scene? For results Stash cannot
 // filter: what was watched, a station's resume points. Age and ethnicity defaults are not
 // applied here; they shape what lists offer, not what you already watched.
-export function isBlocked(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, ex: Pick<Exclusions, 'tags' | 'performers' | 'studios'>): boolean {
+export function isBlocked(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, ex: Pick<Exclusions, 'tags' | 'performers' | 'studios' | 'eduTags' | 'holdEdu'>): boolean {
   return (
-    (s.tags ?? []).some((t) => ex.tags.includes(t.id)) ||
+    (s.tags ?? []).some((t) => ex.tags.includes(t.id) || (!!ex.holdEdu && !!ex.eduTags?.includes(t.id))) ||
     (s.performers ?? []).some((p) => ex.performers.includes(p.id)) ||
     [s.studio?.id, s.studio?.parent_studio?.id].some((id) => id != null && ex.studios.includes(id))
   )
@@ -1303,8 +1314,10 @@ async function tagSceneCounts(): Promise<Map<string, number>> {
   return new Map(d.findTags.tags.map((t) => [t.id, t.scene_count ?? 0]))
 }
 
-export async function affinities(): Promise<Affinities | null> {
-  const [scenes, tagCounts] = await Promise.all([activityScenes(), tagSceneCounts()])
+// `skipTags`: scenes carrying any of these (the Edu categories) teach nothing about taste here.
+export async function affinities(skipTags: string[] = []): Promise<Affinities | null> {
+  const [all, tagCounts] = await Promise.all([activityScenes(), tagSceneCounts()])
+  const scenes = skipTags.length ? all.filter((s) => !s.tags.some((t) => skipTags.includes(t.id))) : all
   if (!scenes.length) return null
   const totalRaw = await query<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
   const total = totalRaw.findScenes.count
@@ -1326,7 +1339,7 @@ export async function affinities(): Promise<Affinities | null> {
 }
 
 export async function recommendations(blocked: Exclusions) {
-  const aff = await affinities()
+  const aff = await affinities(blocked.holdEdu ? blocked.eduTags : [])
   if (!aff) return null
   const { performers: pAff, studios: sAff, tags: tAff } = aff
   const topIds = <T,>(m: Map<string, T>, val: (v: T) => number, n: number) =>
