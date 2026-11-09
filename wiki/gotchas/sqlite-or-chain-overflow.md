@@ -3,13 +3,13 @@ title: Long OR chains of release-date buckets overflow SQLite's parser
 kind: gotcha
 summary: The age-at-filming match builds one date bucket per year; past about 16 years the OR chain overflows SQLite's expression depth in Stash, so buckets widen to two years beyond that span.
 tags: [stash, sqlite, filters, performers]
-symptom: "Stash answers 500 to an age-at-filming filter with many release-date OR buckets (SQLite parser limit; exact message not recorded)"
+symptom: "parser stack overflow (Stash answers 500, flix 502, to an age-at-filming filter with many release-date OR buckets)"
 found: 2026-10-28 # inferred from the fixing commit
 status: current
-verified: 2026-10-30
-updated: 2026-10-30
+verified: 2026-11-09
+updated: 2026-11-09
 code: [apps/server/src/stash.ts]
-related: [browse-and-filters, stash-api]
+related: [browse-and-filters, stash-api, vault]
 ---
 
 # Long OR chains of release-date buckets overflow SQLite's parser
@@ -30,6 +30,11 @@ SQLite limits the depth of an expression tree; a chain of 16+ nested ORs exceeds
 
 Buckets are yearly while the library spans 16 years or less, and two-yearly beyond that,
 which keeps the match right to about six months (2026-10-28, commit 707da69).
+
+**Again on 2026-11-09**: the Vault (`vault=1`) multiplies its OR alternatives by the age buckets
+and was capped at 32; with one Unlisted kind that allowed 27 buckets of three conditions each,
+and Stash's log read `parser stack overflow`. The cap is now 16 (`MAX_OR` in `stash.ts`), and
+`deploy-check.mjs` requests the Vault with an age range ([[vault]]).
 
 ## Avoid
 

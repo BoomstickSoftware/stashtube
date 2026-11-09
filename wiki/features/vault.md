@@ -53,7 +53,8 @@ something blocked unblocks it, blocking something Unlisted relists it.
   ids a query names.
 - `vault=1` adds an OR of the Unlisted categories (depth -1), performers and studios (depth -1).
   With an age range it is distributed over the age buckets, fewer buckets so the chain stays at
-  or under 32 (`MAX_OR`); a filter holds one OR chain.
+  or under 16 (`MAX_OR`); a filter holds one OR chain. _32 shipped first and overflowed
+  SQLite's parser (502 on Vault + age, 2026-11-09)._
 - Related videos: `relatedSide()` gives the source's reasons; with none, Stash leaves Unlisted
   out; with some, the candidates are fetched unheld and filtered by `withinReasons`.
 - `isBlocked` honours the hold, so "Because you watched" starts from the last play that is not

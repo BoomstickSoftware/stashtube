@@ -479,9 +479,10 @@ function peopleAlternatives(p: People | undefined, maxBuckets = MAX_BUCKETS): Sc
   return buckets
 }
 
-// The longest OR chain sent: SQLite's parser overflowed at 36 (people buckets, 2026-10), so the
-// Vault's alternatives times the age buckets stay at or under this.
-const MAX_OR = 32
+// The longest OR chain sent with the Vault: the Vault's alternatives times the age buckets stay at
+// or under this. 32 overflowed SQLite's parser ("parser stack overflow", 27 buckets of three
+// conditions, 2026-11-09); 16 is the people criterion's proven size.
+const MAX_OR = MAX_BUCKETS
 
 const ids = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : [])
 

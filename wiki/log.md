@@ -294,3 +294,7 @@ Edu, the all-reasons rule for related videos, and fetch-but-never-feature for ne
 [[unlisted-and-vault]], [[vault]], [[2026-11-09-unlisted-and-vault]]; superseded
 [[edu-section-held-out-of-curated-views]]; updated [[blocklist-and-exclusions]], [[home-feed]],
 [[related-videos]], [[stations]], [[data-model]].
+
+## [2026-11-09] correct | Vault with an age filter overflowed SQLite's parser
+The Vault's OR cap of 32 let 27 age buckets through; `parser stack overflow`, 502. Cap now 16;
+deploy check covers it → [[sqlite-or-chain-overflow]], [[vault]], [[2026-11-09-unlisted-and-vault]].

@@ -108,7 +108,7 @@ describe('sceneFilter', () => {
     assert.equal(levels(sceneFilter({ vault: true, unblocked: true }, { ...u, tags: ['9'] })).length, 2, 'Show blocked keeps the Vault requirement')
   })
 
-  it('distributes the Vault over the age buckets in one OR chain of at most 32', () => {
+  it('distributes the Vault over the age buckets in one OR chain of at most 16', () => {
     const u = { ...none, unlisted: { tags: ['3'], performers: ['5'], studios: ['6'] }, people: { gender: null, firstYear: 1990, minAge: 18, maxAge: 25 } }
     const last = levels(sceneFilter({ vault: true }, u)).at(-1)!
     let n = 0
@@ -118,7 +118,11 @@ describe('sceneFilter', () => {
       assert.ok(node.tags || node.performers || node.studios, 'and one Vault reason')
       assert.equal('AND' in node, false, 'no AND beside an OR')
     }
-    assert.ok(n <= 32 && n >= 3, `${n} alternatives`)
+    assert.ok(n <= 16 && n >= 3, `${n} alternatives`)
+    let one = 0
+    const single = levels(sceneFilter({ vault: true }, { ...u, unlisted: { tags: ['3'], performers: [], studios: [] }, people: { gender: null, firstYear: 1970, minAge: 18, maxAge: 25 } })).at(-1)!
+    for (let node: Record<string, unknown> | undefined = single; node; node = node.OR as Record<string, unknown>) one++
+    assert.ok(one <= 16, `one kind over a long library: ${one} alternatives (27 overflowed, 2026-11-09)`)
   })
 
   it('puts the people criterion (an OR chain) last, with at most 16 date buckets', () => {

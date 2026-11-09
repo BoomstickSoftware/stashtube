@@ -92,6 +92,9 @@ try {
       r.items.forEach((s) => ids.add(s.id))
       if (page * 120 >= r.total) break
     }
+    // the Vault with an age range distributes its OR over the age buckets: a too-long chain
+    // overflowed SQLite's parser (502, 2026-11-09)
+    await json('/api/scenes?vault=1&minAge=18&maxAge=99&perPage=1')
     const [all, held, home, featured, recent] = await Promise.all([
       json('/api/scenes?perPage=1'),
       json('/api/scenes?noUnlisted=1&perPage=1'),
