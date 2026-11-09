@@ -5,7 +5,7 @@ summary: A reconcile loop keeps every Whisparr performer and studio unmonitored 
 tags: [sync, stash, whisparr, architecture]
 status: current
 verified: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-09
 code: [apps/server/src/sync.ts, apps/server/src/getqueue.ts, apps/server/src/whisparr.ts, apps/server/src/api.ts, apps/web/src/components/WhisparrSync.tsx, scripts/whisparr-sync.mjs, apps/server/src/db/schema.ts]
 related: [stashdb-mirror, discover, whisparr-cleanup, whisparr-nothing-monitored, stash-owns-activity, people-pages, delete-via-whisparr, whisparr-shelf, blocklist-and-exclusions, settings-page, stash-and-whisparr-clients]
 ---
@@ -24,8 +24,8 @@ same night, when discovery moved to flix ([[whisparr-nothing-monitored]], [[stas
 | Any other monitored scene | unmonitored (`PUT movie/editor`) |
 
 A Get of a scene Whisparr did not hold adds its studio and performers with Whisparr's defaults,
-flags on: 3 such after the first discovery run (2026-11-02). The guard turns them off within
-15 minutes; nothing is searched meanwhile, since global "monitor new items" is off.
+flags on: 3 such after the first discovery run (2026-11-02). The guard turns them off 10 s
+after the queue empties; nothing is searched meanwhile, since global "monitor new items" is off.
 
 Follows stay Stash favourites. Their start dates (`whisparr_watch`) belong to flix's discovery,
 which finds new releases in the StashDB mirror and fetches them one scene at a time
@@ -36,9 +36,13 @@ or now blocked. It never starts a search.
 
 - `node scripts/whisparr-sync.mjs` (dry run) and `--apply`; `--force` when far fewer follows
   than recorded is right. No keys needed: it calls `POST /api/sync/run` on flix.
-- Settings → Library switch: on, a timer applies it 3 min after start, every 15 min, and 10 s
-  after a follow or block, and daily discovery runs. Off, the timer only plans and discovery
-  runs only from "Find new releases".
+- Settings → Library switch: on, a timer checks every 15 min and runs the guard when flix
+  answered an API request in the last 30 min (`activeWithin` in `stash.ts`), otherwise once an
+  hour (`timedRunDue`, pinned by `sync.test.ts`); also 3 min after start, 10 s after a follow,
+  a block or a finished run of Gets, and daily discovery runs. Off, nothing runs on a timer or
+  a kick (switching off runs one plan so Settings shows it); "Check now" and the script still
+  plan. Each run downloads Whisparr's lists (`/movie` ~41 MB), so _until 2026-11-09_ the flat
+  15-minute run, on or off, pulled ~4 GB a day off the NAS.
 
 ## How it stays loosely coupled
 

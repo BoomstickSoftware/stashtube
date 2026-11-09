@@ -43,18 +43,7 @@ From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initi
 
 - **A. Cache tags** (S): done, [[2026-11-09-cache-tags-round]].
 - **B. Continue reset** (S–M): done, [[2026-11-09-continue-reset]] ([[continue-history-stats]]).
-- **C. Background load** (S–M):
-  - Whisparr guard: hourly baseline; every 15 min only while flix is in use (an API request in
-    the last 30 min, the same in-memory `lastActivity` change detection uses, `noteActivity()`
-    in `stash.ts`); skipped entirely while the Settings switch is off; `/movie` re-downloaded
-    only when the plan will write (the patched cached list is good enough to plan from).
-  - Featured: the user wants it to change often. The browser seed rolls every **5 min** (was 1 h,
-    `homeSeed()`), but not on a Back to Home, so a return keeps its place; the ranking's inputs
-    (candidates, normalised signals) are memoised per pool and the ranking cached per
-    (seed, weights), so a new seed costs a few ms, not 31–39.
-  - `sdb_queries` rows older than 30 days pruned daily.
-  - History's "Because you watched" takes the first played scene instead of building every
-    play event.
+- **C. Background load** (S–M): done, [[2026-11-09-background-load]].
 - **D. One "Hide" model** (M), decision [[hide-means-delete-block-or-unlist]]: Not interested
   opens the delete; Block covers downloads only; Unlist unchanged; one Hidden view (Vault,
   Blocked) replaces the two Settings sections; the old "Not interested" tag's videos listed once

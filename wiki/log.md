@@ -354,3 +354,10 @@ the resume point ([[2026-11-09-continue-reset]], [[continue-history-stats]]).
 
 ## [2026-11-09] correct | Discover About opens on hover
 The ⓘ popover opens on hover with a mouse, without a backdrop (user) → [[discover]].
+
+## [2026-11-09] ingest | Background load round (initiative C)
+
+Whisparr guard paced by use and the switch, Featured seed every 5 min with a cached ranking,
+`sdb_queries` pruned after 30 days, a cheaper Because-you-watched
+([[2026-11-09-background-load]]). The first Continue expiry cleared nothing (the oldest
+resume point without a play reaches 30 days on 2026-11-24).

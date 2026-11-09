@@ -155,18 +155,38 @@ const toCandidate = (s: Scene): Candidate => ({
   rating100: s.rating100 ?? null,
 })
 
+// The pool as ranking candidates, built once per fetched pool rather than on every call.
+const candidatesOf = stash.memoBy((pool: Scene[]) => pool.map(toCandidate))
+
+// The ranking for a seed and dials, cached: the first RANK_BUCKET ids (more in steps of it as the
+// hero pages further), so a new seed is ranked once and the hero's next pages, a Back to Home and
+// a Settings preview at the same dials are lookups. Tagged with the pool, so any write that can move
+// a score expires it (served stale while it re-ranks). _Until 2026-11-09_ every call re-ranked the
+// whole library (31–39 ms, the slowest warm route), the hero's pages included.
+const RANK_BUCKET = 100
+// A browser keeps its seed 5 min (an hour while it keeps coming back), so per-seed answers are
+// kept stale only that long, not the cache-wide week (108 KB a feed, ~12 seeds an hour).
+const VISIT_STALE = 2 * 3_600_000
+async function featuredRanking(weights: FeaturedWeights, seed: string, upTo: number): Promise<{ id: string; why: string }[]> {
+  const blocked = curated(await exclusions())
+  const n = Math.ceil(upTo / RANK_BUCKET) * RANK_BUCKET
+  const key = JSON.stringify(['featured-rank', seed, weights, blocked, n], (_k, v: unknown) => (v instanceof Set ? [...v] : v)) // Unlisted sets
+  return dataCache.get(key, 10 * 60_000, [POOL], async () => {
+    const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities(blocked.unlisted ?? null)])
+    const affinity: Affinity = aff
+      ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
+      : NO_AFFINITY
+    return rankFeatured(candidatesOf(pool), affinity, weights, seed, n).map((r) => ({ id: r.card.id, why: r.why }))
+  }, { staleFor: VISIT_STALE })
+}
+
 // The Featured row: the library scored by the saved (or given) dials, for this seed.
 async function featured(weights: FeaturedWeights, seed: string, limit: number, offset = 0): Promise<SceneCard[]> {
-  const blocked = curated(await exclusions())
-  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities(blocked.unlisted ?? null)])
-  const affinity: Affinity = aff
-    ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
-    : NO_AFFINITY
-  const ranked = rankFeatured(pool.map(toCandidate), affinity, weights, seed, limit + offset).slice(offset)
+  const ranked = (await featuredRanking(weights, seed, limit + offset)).slice(offset, offset + limit)
   // the pool carries only what scoring needs; the winners get their full cards
-  const cards = new Map((await stash.findScenesByIds(ranked.map((r) => r.card.id))).map((s) => [s.id, s]))
+  const cards = new Map((await stash.findScenesByIds(ranked.map((r) => r.id))).map((s) => [s.id, s]))
   return ranked.flatMap((r) => {
-    const card = cards.get(r.card.id)
+    const card = cards.get(r.id)
     return card ? [{ ...card, why: r.why }] : []
   })
 }
@@ -184,7 +204,7 @@ api.post('/featured/preview', async (c) => {
 
 // Related videos of the last one played, unwatched ones first.
 async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>): Promise<HomeRow | null> {
-  const last = (await stash.history(1, blocked))[0]?.scene
+  const last = await stash.lastPlayed(blocked)
   if (!last) return null
   const r = await stash.getScene(last.id)
   if (!r) return null
@@ -209,6 +229,7 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
 export function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
   return dataCache.get(JSON.stringify([HOME, visitSeed]), HOME_TTL, [HOME, 'scene', 'performer', 'studio', POOL], () => buildHomeRows(visitSeed), {
     freshInputs: true,
+    staleFor: VISIT_STALE,
   })
 }
 
@@ -602,7 +623,8 @@ api.put('/settings', async (c) => {
   if (b.playOnOpen !== undefined) await setSetting('playOnOpen', b.playOnOpen)
   if (b.whisparrSync !== undefined) {
     await setSetting('whisparrSync', b.whisparrSync)
-    kickSync()
+    if (b.whisparrSync) kickSync()
+    else void runSync().catch(() => {}) // one plan, so Settings shows the switch's new state
   }
   if (b.people) await setSetting('people', b.people)
   if (b.hideVr !== undefined) await setSetting('hideVr', b.hideVr)

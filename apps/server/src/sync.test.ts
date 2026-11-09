@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { itemsOf, planSync, refusal, type Entity, type Kind } from './sync.ts'
+import { itemsOf, planSync, refusal, timedRunDue, type Entity, type Kind } from './sync.ts'
 
 const TAG = 7
 const ent = (kind: Kind, id: number, foreignId: string, o: Partial<Entity> = {}): Entity => ({ kind, id, name: `${kind}${id}`, foreignId, monitored: false, whisparrMonitorNewItems: false, tags: [], ...o })
@@ -78,4 +78,13 @@ test('far fewer follows than recorded is refused unless forced', () => {
   assert.equal(refusal(p, 6, true), null)
   const fine = plan({ favourites: { performer: Array.from({ length: 5 }, (_, i) => fav(`P${i}`, `x${i}`)), studio: [] }, since })
   assert.equal(refusal(fine, 6), null)
+})
+
+test('the timed run: never while off, every tick while flix is in use, hourly when idle', () => {
+  const min = 60_000
+  assert.equal(timedRunDue({ enabled: false, active: true, sinceLast: Infinity }), false)
+  assert.equal(timedRunDue({ enabled: true, active: true, sinceLast: 15 * min }), true)
+  assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: 45 * min }), false)
+  assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: 60 * min }), true)
+  assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: Infinity }), true, 'the first run after start')
 })

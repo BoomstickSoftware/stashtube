@@ -10,7 +10,7 @@ import { SceneCardSkeleton } from '../components/SceneCard'
 import { Empty, ErrorBox } from '../components/ui'
 import { WantedRow } from '../components/WantedRow'
 import { useMediaQuery } from '../lib/hooks'
-import { useMoreFeatured, homeSeed, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
+import { useMoreFeatured, homeSeed, markHomeSeen, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -20,6 +20,19 @@ export function Home(): JSX.Element {
   // The server's Featured row (and so the hero) keeps its order while the seed holds
   // (lib/api/home.ts); Shuffle draws a new one.
   const [seed, setSeed] = useState(homeSeed)
+  // Leaving Home or the app notes the time, so a quick return keeps this feed; coming back to
+  // the foreground after longer brings the next seed (lib/api/home.ts).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) markHomeSeen()
+      else setSeed(homeSeed())
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      markHomeSeen()
+    }
+  }, [])
   const { data, error, isLoading } = useHome(seed)
   // Hero: the Featured row in score order, then (Hero fetches it) the same ranking further
   // down, twenty at a time; without a Featured row (no library yet), a shuffle of everything

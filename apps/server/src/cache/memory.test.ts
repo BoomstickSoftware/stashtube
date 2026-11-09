@@ -105,6 +105,15 @@ describe('MemoryCache', () => {
     }
   })
 
+  it('drops an entry with its own short staleFor once that runs out', async () => {
+    const c = new MemoryCache({ maxEntries: 10, staleFor: 60_000 })
+    let loads = 0
+    const load = async () => ++loads
+    await c.get('visit', 0, [], load, { staleFor: 1 })
+    await new Promise((r) => setTimeout(r, 10))
+    assert.equal(await c.get('visit', 1000, [], load), 2, 'past its own window: loaded again, not served stale')
+  })
+
   it('keeps a fetch that was running when an unrelated tag changed', async () => {
     const c = new MemoryCache({ maxEntries: 10, staleFor: 1000 })
     let release!: (v: string) => void

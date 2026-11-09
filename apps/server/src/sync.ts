@@ -24,7 +24,12 @@ export const TAG = 'flix' // set by earlier versions of the sync; removed wherev
 export const GRACE = 14 * 86_400_000 // a release this much older than the follow start still counts as new
 // Following far fewer than this share of before looks like a wrong answer from Stash.
 export const MIN_KEEP_SHARE = 0.5
-const EVERY = 15 * 60_000
+// The timer: a check every TICK; a run when the sync is on and flix was used in the last ACTIVE,
+// otherwise once per IDLE_EVERY. Each run downloads Whisparr's lists (/movie alone is ~41 MB), so
+// _until 2026-11-09_ the flat 15-minute run, on or off, used or not, pulled ~4 GB a day off the NAS.
+const TICK = 15 * 60_000
+const ACTIVE = 30 * 60_000
+const IDLE_EVERY = 60 * 60_000
 const FIRST_AFTER = 3 * 60_000
 const KICK_AFTER = 10_000
 
@@ -192,22 +197,40 @@ async function run({ apply, force = false }: { apply?: boolean; force?: boolean 
   return done(errors.size ? 'failed' : 'applied', changes ? detail : 'Whisparr already matches', withErrors, plan.followed, plan.scenes.length)
 }
 
-// A follow or a block changed things: run soon, once for a burst of clicks.
+// A follow, a block or a finished run of Gets changed things: run soon, once for a burst, and
+// only while the sync is on (off, a run would only plan, and Settings' "Check now" does that).
 let kick: ReturnType<typeof setTimeout> | null = null
 export function kickSync() {
   if (!config.whisparr) return
   if (kick) clearTimeout(kick)
   kick = setTimeout(() => {
     kick = null
-    runSync().catch(() => {})
+    void getSettings()
+      .then((s) => (s.whisparrSync ? runSync() : null))
+      .catch(() => {})
   }, KICK_AFTER)
   kick.unref()
+}
+
+// Pure, for tests: is a timed run due? Off means never (a manual run from Settings still plans).
+export function timedRunDue(o: { enabled: boolean; active: boolean; sinceLast: number }): boolean {
+  if (!o.enabled) return false
+  return o.active || o.sinceLast >= IDLE_EVERY - TICK / 2
+}
+
+let lastTimed = -Infinity
+async function tick() {
+  const enabled = (await getSettings().catch(() => null))?.whisparrSync ?? false
+  const now = Date.now()
+  if (!timedRunDue({ enabled, active: stash.activeWithin(ACTIVE), sinceLast: now - lastTimed })) return
+  lastTimed = now
+  await runSync()
 }
 
 export function startSync() {
   if (!config.whisparr) return
   setTimeout(() => {
-    runSync().catch(() => {})
-    setInterval(() => runSync().catch(() => {}), EVERY).unref()
+    tick().catch(() => {})
+    setInterval(() => tick().catch(() => {}), TICK).unref()
   }, FIRST_AFTER).unref()
 }

@@ -30,7 +30,8 @@ setting stubbed (writes blocked). After the deploy: `GET /api/settings` carries 
 
 ## Snags
 
-- The first expiry run counts a resume point with no play on record from the video's
-  `created_at`; on 2026-11-09, 14 of the 79 had no play date, so those were expected to go.
+- A resume point with no play on record counts from the video's `created_at`. On 2026-11-09,
+  14 of the 79 had no play date, all added 2026-10-25 or later, so the first run cleared none;
+  the oldest reach 30 days on 2026-11-24.
 - The bulk bar wrapped its labels and pushed Delete off a 440 px screen once Remove was added;
   icons-only below `sm` fixed it.

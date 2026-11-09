@@ -274,6 +274,9 @@ export function onStashChange(fn: () => void) {
   changeListeners.push(fn)
 }
 
+// Whether flix answered an API request in the last `ms` (background jobs pace themselves by it).
+export const activeWithin = (ms: number) => Date.now() - lastActivity < ms
+
 // Call on every API request. After an idle spell, check before trusting cached data.
 export function noteActivity() {
   const now = Date.now()
@@ -1353,6 +1356,14 @@ export async function history(limit = 300, blocked?: Exclusions): Promise<Histor
     for (const t of s.play_history ?? []) out.push({ playedAt: t, scene: card })
   }
   return out.sort((a, b) => b.playedAt.localeCompare(a.playedAt)).slice(0, limit)
+}
+
+// The last video played, for "Because you watched": the touched scenes come newest play first,
+// so this is the first played one that is not blocked (_until 2026-11-09 every Home build turned
+// every play event of every touched video into a card and sorted them to find it_).
+export async function lastPlayed(blocked?: Exclusions): Promise<{ id: string; title: string } | null> {
+  const s = (await activityScenes()).find((s) => s.last_played_at && (!blocked || !isBlocked(s, blocked)))
+  return s ? { id: s.id, title: toSceneCard(s).title } : null
 }
 
 export async function removeFromHistory(id: string) {

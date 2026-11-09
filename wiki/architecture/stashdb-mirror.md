@@ -32,7 +32,7 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
 | `sdb_scenes` | every scene StashDB returned: title, date, duration, studio, performers, tags, cover, description (`details`: null until fetched, '' when none; since 2026-11-09), created/updated | until a newer copy arrives |
 | `sdb_entities` | performer, studio and tag names (learned free from scenes), image and scene count | 7 days (fetched once when only the name is known) |
 | `sdb_scopes` | a performer or studio copied whole: total, `complete`, newest `updated` | re-checked after 20 h |
-| `sdb_queries` | a query page's scene ids and total | 24 h; trending 6 h |
+| `sdb_queries` | a query page's scene ids and total | 24 h; trending 6 h; rows unused for 30 days deleted daily (`pruneQueries`, since 2026-11-09) |
 
 - **Scopes**: opening Discover on one performer or studio queues a background copy when it has
   at most **1,500** scenes (100 a page, oldest work first). Afterwards only changes are asked

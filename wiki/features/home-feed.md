@@ -51,10 +51,15 @@ with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
 
 Random rows use `daySeed()` (the day number), so they are stable through a day. Featured takes
 the browser's seed: `homeSeed()` in `lib/api/home.ts` keeps one in localStorage `flix.homeSeed`
-for 1 hour, so returning to Home within the hour finds its feed already cached (painted at
-once, at the same scroll position); Shuffle on the Featured row rolls a new one, and after an
-hour it rolls by itself (_6 hours until 2026-11-07_; the user asked for Featured to change more
-often, and a new seed brings a nearly new row: 0–3 of 24 shared between seeds), with the newest cached feed standing in until the new one arrives. A request
+for **5 minutes**, so Featured changes often by itself (a new seed brings a nearly new row: 0–3
+of 24 shared between seeds). Leaving Home or sending the app to the background notes the time
+(`markHomeSeen`); a return within 5 min keeps the seed (up to an hour in all), so Back to Home
+finds its feed cached and scrolled where it was, and a return after longer (including the app
+coming back to the foreground) rolls the next one. Shuffle rolls one now. The newest cached
+feed stands in until a new seed's arrives. _1 hour flat until 2026-11-09, 6 hours until
+2026-11-07; both times the user asked for Featured to change more often._ The server keeps a
+per-seed feed and ranking stale for 2 h only (`VISIT_STALE`, not the cache-wide week), so the
+extra seeds do not pile up in memory or the snapshot ([[caching]]). A request
 without a seed (the warm, curl) gets the day's. _Until 2026-10-31_ every visit made a new seed,
 so the cached feed was never used and Back to Home lost its place.
 
@@ -63,7 +68,8 @@ the fixed rows); only "More with" waits for the recommendations. A cold feed (qu
 cleared) took 2.7–3.4 s, 2.5–2.9 s with the rows in parallel, 1.3–1.6 s once the Featured
 pool was slimmed and 1.0–1.2 s once the activity query stopped counting tags (2026-10-31,
 [[featured-ranking]]); the rest is the pool's 0.8 s, which the snapshot keeps across restarts.
-With the pool cached, Featured for a new seed answers in 0.04 s.
+With the pool cached, Featured for a new seed answers in 0.04 s; the ranking itself is cached per
+seed and dials ([[featured-ranking]]).
 
 ## Where
 

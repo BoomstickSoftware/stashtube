@@ -208,6 +208,13 @@ async function fromStashDb(q: DiscoverQuery, page: number): Promise<{ rows: Scen
   return { rows: ids.map((id) => byId.get(id)).filter((r): r is SceneRow => !!r), count }
 }
 
+// Cached StashDB searches (one row per keyword, filter, sort and page) not used for 30 days go, so
+// the table does not grow with every query ever typed. Daily, from getqueue.ts's daily job.
+export async function pruneQueries(): Promise<number> {
+  const gone = await db.delete(sdbQueries).where(sql`${sdbQueries.fetchedAt} < now() - interval '30 days'`).returning({ key: sdbQueries.key })
+  return gone.length
+}
+
 // What the blocklist hides here: blocked performers and studios by their StashDB ids, blocked
 // categories by name (Stash's tags carry no StashDB id).
 async function blockedSets() {

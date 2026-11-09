@@ -70,6 +70,9 @@ not. Env knobs and defaults: [[config-env]]. Admin: [[cache-admin]].
   per answer (`memoBy` in `stash.ts`), not on every call.
 - `mutate()` with no tags to drop drops nothing (an empty `invalidate()` used to mean "every
   tag changed"); the Cast sync's bulk tag writes only expire `scene` and `tag` ([[cast]]).
+- **Per-visit answers** (the home feed per seed, the Featured ranking per seed and dials) are
+  kept stale for 2 h (`staleFor` on `dataCache.get`), not the cache-wide week: browsers roll a
+  seed every 5 min since 2026-11-09 ([[home-feed]]).
 - The Featured pool is tagged `featured-pool`: any write that touches `scene*` or `activity*`
   only expires it (`mutate`), so it is served stale while it refreshes ([[featured-ranking]]).
 - **Changes made in Stash** (scans, Identify, edits in its UI) are caught by a change check:

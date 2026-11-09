@@ -17,7 +17,7 @@ import { config } from './config.ts'
 import * as catalog from './catalog.ts'
 import * as stash from './stash.ts'
 import * as whisparr from './whisparr.ts'
-import { GRACE } from './sync.ts'
+import { GRACE, kickSync } from './sync.ts'
 import { getSettings } from './settings.ts'
 
 export const SPACING = 8_000 // ms between two Gets
@@ -62,7 +62,14 @@ function kick() {
   draining = (async () => {
     queueStatus.running = true
     try {
-      while (await step()) await new Promise((r) => setTimeout(r, SPACING))
+      let fetched = 0
+      while (await step()) {
+        fetched++
+        await new Promise((r) => setTimeout(r, SPACING))
+      }
+      // A Get adds its studio and performers with Whisparr's flags on; turn them off now rather
+      // than at the next timed run, which can be an hour away when nobody is using flix.
+      if (fetched) kickSync()
     } catch (e) {
       queueStatus.lastError = (e as Error).message
     } finally {
@@ -172,6 +179,10 @@ export function startGetQueue() {
   setInterval(() => researchWaiting().catch((e: Error) => (queueStatus.lastError = e.message)), 3_600_000).unref()
   // Discovery fetches on its own only while the Settings switch is on; "Find new" runs it by hand.
   const daily = async () => {
+    await catalog
+      .pruneQueries()
+      .then((n) => n && console.log(`stashdb: pruned ${n} cached searches unused for 30 days`))
+      .catch((e: Error) => console.error('pruning stashdb searches:', e.message))
     if (!(await getSettings()).whisparrSync) return
     await discoverNew().catch((e: Error) => (queueStatus.lastError = e.message))
   }

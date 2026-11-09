@@ -71,7 +71,10 @@ export class MemoryCache {
     this.staleFor = opts.staleFor
   }
 
-  async get<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>, opts: { freshInputs?: boolean } = {}): Promise<T> {
+  // `staleFor` overrides the cache-wide serve-stale window for this entry: answers kept per visit
+  // (the home feed per seed, a Featured ranking) are worth little once the visit is over, and with
+  // a seed every few minutes a week of them would bloat memory and the snapshot.
+  async get<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>, opts: { freshInputs?: boolean; staleFor?: number } = {}): Promise<T> {
     const now = Date.now()
     const e = this.entries.get(key) as Entry<T> | undefined
     const run = opts.freshInputs ? () => wantFresh.run(true, load) : load
@@ -84,13 +87,13 @@ export class MemoryCache {
       }
       if (!wantFresh.getStore()) {
         this.s.staleHits++
-        this.fetch(key, ttl, tags, run).catch(() => {}) // keep serving stale if Stash is down
+        this.fetch(key, ttl, tags, run, opts.staleFor).catch(() => {}) // keep serving stale if Stash is down
         return e.value
       }
       // an input of a computed answer: wait for the refresh rather than hand back the old value
     }
     this.s.misses++
-    return this.fetch(key, ttl, tags, run)
+    return this.fetch(key, ttl, tags, run, opts.staleFor)
   }
 
   // Replace a live entry's value in place (a list patched after a write instead of refetched);
@@ -102,7 +105,7 @@ export class MemoryCache {
     this.dirty = true
   }
 
-  private fetch<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>): Promise<T> {
+  private fetch<T>(key: string, ttl: number, tags: string[], load: () => Promise<T>, staleFor = this.staleFor): Promise<T> {
     const running = this.inflight.get(key)
     if (running) {
       this.s.coalesced++
@@ -111,7 +114,7 @@ export class MemoryCache {
     const started = this.tick
     const p: Promise<T> = load()
       .then((value) => {
-        if (!this.changedSince(started, tags)) this.set(key, value, ttl, tags)
+        if (!this.changedSince(started, tags)) this.set(key, value, ttl, tags, staleFor)
         return value
       })
       .finally(() => {
@@ -133,10 +136,10 @@ export class MemoryCache {
     for (const [k, f] of this.inflight) if (!tags.length || f.tags.some((t) => tags.includes(t))) this.inflight.delete(k)
   }
 
-  private set<T>(key: string, value: T, ttl: number, tags: string[]) {
+  private set<T>(key: string, value: T, ttl: number, tags: string[], staleFor = this.staleFor) {
     const now = Date.now()
     this.entries.delete(key)
-    this.entries.set(key, { value, fresh: now + ttl, stale: now + ttl + this.staleFor, tags })
+    this.entries.set(key, { value, fresh: now + ttl, stale: now + ttl + staleFor, tags })
     this.dirty = true
     while (this.entries.size > this.maxEntries) {
       this.entries.delete(this.entries.keys().next().value!)

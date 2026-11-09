@@ -5,7 +5,7 @@ summary: How the Featured row and Tonight's pick are scored from ten signals and
 tags: [home, ranking, settings, recommendations]
 status: current
 verified: 2026-10-31
-updated: 2026-11-07
+updated: 2026-11-09
 routes: [/, /settings]
 api: [GET /api/featured, POST /api/featured/preview]
 code: [apps/server/src/featured.ts, apps/server/src/featured.test.ts, apps/server/src/stash.ts, packages/shared/src/index.ts, apps/web/src/components/FeaturedDials.tsx]
@@ -61,5 +61,10 @@ because the server imports the defaults as a value ([[shared-contract]]).
 ## Paging the ranking
 
 `GET /api/featured?seed=<s>&limit=<n>&offset=<o>` (since 2026-10-31) returns ranks `o..o+n` of the
-same ranking for that seed (`rankFeatured` runs with `limit + offset`, then slices), so the Home
-hero can keep going past the row ([[home-feed]]). `limit` ≤ 60, `offset` ≤ 5000.
+same ranking for that seed, so the Home hero can keep going past the row ([[home-feed]]).
+`limit` ≤ 60, `offset` ≤ 5000. The ranking is cached (`featuredRanking` in `api.ts`, since
+2026-11-09): the first 100 ids with their "why" per seed, dials and exclusions (200, 300, … as
+the hero pages further), tagged `featured-pool` so any write that moves a score expires it, kept
+stale 2 h. The candidates are built once per fetched pool (`memoBy`). _Until 2026-11-09_ every
+call re-ranked the whole pool and rebuilt every candidate's card: 31–39 ms, the slowest warm
+route, on every hero page and every Settings slider move.
