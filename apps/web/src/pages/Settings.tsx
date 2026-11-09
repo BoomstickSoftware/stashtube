@@ -147,7 +147,7 @@ function HideVrSetting() {
           <span className="block text-sm font-medium">Leave VR scenes out of Discover</span>
           <span className="mt-0.5 block text-sm text-muted">
             A StashDB scene counts as VR when its title or a category says so ([VR], VR, Virtual Reality, 180°, 360°) or its studio’s
-            name carries VR or starts with “Virtual”. “Show blocked” on Discover brings them back for that view.
+            name carries VR or starts with “Virtual”. “Show blocked & VR” on Discover brings them back for that view.
           </span>
         </span>
         <Switch on={settings?.hideVr ?? true} disabled={!settings} onChange={(v) => save.mutate({ hideVr: v })} className="mt-0.5" />

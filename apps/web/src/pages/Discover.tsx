@@ -68,8 +68,8 @@ export function Discover(): JSX.Element {
 
 function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<DiscoverSearch>) => void }) {
   const filters = useMemo(
-    () => ({ q: search.q, performers: ids(search.performers), studios: ids(search.studios), tags: ids(search.tags), sort: search.sort }),
-    [search.q, search.performers, search.studios, search.tags, search.sort],
+    () => ({ q: search.q, performers: ids(search.performers), studios: ids(search.studios), tags: ids(search.tags), sort: search.sort, fresh: search.fresh, unblocked: search.unblocked }),
+    [search.q, search.performers, search.studios, search.tags, search.sort, search.fresh, search.unblocked],
   )
   const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useDiscover(filters)
   // The box follows the URL when it changes elsewhere (back button); typing updates the URL later.
@@ -94,6 +94,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
   const selected = first?.selected ?? []
   const hidden = data?.pages.reduce((n, p) => n + p.hidden, 0) ?? 0
   const vr = data?.pages.reduce((n, p) => n + (p.vr ?? 0), 0) ?? 0
+  const inMotion = data?.pages.reduce((n, p) => n + (p.inMotion ?? 0), 0) ?? 0
   const sort = search.sort ?? 'date'
   const hasFilter = filters.performers.length + filters.studios.length + filters.tags.length > 0 || !!filters.q
 
@@ -166,6 +167,13 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
             {label}
           </Chip>
         ))}
+        <span className="mx-1 h-5 w-px bg-line" aria-hidden />
+        <Chip tone={search.fresh ? 'include' : 'default'} onClick={() => set({ fresh: search.fresh ? undefined : true })}>
+          Not in motion
+        </Chip>
+        <Chip tone={search.unblocked ? 'include' : 'default'} onClick={() => set({ unblocked: search.unblocked ? undefined : true })}>
+          Show blocked & VR
+        </Chip>
         {fetchable.length > 0 && (
           <Button className="ml-auto" onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             {selecting ? 'Cancel' : 'Select'}
@@ -201,6 +209,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
             {first?.source === 'mirror' ? ' · from flix’s copy of StashDB' : ' · asked StashDB (cached a day)'}
             {hidden ? ` · ${hidden} blocked left out` : ''}
             {vr ? ` · ${vr} VR left out (Settings)` : ''}
+            {inMotion ? ` · ${inMotion} owned or on the way left out` : ''}
           </p>
         </>
       )}

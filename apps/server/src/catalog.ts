@@ -301,8 +301,26 @@ export async function discover(input: DiscoverQuery): Promise<DiscoverPage> {
     ...(q.tags ?? []).map((id): [DiscoverEntity['kind'], string] => ['tag', id]),
   ]
   const selected = (await Promise.all(selectedIds.map(([k, id]) => entity(k, id)))).filter((e): e is DiscoverEntity => !!e)
-  return { items: await label(visible), count, page, hasMore: page * PAGE < count, source: local ? 'mirror' : 'stashdb', selected, hidden: rows.length - notBlocked.length, vr: notBlocked.length - visible.length }
+  const labelled = await label(visible)
+  // "Not in motion": only what is on StashDB alone or in Whisparr untouched
+  const items = q.fresh ? labelled.filter((w) => NOT_IN_MOTION.has(w.state)) : labelled
+  return {
+    items,
+    count,
+    page,
+    hasMore: page * PAGE < count,
+    source: local ? 'mirror' : 'stashdb',
+    selected,
+    hidden: rows.length - notBlocked.length,
+    vr: notBlocked.length - visible.length,
+    inMotion: labelled.length - items.length,
+  }
 }
+
+// The states Discover's "Not in motion" keeps: not in Whisparr, or there but never requested.
+// Everything else is owned or on its way (requested, queued, waiting, grabbed, downloading,
+// downloaded).
+const NOT_IN_MOTION = new Set<WantedScene['state']>(['remote', 'available'])
 
 // Is this StashDB scene VR? Any of: the title or a category says so ([VR], (VR), the word VR,
 // Virtual Reality, 180° or 360°), or the studio's name carries VR in capitals (how VR studios

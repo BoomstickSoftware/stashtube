@@ -36,12 +36,18 @@ StashDB work ([[stashdb-mirror]]).
   "All N" (the loaded ones, up to 200, without those deleted before) and "Get N", which queues them; the server fetches one
   every 8 s.
 - The footer says how many scenes match, whether the page came from the mirror or StashDB, and how
-  many blocked and VR ones were left out.
+  many blocked, VR and (with Not in motion) owned or on-the-way ones were left out.
+- **Not in motion** (chip by the sorts, `fresh=1`, since 2026-11-09): keeps only scenes whose
+  state is `remote` (StashDB only) or `available` (in Whisparr, never requested); drops owned,
+  downloaded, requested, queued, waiting, grabbed and downloading. Filtered after labelling, so a
+  page can hold fewer.
+- **Show blocked & VR** (chip, `unblocked=1`): blocked and VR scenes too. _Until 2026-11-09 the
+  API took `unblocked` but the page had no control for it._
 - **VR is left out by default** (Settings → Library → "Leave VR scenes out of Discover",
   `settings.hideVr`, since 2026-11-09): `isVrScene` in `catalog.ts` matches the title or a
   category ([VR], (VR), the word VR, Virtual Reality, 180°/360°), or a studio name with VR in
   capitals or starting with "Virtual". Filtered after the page arrives, like blocked ones, so a
-  page can hold fewer than 100; "Show blocked" (`unblocked=1`) shows VR too. The daily discovery
+  page can hold fewer than 40; "Show blocked & VR" (`unblocked=1`) shows VR too. The daily discovery
   that queues followed performers' new releases does not apply it.
 
 ## The Waiting tab

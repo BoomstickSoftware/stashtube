@@ -301,3 +301,7 @@ deploy check covers it → [[sqlite-or-chain-overflow]], [[vault]], [[2026-11-09
 
 ## [2026-11-09] ingest | Discover leaves VR out
 Settings switch (on by default) and `isVrScene` → [[discover]], [[settings-page]], [[2026-11-09-discover-hides-vr]].
+
+## [2026-11-09] ingest | Discover: Not in motion, Show blocked & VR
+Two chips on Discover: only scenes not owned or on their way (`fresh=1`), and blocked and VR too
+(`unblocked=1`, which the page could not set before) → [[discover]].

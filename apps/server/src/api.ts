@@ -764,11 +764,12 @@ const discoverQuery = z.object({
   sort: z.enum(['date', 'added', 'trending']).optional(),
   page: z.coerce.number().int().min(1).max(200).optional(),
   unblocked: z.enum(['1']).optional(),
+  fresh: z.enum(['1']).optional(),
 })
 api.get('/discover', async (c) => {
   if (!(await stashdb.available())) throw new HTTPException(404, { message: 'StashDB is not configured' })
   const q = parse(discoverQuery, c.req.query())
-  return c.json(await catalog.discover({ ...q, unblocked: q.unblocked === '1' }))
+  return c.json(await catalog.discover({ ...q, unblocked: q.unblocked === '1', fresh: q.fresh === '1' }))
 })
 api.get('/discover/names', async (c) => {
   const q = parse(z.object({ kind: z.enum(['performer', 'studio', 'tag']), q: z.string().max(100) }), c.req.query())

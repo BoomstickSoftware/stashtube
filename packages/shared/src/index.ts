@@ -535,7 +535,8 @@ export interface DiscoverQuery {
   tags?: string[] // all of them
   sort?: DiscoverSort
   page?: number
-  unblocked?: boolean
+  unblocked?: boolean // blocked and VR scenes too
+  fresh?: boolean // only scenes not in motion: not owned, requested, queued, waiting, grabbed or downloading
 }
 export interface DiscoverEntity {
   kind: 'performer' | 'studio' | 'tag'
@@ -556,6 +557,7 @@ export interface DiscoverPage {
   selected: DiscoverEntity[] // the filter chips, named
   hidden: number // blocked results left out of this page
   vr: number // VR scenes left out of this page (Settings hideVr)
+  inMotion: number // owned or on the way, left out of this page by `fresh`
 }
 // Scenes fetched and still without a file, and selections still in the paced Get queue.
 export interface WaitingScene {

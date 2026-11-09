@@ -13,6 +13,8 @@ export interface DiscoverFilters {
   studios?: string[]
   tags?: string[]
   sort?: DiscoverSort
+  fresh?: boolean
+  unblocked?: boolean
 }
 
 export function useStashDbOn() {
@@ -24,7 +26,7 @@ const listParam = (ids?: string[]) => (ids?.length ? ids.join(',') : undefined)
 
 export function useDiscover(f: DiscoverFilters) {
   const on = useStashDbOn()
-  const params = { q: f.q || undefined, performers: listParam(f.performers), studios: listParam(f.studios), tags: listParam(f.tags), sort: f.sort }
+  const params = { q: f.q || undefined, performers: listParam(f.performers), studios: listParam(f.studios), tags: listParam(f.tags), sort: f.sort, fresh: f.fresh || undefined, unblocked: f.unblocked || undefined }
   return useInfiniteQuery({
     queryKey: ['discover', params],
     queryFn: ({ pageParam }) => get<DiscoverPage>(`/discover${qs({ ...params, page: pageParam })}`),
