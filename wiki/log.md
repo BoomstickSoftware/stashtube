@@ -333,3 +333,16 @@ cast set on its page; the sync files it by the override → [[cast]], [[data-mod
 ## [2026-11-09] ingest | Discover: stronger hover pills, About sheet
 Hover pills' background 0.16 → 0.36; ⓘ on each card shows StashDB's description, stored in
 `sdb_scenes.details` (migration 0011) → [[discover]], [[stashdb-mirror]].
+
+## [2026-11-09] decide | Strategy review: Continue reset, one hide model, five tabs
+
+Reviewed navigation, menus and server load ([[2026-11-09-strategy-review]]). The user decided
+[[continue-clears-and-expires]], [[hide-means-delete-block-or-unlist]] and [[five-tab-navigation]];
+initiatives A–G went into [[roadmap]].
+
+## [2026-11-09] ingest | Cache tags round (initiative A)
+
+Plays and progress saves no longer delete Home and the facets; the Cast sync no longer wipes the
+cache or re-triggers itself; `sceneStashIdMap` tagged `library`; tiles read the whole library;
+snapshot not rewritten for expiries alone ([[2026-11-09-cache-tags-round]], [[caching]], [[cast]]).
+Corrected the 2026-10-31 claim that the old feed showed at once after a play.

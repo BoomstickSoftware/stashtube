@@ -39,6 +39,7 @@ export interface MemoryStats {
 }
 
 export const VOLATILE = 'volatile'
+const EXPIRED_SAVE_GAP = 15 * 60_000
 export const PINNED = 'pinned'
 
 // Set while a `freshInputs` loader runs: nested reads must not answer with a stale entry.
@@ -51,6 +52,12 @@ export class MemoryCache {
   private changed = new Map<string, number>() // tag -> tick of its last change
   private allChanged = 0 // tick of the last change that touched every entry
   private dirty = false // changed since the last save
+  // Only marked stale since the last save: a progress save every 15 s does that, and rewriting a
+  // 3 MB snapshot every 2 minutes of playback for it bought nothing. Such changes are written at
+  // most every EXPIRED_SAVE_GAP (a restart in between restores a few entries as fresh that were
+  // stale; change detection and the next write put them right).
+  private expiredOnly = false
+  private lastSave = 0
   private s = { hits: 0, staleHits: 0, misses: 0, coalesced: 0, evictions: 0, invalidations: 0 }
   private maxEntries: number
   private maxVolatile: number
@@ -163,7 +170,7 @@ export class MemoryCache {
     for (const e of this.entries.values()) {
       if (!tags.length || e.tags.some((t) => tags.includes(t))) e.fresh = 0
     }
-    this.dirty = true
+    this.expiredOnly = true
   }
 
   clear() {
@@ -175,9 +182,11 @@ export class MemoryCache {
 
   // Write all live entries to `file` (atomically) if anything changed since the last save.
   async save(file: string) {
-    if (!this.dirty) return
-    this.dirty = false
     const now = Date.now()
+    if (!this.dirty && !(this.expiredOnly && now - this.lastSave >= EXPIRED_SAVE_GAP)) return
+    this.dirty = false
+    this.expiredOnly = false
+    this.lastSave = now
     const live = [...this.entries].filter(([, e]) => e.stale > now && !e.tags.includes(VOLATILE) && !e.tags.includes(PINNED))
     await mkdir(dirname(file), { recursive: true })
     await writeFile(`${file}.tmp`, JSON.stringify(live))

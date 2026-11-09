@@ -216,6 +216,9 @@ async function blockedSets() {
   return { performers: await ids('performer'), studios: await ids('studio'), tagNames: new Set(rows.filter((r) => r.kind === 'tag').map((r) => r.name.toLowerCase())) }
 }
 
+// Whisparr's ~13k movies by StashDB id, built once per fetched (or patched) list, not per page.
+const moviesByStashId = stash.memoBy((movies: Awaited<ReturnType<typeof whisparr.movies>>) => new Map(movies.filter((m) => m.stashId).map((m) => [m.stashId!, m])))
+
 // Each scene as a card: owned (in Stash), what Whisparr is doing with it, or queued here; one
 // deleted before (an import exclusion) is marked, and a Get by hand may still fetch it.
 export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
@@ -228,7 +231,7 @@ export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
     stash.tagLookup().catch(() => new Map<string, string>()),
   ])
   const libraryTag = (t: { id: string; name: string }) => tagIds.get(`sid:${t.id}`) ?? tagIds.get(`name:${t.name.toLowerCase()}`) ?? null
-  const byStash = new Map(movies.filter((m) => m.stashId).map((m) => [m.stashId!, m]))
+  const byStash = moviesByStashId(movies)
   const inQueue = new Set(queued.map((r) => r.id))
   return rows.map((r) => {
     const base: WantedScene = {

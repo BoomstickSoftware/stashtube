@@ -115,7 +115,10 @@ api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(scen
 // Videos marked "Not interested" (registered before /scenes/:id).
 api.get('/scenes/hidden', async (c) => c.json(await stash.hiddenScenes()))
 
-api.get('/home', async (c) => c.json(await homeRows(seedParam(c.req.query('seed')))))
+api.get('/home', async (c) => {
+  lastHomeSeed = seedParam(c.req.query('seed'))
+  return c.json(await homeRows(lastHomeSeed))
+})
 
 // --- duplicates -----------------------------------------------------------------
 
@@ -197,10 +200,26 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
 // (2026-10-31); the rows' own tags leave it stale after a play or an edit, and a pinned-row,
 // settings or blocklist write drops it (HOME). Its loader's reads wait for their refresh
 // (`freshInputs`), so a stale row is never re-stored as a fresh feed.
+// A play or a progress save only expires it (through `scene`): the old feed keeps answering at
+// once while one rebuild runs, then the new one takes its place (_until 2026-11-09 it also carried
+// `activity:play` and `activity:resume`, so every 15 s progress save deleted it and the next Home
+// waited 0.7–1.9 s for a cold build_). After a play the feed for the last seed asked for is rebuilt
+// in the background, so going back to Home finds the swap already done.
 export function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
-  return dataCache.get(JSON.stringify([HOME, visitSeed]), HOME_TTL, [HOME, 'scene', 'activity:play', 'activity:resume', 'performer', 'studio', POOL], () => buildHomeRows(visitSeed), {
+  return dataCache.get(JSON.stringify([HOME, visitSeed]), HOME_TTL, [HOME, 'scene', 'performer', 'studio', POOL], () => buildHomeRows(visitSeed), {
     freshInputs: true,
   })
+}
+
+let lastHomeSeed: string | undefined
+let rebuildTimer: NodeJS.Timeout | null = null
+function rebuildHomeSoon() {
+  if (rebuildTimer) clearTimeout(rebuildTimer)
+  rebuildTimer = setTimeout(() => {
+    rebuildTimer = null
+    homeRows(lastHomeSeed).catch(() => {}) // a stale hit starts the background rebuild
+  }, 5_000)
+  rebuildTimer.unref()
 }
 
 async function buildHomeRows(visitSeed: string): Promise<HomeRow[]> {
@@ -398,6 +417,7 @@ api.put('/scenes/:id/rating', async (c) => {
 
 api.post('/scenes/:id/play', async (c) => {
   await stash.addScenePlay(c.req.param('id'))
+  rebuildHomeSoon()
   return c.body(null, 204)
 })
 

@@ -5,7 +5,6 @@ import { db } from './db/index.ts'
 import { castOverrides } from './db/schema.ts'
 import { getSettings, setSetting } from './settings.ts'
 import * as stash from './stash.ts'
-import { dataCache, HOME } from './stash.ts'
 
 // Cast categories (wiki features/cast): flix sorts each scene's performers into F (woman), M (man)
 // and X (anyone else: trans, non-binary, intersex) by their gender in Stash, and keeps two
@@ -88,7 +87,7 @@ async function run() {
       await block('tag', ids.get(mixTag('M'))!, mixTag('M'))
       await setSetting('castSetup', true)
     }
-    if (added || removed) dataCache.invalidate(HOME)
+    if (added || removed) await stash.acceptOwnChanges()
     status = { at: new Date().toISOString(), scenes: scenes.length, added, removed, ms: Date.now() - started, error: null }
   } catch (e) {
     status = { at: new Date().toISOString(), scenes: 0, added: 0, removed: 0, ms: Date.now() - started, error: (e as Error).message }
@@ -129,13 +128,3 @@ export async function setOverride(sceneId: string, n: CastCount | null, title = 
   await syncCast()
 }
 
-// After Stash changes (Identify adding performers, a gender edit): a minute's quiet first, so a
-// burst of edits is one sync; the sync's own writes trigger one more pass that finds nothing.
-let timer: NodeJS.Timeout | null = null
-export function scheduleCast() {
-  return () => {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => void syncCast(), 60_000)
-    timer.unref()
-  }
-}

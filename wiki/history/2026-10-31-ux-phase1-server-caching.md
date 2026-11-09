@@ -57,7 +57,9 @@ in `docs/audits/2026-10-31-ux/` ([[2026-10-31-ux-audit]]), plus the decision
 ## Snags
 
 - The home feed's rebuild now waits for a fresh Featured pool after a play (0.8 s) instead of
-  ranking the stale pool; the user still sees the old feed at once for the same seed, but a
+  ranking the stale pool; the user still sees the old feed at once for the same seed (_corrected
+  2026-11-09: not after a play or progress save, which deleted the feed through its `activity:*`
+  tags; fixed in [[2026-11-09-cache-tags-round]]_), but a
   Shuffle right after a play builds cold. Accepted for a correct cache; revisit if it shows.
 - Web copy in Filters, People and Settings still says age and ethnicity apply to "one performer
   of your Settings gender"; those files belong to the copy initiative and were left alone.

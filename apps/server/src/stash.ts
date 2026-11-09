@@ -137,11 +137,23 @@ function computed<T>(key: unknown[], tags: string[], load: () => Promise<T>, ttl
   return dataCache.get(JSON.stringify(key), ttl, tags, load, { freshInputs: true })
 }
 
+// Derive something (a lookup Map) from a cached answer once per answer: a cache hit hands back the
+// same object, so the derived value is reused until the answer is refetched.
+export function memoBy<K extends object, V>(fn: (k: K) => V): (k: K) => V {
+  const seen = new WeakMap<K, V>()
+  return (k) => {
+    let v = seen.get(k)
+    if (v === undefined) seen.set(k, (v = fn(k)))
+    return v
+  }
+}
+
 // Write, then drop the cached results it changes. `expires` names results that it changes
 // only slightly (a progress bar on a card): they stay, served once more while they refresh.
 async function mutate<T = unknown>(q: string, variables: Record<string, unknown>, invalidates: string[], expires: string[] = []) {
   const d = await gql<T>(q, variables)
-  dataCache.invalidate(...invalidates)
+  if (invalidates.length) dataCache.invalidate(...invalidates) // none given must not mean "everything"
+
   if (expires.length) dataCache.expire(...expires)
   // anything that can move a Featured score leaves the pool stale, served while it refreshes
   if ([...invalidates, ...expires].some((t) => t.startsWith('scene') || t.startsWith('activity'))) dataCache.expire(POOL)
@@ -217,8 +229,7 @@ export class WarmDebounce {
 
 const warmDebounce = new WarmDebounce({ stablePolls: 2, minGap: 5 * 60_000 })
 
-async function checkForChanges() {
-  lastCheck = Date.now()
+async function fingerprint(): Promise<string> {
   const d = await gql<{ s: FindScenesResultType; p: FindPerformersResultType; st: FindStudiosResultType; t: FindTagsResultType }>(`{
     s: findScenes(filter: { per_page: 1, sort: "updated_at", direction: DESC }) { count scenes { updated_at } }
     p: findPerformers(filter: { per_page: 1, sort: "updated_at", direction: DESC }) { count performers { updated_at } }
@@ -231,6 +242,12 @@ async function checkForChanges() {
     d.st.count, d.st.studios[0]?.updated_at,
     d.t.count, d.t.tags[0]?.updated_at,
   ])
+  return fp
+}
+
+async function checkForChanges() {
+  lastCheck = Date.now()
+  const fp = await fingerprint()
   const changed = lastFingerprint !== null && fp !== lastFingerprint
   if (changed) {
     console.log('stash data changed; refreshing cached queries')
@@ -241,6 +258,13 @@ async function checkForChanges() {
     for (const fn of changeListeners) fn()
   }
   lastFingerprint = fp
+}
+
+// After flix's own bulk writes (the Cast sync), take Stash's new fingerprint as the baseline, so
+// those writes are not seen as an outside change that expires everything and re-warms again.
+// The cache entries they affect were already expired by the writes themselves.
+export async function acceptOwnChanges() {
+  if (lastFingerprint !== null) lastFingerprint = await fingerprint()
 }
 
 const changeListeners: (() => void)[] = []
@@ -739,7 +763,7 @@ export async function relatedScenes(
   const run = (f: SceneFilterType) =>
     query<Pick<Query, 'findScenes'>>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
       s: notSelf(f),
-    }, ['scene'])
+    }, ['scene', VOLATILE]) // 40 full cards each, three per video page: memory only, capped, not snapshotted
   if (performerIds.length) queries.push(run({ performers: { value: performerIds, modifier: 'INCLUDES' } }))
   if (studioId) queries.push(run({ studios: { value: [studioId], modifier: 'INCLUDES', depth: 0 } }))
   if (tagIds.length) queries.push(run({ tags: { value: tagIds.slice(0, 20), modifier: 'INCLUDES', depth: 0 } }))
@@ -780,7 +804,9 @@ export async function updateSceneRating(id: string, stars: number | null) {
 }
 
 // Plays and progress saves (every 15 s while watching) also drop the lists that filter or
-// sort by activity.
+// sort by activity: small ones (Continue, Recently watched). The big computed answers (Home, the
+// facets) do not carry the activity tags: they are only expired through `scene`, served stale and
+// rebuilt in the background, so watching never sends the next Home or Filters to a cold build.
 export async function addScenePlay(id: string) {
   await mutate(`mutation($id: ID!) { sceneAddPlay(id: $id) { count } }`, { id }, [`scene:${id}`, 'activity:play'], ['scene'])
 }
@@ -975,7 +1001,7 @@ export async function destroyScene(id: string) {
       await mutate(
         `mutation($i: SceneDestroyInput!) { sceneDestroy(input: $i) }`,
         { i: { id, delete_file: false, delete_generated: true, destroy_file_entry: true } },
-        ['scene', 'performer', 'studio', 'tag'],
+        ['scene', 'performer', 'studio', 'tag', 'library'],
       )
       return
     } catch (e) {
@@ -1211,7 +1237,7 @@ const passes = (s: Scene, q: Local, except?: Group) => groups.every((g) => g ===
 // the key.
 export async function sceneFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
   const { sort: _sort, dir: _dir, page: _page, perPage: _perPage, seed: _seed, ...counted } = q
-  return computed(['facets', counted, blocked], ['scene', 'activity:play', 'activity:resume'], () => buildFacets(counted, blocked))
+  return computed(['facets', counted, blocked], ['scene'], () => buildFacets(counted, blocked))
 }
 
 async function buildFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFacets> {
@@ -1224,7 +1250,7 @@ async function buildFacets(q: SceneQuery, blocked: Exclusions): Promise<SceneFac
       play_count resume_time rating100 files { width height duration } tags { id } performers { id } studio { id parent_studio { id } }
     } } }`,
     { f: { ...findFilter({ q: q.q }), per_page: -1, sort: 'id' }, s },
-    ['scene', 'activity:play', 'activity:resume', unfiltered ? PINNED : VOLATILE], // hundreds of KB each: not worth the disk
+    ['scene', unfiltered ? PINNED : VOLATILE], // hundreds of KB each: not worth the disk; stale after a play, not dropped
   )
   const all = d.findScenes.scenes
   const inSet = all.filter((s) => passes(s, q))
@@ -1478,7 +1504,7 @@ export async function featuredPool(blocked: Exclusions): Promise<Scene[]> {
 
 // One representative screenshot per tag, from one query over the library: the best-rated,
 // most-played scene carrying the tag that no bigger tag already used. The tiles (21 KB gz) are
-// cached and snapshotted like the facets; the 3,000-scene dump behind them is PINNED in memory.
+// cached and snapshotted like the facets; the whole-library dump behind them is PINNED in memory (_capped at 3,000 scenes until 2026-11-09_).
 export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
   return computed(['tiles', blocked], ['scene', 'tag'], () => buildTiles(blocked))
 }
@@ -1486,7 +1512,7 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
 async function buildTiles(blocked: Exclusions): Promise<TagTile[]> {
   const [scenesRaw, tagsRaw] = await Promise.all([
     query<Pick<Query, 'findScenes'>>(
-      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } ${BLOCK_FIELDS} } } }`,
+      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: -1, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } ${BLOCK_FIELDS} } } }`,
       { s: withExclusions({}, { ...blocked }) },
       ['scene', PINNED],
     ),
@@ -1611,10 +1637,12 @@ export async function ensureTags(names: string[], parent: string): Promise<Map<s
   return out
 }
 
-// Adds or removes one category on many scenes, in chunks; lists go stale like any tag edit.
+// Adds or removes one category on many scenes, in chunks. Lists go stale like any tag edit
+// (served once more while they refresh) rather than being dropped: the Cast sync runs right after
+// a scan, and dropping every scene query then threw away the warm it had just been given.
 export async function bulkTag(sceneIds: string[], tagId: string, mode: 'ADD' | 'REMOVE') {
   for (let i = 0; i < sceneIds.length; i += 500) {
-    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: sceneIds.slice(i, i + 500), tag_ids: { ids: [tagId], mode } } }, ['scene'], ['tag'])
+    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: sceneIds.slice(i, i + 500), tag_ids: { ids: [tagId], mode } } }, [], ['scene', 'tag'])
   }
 }
 
@@ -1630,13 +1658,16 @@ export async function tagCounts(ids: string[]): Promise<Map<string, number>> {
 // category changes.
 export async function tagLookup(): Promise<Map<string, string>> {
   const d = await query<Pick<Query, 'findTags'>>(`{ findTags(filter: { per_page: -1 }) { tags { id name aliases stash_ids { stash_id } } } }`, {}, ['tag'])
+  return tagLookupOf(d)
+}
+const tagLookupOf = memoBy((d: Pick<Query, 'findTags'>) => {
   const m = new Map<string, string>()
   for (const t of d.findTags.tags) {
     for (const s of t.stash_ids ?? []) m.set(`sid:${s.stash_id}`, t.id)
     for (const n of [t.name, ...(t.aliases ?? [])]) if (!m.has(`name:${n.toLowerCase()}`)) m.set(`name:${n.toLowerCase()}`, t.id)
   }
   return m
-}
+})
 
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
@@ -1644,9 +1675,16 @@ export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('
 
 // Every library scene's StashDB id → Stash scene id, to tell "already here" from "missing"
 // when StashDB lists a performer's or studio's scenes. PINNED: every shelf page reads it.
+// Tagged `library`, not `scene`: a play or a rating does not move a StashDB id, and as `scene`
+// every progress save made the next Discover page (or the Waiting tab's 10 s poll) refetch the
+// whole library (_until 2026-11-09_). A scan or Identify expires it through change detection; a
+// delete drops it. The Map is built once per fetched answer, not on every call.
 export async function sceneStashIdMap(): Promise<Map<string, string>> {
-  const d = await query<Pick<Query, 'findScenes'>>('{ findScenes(filter: { per_page: -1 }) { scenes { id stash_ids { stash_id } } } }', {}, ['scene', PINNED])
+  const d = await query<Pick<Query, 'findScenes'>>('{ findScenes(filter: { per_page: -1 }) { scenes { id stash_ids { stash_id } } } }', {}, ['library', PINNED])
+  return stashIdMapOf(d)
+}
+const stashIdMapOf = memoBy((d: Pick<Query, 'findScenes'>) => {
   const map = new Map<string, string>()
   for (const s of d.findScenes.scenes) for (const x of s.stash_ids) map.set(x.stash_id, s.id)
   return map
-}
+})

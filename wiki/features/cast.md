@@ -53,8 +53,12 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
 - `syncCast()` reads every scene's performer genders and categories in one uncached query
   (`castInputs`) and the overrides, compares with `castOf()` (or `castFrom()` of the override), and fixes each category with bulk add / remove
   (`bulkSceneUpdate`, 500 ids a call). Categories are created on first run (`ensureTags`).
-- Runs 90 s after start, a minute after Stash reports changes (debounced), and from Settings.
-  Its own writes trigger one more pass that finds nothing to do.
+- Runs 90 s after start, from Settings, and once Stash has settled after a change, **before**
+  the re-warm (`onStashChange` in `index.ts`). Its writes only expire `scene` and `tag` (served
+  stale while they refresh), and afterwards `acceptOwnChanges()` takes Stash's new fingerprint
+  as the baseline, so they are not seen as an outside change. _Until 2026-11-09_ it ran a minute
+  after the warm, dropped every `scene` query, and its writes set off a second change, warm and
+  sync ([[2026-11-09-cache-tags-round]]).
 - flix owns these categories: a hand edit is put back on the next sync.
 
 ## Limits and numbers

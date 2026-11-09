@@ -86,6 +86,25 @@ describe('MemoryCache', () => {
     }
   })
 
+  it('does not rewrite the snapshot for an expiry alone, but does for a new entry', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'flix-mem-'))
+    try {
+      const file = join(dir, 'data.json')
+      const c = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
+      await c.get('home', 1000, ['scene'], async () => 'v1')
+      await c.save(file)
+      await rm(file)
+      c.expire('scene') // a progress save
+      await c.save(file)
+      await assert.rejects(readFile(file, 'utf8'), 'an expiry alone waits for the gap')
+      await c.get('other', 1000, ['scene'], async () => 'v2')
+      await c.save(file)
+      assert.equal((JSON.parse(await readFile(file, 'utf8')) as unknown[]).length, 2)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   it('keeps a fetch that was running when an unrelated tag changed', async () => {
     const c = new MemoryCache({ maxEntries: 10, staleFor: 1000 })
     let release!: (v: string) => void

@@ -4,8 +4,8 @@ kind: architecture
 summary: The three cache layers (query results in memory with a disk snapshot, the browser's persisted queries, generated assets on disk), how each is invalidated, warmed and measured; the goal is that Stash does only real work.
 tags: [caching, performance, server, stash]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-09
+updated: 2026-11-09
 code: [apps/server/src/cache/memory.ts, apps/server/src/cache/assets.ts, apps/server/src/conditional.ts, apps/server/src/warm.ts, apps/server/src/admin.ts, apps/web/src/main.tsx]
 related: [stash-layer, cache-admin, config-env, stash-database-locked, media-proxy, ratings-expire-lists, whisparr-shelf, home-feed, 2026-10-31-ux-phase1-server-caching]
 ---
@@ -19,8 +19,8 @@ not. Env knobs and defaults: [[config-env]]. Admin: [[cache-admin]].
 
 | Layer | Where | What | Freshness |
 |---|---|---|---|
-| Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), snapshot to `CACHE_DIR/data.json` every 2 min and on SIGTERM/SIGINT, restored at boot. Two tags keep raw working sets out of the snapshot: `VOLATILE` (the per-filter facet sets, Whisparr's queue and grabs) is **capped at 60 entries in total, oldest out** (`maxVolatile` in `stash.ts`; _30 until 2026-10-31_, when paging the StashDB shelf 31 times evicted the facets and tiles: facets 24 ms → 2.2 s, 278 of 401 misses since that day's restart were this eviction, see `docs/audits/2026-10-31-ux/server.md`); `PINNED` (since 2026-10-31: the unfiltered facet set, the tile set, `sceneStashIdMap`, Whisparr's movie list, a 16-field projection of its **41 MB / 13,079 entries**, [[whisparr-shelf]]) is never swept, only dropped by its tags. The StashDB pages (~8 KB) and the Featured pool (2.3 MB) go to the snapshot like any query (_the pages were VOLATILE until 2026-10-31_); the file is ~3.3 MB | every GraphQL read, keyed by query+variables, plus the **computed answers** below | fresh for `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s; at most `DATA_CACHE_MAX_ENTRIES` (5000) |
-| Computed answers | the same cache, snapshotted: the facets per filter set (`facets`, 2–25 KB, tags `scene`, `activity:*`), the tag tiles (`tiles`, 21 KB gz, tags `scene`, `tag`), the finished home feed per visit seed (`home-rows`, TTL 5 min, tags `home-rows`, `scene`, `activity:*`, `performer`, `studio`, `featured-pool`) | `sceneFacets`, `tagTiles` (`computed()` in `stash.ts`), `homeRows` (`api.ts`) | since 2026-10-31; before, each was rebuilt on every request (facets 16–24 ms, tiles 19 ms, home 41 ms warm) and rebuilt from Stash after every deploy (1–2 s on Filters). Built with **`freshInputs`**: while the loader runs, the cached reads it makes wait for their refresh instead of being served stale, so a stale raw set is never re-stored as a fresh answer; the answer itself is still served stale while it rebuilds. Pinned by `memory.test.ts` |
+| Query results | memory (`cache/memory.ts`, `dataCache` in `stash.ts`), snapshot to `CACHE_DIR/data.json` every 2 min when an entry was added, dropped or patched, at most every 15 min when entries were only marked stale (a progress save every 15 s did that, and rewrote ~3 MB every 2 min of playback until 2026-11-09), and on SIGTERM/SIGINT; restored at boot. Two tags keep raw working sets out of the snapshot: `VOLATILE` (the per-filter facet sets, the related-video queries since 2026-11-09, Whisparr's queue and grabs) is **capped at 60 entries in total, oldest out** (`maxVolatile` in `stash.ts`; _30 until 2026-10-31_, when paging the StashDB shelf 31 times evicted the facets and tiles: facets 24 ms → 2.2 s, 278 of 401 misses since that day's restart were this eviction, see `docs/audits/2026-10-31-ux/server.md`); `PINNED` (since 2026-10-31: the unfiltered facet set, the tile set, `sceneStashIdMap`, Whisparr's movie list, a 16-field projection of its **41 MB / 13,079 entries**, [[whisparr-shelf]]) is never swept, only dropped by its tags. The StashDB pages (~8 KB) and the Featured pool (2.3 MB) go to the snapshot like any query (_the pages were VOLATILE until 2026-10-31_); the file is ~3.3 MB | every GraphQL read, keyed by query+variables, plus the **computed answers** below | fresh for `DATA_CACHE_TTL_MINUTES` (360), then served stale for up to `DATA_CACHE_STALE_HOURS` (168) while one background refresh runs; concurrent identical reads share one request; Stash calls time out after 60 s; at most `DATA_CACHE_MAX_ENTRIES` (5000) |
+| Computed answers | the same cache, snapshotted: the facets per filter set (`facets`, 2–25 KB, tag `scene`; _also `activity:*` until 2026-11-09_), the tag tiles (`tiles`, 21 KB gz, tags `scene`, `tag`), the finished home feed per visit seed (`home-rows`, TTL 5 min, tags `home-rows`, `scene`, `performer`, `studio`, `featured-pool`; _also `activity:*` until 2026-11-09_) | `sceneFacets`, `tagTiles` (`computed()` in `stash.ts`), `homeRows` (`api.ts`) | since 2026-10-31; before, each was rebuilt on every request (facets 16–24 ms, tiles 19 ms, home 41 ms warm) and rebuilt from Stash after every deploy (1–2 s on Filters). Built with **`freshInputs`**: while the loader runs, the cached reads it makes wait for their refresh instead of being served stale, so a stale raw set is never re-stored as a fresh answer; the answer itself is still served stale while it rebuilds. Pinned by `memory.test.ts` |
 | Browser | localStorage `flix.queries` (`main.tsx`, `PERSISTED` in `lib/api/client.ts`) | home feed (the current seed's only), settings, favourites, playlists, blocklist, session | up to 7 days; painted at once on a cold open, then refetched; stale queries also refetch when the app returns to the foreground; lists, a scene and its related row are kept 30 min in memory so Back finds them ([[web-app]]) |
 | Assets | disk `CACHE_DIR/assets` (`cache/assets.ts`); metadata kept in memory after first use so a hit costs no file reads | screenshots, preview clips, sprites, VTTs, performer/studio/tag images, and StashDB covers (`/media/remote`, keyed by their upstream URL, fetched by `remote.ts` instead of Stash) | URLs carrying Stash's version stamp `?t=` never expire (browser: 1 year, immutable); the rest TTL `ASSET_CACHE_TTL_HOURS` (720), then revalidated by ETag (browser: 7 days); a file Stash sent without an ETag (its generated previews, sprites and VTTs) and every resized WebP copy gets flix's own weak one, `W/"flix-<size>-<fetchedAt>"` (base 36), so the browser's If-None-Match is answered 304 (since 2026-10-31; _before, those had no validator and were re-downloaded in full after 7 days_); flix's own tag is never sent to Stash, which gets If-Modified-Since or a plain refetch; stale copy served if Stash is down, answers 404 (it does while a scan locks its database) or a download breaks off; one fetch times out after 60 s, body included; new 404s remembered 1 min; "database is locked" retried with backoff; resized WebP copies (`?w=`, [[media-proxy]]) cached under their own keys; LRU under `ASSET_CACHE_MAX_MB` (5120 default, 15360 in k8s) |
 | Not cached | | `/scene/<id>/stream*` (direct and HLS), all writes | |
@@ -30,9 +30,15 @@ not. Env knobs and defaults: [[config-env]]. Admin: [[cache-admin]].
 - **flix's own writes** go through `mutate(q, vars, invalidates, expires)`: `invalidates`
   are dropped, `expires` are marked stale (served once more while they refresh).
 - **Plays and progress saves** (every 15 s while watching) drop only `scene:<id>` and the
-  queries that filter or sort by activity (`activity:play`, `activity:resume`, set by
-  `activityTags()`), and mark the rest of `scene` stale. _Until 2026-10-27_ they dropped every
-  `scene` query, so watching anything left Home and Browse cold.
+  plain lists that filter or sort by activity (`activity:play`, `activity:resume`, set by
+  `activityTags()`: Continue, Recently watched, the touched-scenes set behind History), and mark
+  the rest of `scene` stale. The big computed answers (Home, the facets and their raw sets) do
+  not carry the activity tags, so they are served stale and rebuilt in the background: the old
+  answer keeps answering until the new one swaps in. After a play the server rebuilds Home for
+  the last seed asked for, 5 s later (`rebuildHomeSoon` in `api.ts`), so Back to Home finds it
+  done. _Until 2026-10-27_ they dropped every `scene` query; _until 2026-11-09_ Home and the
+  facets still carried `activity:*`, so every progress save deleted them and the next Home or
+  Filters waited for a cold build (0.7–1.9 s, 1.2–2.2 s) ([[2026-11-09-cache-tags-round]]).
 - **A rating, an O, a title or tag edit** drop only `scene:<id>` and mark `scene` stale (a tag
   edit also `tag`, for the scene counts on tag cards); a **performer favourite** drops
   `performer:<id>` and marks `performer` and `scene` stale. A list sorted by rating may lag one
@@ -56,8 +62,14 @@ not. Env knobs and defaults: [[config-env]]. Admin: [[cache-admin]].
   and is no longer joined by new reads; a fetch with other tags is kept. _Until 2026-10-31_ any
   invalidate or expire (so every progress save) threw away every running fetch, so a slow
   whole-library query could be refetched over and over while a video played.
-- `firstSceneYear` (which every list's exclusions wait on) is tagged `library`, not `scene`, so
-  a rating or tag edit does not drop it; a Stash change refreshes it with everything else.
+- `firstSceneYear` (which every list's exclusions wait on) and, since 2026-11-09,
+  `sceneStashIdMap` (StashDB id → scene, read by every Discover page and the Waiting poll) are
+  tagged `library`, not `scene`, so a play, rating or tag edit does not refetch them; a Stash
+  change refreshes them with everything else and a delete drops them. Lookup Maps built from a
+  cached answer (`sceneStashIdMap`, `tagLookup`, Whisparr's movies by StashDB id) are built once
+  per answer (`memoBy` in `stash.ts`), not on every call.
+- `mutate()` with no tags to drop drops nothing (an empty `invalidate()` used to mean "every
+  tag changed"); the Cast sync's bulk tag writes only expire `scene` and `tag` ([[cast]]).
 - The Featured pool is tagged `featured-pool`: any write that touches `scene*` or `activity*`
   only expires it (`mutate`), so it is served stale while it refreshes ([[featured-ranking]]).
 - **Changes made in Stash** (scans, Identify, edits in its UI) are caught by a change check:

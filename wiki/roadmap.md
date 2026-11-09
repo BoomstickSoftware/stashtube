@@ -6,7 +6,7 @@ tags: [roadmap, backlog]
 status: current
 verified: 2026-10-30
 updated: 2026-11-09
-related: [overview, log, 2026-10-31-ux-audit]
+related: [overview, log, 2026-10-31-ux-audit, 2026-11-09-strategy-review]
 ---
 
 # Roadmap
@@ -36,6 +36,41 @@ Done, by date (each page says what changed and how it was verified):
 - [[2026-11-09-edu-section]], [[2026-11-09-unlisted-and-vault]], [[2026-11-09-discover-hides-vr]], [[2026-11-09-discover-toggles-and-details]], [[2026-11-09-cast-categories]], [[2026-11-09-cast-overrides]]
 
 The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
+
+## Strategy review roadmap (2026-11-09)
+
+From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initiative]]), in order.
+
+- **A. Cache tags** (S): done, [[2026-11-09-cache-tags-round]].
+- **B. Continue reset** (S–M), decision [[continue-clears-and-expires]]: Select and bulk
+  "Remove from Continue"; one-video removal in the card menu and on the scene page; resume
+  points untouched for 30 days expire (a daily server job, `guardWrite` not needed server-side
+  but never in the check scripts); Mark as watched clears the resume point and shows on played
+  videos too.
+- **C. Background load** (S–M):
+  - Whisparr guard: hourly baseline; every 15 min only while flix is in use (an API request in
+    the last 30 min, the same in-memory `lastActivity` change detection uses, `noteActivity()`
+    in `stash.ts`); skipped entirely while the Settings switch is off; `/movie` re-downloaded
+    only when the plan will write (the patched cached list is good enough to plan from).
+  - Featured: the user wants it to change often. The browser seed rolls every **5 min** (was 1 h,
+    `homeSeed()`), but not on a Back to Home, so a return keeps its place; the ranking's inputs
+    (candidates, normalised signals) are memoised per pool and the ranking cached per
+    (seed, weights), so a new seed costs a few ms, not 31–39.
+  - `sdb_queries` rows older than 30 days pruned daily.
+  - History's "Because you watched" takes the first played scene instead of building every
+    play event.
+- **D. One "Hide" model** (M), decision [[hide-means-delete-block-or-unlist]]: Not interested
+  opens the delete; Block covers downloads only; Unlist unchanged; one Hidden view (Vault,
+  Blocked) replaces the two Settings sections; the old "Not interested" tag's videos listed once
+  in Cleanup.
+- **E. Scene page "⋯" sheet** (S): Stars, O, Favorite, Playlist stay in the row; the rest
+  (Unlist, Mark as watched, Remove from Continue, Identify, Delete) in a sheet shared with
+  `CardMenu`.
+- **F. History** (M): repeat plays of a video grouped per day, paged, Select and bulk remove,
+  Undo instead of `window.confirm` where Stash allows.
+- **G. Navigation** (M–L), decision [[five-tab-navigation]]: five tabs, a You section, a
+  Browse strip, one privacy menu, Station chips folded into the Stations tab; a "Manage Home
+  rows" list next to the Featured dials.
 
 ## UX audit roadmap (2026-10-31)
 
@@ -251,8 +286,8 @@ Stash and Whisparr are run from here now (`private/wiki/integrations/stash-insta
   bar) and the picture swipe in the station player ([[seek-bar-markers]]).
 
 
-- **Open**: keep or drop the ad-hoc "Station" entry points (by Related, in the filter bar, on
-  entity pages) now that only saved stations are remembered ([[stations-only-user-made]]).
+- ~~**Open**: keep or drop the ad-hoc "Station" entry points~~ Decided 2026-11-09: they fold
+  into the Stations tab ([[five-tab-navigation]], initiative G).
 - **Faster Home, what is left**: a cold feed is 1.0–1.2 s, most of it the Featured pool's
   0.8 s whole-library query (`tags { id favorite }` alone is 0.5 s of it); it is served stale
   after writes and kept across restarts, so a user rarely waits for it ([[featured-ranking]]).
