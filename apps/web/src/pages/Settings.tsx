@@ -1,8 +1,9 @@
 import type { JSX, ReactNode } from 'react'
+import clsx from 'clsx'
 import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Ban, ChevronRight, Copy, Search, Trash2, Vault as VaultIcon, X } from 'lucide-react'
+import { Ban, ChevronRight, Copy, Search, Trash2, Users, Vault as VaultIcon, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
@@ -13,7 +14,7 @@ import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
-import { authApi, useBlock, useBlocklist, useSearch, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
 import { showToast } from '../lib/toast'
@@ -56,6 +57,7 @@ export function Settings(): JSX.Element {
           <LibraryTools />
           <WhisparrSyncSetting />
           <HideVrSetting />
+          <CastSetting />
           <UnlistedSetting />
           <BlocklistSetting />
           <HiddenSetting />
@@ -133,6 +135,94 @@ function LibraryTools() {
         <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
       </Link>
     </div>
+  )
+}
+
+// Cast (wiki features/cast): each mix of performers, how many videos it holds, and whether it
+// shows normally, is Unlisted or is Blocked (the category's own block and unlist).
+const MIX_LABEL: Record<string, string> = {
+  'Cast: F': 'Women only',
+  'Cast: M': 'Men only',
+  'Cast: X': 'Other only',
+  'Cast: F+M': 'Women & men',
+  'Cast: F+X': 'Women & other',
+  'Cast: M+X': 'Men & other',
+  'Cast: F+M+X': 'Women, men & other',
+  'Cast: Unknown': 'Unknown',
+}
+function CastSetting() {
+  const { data } = useCast()
+  const sync = useSyncCast()
+  const { data: blocked } = useBlocklist()
+  const { data: unl } = useUnlisted()
+  const block = useBlock()
+  const unlist = useUnlist()
+  const level = (id: string) => (blocked?.tags.some((t) => t.id === id) ? 'blocked' : unl?.tags.some((t) => t.id === id) ? 'unlisted' : 'normal')
+  const setLevel = (id: string, to: 'normal' | 'unlisted' | 'blocked') => {
+    const now = level(id)
+    if (to === now) return
+    if (to === 'blocked') block.mutate({ kind: 'tag', id, blocked: true })
+    else if (to === 'unlisted') unlist.mutate({ kind: 'tag', id, unlisted: true })
+    else if (now === 'blocked') block.mutate({ kind: 'tag', id, blocked: false })
+    else unlist.mutate({ kind: 'tag', id, unlisted: false })
+  }
+  const last = data?.lastSync
+  return (
+    <section>
+      <h3 className="flex items-center gap-2 text-lg font-bold">
+        <Users size={20} className="text-accent" /> Cast
+      </h3>
+      <p className="mt-1 max-w-xl text-sm text-muted">
+        flix files every video by who is in it, from the performers’ gender in Stash: women (F), men (M) and everyone else (X: trans,
+        non-binary, intersex). Each video gets one mix below plus counts (“Cast: Women 2+”) to filter by in Browse. Unknown: no
+        performers yet, or one without a gender. These are Stash categories flix keeps up to date.
+      </p>
+      <ul className="mt-4 max-w-xl divide-y divide-line rounded-xl bg-surface">
+        {data?.mixes.map((m) => {
+          const now = level(m.id)
+          return (
+            <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+              <Link to="/tag/$id" params={{ id: m.id }} className="min-w-0 flex-1 hover:text-accent">
+                <span className="block text-sm font-medium">{MIX_LABEL[m.name] ?? m.name}</span>
+                <span className="block text-xs text-muted">
+                  {m.name} · {m.scenes.toLocaleString()} videos
+                </span>
+              </Link>
+              <div role="radiogroup" aria-label={`${MIX_LABEL[m.name] ?? m.name}: how it shows`} className="flex shrink-0 rounded-full bg-raised p-0.5 text-[13px]">
+                {(['normal', 'unlisted', 'blocked'] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    role="radio"
+                    aria-checked={now === l}
+                    onClick={() => setLevel(m.id, l)}
+                    className={clsx(
+                      'rounded-full px-3 py-1 capitalize touch:min-h-11 touch:px-3.5',
+                      now === l ? (l === 'blocked' ? 'bg-red-500/20 text-red-300' : 'bg-white text-black') : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </li>
+          )
+        })}
+        {!data && <li className="px-3 py-3 text-sm text-muted">Loading…</li>}
+      </ul>
+      <div className="mt-3 flex max-w-xl flex-wrap items-center gap-3 text-xs text-muted">
+        <span>
+          {last
+            ? last.error
+              ? `Last sync failed: ${last.error}`
+              : `Last sync ${new Date(last.at).toLocaleString()}: ${last.scenes.toLocaleString()} videos, ${last.added + last.removed} changes`
+            : 'Synced after each start and after Stash changes.'}
+        </span>
+        <Button onClick={() => sync.mutate()} disabled={sync.isPending} className="ml-auto">
+          {sync.isPending ? 'Syncing…' : 'Sync now'}
+        </Button>
+      </div>
+    </section>
   )
 }
 

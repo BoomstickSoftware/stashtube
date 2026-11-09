@@ -11,6 +11,7 @@ import { admin } from './admin.ts'
 import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { exclusions } from './blocklist.ts'
+import { scheduleCast, syncCast } from './cast.ts'
 import { hostGuard, playbackOrigin, sameOriginWrites, securityHeaders } from './guard.ts'
 import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
@@ -147,6 +148,8 @@ const warm = () =>
 warm()
 onStashChange(warm)
 onStashChange(scheduleSweep())
+onStashChange(scheduleCast()) // Cast categories follow performer changes (cast.ts)
+setTimeout(() => void syncCast(), 90_000).unref() // and are checked once after start
 startSync() // the Whisparr guard: a few minutes after start, then every 15 minutes (sync.ts)
 startGetQueue() // paced Gets, weekly re-search of waiting scenes, daily discovery (getqueue.ts)
 

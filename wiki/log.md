@@ -315,3 +315,8 @@ Prowlarr crawl, SAB in batches of 4, ffprobe check, ManualImport by movieId; det
 ## [2026-11-09] correct | Discover details as category pills; deploy check's source video
 Details: coloured category pills linking to library categories, no code or date → [[discover]];
 the deploy check no longer trusts a refreshing list for its normal video.
+
+## [2026-11-09] decide | Cast categories
+User chose F / M / X letters (trans and non-binary as X), one mix plus cumulative counts as Stash
+categories kept in sync by flix, and Cast: M blocked → [[cast-taxonomy]], [[cast]],
+[[2026-11-09-cast-categories]]; [[data-model]].

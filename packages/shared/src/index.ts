@@ -366,6 +366,19 @@ export interface Settings {
   featured: FeaturedWeights // the Featured row's dials
   whisparrSync: boolean // follow -> Whisparr watches the performer's new releases; off: the sync only plans
   hideVr: boolean // Discover leaves VR scenes out (title, category or studio says VR); on by default
+  castSetup?: boolean // the Cast sync has applied its one-time defaults (Cast: M blocked)
+}
+
+// Cast categories (wiki features/cast): flix-maintained Stash categories from performer genders.
+export interface CastTag {
+  name: string // "Cast: F+M", "Cast: Women 2+"
+  id: string // the Stash category
+  scenes: number
+}
+export interface CastStatus {
+  mixes: CastTag[] // one per scene: the letters present (F woman, M man, X other), or Unknown
+  counts: CastTag[] // cumulative thresholds: Women 1+..3+, Men 1+..3+, Other 1+..2+
+  lastSync: { at: string; scenes: number; added: number; removed: number; ms: number; error: string | null } | null
 }
 
 export type StationMode = 'full' | 'moments'

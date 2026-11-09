@@ -1,7 +1,7 @@
 ---
 title: Data model (Postgres)
 kind: architecture
-summary: The Postgres tables and what each holds, against the rule that Stash owns ratings, plays, resume points, markers and favourites; also the three Stash tags flix creates.
+summary: The Postgres tables and what each holds, against the rule that Stash owns ratings, plays, resume points, markers and favourites; also the Stash tags flix creates.
 tags: [postgres, drizzle, schema, data]
 status: current
 verified: 2026-10-30
@@ -36,6 +36,8 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
   marker); created on first use ([[moments]]).
 - **Not interested**: added to a video by "Not interested"; `exclusions()` treats it as blocked,
   so the video leaves every list; Settings lists them to undo ([[blocklist-and-exclusions]]).
+- **Cast** and its children (`Cast: F+M`, `Cast: Women 2+`, …): written to every video by the
+  Cast sync from performer genders ([[cast]], since 2026-11-09).
 - **Unlisted**: added to a video by "Unlist"; counts as an Unlisted category, so the video
   goes to the Vault and off Home; Settings lists them to undo ([[vault]], since 2026-11-09).
 

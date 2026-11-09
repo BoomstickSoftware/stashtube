@@ -127,4 +127,21 @@ try {
   bad++
   console.log(`FAIL vault ${e instanceof Error ? e.message : e}`)
 }
+// Cast categories (wiki features/cast): the sync runs 90 s after start, so a fresh pod may not
+// have run it yet. Once it has: it must not have failed, and the mixes (one per video) should add
+// up to the library (a few apart only while new videos arrive between sync and check).
+try {
+  const cast = await json('/api/cast')
+  const all = await json('/api/scenes?perPage=1&unblocked=1')
+  const sum = cast.mixes.reduce((n, m) => n + m.scenes, 0)
+  const last = cast.lastSync
+  if (!last) console.log(`cast  -    not synced yet since start; mixes hold ${sum} of ${all.total}`)
+  else if (last.error) {
+    bad++
+    console.log(`FAIL cast  last sync failed: ${last.error}`)
+  } else console.log(`${sum === all.total ? 'ok  ' : 'warn'} cast  mixes hold ${sum} of ${all.total} videos; last sync ${last.at} (${last.added + last.removed} changes, ${last.ms} ms)`)
+} catch (e) {
+  bad++
+  console.log(`FAIL cast  ${e instanceof Error ? e.message : e}`)
+}
 process.exit(bad || !match ? 1 : 0)

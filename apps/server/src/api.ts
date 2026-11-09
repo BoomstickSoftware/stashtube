@@ -3,6 +3,7 @@ import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
+import { castStatus, syncCast } from './cast.ts'
 import { curated, dropUnlistedWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
@@ -685,6 +686,15 @@ api.delete('/blocklist/:kind/:id', async (c) => {
   await unblock(parse(kind, c.req.param('kind')), c.req.param('id'))
   kickSync()
   return c.body(null, 204)
+})
+
+// --- Cast categories (cast.ts, wiki features/cast) ------------------------------------
+
+api.get('/cast', async (c) => c.json(await castStatus()))
+// writes Cast categories in Stash (the user asked for these to be kept in sync, 2026-11-09)
+api.post('/cast/sync', async (c) => {
+  await syncCast()
+  return c.json(await castStatus())
 })
 
 // --- Unlisted (unlisted.ts, wiki features/vault) --------------------------------------

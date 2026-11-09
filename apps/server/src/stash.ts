@@ -1583,6 +1583,47 @@ export async function libraryIdForStashId(kind: 'performer' | 'studio' | 'tag', 
   return d.findTags.tags[0]?.id ?? null
 }
 
+// --- Cast categories (cast.ts) ----------------------------------------------------------
+
+// Every scene's performer genders and category ids, uncached: the Cast sync must see the library
+// as it is now. Gender null: not set on the performer.
+export async function castInputs(): Promise<{ id: string; tagIds: string[]; genders: (string | null)[] }[]> {
+  const d = await gql<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: -1 }) { scenes { id tags { id } performers { gender } } } }`)
+  return d.findScenes.scenes.map((s) => ({ id: s.id, tagIds: s.tags.map((t) => t.id), genders: s.performers.map((p) => p.gender ?? null) }))
+}
+
+// The ids of these categories, creating any that are missing under `parent` (created too).
+export async function ensureTags(names: string[], parent: string): Promise<Map<string, string>> {
+  const find = async (ns: string[]) => {
+    const d = await gql<Pick<Query, 'findTags'>>(`{ findTags(filter: { per_page: -1 }) { tags { id name } } }`)
+    const wanted = new Set(ns)
+    return new Map(d.findTags.tags.filter((t) => wanted.has(t.name)).map((t) => [t.name, t.id]))
+  }
+  const have = await find([parent, ...names])
+  const create = async (name: string, parentIds: string[] = []) => {
+    const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($i: TagCreateInput!) { tagCreate(input: $i) { id } }`, { i: { name, parent_ids: parentIds } }, ['tag'])
+    return c.tagCreate!.id
+  }
+  const parentId = have.get(parent) ?? (await create(parent))
+  const out = new Map<string, string>()
+  for (const n of names) out.set(n, have.get(n) ?? (await create(n, [parentId])))
+  return out
+}
+
+// Adds or removes one category on many scenes, in chunks; lists go stale like any tag edit.
+export async function bulkTag(sceneIds: string[], tagId: string, mode: 'ADD' | 'REMOVE') {
+  for (let i = 0; i < sceneIds.length; i += 500) {
+    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: sceneIds.slice(i, i + 500), tag_ids: { ids: [tagId], mode } } }, ['scene'], ['tag'])
+  }
+}
+
+// Scene counts of these categories (the Settings Cast list).
+export async function tagCounts(ids: string[]): Promise<Map<string, number>> {
+  if (!ids.length) return new Map()
+  const d = await query<Pick<Query, 'findTags'>>(`query($ids: [ID!]) { findTags(ids: $ids, filter: { per_page: -1 }) { tags { id scene_count } } }`, { ids }, ['scene', 'tag'])
+  return new Map(d.findTags.tags.map((t) => [t.id, t.scene_count ?? 0]))
+}
+
 // Library categories by their StashDB id (`sid:<uuid>`) and by lower-case name and alias
 // (`name:<name>`): Discover's category pills link to the library's own. One query, cached until a
 // category changes.

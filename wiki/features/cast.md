@@ -1,0 +1,58 @@
+---
+title: Cast categories
+kind: feature
+summary: flix files every video by cast (F, M, X) as Stash categories, one mix plus cumulative counts, so mixes can be blocked and counts filtered.
+tags: [cast, stash, filters, blocklist]
+status: current
+verified: 2026-11-09
+updated: 2026-11-09
+api: [GET /api/cast, POST /api/cast/sync]
+code: [apps/server/src/cast.ts, apps/server/src/stash.ts, apps/web/src/pages/Settings.tsx, apps/web/src/lib/api/cast.ts, scripts/deploy-check.mjs]
+related: [cast-taxonomy, blocklist-and-exclusions, vault, browse-and-filters, data-model]
+---
+
+# Cast categories
+
+Stash has no field for who a scene is "for", and its scene filter can say "has a performer who
+is …" but not "every performer is …". So flix computes it and writes Stash categories under a
+parent **Cast**, which every filter, the blocklist and Unlisted already understand
+([[cast-taxonomy]]).
+
+## Behaviour
+
+- **Letters**, from each performer's gender in Stash: **F** female, **M** male, **X** anyone
+  else (trans women, trans men, non-binary, intersex).
+- **Mix**, exactly one per video: `Cast: F`, `M`, `X`, `F+M`, `F+X`, `M+X`, `F+M+X`, or
+  `Cast: Unknown` when it has no performers or one without a gender (nothing else is claimed then).
+- **Counts**, cumulative: `Cast: Women 1+`, `2+`, `3+`; `Cast: Men 1+`, `2+`, `3+`;
+  `Cast: Other 1+`, `2+`. Two women and a man carry Women 1+, Women 2+ and Men 1+.
+- **Settings → Library → Cast**: each mix with its count and Normal / Unlisted / Blocked (the
+  category's own block and unlist); the last sync; Sync now.
+- **`Cast: M` is blocked** by the first sync (once; `settings.castSetup`), as the user chose. A
+  solo male scene is `Cast: M` too (merged, by choice).
+
+| Question | Filter |
+|---|---|
+| at least 1 man and 1+ women | include Men 1+, Women 1+ |
+| at least 1 man and 2+ women | include Men 1+, Women 2+ |
+| exactly 2 women | include Women 2+, exclude Women 3+ |
+| no men | exclude Men 1+ and Cast: Unknown |
+| any of these mixes | exclude every other mix and Unknown (the mixes partition the library) |
+
+## How
+
+- `syncCast()` reads every scene's performer genders and categories in one uncached query
+  (`castInputs`), compares with `castOf()`, and fixes each category with bulk add / remove
+  (`bulkSceneUpdate`, 500 ids a call). Categories are created on first run (`ensureTags`).
+- Runs 90 s after start, a minute after Stash reports changes (debounced), and from Settings.
+  Its own writes trigger one more pass that finds nothing to do.
+- flix owns these categories: a hand edit is put back on the next sync.
+
+## Limits and numbers
+
+- Library on 2026-11-09: 1,716 performers (1,349 F, 362 M, 5 non-binary, none without a gender),
+  2,753 videos: F+M 2,290, F 360, Unknown 80, M+X 10, F+M+X 9, F+X 3, M 1.
+- Counts cap at 3+ (women, men) and 2+ (other); FMMM+ (210 videos) all read Men 3+.
+- A performer with a wrong gender in Stash files the video wrongly; only a missing gender becomes
+  Unknown.
+- Not in Discover yet: the StashDB mirror stores no performer genders.
