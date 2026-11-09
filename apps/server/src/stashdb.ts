@@ -55,6 +55,17 @@ export const resetStashBox = () => {
 
 export const available = async () => !!(await stashBox())
 
+// StashDB's website, for links that open a scene there: the GraphQL endpoint's origin.
+export async function webUrl(): Promise<string | null> {
+  const b = await stashBox().catch(() => null)
+  if (!b) return null
+  try {
+    return new URL(b.endpoint).origin
+  } catch {
+    return null
+  }
+}
+
 // Every StashDB request goes through this one queue: one at a time, at least MIN_GAP apart,
 // backing off on 429/503 (Retry-After when given), and pausing all calls after repeated
 // failures. StashDB is a community service; flix must never be the reason it is slow.

@@ -443,7 +443,10 @@ api.post('/scenes/delete', async (c) => {
   return c.json(results)
 })
 
-api.get('/features', async (c) => c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: !!config.whisparr && (await stashdb.available()) } satisfies Features))
+api.get('/features', async (c) => {
+  const sdb = !!config.whisparr && (await stashdb.available())
+  return c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: sdb, stashdbWeb: sdb ? await stashdb.webUrl() : null } satisfies Features)
+})
 
 // Answers with the finished job (200) in the usual case; 202 with the running job when it
 // outlived the server's wait, which `GET /jobs/:id` then follows.

@@ -43,6 +43,13 @@ StashDB work ([[stashdb-mirror]]).
   page can hold fewer.
 - **Show blocked & VR** (chip, `unblocked=1`): blocked and VR scenes too. _Until 2026-11-09 the
   API took `unblocked` but the page had no control for it._
+- **Details** (chip, per browser, `flix.discover.details`): each card adds the studio code, the
+  date the scene reached StashDB and its categories (from the mirror: `WantedScene.tags`, `code`,
+  `stashdbAdded`). Off, a mouse hovering the picture shows the same over it; phones have no hover.
+  StashDB's description is not fetched (`SCENE_FULL`), so it is not shown.
+- **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
+  a top-right button opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
+  the origin of the StashDB endpoint flix uses.
 - **VR is left out by default** (Settings → Library → "Leave VR scenes out of Discover",
   `settings.hideVr`, since 2026-11-09): `isVrScene` in `catalog.ts` matches the title or a
   category ([VR], (VR), the word VR, Virtual Reality, 180°/360°), or a studio name with VR in

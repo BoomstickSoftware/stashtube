@@ -1,10 +1,10 @@
 import type { WantedScene } from '@flix/shared'
 import { sized, srcSet } from '@flix/shared'
 import clsx from 'clsx'
-import { Ban, Check, ChevronLeft, ChevronRight, CircleCheck, Clock, Download, GalleryHorizontalEnd, Hourglass, LayoutGrid, ListPlus, Loader2, Play } from 'lucide-react'
+import { Ban, Check, ChevronLeft, ChevronRight, CircleCheck, Clock, Download, ExternalLink, GalleryHorizontalEnd, Hourglass, LayoutGrid, ListPlus, Loader2, Play } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useCallback, useRef, type ReactNode } from 'react'
-import { useGetScene, useStashDbIds, useWanted } from '../lib/api'
+import { useFeatures, useGetScene, useStashDbIds, useWanted } from '../lib/api'
 import { asBool, oneOf, useStored } from '../lib/storage'
 import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
@@ -89,6 +89,7 @@ export function WantedCard({
   selecting,
   selected,
   onToggle,
+  details,
 }: {
   scene: WantedScene
   sizes: string
@@ -96,8 +97,13 @@ export function WantedCard({
   selecting?: boolean
   selected?: boolean
   onToggle?: () => void
+  details?: boolean // Discover's Details: the mirror's extra facts under the title (else on hover, with a mouse)
 }) {
   const getScene = useGetScene()
+  const { data: features } = useFeatures()
+  const stashdbHref = features?.stashdbWeb && w.stashdbId ? `${features.stashdbWeb}/scenes/${w.stashdbId}` : null
+  const extra = [w.code, w.stashdbAdded ? `on StashDB since ${fmtDate(w.stashdbAdded)}` : null].filter(Boolean).join(' · ')
+  const hasExtra = !!extra || !!w.tags?.length
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
   const state = busy ? 'requested' : w.state
@@ -110,6 +116,13 @@ export function WantedCard({
         ) : (
           <div className="flex size-full items-center justify-center text-xs text-muted">No cover</div>
         )}
+        {/* the same facts as Details, over the picture while a mouse hovers it */}
+        {!details && hasExtra && (
+          <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2.5 pb-12 text-[11px] leading-snug text-white/90 opacity-0 transition-opacity [@media(hover:hover)]:flex [@media(hover:hover)]:group-hover/wanted:opacity-100">
+            {extra && <div className="font-semibold">{extra}</div>}
+            {!!w.tags?.length && <div className="line-clamp-4">{w.tags.join(' · ')}</div>}
+          </div>
+        )}
         <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
           {w.state === 'remote' && <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase ring-1 ring-white/10">StashDB</span>}
           {w.deletedBefore && (
@@ -118,6 +131,19 @@ export function WantedCard({
             </span>
           )}
         </div>
+        {stashdbHref && !pickable && (
+          <a
+            href={stashdbHref}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={(e) => e.stopPropagation()}
+            title="Open on StashDB (new tab)"
+            aria-label={`Open “${w.title}” on StashDB in a new tab`}
+            className="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white/90 ring-1 ring-white/15 backdrop-blur hover:bg-accent touch:size-11"
+          >
+            <ExternalLink size={15} />
+          </a>
+        )}
         {pickable && (
           <span className={clsx('absolute top-2 right-2 flex size-7 items-center justify-center rounded-full ring-1', selected ? 'bg-accent text-white ring-accent' : 'bg-black/60 text-transparent ring-white/40')}>
             <CircleCheck size={18} />
@@ -143,7 +169,7 @@ export function WantedCard({
       </div>
   )
   return (
-    <article className={clsx('flex flex-col gap-2', className)}>
+    <article className={clsx('group/wanted flex flex-col gap-2', className)}>
       {pickable ? (
         <button type="button" onClick={onToggle} aria-pressed={selected} aria-label={`Select ${w.title}`} className="block text-left">
           {cover}
@@ -158,7 +184,9 @@ export function WantedCard({
       <div className="min-w-0 px-0.5">
         <div className="line-clamp-2 text-sm leading-snug font-semibold">{w.title}</div>
         {meta && <div className="truncate text-xs text-muted">{meta}</div>}
-        {w.performers.length > 0 && <div className="truncate text-xs text-muted">{w.performers.join(', ')}</div>}
+        {w.performers.length > 0 && <div className={clsx('text-xs text-muted', details ? 'line-clamp-3' : 'truncate')}>{w.performers.join(', ')}</div>}
+        {details && extra && <div className="mt-1 text-xs text-fg/80">{extra}</div>}
+        {details && !!w.tags?.length && <div className="mt-0.5 line-clamp-4 text-xs text-muted">{w.tags.join(' · ')}</div>}
       </div>
     </article>
   )

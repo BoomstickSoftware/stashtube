@@ -238,6 +238,9 @@ export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
       runtime: r.duration ? Math.round(r.duration / 60) : null,
       state: 'remote',
       ...(excluded.has(r.id.toLowerCase()) ? { deletedBefore: true } : {}),
+      tags: (r.tags as { name: string }[]).map((t) => t.name),
+      code: r.code,
+      stashdbAdded: r.created ? r.created.slice(0, 10) : null,
     }
     const sceneId = owned.get(r.id)
     if (sceneId) return { ...base, state: 'owned', sceneId }

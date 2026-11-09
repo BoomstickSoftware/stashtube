@@ -305,3 +305,9 @@ Settings switch (on by default) and `isVrScene` → [[discover]], [[settings-pag
 ## [2026-11-09] ingest | Discover: Not in motion, Show blocked & VR
 Two chips on Discover: only scenes not owned or on their way (`fresh=1`), and blocked and VR too
 (`unblocked=1`, which the page could not set before) → [[discover]].
+
+## [2026-11-09] ingest | Discover: Details and open-on-StashDB links
+→ [[discover]], [[2026-11-09-discover-toggles-and-details]].
+
+## [2026-11-09] ingest | Hand fill of a studio Whisparr cannot search (180 scenes)
+Prowlarr crawl, SAB in batches of 4, ffprobe check, ManualImport by movieId; details and state in `private/wiki/history/2026-11-09-futanari-xxx-fill.md` (private: names the studio).

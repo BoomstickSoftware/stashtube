@@ -465,6 +465,7 @@ export interface Features {
   deleteScenes: boolean // Whisparr is configured, so a scene can be deleted with its file
   whisparr: boolean // and scenes it knows but has not downloaded can be listed and fetched one at a time
   stashdb: boolean // StashDB answers too, so the shelf shows a performer's or studio's whole catalogue
+  stashdbWeb: string | null // StashDB's site (e.g. https://stashdb.org), for "open on StashDB" links
 }
 
 // A scene not in the library (yet). `state` follows the download: remote (only StashDB knows
@@ -487,6 +488,10 @@ export interface WantedScene {
   state: WantedState
   sceneId?: string | null // the Stash scene, when owned
   deletedBefore?: boolean // deleted from the library before (Whisparr's import exclusion): discovery skips it, a Get by hand still fetches it
+  // From flix's StashDB mirror, for Discover's details (absent on Whisparr-only cards)
+  tags?: string[] // StashDB's categories
+  code?: string | null // the studio's own code
+  stashdbAdded?: string | null // YYYY-MM-DD the scene was added to StashDB
 }
 // A page of a performer's or studio's missing scenes: StashDB's catalogue when it answers,
 // otherwise only what Whisparr lists.

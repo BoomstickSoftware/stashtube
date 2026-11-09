@@ -10,6 +10,7 @@ import { WantedCard } from '../components/WantedRow'
 import { canGetState } from '../lib/wanted'
 import { useCancelQueued, useDiscover, useDiscoverNames, useGetMany, useGiveUp, useRunDiscovery, useSearchAgain, useStashDbOn, useWaiting } from '../lib/api'
 import { date as fmtDate } from '../lib/format'
+import { asBool, useStored } from '../lib/storage'
 import { showToast } from '../lib/toast'
 import type { DiscoverSearch } from '../routes/discover'
 
@@ -95,6 +96,8 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
   const hidden = data?.pages.reduce((n, p) => n + p.hidden, 0) ?? 0
   const vr = data?.pages.reduce((n, p) => n + (p.vr ?? 0), 0) ?? 0
   const inMotion = data?.pages.reduce((n, p) => n + (p.inMotion ?? 0), 0) ?? 0
+  // categories, code and StashDB date under every card; remembered per browser
+  const [details, setDetails] = useStored('flix.discover.details', asBool(false))
   const sort = search.sort ?? 'date'
   const hasFilter = filters.performers.length + filters.studios.length + filters.tags.length > 0 || !!filters.q
 
@@ -174,6 +177,9 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
         <Chip tone={search.unblocked ? 'include' : 'default'} onClick={() => set({ unblocked: search.unblocked ? undefined : true })}>
           Show blocked & VR
         </Chip>
+        <Chip tone={details ? 'include' : 'default'} onClick={() => setDetails(!details)}>
+          Details
+        </Chip>
         {fetchable.length > 0 && (
           <Button className="ml-auto" onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             {selecting ? 'Cancel' : 'Select'}
@@ -196,6 +202,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
                 key={w.stashdbId ?? w.whisparrId}
                 scene={w}
                 sizes={GRID_SIZES}
+                details={details}
                 selecting={selecting}
                 selected={!!w.stashdbId && picked.has(w.stashdbId)}
                 onToggle={() => w.stashdbId && toggle(w.stashdbId)}
