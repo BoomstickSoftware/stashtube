@@ -25,4 +25,5 @@ related: [whisparr-sync, featured-ranking, home-feed, stashdb-mirror, caching, 2
 ## How it was verified
 
 `node scripts/check.mjs`: 144 server tests (new: the timer's due rule, a short `staleFor`). After
-the deploy: `/api/featured` timings for a new seed and its hero pages (log entry of the day).
+the deploy, a new seed: `/api/featured` 122 ms first, hero pages 51–54 ms, a repeat 7 ms; `/api/home`
+21 ms.

@@ -361,3 +361,9 @@ Whisparr guard paced by use and the switch, Featured seed every 5 min with a cac
 `sdb_queries` pruned after 30 days, a cheaper Because-you-watched
 ([[2026-11-09-background-load]]). The first Continue expiry cleared nothing (the oldest
 resume point without a play reaches 30 days on 2026-11-24).
+
+## [2026-11-09] query | Featured timings after initiative C
+
+Production, a new seed: `/api/featured` 122 ms on first call (pool ranked once), hero pages
+(offset 24, 44) 51–54 ms (card fetches for new ids only), the same request again 7 ms; `/api/home`
+for a new seed 21 ms. Before: 31–39 ms of ranking on every call ([[featured-ranking]]).
