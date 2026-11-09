@@ -5,7 +5,7 @@ summary: One rate-limited queue for every StashDB call, a Postgres mirror so eac
 tags: [stashdb, whisparr, caching, architecture, downloads]
 status: current
 verified: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 code: [apps/server/src/stashdb.ts, apps/server/src/catalog.ts, apps/server/src/getqueue.ts, apps/server/src/db/schema.ts, apps/server/src/api.ts]
 related: [stashdb, discover, whisparr-unwatched-studios-stop-learning-scenes, whisparr-sync, whisparr-nothing-monitored, caching, whisparr-shelf]
 ---
@@ -29,7 +29,7 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
 
 | Table | Holds | Fresh for |
 |---|---|---|
-| `sdb_scenes` | every scene StashDB returned: title, date, duration, studio, performers, tags, cover, created/updated | until a newer copy arrives |
+| `sdb_scenes` | every scene StashDB returned: title, date, duration, studio, performers, tags, cover, description (`details`: null until fetched, '' when none; since 2026-11-09), created/updated | until a newer copy arrives |
 | `sdb_entities` | performer, studio and tag names (learned free from scenes), image and scene count | 7 days (fetched once when only the name is known) |
 | `sdb_scopes` | a performer or studio copied whole: total, `complete`, newest `updated` | re-checked after 20 h |
 | `sdb_queries` | a query page's scene ids and total | 24 h; trending 6 h |

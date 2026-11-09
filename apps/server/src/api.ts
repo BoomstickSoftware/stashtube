@@ -1,4 +1,4 @@
-import type { DeleteResult, Duplicates, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
+import type { SdbSceneDetails, DeleteResult, Duplicates, Features, FeaturedWeights, HomeRow, Page, SceneCard, SceneDetail, SceneQuery, SearchResult } from '@flix/shared'
 import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
@@ -794,6 +794,15 @@ const discoverQuery = z.object({
   unblocked: z.enum(['1']).optional(),
   fresh: z.enum(['1']).optional(),
 })
+// A StashDB scene's description, for the About on a Discover card ('' when it has none).
+api.get('/discover/scenes/:id/details', async (c) => {
+  if (!(await stashdb.available())) throw new HTTPException(404, { message: 'StashDB is not configured' })
+  const id = parse(z.string().uuid(), c.req.param('id'))
+  const details = await catalog.sceneDetails(id)
+  if (details == null) return notFound()
+  return c.json({ details } satisfies SdbSceneDetails)
+})
+
 api.get('/discover', async (c) => {
   if (!(await stashdb.available())) throw new HTTPException(404, { message: 'StashDB is not configured' })
   const q = parse(discoverQuery, c.req.query())

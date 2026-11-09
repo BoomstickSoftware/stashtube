@@ -6,7 +6,7 @@ tags: [stashdb, whisparr, discover, ui]
 status: current
 verified: 2026-11-09
 updated: 2026-11-09
-code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx]
+code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx, apps/web/src/components/SceneAbout.tsx]
 related: [stashdb-mirror, whisparr-shelf, whisparr-sync, mobile-first-ui]
 ---
 
@@ -47,11 +47,17 @@ StashDB work ([[stashdb-mirror]]).
   as coloured pills (`CategoryPill`; colour from the name's hash, `lib/color.ts`, the same
   everywhere); a pill links to the library's category when one matches by StashDB id or by name
   or alias (`stash.tagLookup`, one cached query). Off, a mouse hovering the picture shows the pills
-  over it; phones have no hover. _The studio code and StashDB date shown there for an hour on
-  2026-11-09 were dropped as noise (user)._ StashDB's description is not fetched (`SCENE_FULL`).
+  over it, with a stronger background there (alpha 0.36 against 0.16, `categoryStyle(name, bg)`;
+  user, 2026-11-09); phones have no hover. _The studio code and StashDB date shown there for an hour on
+  2026-11-09 were dropped as noise (user)._
 - **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
   a top-right button opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
   the origin of the StashDB endpoint flix uses.
+- **About** (ⓘ beside it, since 2026-11-09): StashDB's description of the scene in a sheet
+  (`SceneAbout.tsx`; bottom sheet on a phone). `GET /api/discover/scenes/:id/details` reads
+  `sdb_scenes.details`; a row stored before that column existed (null) is fetched once through
+  the paced queue (`findScene { details }`) and kept; `''` means StashDB has none. New mirror
+  rows carry it from `SCENE_FULL`.
 - **VR is left out by default** (Settings → Library → "Leave VR scenes out of Discover",
   `settings.hideVr`, since 2026-11-09): `isVrScene` in `catalog.ts` matches the title or a
   category ([VR], (VR), the word VR, Virtual Reality, 180°/360°), or a studio name with VR in

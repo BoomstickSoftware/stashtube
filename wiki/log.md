@@ -329,3 +329,7 @@ Filters → Cast: per-letter counts and Mix chips as category includes / exclude
 A video whose performers miss someone (a men-only video with an unidentified woman) can have its
 cast set on its page; the sync files it by the override → [[cast]], [[data-model]],
 [[2026-11-09-cast-overrides]].
+
+## [2026-11-09] ingest | Discover: stronger hover pills, About sheet
+Hover pills' background 0.16 → 0.36; ⓘ on each card shows StashDB's description, stored in
+`sdb_scenes.details` (migration 0011) → [[discover]], [[stashdb-mirror]].

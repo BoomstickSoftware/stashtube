@@ -1,4 +1,4 @@
-import type { DiscoverEntity, DiscoverPage, DiscoverSort, WaitingScene } from '@flix/shared'
+import type { DiscoverEntity, DiscoverPage, DiscoverSort, SdbSceneDetails, WaitingScene } from '@flix/shared'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, qs, send } from './client'
 import { useFeatures } from './settings'
@@ -86,3 +86,7 @@ export const useSearchAgain = () => useWaitingWrite((movieId: number) => send('P
 export const useGiveUp = () => useWaitingWrite((movieId: number) => send('DELETE', `/whisparr/waiting/${movieId}`))
 export const useCancelQueued = () => useWaitingWrite((stashdbId: string) => send('DELETE', `/whisparr/queue/${stashdbId}`))
 export const useRunDiscovery = () => useWaitingWrite(() => send<{ queued: number }>('POST', '/discover/run'))
+
+// A StashDB scene's description for a Discover card's About (fetched when opened, then kept).
+export const useSdbSceneDetails = (id: string | null) =>
+  useQuery({ queryKey: ['sdb-details', id], queryFn: () => get<SdbSceneDetails>(`/discover/scenes/${id}/details`), enabled: !!id, staleTime: Infinity })

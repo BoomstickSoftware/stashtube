@@ -146,6 +146,7 @@ export const sdbScenes = pgTable(
     tagIds: text('tag_ids').array().notNull(),
     image: text('image'), // StashDB's widest cover URL (served only through the proxy)
     code: text('code'),
+    details: text('details'), // StashDB's description; '' when it has none, null until fetched
     created: text('created'), // StashDB's own timestamps
     updated: text('updated'),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),

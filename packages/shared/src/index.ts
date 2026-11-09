@@ -507,6 +507,11 @@ export interface Features {
 // settles).
 // owned: in Stash already (Discover shows it, linked); queued: in flix's paced Get queue; waiting: fetched and monitored, no release found yet.
 export type WantedState = 'remote' | 'available' | 'requested' | 'queued' | 'waiting' | 'grabbed' | 'downloading' | 'downloaded' | 'owned'
+// A StashDB scene's description (Discover's About); '' when StashDB has none.
+export interface SdbSceneDetails {
+  details: string
+}
+
 export interface WantedScene {
   whisparrId: number | null // null for a remote scene
   stashdbId: string | null // StashDB's uuid; Whisparr files scenes under it too

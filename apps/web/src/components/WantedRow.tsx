@@ -10,6 +10,7 @@ import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { CategoryPill } from './CategoryPill'
+import { SceneAbout } from './SceneAbout'
 import { canGetState } from '../lib/wanted'
 
 // How wide a card shows, so the browser picks the resized cover that fits (`srcSet`).
@@ -120,7 +121,7 @@ export function WantedCard({
         {!details && tags.length > 0 && (
           <div className="pointer-events-none absolute inset-0 hidden flex-wrap content-end gap-1 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2.5 pb-12 opacity-0 transition-opacity [@media(hover:hover)]:flex [@media(hover:hover)]:group-hover/wanted:opacity-100">
             {tags.slice(0, 10).map((t) => (
-              <CategoryPill key={t.name} name={t.name} />
+              <CategoryPill key={t.name} name={t.name} bg={0.36} />
             ))}
           </div>
         )}
@@ -144,6 +145,15 @@ export function WantedCard({
           >
             <ExternalLink size={15} />
           </a>
+        )}
+        {w.stashdbId && !pickable && (
+          <SceneAbout
+            scene={w}
+            className={clsx(
+              'absolute top-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white/90 ring-1 ring-white/15 backdrop-blur hover:bg-accent touch:size-11',
+              stashdbHref ? 'right-11 touch:right-14' : 'right-1.5',
+            )}
+          />
         )}
         {pickable && (
           <span className={clsx('absolute top-2 right-2 flex size-7 items-center justify-center rounded-full ring-1', selected ? 'bg-accent text-white ring-accent' : 'bg-black/60 text-transparent ring-white/40')}>

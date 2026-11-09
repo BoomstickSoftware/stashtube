@@ -47,6 +47,7 @@ const rowOf = (s: SdbSceneFull) => ({
   tagIds: s.tags.map((t) => t.id),
   image: stashdb.widestImage(s.images),
   code: s.code,
+  details: s.details ?? '',
   created: s.created,
   updated: s.updated,
   fetchedAt: new Date(),
@@ -73,6 +74,7 @@ export async function storeScenes(scenes: SdbSceneFull[]) {
           tagIds: sql`excluded.tag_ids`,
           image: sql`excluded.image`,
           code: sql`excluded.code`,
+          details: sql`excluded.details`,
           created: sql`excluded.created`,
           updated: sql`excluded.updated`,
           fetchedAt: sql`excluded.fetched_at`,
@@ -363,4 +365,14 @@ export async function recentOf(kind: ScopeKind, id: string, since: string): Prom
     if (rows.some((r) => r.date && r.date < since) || page * PAGE >= count) break
   }
   return out
+}
+
+// A scene's description for Discover's About: from the mirror, or once from StashDB (through the
+// paced queue) for a row stored before descriptions were, then kept. null: StashDB has no such scene.
+export async function sceneDetails(id: string): Promise<string | null> {
+  const [row] = await db.select({ details: sdbScenes.details }).from(sdbScenes).where(eq(sdbScenes.id, id))
+  if (row?.details != null) return row.details
+  const details = await stashdb.sceneDetails(id)
+  if (row && details != null) await db.update(sdbScenes).set({ details }).where(eq(sdbScenes.id, id))
+  return details
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "sdb_scenes" ADD COLUMN "details" text;

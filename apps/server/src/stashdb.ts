@@ -200,12 +200,13 @@ export const isStashDbId = (id: unknown): id is string => typeof id === 'string'
 
 export interface SdbSceneFull extends Omit<SdbScene, 'performers'> {
   code: string | null
+  details: string | null
   created: string | null
   updated: string | null
   performers: { performer: { id: string; name: string; disambiguation: string | null }; as: string | null }[]
   tags: { id: string; name: string }[]
 }
-const SCENE_FULL = `id title release_date duration code created updated studio { id name } performers { performer { id name disambiguation } as } tags { id name } images { url width height }`
+const SCENE_FULL = `id title release_date duration code details created updated studio { id name } performers { performer { id name disambiguation } as } tags { id name } images { url width height }`
 
 export type SceneSort = 'DATE' | 'CREATED_AT' | 'UPDATED_AT' | 'TRENDING' | 'POPULARITY' | 'TITLE'
 export interface SceneQuery {
@@ -266,6 +267,13 @@ export async function searchEntities(kind: SdbEntity['kind'], term: string, limi
   if (kind === 'performer') return (await gql<{ searchPerformers: RawPerformer[] }>(`query($t: String!, $l: Int) { searchPerformers(term: $t, limit: $l) { ${PERFORMER} } }`, { t, l: limit })).searchPerformers.map(fromPerformer)
   if (kind === 'studio') return (await gql<{ searchStudio: RawStudio[] }>(`query($t: String!, $l: Int) { searchStudio(term: $t, limit: $l) { ${STUDIO} } }`, { t, l: limit })).searchStudio.map(fromStudio)
   return (await gql<{ searchTag: RawTag[] }>(`query($t: String!, $l: Int) { searchTag(term: $t, limit: $l) { ${TAG} } }`, { t, l: limit })).searchTag.map(fromTag)
+}
+
+// One scene's description (Discover's About), for a mirror row stored before descriptions were.
+export async function sceneDetails(id: string): Promise<string | null> {
+  if (!UUID.test(id)) return null
+  const d = await gql<{ findScene: { details: string | null } | null }>(`query($id: ID!) { findScene(id: $id) { details } }`, { id })
+  return d.findScene ? (d.findScene.details ?? '') : null
 }
 
 export async function findEntity(kind: SdbEntity['kind'], id: string): Promise<SdbEntity | null> {

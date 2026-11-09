@@ -78,6 +78,13 @@
       "when": 1794255061590,
       "tag": "0010_complete_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794260101894,
+      "tag": "0011_abandoned_korvac",
+      "breakpoints": true
     }
   ]
 }

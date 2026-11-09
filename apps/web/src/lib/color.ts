@@ -12,11 +12,12 @@ export function categoryHue(name: string): number {
   return (h >>> 0) % 360
 }
 
-export function categoryStyle(name: string): CSSProperties {
+// `bg`: the background's alpha; stronger over a picture (Discover's hover overlay).
+export function categoryStyle(name: string, bg = 0.16): CSSProperties {
   const hue = categoryHue(name)
   return {
     color: `hsl(${hue} 75% 72%)`,
-    backgroundColor: `hsl(${hue} 70% 45% / 0.16)`,
+    backgroundColor: `hsl(${hue} 70% 45% / ${bg})`,
     boxShadow: `inset 0 0 0 1px hsl(${hue} 70% 60% / 0.35)`,
   }
 }
