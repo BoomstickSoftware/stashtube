@@ -4,7 +4,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { ChevronDown, ChevronUp, ExternalLink, Info } from 'lucide-react'
 import { useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
-import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton, Stat } from '../components/EntityHeader'
+import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton, UnlistButton, UnlistedNotice, Stat } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Avatar, Button, ErrorBox, Stars } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
@@ -30,6 +30,7 @@ export function PerformerPage(): JSX.Element {
     <div>
       {p ? <PerformerHeader id={id} p={p} /> : <HeaderSkeleton shape="performer" />}
       <BlockedNotice kind="performer" id={id} />
+      <UnlistedNotice kind="performer" id={id} />
       <SceneBrowser
         omitPerformer={id}
         query={query}
@@ -104,6 +105,7 @@ function PerformerHeader({ id, p }: { id: string; p: PerformerDetail }) {
               <Stars value={p.rating} onChange={(rating) => rate.mutate({ id, rating })} />
             </div>
             <AddFilterButton kind="performer" id={id} name={p.name} variant="button" />
+            <UnlistButton kind="performer" id={id} name={p.name} />
             <BlockButton kind="performer" id={id} name={p.name} />
             {/* A real button like its neighbours (desktop audit, item 14): muted text read as a label. */}
             {hasAbout && (

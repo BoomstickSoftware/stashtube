@@ -42,7 +42,8 @@ show, even empty, so they can be managed); the web slots "Pick up a station" in 
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
 The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]),
-and Edu videos are held out of every row unless a pinned row names an Edu category ([[edu-section]]);
+and Unlisted videos are held out of every row and the not-downloaded shelf unless a pinned row
+names the Unlisted entity ([[vault]]);
 the Performers page's Women / Men / Everyone switch does not (_it steered "For you" and "More
 with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
 

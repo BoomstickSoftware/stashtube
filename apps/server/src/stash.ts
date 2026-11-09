@@ -295,6 +295,7 @@ const SCENE_DETAIL = `
   ${SCENE_CARD}
   details code director urls
   performers { image_path }
+  studio { parent_studio { id } }
   tags { id name }
   files { size format video_codec audio_codec bit_rate frame_rate }
   scene_markers { id seconds end_seconds title primary_tag { id name } }
@@ -348,7 +349,7 @@ export function toSceneCard(s: Scene): SceneCard {
   }
 }
 
-function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden'> {
+function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden' | 'unlisted' | 'unlistedVia'> {
   const markers = (s.scene_markers ?? []).map(toMarker).sort((a, b) => a.seconds - b.seconds)
   const f = file(s)
   return {
@@ -415,8 +416,14 @@ export interface Exclusions {
   performers: string[]
   studios: string[]
   people?: People
-  eduTags?: string[] // the Edu section's categories (edu.ts)
-  holdEdu?: boolean // leave Edu videos out (views flix assembles: edu.ts curated())
+  unlisted?: UnlistedSets // Unlisted categories (with the hand-unlist tag), performers, studios (unlisted.ts)
+  holdUnlisted?: boolean // leave Unlisted videos out (views flix assembles: unlisted.ts curated())
+}
+
+export interface UnlistedSets {
+  tags: string[]
+  performers: string[]
+  studios: string[]
 }
 
 // Performer attributes a scene must have: one performer (of `gender`, when one is given; the
@@ -443,13 +450,16 @@ function anyOf<F extends { OR?: F | null }>(filters: F[]): F | null {
 // MAX_BUCKETS years: SQLite's parser overflows on long OR chains (36 failed, 18 worked).
 // Contains OR, so it goes last in an AND chain.
 const MAX_BUCKETS = 16
-function peopleCriterion(p: People | undefined): SceneFilterType | null {
-  if (!p || (!p.minAge && !p.maxAge && !p.ethnicities?.length)) return null
+
+// The people criterion as the alternatives its OR chain joins (each a plain set of criteria), so
+// the Vault's own alternatives can be multiplied in; `maxBuckets` keeps the product under MAX_OR.
+function peopleAlternatives(p: People | undefined, maxBuckets = MAX_BUCKETS): SceneFilterType[] {
+  if (!p || (!p.minAge && !p.maxAge && !p.ethnicities?.length)) return []
   const base: PerformerFilterType = p.gender ? { gender: p.gender } : {}
   const who: PerformerFilterType[] = p.ethnicities?.length ? p.ethnicities.map((e) => ({ ...base, ethnicity: { value: e, modifier: 'EQUALS' } })) : [base]
-  if (!p.minAge && !p.maxAge) return { performers_filter: anyOf(who) }
+  if (!p.minAge && !p.maxAge) return [{ performers_filter: anyOf(who) }]
   const last = new Date().getFullYear()
-  const step = Math.max(1, Math.ceil((last - p.firstYear + 1) / MAX_BUCKETS))
+  const step = Math.max(1, Math.ceil((last - p.firstYear + 1) / maxBuckets))
   const buckets: SceneFilterType[] = []
   for (let y = p.firstYear; y <= last; y += step) {
     const end = y + step - 1
@@ -466,8 +476,12 @@ function peopleCriterion(p: People | undefined): SceneFilterType | null {
       performers_filter: anyOf<PerformerFilterType>(who.map((w) => ({ ...w, birthdate: born }))),
     })
   }
-  return anyOf(buckets)
+  return buckets
 }
+
+// The longest OR chain sent: SQLite's parser overflowed at 36 (people buckets, 2026-10), so the
+// Vault's alternatives times the age buckets stay at or under this.
+const MAX_OR = 32
 
 const ids = (csv?: string) => (csv ? csv.split(',').filter(Boolean) : [])
 
@@ -479,18 +493,26 @@ const minResolution: Record<number, ResolutionEnum> = {
 
 // Stash allows one criterion per field per level, so each exclusion (and each extra criterion
 // that may repeat a field) nests one AND deeper.
-function withExclusions(filter: SceneFilterType, ex: Exclusions, extra: SceneFilterType[] = []): SceneFilterType {
+// `alternatives`: one of which a scene must match (the Vault); joined with the people criterion
+// by distributing, since a filter holds one OR chain (Stash allows no AND beside an OR).
+function withExclusions(filter: SceneFilterType, ex: Exclusions, extra: SceneFilterType[] = [], alternatives: SceneFilterType[] = []): SceneFilterType {
   const parts: SceneFilterType[] = [...extra]
-  const people = peopleCriterion(ex.people)
-  // Edu categories join the blocked tags in the one criterion: a second `tags EXCLUDES` (depth 0,
-  // its own AND level) was ignored by Stash, so Edu videos stayed on Home (2026-11-09, wiki
-  // gotchas/second-tags-exclusion-ignored)
-  const tagsOut = ex.holdEdu && ex.eduTags?.length ? [...new Set([...ex.tags, ...ex.eduTags])] : ex.tags
+  // Unlisted ids join the blocked ones in the one criterion per field: a second `tags EXCLUDES`
+  // (depth 0, its own AND level) was ignored by Stash, so Edu videos stayed on Home (2026-11-09,
+  // wiki gotchas/second-tags-exclusion-ignored)
+  const u = ex.holdUnlisted ? ex.unlisted : undefined
+  const join = (a: string[], b: string[] = []) => (b.length ? [...new Set([...a, ...b])] : a)
+  const tagsOut = join(ex.tags, u?.tags)
+  const performersOut = join(ex.performers, u?.performers)
+  const studiosOut = join(ex.studios, u?.studios)
   if (tagsOut.length) parts.push({ tags: { value: tagsOut, modifier: 'EXCLUDES', depth: -1 } })
-  if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
-  if (ex.studios.length) parts.push({ studios: { value: ex.studios, modifier: 'EXCLUDES', depth: -1 } })
+  if (performersOut.length) parts.push({ performers: { value: performersOut, modifier: 'EXCLUDES' } })
+  if (studiosOut.length) parts.push({ studios: { value: studiosOut, modifier: 'EXCLUDES', depth: -1 } })
   // last: it may hold an OR, and Stash allows no AND beside an OR
-  if (people) parts.push(people)
+  const people = peopleAlternatives(ex.people, alternatives.length ? Math.max(1, Math.floor(MAX_OR / alternatives.length)) : MAX_BUCKETS)
+  const either = alternatives.length && people.length ? alternatives.flatMap((a) => people.map((p) => ({ ...a, ...p }))) : alternatives.length ? alternatives : people
+  const last = anyOf(either)
+  if (last) parts.push(last)
   let node = filter
   for (const p of parts) {
     node.AND = p
@@ -536,13 +558,15 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): SceneFilterType
   }
   if (q.duplicates) extra.push({ duplicated: { duplicated: true, phash: true, distance: 8 } })
 
-  const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [], eduTags: blocked.eduTags, holdEdu: blocked.holdEdu } : { ...blocked }
-  // Edu: the Edu page asks for only those videos; naming an Edu category lets them in, as a
-  // named blocked id does; `noEdu` (stations) holds them out otherwise.
-  const edu = blocked.eduTags ?? []
-  if (q.edu || tags.some((t) => edu.includes(t))) ex.holdEdu = false
-  else if (q.noEdu) ex.holdEdu = true
-  if (q.edu) extra.push(edu.length ? { tags: { value: edu, modifier: 'INCLUDES', depth: 0 } } : { id: { value: 0, modifier: 'EQUALS' } })
+  const ex: Exclusions = q.unblocked ? { tags: [], performers: [], studios: [], unlisted: blocked.unlisted, holdUnlisted: blocked.holdUnlisted } : { ...blocked }
+  // Unlisted: the Vault asks for only those videos; `noUnlisted` (stations) holds them out; an
+  // Unlisted id the query names is let in for this query, as a named blocked id is.
+  const u = blocked.unlisted ?? { tags: [], performers: [], studios: [] }
+  if (q.vault) ex.holdUnlisted = false
+  else if (q.noUnlisted) ex.holdUnlisted = true
+  if (ex.holdUnlisted)
+    ex.unlisted = { tags: u.tags.filter((t) => !tags.includes(t)), performers: u.performers.filter((p) => !performers.includes(p)), studios: u.studios.filter((s) => !studios.includes(s)) }
+  const vault: SceneFilterType[] = q.vault ? vaultAlternatives(u) : []
   // The list's own age or ethnicity filter replaces the Settings defaults; Show blocked drops them.
   if (blocked.people) {
     const own = q.minAge || q.maxAge || q.ethnicities
@@ -559,7 +583,17 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): SceneFilterType
   ex.tags = [...new Set([...ex.tags, ...ids(q.xtags)])].filter((t) => !tags.includes(t))
   ex.performers = ex.performers.filter((p) => !performers.includes(p))
   ex.studios = ex.studios.filter((s) => !studios.includes(s))
-  return withExclusions(f, ex, extra)
+  return withExclusions(f, ex, extra, vault)
+}
+
+// A scene in the Vault has an Unlisted category, performer or studio (sub-studios included).
+// Nothing Unlisted: an impossible id, so the Vault is empty rather than the whole library.
+function vaultAlternatives(u: UnlistedSets): SceneFilterType[] {
+  const alt: SceneFilterType[] = []
+  if (u.tags.length) alt.push({ tags: { value: u.tags, modifier: 'INCLUDES', depth: -1 } })
+  if (u.performers.length) alt.push({ performers: { value: u.performers, modifier: 'INCLUDES' } })
+  if (u.studios.length) alt.push({ studios: { value: u.studios, modifier: 'INCLUDES', depth: -1 } })
+  return alt.length ? alt : [{ id: { value: 0, modifier: 'EQUALS' } }]
 }
 
 export function findFilter(q: {
@@ -659,6 +693,7 @@ export async function getScene(id: string) {
     performerIds: d.findScene.performers.map((p) => p.id),
     studioId: d.findScene.studio?.id ?? null,
     tagIds: d.findScene.tags.map((t) => t.id),
+    marks: d.findScene as Pick<Scene, 'tags' | 'performers' | 'studio'>, // for unlistedReasons
   }
 }
 
@@ -690,12 +725,15 @@ export async function relatedScenes(
   tagIds: string[],
   blocked: Exclusions,
   group: string | null = null,
-  within: string[] | null = null, // only scenes with one of these tags (an Edu video's related ones)
+  // The source's Unlisted reasons (unlisted.ts relatedSide): a candidate that is Unlisted must
+  // share all of its reasons. Null: the source is not Unlisted, so Stash leaves them out.
+  allowed: Set<string> | null = null,
 ): Promise<SceneCard[]> {
-  const fields = `${SCENE_CARD} tags { id }`
+  const fields = `${SCENE_CARD} ${BLOCK_FIELDS}`
   const queries: Promise<Pick<Query, 'findScenes'>>[] = []
-  const inside = (): SceneFilterType[] => (within?.length ? [{ tags: { value: within, modifier: 'INCLUDES', depth: 0 } }] : [])
-  const notSelf = (f: SceneFilterType) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...blocked }, inside())
+  const ex: Exclusions = allowed ? { ...blocked, holdUnlisted: false } : { ...blocked, holdUnlisted: true }
+  const fits = (s: Scene) => !allowed || !blocked.unlisted || withinReasons(unlistedReasons(s, blocked.unlisted), allowed)
+  const notSelf = (f: SceneFilterType) => withExclusions({ ...f, id: { value: Number(id), modifier: 'NOT_EQUALS' } }, { ...ex })
   const run = (f: SceneFilterType) =>
     query<Pick<Query, 'findScenes'>>(`query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 40, sort: "random_${daySeed()}" }) { scenes { ${fields} } } }`, {
       s: notSelf(f),
@@ -705,7 +743,7 @@ export async function relatedScenes(
   if (tagIds.length) queries.push(run({ tags: { value: tagIds.slice(0, 20), modifier: 'INCLUDES', depth: 0 } }))
   const results = await Promise.all(queries)
   const seen = new Map<string, Scene>()
-  for (const r of results) for (const s of r.findScenes.scenes) seen.set(s.id, s)
+  for (const r of results) for (const s of r.findScenes.scenes) if (fits(s)) seen.set(s.id, s)
   const tagSet = new Set(tagIds)
   const perfSet = new Set(performerIds)
   const score = (s: Scene) =>
@@ -721,7 +759,7 @@ export async function relatedScenes(
   ] as (SceneFilterType | null)[]) {
     if (ranked.length >= RELATED_MIN || !fallback) continue
     for (const s of (await run(fallback)).findScenes.scenes) {
-      if (seen.has(s.id) || ranked.length >= 24) continue
+      if (seen.has(s.id) || ranked.length >= 24 || !fits(s)) continue
       seen.set(s.id, s)
       ranked.push(s)
     }
@@ -948,34 +986,48 @@ export async function destroyScene(id: string) {
 // "Not interested": a Stash tag flix puts on a video and keeps out of every list (the blocklist
 // machinery excludes it; Settings lists the videos, so it can be undone). Created on first use;
 // its id is looked up once for the exclusions and remembered.
-const HIDDEN_TAG = 'Not interested'
-let hiddenTagId: string | null | undefined
-let hiddenTagLookup: Promise<string | null> | null = null // shared by the requests that arrive before it is known
-export function hiddenTag(create = false): Promise<string | null> {
-  if (hiddenTagId !== undefined && !(create && hiddenTagId === null)) return Promise.resolve(hiddenTagId)
-  if (create) return lookupHiddenTag(true)
-  hiddenTagLookup ??= lookupHiddenTag(false).finally(() => (hiddenTagLookup = null))
-  return hiddenTagLookup
-}
-async function lookupHiddenTag(create: boolean): Promise<string | null> {
-  const d = await gql<Pick<Query, 'findTags'>>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: HIDDEN_TAG })
-  hiddenTagId = d.findTags.tags[0]?.id ?? null
-  if (!hiddenTagId && create) {
-    const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: HIDDEN_TAG }, ['tag'])
-    hiddenTagId = c.tagCreate?.id ?? null
+// A Stash tag flix reserves for a mark on one video, created on first use (`create`) and looked
+// up once. "Not interested" (blocked like a blocked tag) and "Unlisted" (wiki features/vault).
+function reservedTag(name: string) {
+  let id: string | null | undefined
+  let lookup: Promise<string | null> | null = null // shared by the requests that arrive before it is known
+  const find = async (create: boolean): Promise<string | null> => {
+    const d = await gql<Pick<Query, 'findTags'>>(`query($n: String!) { findTags(tag_filter: { name: { value: $n, modifier: EQUALS } }) { tags { id } } }`, { n: name })
+    id = d.findTags.tags[0]?.id ?? null
+    if (!id && create) {
+      const c = await mutate<Pick<Mutation, 'tagCreate'>>(`mutation($n: String!) { tagCreate(input: { name: $n }) { id } }`, { n: name }, ['tag'])
+      id = c.tagCreate?.id ?? null
+    }
+    return id ?? null
   }
-  return hiddenTagId ?? null
+  return (create = false): Promise<string | null> => {
+    if (id !== undefined && !(create && id === null)) return Promise.resolve(id)
+    if (create) return find(true)
+    lookup ??= find(false).finally(() => (lookup = null))
+    return lookup
+  }
 }
+export const hiddenTag = reservedTag('Not interested')
+export const unlistedTag = reservedTag('Unlisted')
 
-export async function setSceneHidden(id: string, hidden: boolean) {
-  const tag = await hiddenTag(hidden)
+async function setReservedTag(tagOf: (create: boolean) => Promise<string | null>, id: string, on: boolean) {
+  const tag = await tagOf(on)
   const r = tag ? await getScene(id) : null
   if (!tag || !r) return
-  await updateScene(id, { tagIds: hidden ? [...new Set([...r.tagIds, tag])] : r.tagIds.filter((t) => t !== tag) })
+  await updateScene(id, { tagIds: on ? [...new Set([...r.tagIds, tag])] : r.tagIds.filter((t) => t !== tag) })
 }
+export const setSceneHidden = (id: string, hidden: boolean) => setReservedTag(hiddenTag, id, hidden)
+export const setSceneUnlisted = (id: string, unlisted: boolean) => setReservedTag(unlistedTag, id, unlisted)
 
 export async function hiddenScenes(): Promise<SceneCard[]> {
   const tag = await hiddenTag()
+  if (!tag) return []
+  return (await findScenes(findFilter({ sort: 'updated_at', perPage: 200 }), { tags: { value: [tag], modifier: 'INCLUDES', depth: 0 } })).items
+}
+
+// Videos unlisted by hand (the "Unlisted" tag), newest change first, for Settings.
+export async function unlistedScenes(): Promise<SceneCard[]> {
+  const tag = await unlistedTag()
   if (!tag) return []
   return (await findScenes(findFilter({ sort: 'updated_at', perPage: 200 }), { tags: { value: [tag], modifier: 'INCLUDES', depth: 0 } })).items
 }
@@ -1225,13 +1277,28 @@ const BLOCK_FIELDS = 'tags { id } performers { id } studio { id parent_studio { 
 // Does the blocklist (or "Not interested") exclude this scene? For results Stash cannot
 // filter: what was watched, a station's resume points. Age and ethnicity defaults are not
 // applied here; they shape what lists offer, not what you already watched.
-export function isBlocked(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, ex: Pick<Exclusions, 'tags' | 'performers' | 'studios' | 'eduTags' | 'holdEdu'>): boolean {
+export function isBlocked(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, ex: Pick<Exclusions, 'tags' | 'performers' | 'studios' | 'unlisted' | 'holdUnlisted'>): boolean {
   return (
-    (s.tags ?? []).some((t) => ex.tags.includes(t.id) || (!!ex.holdEdu && !!ex.eduTags?.includes(t.id))) ||
+    (s.tags ?? []).some((t) => ex.tags.includes(t.id)) ||
     (s.performers ?? []).some((p) => ex.performers.includes(p.id)) ||
-    [s.studio?.id, s.studio?.parent_studio?.id].some((id) => id != null && ex.studios.includes(id))
+    [s.studio?.id, s.studio?.parent_studio?.id].some((id) => id != null && ex.studios.includes(id)) ||
+    (!!ex.holdUnlisted && !!ex.unlisted && unlistedReasons(s, ex.unlisted).size > 0)
   )
 }
+
+// Why a scene is Unlisted: `tag:<id>`, `performer:<id>`, `studio:<id>` (its studio or the parent).
+// Empty: it is not. The related-videos rule compares these sets (wiki features/vault).
+export function unlistedReasons(s: Pick<Scene, 'tags' | 'performers' | 'studio'>, u: UnlistedSets): Set<string> {
+  const out = new Set<string>()
+  for (const t of s.tags ?? []) if (u.tags.includes(t.id)) out.add(`tag:${t.id}`)
+  for (const p of s.performers ?? []) if (u.performers.includes(p.id)) out.add(`performer:${p.id}`)
+  for (const id of [s.studio?.id, s.studio?.parent_studio?.id]) if (id != null && u.studios.includes(id)) out.add(`studio:${id}`)
+  return out
+}
+
+// May a scene with these reasons show beside (related to) one with `allowed`? Only if every reason
+// it is Unlisted is also true of that one.
+export const withinReasons = (reasons: Set<string>, allowed: Set<string>) => [...reasons].every((r) => allowed.has(r))
 
 const weight = (s: Scene) => (s.play_count ?? 0) + 2 * (s.o_counter ?? 0) + (s.rating100 ? (s.rating100 / 20 - 3) * 1.5 : 0)
 
@@ -1317,10 +1384,10 @@ async function tagSceneCounts(): Promise<Map<string, number>> {
   return new Map(d.findTags.tags.map((t) => [t.id, t.scene_count ?? 0]))
 }
 
-// `skipTags`: scenes carrying any of these (the Edu categories) teach nothing about taste here.
-export async function affinities(skipTags: string[] = []): Promise<Affinities | null> {
+// `skip`: Unlisted scenes teach nothing about taste here (wiki features/vault).
+export async function affinities(skip: UnlistedSets | null = null): Promise<Affinities | null> {
   const [all, tagCounts] = await Promise.all([activityScenes(), tagSceneCounts()])
-  const scenes = skipTags.length ? all.filter((s) => !s.tags.some((t) => skipTags.includes(t.id))) : all
+  const scenes = skip ? all.filter((s) => !unlistedReasons(s, skip).size) : all
   if (!scenes.length) return null
   const totalRaw = await query<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: 0 }) { count } }`, {}, ['scene'])
   const total = totalRaw.findScenes.count
@@ -1342,7 +1409,7 @@ export async function affinities(skipTags: string[] = []): Promise<Affinities | 
 }
 
 export async function recommendations(blocked: Exclusions) {
-  const aff = await affinities(blocked.holdEdu ? blocked.eduTags : [])
+  const aff = await affinities(blocked.holdUnlisted ? (blocked.unlisted ?? null) : null)
   if (!aff) return null
   const { performers: pAff, studios: sAff, tags: tAff } = aff
   const topIds = <T,>(m: Map<string, T>, val: (v: T) => number, n: number) =>
@@ -1374,7 +1441,7 @@ export async function recommendations(blocked: Exclusions) {
   // "More with …" for the two performers you return to most.
   const favPerformers = topPerf
     .map((id) => pAff.get(id)!)
-    .filter((p) => !blocked.performers.includes(p.ref.id))
+    .filter((p) => !blocked.performers.includes(p.ref.id) && !(blocked.holdUnlisted && blocked.unlisted?.performers.includes(p.ref.id)))
     .slice(0, 2)
     .map((p) => p.ref)
   return { forYou, favPerformers }
@@ -1417,7 +1484,7 @@ export async function tagTiles(blocked: Exclusions): Promise<TagTile[]> {
 async function buildTiles(blocked: Exclusions): Promise<TagTile[]> {
   const [scenesRaw, tagsRaw] = await Promise.all([
     query<Pick<Query, 'findScenes'>>(
-      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } tags { id } } } }`,
+      `query($s: SceneFilterType) { findScenes(scene_filter: $s, filter: { per_page: 3000, sort: "rating", direction: DESC }) { scenes { id rating100 play_count paths { screenshot } ${BLOCK_FIELDS} } } }`,
       { s: withExclusions({}, { ...blocked }) },
       ['scene', PINNED],
     ),
@@ -1428,8 +1495,12 @@ async function buildTiles(blocked: Exclusions): Promise<TagTile[]> {
   for (const s of scenes) for (const t of s.tags) (byTag.get(t.id) ?? byTag.set(t.id, []).get(t.id)!).push(s)
   const rank = (s: Scene) => (s.rating100 ?? 50) + Math.min(s.play_count ?? 0, 10) * 3
   const used = new Set<string>()
+  // A category's picture comes from a video that is Unlisted for no reason the category does not
+  // share: an Unlisted category shows its own videos, any other avoids Unlisted ones.
+  const u = blocked.unlisted
+  const fits = (s: Scene, t: string) => !u || withinReasons(unlistedReasons(s, u), new Set(u.tags.includes(t) ? [`tag:${t}`] : []))
   return tagsRaw.items.map((t: TagCard) => {
-    const pool = (byTag.get(t.id) ?? []).sort((a, b) => rank(b) - rank(a))
+    const pool = (byTag.get(t.id) ?? []).filter((s) => fits(s, t.id)).sort((a, b) => rank(b) - rank(a))
     const pick = pool.find((s) => !used.has(s.id)) ?? pool[0]
     if (pick) used.add(pick.id)
     return { id: t.id, name: t.name, sceneCount: t.sceneCount, favorite: t.favorite, image: pick ? mediaUrl(pick.paths.screenshot) : null }

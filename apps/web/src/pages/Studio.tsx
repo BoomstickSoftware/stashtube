@@ -2,7 +2,7 @@ import type { SceneQuery, StudioDetail } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { AddFilterButton } from '../components/AddFilter'
-import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton } from '../components/EntityHeader'
+import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton, UnlistButton, UnlistedNotice } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { Chip, ErrorBox } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
@@ -25,6 +25,7 @@ export function StudioPage(): JSX.Element {
     <div>
       {s ? <StudioHeader id={id} s={s} /> : <HeaderSkeleton shape="studio" />}
       <BlockedNotice kind="studio" id={id} />
+      <UnlistedNotice kind="studio" id={id} />
       <SceneBrowser
         query={query}
         base={{ studios: id }}
@@ -53,6 +54,7 @@ function StudioHeader({ id, s }: { id: string; s: StudioDetail }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <FollowButton favorite={s.favorite} onToggle={() => fav.mutate({ id, favorite: !s.favorite })} />
           <AddFilterButton kind="studio" id={id} name={s.name} variant="button" />
+          <UnlistButton kind="studio" id={id} name={s.name} />
           <BlockButton kind="studio" id={id} name={s.name} />
         </div>
         {s.children.length > 0 && (

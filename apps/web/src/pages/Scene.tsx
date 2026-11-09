@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2 } from 'lucide-react'
+import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2, Vault } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
@@ -12,7 +12,7 @@ import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEdi
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { cachedCard, useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits } from '../lib/api'
+import { cachedCard, useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits, useUnlistScene } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
@@ -44,6 +44,7 @@ function SceneView({ id }: { id: string }) {
   const rate = useRateScene()
   const addO = useAddO()
   const hide = useHideScene()
+  const unlist = useUnlistScene()
   const edits = useSceneEdits(id)
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
@@ -183,8 +184,42 @@ function SceneView({ id }: { id: string }) {
           >
             <EyeOff size={17} /> {scene.hidden ? 'Not interested ✓' : 'Not interested'}
           </button>
+          <button
+            onClick={() => {
+              const on = !scene.unlisted
+              unlist.mutate({ id: scene.id, unlisted: on })
+              if (on)
+                showToast(
+                  'Unlisted: in the Vault, off Home',
+                  <button onClick={() => unlist.mutate({ id: scene.id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+                    Undo
+                  </button>,
+                )
+            }}
+            title={scene.unlisted ? 'Show it on Home and in recommendations again' : 'Unlist: keep it off Home, stations and recommendations; list it in the Vault'}
+            aria-pressed={scene.unlisted}
+            className={clsx('inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm hover:bg-line', scene.unlisted ? 'bg-white text-black hover:bg-white/80' : 'bg-raised')}
+          >
+            <Vault size={17} /> {scene.unlisted ? 'Unlisted ✓' : 'Unlist'}
+          </button>
           <PlaylistMenu sceneId={scene.id} />
         </div>
+        {scene.unlistedVia.length > 0 && (
+          <p className="mt-3 text-sm text-muted">
+            Unlisted through{' '}
+            {scene.unlistedVia.map((r, i) => (
+              <span key={r.id}>
+                {i > 0 && ', '}
+                <b className="font-semibold text-fg/90">{r.name}</b>
+              </span>
+            ))}
+            : kept off Home and recommendations, listed in the{' '}
+            <Link to="/vault" className="underline decoration-line underline-offset-2 hover:text-accent">
+              Vault
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       {scene.performers.length > 0 && (

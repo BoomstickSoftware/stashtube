@@ -112,9 +112,9 @@ export const persistQuery = (q: Query) => q.state.status === 'success' && PERSIS
 // 5 minutes would drop the list you came from, and with it the scroll position).
 for (const key of ['scenes', 'scene', 'related']) queryClient.setQueryDefaults([key], { gcTime: 30 * 60_000 })
 
-// Blocking or hiding changes what every list returns, so drop all list caches.
+// Blocking, hiding or unlisting changes what every list returns, so drop all list caches.
 export function invalidateLists(qc: QueryClient) {
-  for (const key of ['blocklist', 'scenes', 'home', 'performers', 'studios', 'tags', 'search', 'related']) {
+  for (const key of ['blocklist', 'unlisted', 'scenes', 'home', 'performers', 'studios', 'tags', 'search', 'related', 'station-previews']) {
     qc.invalidateQueries({ queryKey: [key] })
   }
 }

@@ -273,11 +273,24 @@ Read `discoverNew`/`startGetQueue` in getqueue.ts; added its limits (timer from 
 ## [2026-11-09] decide | Edu section
 User chose: Edu videos held out of Home, Featured, For you, related and stations but shown in
 Browse and search; Edu plays do not steer recommendations; "Edu" at /edu with a phone header
-icon; categories managed on their page and in Settings → [[edu-section]],
+icon; categories managed on their page and in Settings → [[vault]],
 [[edu-section-held-out-of-curated-views]], [[2026-11-09-edu-section]]; updated
 [[blocklist-and-exclusions]], [[home-feed]], [[related-videos]], [[stations]], [[data-model]].
 
 ## [2026-11-09] correct | Edu hold ignored by Stash
 Edu videos stayed on Featured and Recently added: Stash ignored a second `tags EXCLUDES` level.
 Merged into the blocklist's criterion; deploy-check now tests the hold →
-[[second-tags-exclusion-ignored]], [[edu-section]], [[2026-11-09-edu-section]].
+[[second-tags-exclusion-ignored]], [[vault]], [[2026-11-09-edu-section]].
+
+## [2026-11-09] query | Whisparr studio search misses a studio whose release prefix differs from its slug
+Prowlarr search for a studio Whisparr found nothing for: the indexers post under a shorter prefix than Whisparr's studio slug, so Whisparr's `slug + date` query returns 0. Filed as mode 5 in `private/wiki/gotchas/whisparr-matches-by-studio-and-date.md`.
+
+## [2026-11-09] ingest | Filled a studio Whisparr cannot search by hand; Whisparr studio aliases are read-only
+11 scenes grabbed through Prowlarr → SAB and imported by `movieId` after an ffprobe check. Whisparr ignores `aliases` on `PUT studio` (they come from StashDB). Details in `private/wiki/gotchas/whisparr-matches-by-studio-and-date.md`.
+
+## [2026-11-09] decide | Unlisted and the Vault
+User chose an Unlisted level for videos, categories, performers and studios, one Vault replacing
+Edu, the all-reasons rule for related videos, and fetch-but-never-feature for new releases →
+[[unlisted-and-vault]], [[vault]], [[2026-11-09-unlisted-and-vault]]; superseded
+[[edu-section-held-out-of-curated-views]]; updated [[blocklist-and-exclusions]], [[home-feed]],
+[[related-videos]], [[stations]], [[data-model]].

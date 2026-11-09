@@ -32,7 +32,7 @@ export function parseSceneQuery(s: Record<string, unknown>): SceneQuery {
     inProgress: bool(s.inProgress),
     favorites: bool(s.favorites),
     unblocked: bool(s.unblocked),
-    edu: bool(s.edu), // the Edu page's station
+    vault: bool(s.vault) ?? bool(s.edu), // the Vault's station; `edu` was its name until 2026-11-09
     maxHeight: num(s.maxHeight),
     maxRating: num(s.maxRating),
     unmatched: bool(s.unmatched),

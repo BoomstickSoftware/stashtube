@@ -3,7 +3,7 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter, isBlocked, groupFolder, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked, unlistedReasons, withinReasons, groupFolder, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
 
 const tick = () => new Promise((r) => setTimeout(r, 5))
 
@@ -72,18 +72,53 @@ describe('sceneFilter', () => {
     assert.deepEqual(levels(f), [{}])
   })
 
-  it('holds Edu videos out only when asked, and lets a named Edu category or edu=1 back in', () => {
-    const edu = { tags: [], performers: [], studios: [], eduTags: ['3', '4'] }
-    const out = { tags: { value: ['3', '4'], modifier: 'EXCLUDES', depth: -1 } }
-    assert.deepEqual(levels(sceneFilter({}, edu)), [{}], 'Browse shows Edu videos')
-    assert.deepEqual(levels(sceneFilter({}, { ...edu, holdEdu: true })), [{}, out], 'a curated view holds them out')
-    assert.deepEqual(levels(sceneFilter({ noEdu: true }, edu)), [{}, out], 'stations hold them out')
-    assert.deepEqual(levels(sceneFilter({ noEdu: true, tags: '4' }, edu)).length, 1, 'naming an Edu category lets them in')
-    assert.deepEqual(levels(sceneFilter({ edu: true }, { ...edu, holdEdu: true })), [{}, { tags: { value: ['3', '4'], modifier: 'INCLUDES', depth: 0 } }], 'the Edu page')
-    assert.deepEqual(levels(sceneFilter({ edu: true }, { ...edu, eduTags: [] })), [{}, { id: { value: 0, modifier: 'EQUALS' } }], 'no Edu categories: nothing')
-    assert.deepEqual(levels(sceneFilter({ edu: true, unblocked: true }, { ...edu, tags: ['9'] })).length, 2, 'Show blocked keeps the Edu requirement')
-    // one tags criterion for blocked and Edu together: Stash ignored a second one (2026-11-09)
-    assert.deepEqual(levels(sceneFilter({}, { ...edu, tags: ['9'], holdEdu: true })), [{}, { tags: { value: ['9', '3', '4'], modifier: 'EXCLUDES', depth: -1 } }])
+  it('holds Unlisted videos out only when asked, merged into the blocklist criteria, and lets a named one back in', () => {
+    const u = { ...none, unlisted: { tags: ['3', '4'], performers: ['5'], studios: ['6'] } }
+    const out = [
+      {},
+      { tags: { value: ['3', '4'], modifier: 'EXCLUDES', depth: -1 } },
+      { performers: { value: ['5'], modifier: 'EXCLUDES' } },
+      { studios: { value: ['6'], modifier: 'EXCLUDES', depth: -1 } },
+    ]
+    assert.deepEqual(levels(sceneFilter({}, u)), [{}], 'Browse shows Unlisted videos')
+    assert.deepEqual(levels(sceneFilter({}, { ...u, holdUnlisted: true })), out, 'a curated view holds them out')
+    assert.deepEqual(levels(sceneFilter({ noUnlisted: true }, u)), out, 'stations hold them out')
+    // one criterion per field for blocked and Unlisted together: Stash ignored a second tags one (2026-11-09)
+    assert.deepEqual(levels(sceneFilter({}, { ...u, tags: ['9'], performers: ['8'], holdUnlisted: true }))[1], { tags: { value: ['9', '3', '4'], modifier: 'EXCLUDES', depth: -1 } })
+    assert.deepEqual(levels(sceneFilter({}, { ...u, tags: ['9'], performers: ['8'], holdUnlisted: true }))[2], { performers: { value: ['8', '5'], modifier: 'EXCLUDES' } })
+  })
+
+  it('lets only the named Unlisted entity in, not the others', () => {
+    const u = { ...none, unlisted: { tags: ['3', '4'], performers: ['5'], studios: [] }, holdUnlisted: true }
+    const [, tags, perf] = levels(sceneFilter({ noUnlisted: true, tags: '4' }, u))
+    assert.deepEqual(tags, { tags: { value: ['3'], modifier: 'EXCLUDES', depth: -1 } })
+    assert.deepEqual(perf, { performers: { value: ['5'], modifier: 'EXCLUDES' } })
+    assert.equal(levels(sceneFilter({ performers: '5' }, u)).some((l) => 'performers' in l && (l.performers as { modifier: string }).modifier === 'EXCLUDES'), false)
+  })
+
+  it('lists the Vault as an OR of the Unlisted categories, performers and studios', () => {
+    const u = { ...none, unlisted: { tags: ['3'], performers: ['5'], studios: ['6'] }, holdUnlisted: true }
+    const f = sceneFilter({ vault: true }, u)
+    const last = levels(f).at(-1)!
+    assert.deepEqual(last.tags, { value: ['3'], modifier: 'INCLUDES', depth: -1 })
+    assert.deepEqual((last.OR as Record<string, unknown>).performers, { value: ['5'], modifier: 'INCLUDES' })
+    assert.deepEqual(((last.OR as Record<string, unknown>).OR as Record<string, unknown>).studios, { value: ['6'], modifier: 'INCLUDES', depth: -1 })
+    assert.equal(levels(f).length, 2, 'no exclusion in the Vault')
+    assert.deepEqual(levels(sceneFilter({ vault: true }, { ...none, unlisted: { tags: [], performers: [], studios: [] } }))[1], { id: { value: 0, modifier: 'EQUALS' } }, 'nothing Unlisted: nothing')
+    assert.equal(levels(sceneFilter({ vault: true, unblocked: true }, { ...u, tags: ['9'] })).length, 2, 'Show blocked keeps the Vault requirement')
+  })
+
+  it('distributes the Vault over the age buckets in one OR chain of at most 32', () => {
+    const u = { ...none, unlisted: { tags: ['3'], performers: ['5'], studios: ['6'] }, people: { gender: null, firstYear: 1990, minAge: 18, maxAge: 25 } }
+    const last = levels(sceneFilter({ vault: true }, u)).at(-1)!
+    let n = 0
+    for (let node: Record<string, unknown> | undefined = last; node; node = node.OR as Record<string, unknown>) {
+      n++
+      assert.ok(node.date && node.performers_filter, 'each alternative keeps its age bucket')
+      assert.ok(node.tags || node.performers || node.studios, 'and one Vault reason')
+      assert.equal('AND' in node, false, 'no AND beside an OR')
+    }
+    assert.ok(n <= 32 && n >= 3, `${n} alternatives`)
   })
 
   it('puts the people criterion (an OR chain) last, with at most 16 date buckets', () => {
@@ -123,8 +158,25 @@ describe('isBlocked', () => {
     assert.equal(isBlocked(scene({ studio: { id: '7' } }), ex), true)
     assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '7' } } }), ex), true)
     assert.equal(isBlocked(scene({ tags: [{ id: '1' }], performers: [{ id: '2' }], studio: { id: '3' } }), ex), false)
-    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, eduTags: ['4'] }), false, 'Edu shows unless held out')
-    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, eduTags: ['4'], holdEdu: true }), true)
+    const unl = { tags: ['4'], performers: ['44'], studios: ['77'] }
+    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, unlisted: unl }), false, 'Unlisted shows unless held out')
+    assert.equal(isBlocked(scene({ tags: [{ id: '4' }] }), { ...ex, unlisted: unl, holdUnlisted: true }), true)
+    assert.equal(isBlocked(scene({ studio: { id: '70', parent_studio: { id: '77' } } }), { ...ex, unlisted: unl, holdUnlisted: true }), true, 'a sub-studio of an Unlisted one')
+  })
+})
+
+describe('related videos and Unlisted reasons', () => {
+  const u = { tags: ['3', '4'], performers: ['5'], studios: ['6'] }
+  const scene = (o: object) => ({ tags: [], performers: [], studio: null, ...o }) as Parameters<typeof unlistedReasons>[0]
+  it('names every reason a scene is Unlisted', () => {
+    assert.deepEqual([...unlistedReasons(scene({ tags: [{ id: '3' }, { id: '9' }], performers: [{ id: '5' }], studio: { id: '60', parent_studio: { id: '6' } } }), u)].sort(), ['performer:5', 'studio:6', 'tag:3'])
+    assert.equal(unlistedReasons(scene({ tags: [{ id: '9' }] }), u).size, 0)
+  })
+  it('lets a candidate follow only a source that shares all of its reasons', () => {
+    const src = unlistedReasons(scene({ tags: [{ id: '3' }] }), u)
+    assert.equal(withinReasons(unlistedReasons(scene({ tags: [{ id: '3' }] }), u), src), true, 'same category')
+    assert.equal(withinReasons(unlistedReasons(scene({ tags: [{ id: '3' }], performers: [{ id: '5' }] }), u), src), false, 'plus an Unlisted performer')
+    assert.equal(withinReasons(unlistedReasons(scene({ tags: [{ id: '9' }] }), u), src), true, 'not Unlisted at all')
   })
 })
 

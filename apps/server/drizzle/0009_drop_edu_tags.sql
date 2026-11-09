@@ -1,0 +1,1 @@
+DROP TABLE "edu_tags" CASCADE;

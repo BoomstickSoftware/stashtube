@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, GraduationCap, History, Home, ListVideo, Radio, Search, Settings, Tags, Users } from 'lucide-react'
+import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users, Vault } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
@@ -27,7 +27,7 @@ const nav = [
   { to: '/playlists', label: 'Playlists', icon: ListVideo },
   { to: '/stations', label: 'Stations', icon: Radio, desktopOnly: true }, // phones: header icon (the tab bar is full)
   { to: '/discover', label: 'Discover', icon: Compass, desktopOnly: true }, // phones: header icon
-  { to: '/edu', label: 'Edu', icon: GraduationCap, desktopOnly: true }, // phones: header icon
+  { to: '/vault', label: 'Vault', icon: Vault, desktopOnly: true }, // phones: header icon
 ] as const
 
 export function Layout(): JSX.Element {
@@ -119,8 +119,8 @@ export function Layout(): JSX.Element {
           <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
             <Radio size={20} />
           </Link>
-          <Link to="/edu" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Edu">
-            <GraduationCap size={20} />
+          <Link to="/vault" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Vault">
+            <Vault size={20} />
           </Link>
           <button
             onClick={() => {

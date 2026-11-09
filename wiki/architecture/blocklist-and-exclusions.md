@@ -7,7 +7,7 @@ status: current
 verified: 2026-10-31
 updated: 2026-11-09
 code: [apps/server/src/blocklist.ts, apps/server/src/stash.ts]
-related: [data-model, stash-layer, stash-filters-have-no-id-criterion, people-pages, edu-section]
+related: [data-model, stash-layer, stash-filters-have-no-id-criterion, people-pages, vault]
 ---
 
 # Blocklist and exclusions
@@ -40,15 +40,18 @@ studio and its parent; not the People defaults, which shape what lists offer rat
 was watched): History, Stats, "Because you watched" on Home, and the station resume points on
 Home and Stations. _Until 2026-10-31_ those showed blocked and "Not interested" videos.
 
-## The Edu hold
+## The Unlisted hold
 
-`exclusions()` also carries the Edu categories (`eduTags`). They are held out only where a view
-asks (`holdEdu`, set by `curated()` or `noEdu`): Home, Featured, related videos, stations. Browse
-and search show them. A named Edu category lifts the hold for that query ([[edu-section]]).
+`exclusions()` also carries the Unlisted categories (with the hand-unlist tag), performers and
+studios (`unlisted`). They are held out only where a view asks (`holdUnlisted`, set by
+`curated()` or `noUnlisted`): Home, Featured, stations; related videos apply their own rule.
+They are merged into the same one-per-field EXCLUDES criteria as the blocklist
+([[second-tags-exclusion-ignored]]). Browse and search show them. A named Unlisted id lifts the
+hold for that id only. Blocked and Unlisted are never both set for one entity ([[vault]]).
 
 ## Avoid
 
 Any new finder or feed must call `exclusions()` (scenes) or `dropBlocked()` (entities), and a
-feed or picker `curated()` too ([[edu-section]]), and be
+feed or picker `curated()` too ([[vault]]); the deploy check tests the Unlisted hold; and be
 hit by the smoke list after deploy; the 2026-10-29 outage came from checking only the routes
 that were edited.

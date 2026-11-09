@@ -3,17 +3,18 @@ title: Edu videos are held out of what flix picks, not out of what you search
 kind: decision
 summary: Edu videos stay out of Home, Featured, For you, related videos and stations and do not steer recommendations, but Browse, search and entity pages show them.
 tags: [edu, blocklist, recommendations]
-status: current
+status: superseded
+superseded_by: unlisted-and-vault
 decided: 2026-11-09
 by: user
 verified: 2026-11-09
 updated: 2026-11-09
-related: [edu-section, blocklist-and-exclusions, iphone-first-polish]
+related: [vault, blocklist-and-exclusions, iphone-first-polish]
 ---
 
 # Edu videos are held out of what flix picks, not out of what you search
 
-**Decided** 2026-11-09 by the user. **Status** current.
+**Decided** 2026-11-09 by the user. **Status** superseded the same day by [[unlisted-and-vault]]: Edu became the Vault, and categories one of four kinds of Unlisted.
 
 ## Context
 

@@ -104,6 +104,8 @@ export interface Marker {
 }
 
 export interface SceneDetail extends SceneCard {
+  unlisted: boolean // unlisted by hand (the "Unlisted" tag)
+  unlistedVia: Ref[] // the Unlisted categories, performers or studio that keep it off Home
   details: string | null
   code: string | null
   director: string | null
@@ -219,9 +221,16 @@ export interface Blocklist {
 
 export type BlockKind = 'tag' | 'performer' | 'studio'
 
-// The categories whose videos form the Edu section: kept out of Home, Featured, For you, related
-// videos and stations, shown on /edu (wiki features/edu-section).
-export type EduTags = Ref[]
+// Unlisted (wiki features/vault): categories, performers and studios whose videos stay out of
+// everything flix picks for you (Home, Featured, related videos, stations) and are listed in the
+// Vault; Browse, search and entity pages still show them. A video can also be unlisted by hand
+// (`SceneDetail.unlisted`). Mutually exclusive with the blocklist.
+export interface Unlisted {
+  tags: Ref[]
+  performers: Ref[]
+  studios: Ref[]
+  sceneTag: string | null // the Stash tag that unlists one video by hand ("Unlisted"), once created
+}
 
 export const sceneSorts = {
   date: 'Release date',
@@ -256,8 +265,8 @@ export interface SceneQuery {
   inProgress?: boolean // started, not finished (has a resume point)
   favorites?: boolean // only scenes with a favourite performer
   unblocked?: boolean // ignore the blocklist
-  edu?: boolean // only Edu videos (any of the Edu categories); the Edu page
-  noEdu?: boolean // hold Edu videos out (stations); naming an Edu category, or `edu`, overrides it
+  vault?: boolean // only Unlisted videos (the Vault page)
+  noUnlisted?: boolean // hold Unlisted videos out (stations); a named Unlisted entity, or `vault`, lets it in
   // Cleanup filters
   maxHeight?: number // below this: 720, 1080, 2160
   maxRating?: number // rated, at most this many stars

@@ -7,7 +7,7 @@ status: record
 date: 2026-11-09
 verified: 2026-11-09
 updated: 2026-11-09
-related: [edu-section, edu-section-held-out-of-curated-views, roadmap]
+related: [vault, edu-section-held-out-of-curated-views, roadmap]
 ---
 
 # 2026-11-09: Edu section

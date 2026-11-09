@@ -43,13 +43,18 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.kind, t.stashId] })],
 )
 
-// The categories that make up the Edu section (edu.ts): their videos stay out of Home, Featured,
-// For you, related videos and stations, and are listed on /edu.
-export const eduTags = pgTable('edu_tags', {
-  stashId: text('stash_id').primaryKey(), // Stash tag id
-  name: text('name').notNull(), // display name when added, so Settings renders without Stash
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+// Unlisted categories, performers and studios (unlisted.ts): their videos stay out of what flix
+// picks for you and are listed in the Vault. A kind/id is never in `blocks` at the same time.
+export const unlisted = pgTable(
+  'unlisted',
+  {
+    kind: text('kind', { enum: ['tag', 'performer', 'studio'] }).notNull(),
+    stashId: text('stash_id').notNull(),
+    name: text('name').notNull(), // display name when unlisted, so Settings renders without Stash
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.stashId] })],
+)
 
 // Small UI preferences, kept next to the page they affect (e.g. the performer gender switch).
 export const settings = pgTable('settings', {

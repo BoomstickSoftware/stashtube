@@ -1,7 +1,7 @@
 ---
 title: Data model (Postgres)
 kind: architecture
-summary: The Postgres tables and what each holds, against the rule that Stash owns ratings, plays, resume points, markers and favourites; also the two Stash tags flix creates.
+summary: The Postgres tables and what each holds, against the rule that Stash owns ratings, plays, resume points, markers and favourites; also the three Stash tags flix creates.
 tags: [postgres, drizzle, schema, data]
 status: current
 verified: 2026-10-30
@@ -24,7 +24,7 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
 | `playlists` | ordered lists | `kind = 'favorites'` marks the built-in Favorites list behind the heart on videos (Stash scenes have no favourite flag); unique on `kind` |
 | `playlist_items` | `(playlist_id, scene_id)` with `position` | `scene_id` is Stash's id as text; cascade on playlist delete |
 | `blocks` | the blocklist: `(kind ∈ tag/performer/studio, stash_id)` plus `name` at block time | the name lets Settings render the list without Stash ([[blocklist-and-exclusions]]) |
-| `edu_tags` | the Edu section's categories: `stash_id` plus `name` when added | since 2026-11-09 ([[edu-section]]) |
+| `unlisted` | Unlisted entities: `(kind ∈ tag/performer/studio, stash_id)` plus `name` when unlisted; never also in `blocks` | since 2026-11-09 ([[vault]]); _`edu_tags` held the Edu categories that morning, migrated in `0008` and dropped in `0009`_ |
 | `settings` | `key → jsonb value` | small preferences shared across devices: per-studio intro skip, panic URL, `playOnOpen`, `people` defaults, `featured` weights ([[settings-next-to-page]]); `performerGender` is still stored and accepted but read by nothing since 2026-10-31 (the switch is per browser, [[gender-switch-performers-page-only]]) |
 | `saved_rows` | Browse filters pinned to Home as rows: `title`, `query` jsonb, `position` | [[home-feed]] |
 | `stations` | named stations: `query` jsonb or `from_scene`, `mode` full/moments, `window` seconds, `position` | [[stations]] |
@@ -36,6 +36,8 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
   marker); created on first use ([[moments]]).
 - **Not interested**: added to a video by "Not interested"; `exclusions()` treats it as blocked,
   so the video leaves every list; Settings lists them to undo ([[blocklist-and-exclusions]]).
+- **Unlisted**: added to a video by "Unlist"; counts as an Unlisted category, so the video
+  goes to the Vault and off Home; Settings lists them to undo ([[vault]], since 2026-11-09).
 
 ## Browser-side state (not in Postgres)
 

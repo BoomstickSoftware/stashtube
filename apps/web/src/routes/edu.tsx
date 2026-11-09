@@ -1,5 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { parseSceneQuery } from '../lib/query'
-import { Edu } from '../pages/Edu'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/edu')({ validateSearch: parseSceneQuery, component: Edu })
+// The Edu section became the Vault on 2026-11-09 (wiki features/vault); old links land there.
+export const Route = createFileRoute('/edu')({
+  beforeLoad: () => {
+    throw redirect({ to: '/vault', replace: true })
+  },
+})

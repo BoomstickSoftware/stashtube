@@ -1,8 +1,8 @@
 import type { BlockKind } from '@flix/shared'
 import clsx from 'clsx'
-import { Ban, Heart } from 'lucide-react'
+import { Ban, Heart, Vault } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useBlock, useIsBlocked } from '../lib/api'
+import { useBlock, useIsBlocked, useIsUnlisted, useUnlist } from '../lib/api'
 import { showToast } from '../lib/toast'
 import { bone, Button } from './ui'
 
@@ -144,6 +144,41 @@ export function Stat({ label, children }: { label: string; children: ReactNode }
     <div>
       <div className="text-[11px] tracking-wider text-muted uppercase">{label}</div>
       <div className="text-sm">{children}</div>
+    </div>
+  )
+}
+
+// Unlist (wiki features/vault): its videos leave Home, Featured, related videos and stations and
+// are listed in the Vault; Browse, search and this page still show them. One tap, Undo in the toast.
+export function UnlistButton({ kind, id, name }: { kind: BlockKind; id: string; name: string }) {
+  const unlisted = useIsUnlisted(kind, id)
+  const unlist = useUnlist()
+  return (
+    <Button
+      variant={unlisted ? 'solid' : 'ghost'}
+      onClick={() => {
+        unlist.mutate({ kind, id, unlisted: !unlisted })
+        if (!unlisted)
+          showToast(
+            `${name} is unlisted: in the Vault, off Home`,
+            <button onClick={() => unlist.mutate({ kind, id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+              Undo
+            </button>,
+          )
+      }}
+      title={unlisted ? 'Show on Home and in recommendations again' : 'Keep its videos off Home, stations and recommendations; list them in the Vault'}
+      aria-pressed={unlisted}
+    >
+      <Vault size={16} /> {unlisted ? 'Unlisted' : 'Unlist'}
+    </Button>
+  )
+}
+
+export function UnlistedNotice({ kind, id }: { kind: BlockKind; id: string }) {
+  if (!useIsUnlisted(kind, id)) return null
+  return (
+    <div className="mb-6 rounded-2xl bg-raised px-4 py-3 text-sm text-muted ring-1 ring-line">
+      Unlisted: these videos are kept off Home, stations and recommendations and listed in the Vault. They still show here, in Browse and in search.
     </div>
   )
 }

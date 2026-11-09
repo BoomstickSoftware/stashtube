@@ -3,7 +3,7 @@ import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
-import { addEduTag, curated, eduTagList, relatedSide, removeEduTag } from './edu.ts'
+import { curated, dropUnlistedWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
 import { toGroup } from './duplicates.ts'
@@ -50,8 +50,8 @@ const sceneQuery = z.object({
   inProgress: flag,
   favorites: flag,
   unblocked: flag,
-  edu: flag,
-  noEdu: flag,
+  vault: flag,
+  noUnlisted: flag,
   maxHeight: num,
   maxRating: z.coerce.number().min(1).max(5).optional(),
   unmatched: flag,
@@ -153,7 +153,7 @@ const toCandidate = (s: Scene): Candidate => ({
 // The Featured row: the library scored by the saved (or given) dials, for this seed.
 async function featured(weights: FeaturedWeights, seed: string, limit: number, offset = 0): Promise<SceneCard[]> {
   const blocked = curated(await exclusions())
-  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities(blocked.eduTags)])
+  const [pool, aff] = await Promise.all([stash.featuredPool(blocked), stash.affinities(blocked.unlisted ?? null)])
   const affinity: Affinity = aff
     ? { performers: new Map([...aff.performers].map(([id, p]) => [id, p.w])), studios: aff.studios, tags: aff.tags }
     : NO_AFFINITY
@@ -183,8 +183,7 @@ async function becauseYouWatched(blocked: Awaited<ReturnType<typeof exclusions>>
   if (!last) return null
   const r = await stash.getScene(last.id)
   if (!r) return null
-  const side = relatedSide(r.tagIds, blocked)
-  const related = await stash.relatedScenes(last.id, r.performerIds, r.studioId, r.tagIds, side.ex, null, side.within)
+  const related = await stash.relatedScenes(last.id, r.performerIds, r.studioId, r.tagIds, blocked, null, relatedSide(r.marks, blocked))
   const items = [...related.filter((s) => !s.playCount), ...related.filter((s) => s.playCount)].slice(0, 24)
   if (items.length < 3) return null
   const title = last.title.length > 48 ? `${last.title.slice(0, 46).trimEnd()}…` : last.title
@@ -204,7 +203,7 @@ export function homeRows(visitSeed = String(daySeed())): Promise<HomeRow[]> {
 }
 
 async function buildHomeRows(visitSeed: string): Promise<HomeRow[]> {
-  // Edu videos stay off Home; a pinned row that names an Edu category still shows them
+  // Unlisted videos stay off Home; a pinned row that names an Unlisted entity still shows its own
   const blocked = curated(await exclusions())
   const row = async (key: string, title: string, query: SceneQuery): Promise<HomeRow> => {
     const f = query.sort === 'random' && !query.seed ? { ...query, seed: daySeed() } : query
@@ -343,8 +342,31 @@ api.get('/scenes/:id', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  const hidden = await stash.hiddenTag()
-  return c.json({ ...r.scene, hidden: !!hidden && r.tagIds.includes(hidden) } satisfies SceneDetail)
+  const [hidden, u] = await Promise.all([stash.hiddenTag(), unlistedList()])
+  // what keeps it off Home besides a hand unlist, named for the scene page's notice
+  const via = [
+    ...u.tags.filter((t) => r.tagIds.includes(t.id)),
+    ...u.performers.filter((p) => r.performerIds.includes(p.id)),
+    ...u.studios.filter((s) => s.id === r.studioId || s.id === r.marks.studio?.parent_studio?.id),
+  ]
+  return c.json({
+    ...r.scene,
+    hidden: !!hidden && r.tagIds.includes(hidden),
+    unlisted: !!u.sceneTag && r.tagIds.includes(u.sceneTag),
+    unlistedVia: via,
+  } satisfies SceneDetail)
+})
+
+// Unlist one video by hand: the "Unlisted" Stash tag (created on first use).
+api.put('/scenes/:id/unlisted', async (c) => {
+  await stash.setSceneUnlisted(sceneId(c.req.param('id')), true)
+  dataCache.invalidate(HOME)
+  return c.body(null, 204)
+})
+api.delete('/scenes/:id/unlisted', async (c) => {
+  await stash.setSceneUnlisted(sceneId(c.req.param('id')), false)
+  dataCache.invalidate(HOME)
+  return c.body(null, 204)
 })
 
 api.put('/scenes/:id/hidden', async (c) => {
@@ -360,8 +382,8 @@ api.get('/scenes/:id/related', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  const side = relatedSide(r.tagIds, await exclusions())
-  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, side.ex, r.group, side.within))
+  const ex = await exclusions()
+  return c.json(await stash.relatedScenes(id, r.performerIds, r.studioId, r.tagIds, ex, r.group, relatedSide(r.marks, ex)))
 })
 
 const ratingBody = z.object({ rating: z.number().min(0).max(5).nullable() })
@@ -650,6 +672,7 @@ api.put('/blocklist/:kind/:id', async (c) => {
   const name = await stash.namesFor(k, id)
   if (!name) return notFound()
   await block(k, id, name)
+  await relist(k, id) // blocked and Unlisted never at once: blocking wins
   kickSync() // a blocked performer or studio must not stay monitored in Whisparr
   return c.body(null, 204)
 })
@@ -660,20 +683,25 @@ api.delete('/blocklist/:kind/:id', async (c) => {
   return c.body(null, 204)
 })
 
-// --- the Edu section's categories (edu.ts) -----------------------------------------
+// --- Unlisted (unlisted.ts, wiki features/vault) --------------------------------------
 
-api.get('/edu/tags', async (c) => c.json(await eduTagList()))
+api.get('/unlisted', async (c) => c.json(await unlistedList()))
 
-api.put('/edu/tags/:id', async (c) => {
+// Videos unlisted by hand, for Settings (registered here; /scenes/:id is matched by its id regex).
+api.get('/unlisted/scenes', async (c) => c.json(await stash.unlistedScenes()))
+
+api.put('/unlisted/:kind/:id', async (c) => {
+  const k = parse(kind, c.req.param('kind'))
   const id = c.req.param('id')
-  const name = await stash.namesFor('tag', id)
+  const name = await stash.namesFor(k, id)
   if (!name) return notFound()
-  await addEduTag(id, name)
+  await unlist(k, id, name)
+  await unblock(k, id) // unlisting something blocked brings it back as Unlisted
   return c.body(null, 204)
 })
 
-api.delete('/edu/tags/:id', async (c) => {
-  await removeEduTag(c.req.param('id'))
+api.delete('/unlisted/:kind/:id', async (c) => {
+  await relist(parse(kind, c.req.param('kind')), c.req.param('id'))
   return c.body(null, 204)
 })
 
@@ -687,7 +715,8 @@ const pageOf = (c: Context) => {
 }
 api.get('/whisparr/performer/:id', async (c) => c.json(await whisparr.wanted({ performers: await stash.stashIdsOf('performer', c.req.param('id')) }, pageOf(c))))
 api.get('/whisparr/studio/:id', async (c) => c.json(await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }, pageOf(c))))
-api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await whisparr.recentWanted(await stash.favoritePerformerStashIds()) : []))
+// Home's shelf: Unlisted performers, studios and categories never featured (wiki features/vault)
+api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await dropUnlistedWanted(await whisparr.recentWanted(await stash.favoritePerformerStashIds())) : []))
 api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
 
 // StashDB maintenance: the rate limiter's counters, and what a schema type looks like

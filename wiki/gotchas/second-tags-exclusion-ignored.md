@@ -9,7 +9,7 @@ found: 2026-11-09
 verified: 2026-11-09
 updated: 2026-11-09
 code: [apps/server/src/stash.ts, scripts/deploy-check.mjs]
-related: [edu-section, blocklist-and-exclusions, stash-filters-have-no-id-criterion]
+related: [vault, blocklist-and-exclusions, stash-filters-have-no-id-criterion]
 ---
 
 # A second tags EXCLUDES criterion in a nested AND is ignored by Stash

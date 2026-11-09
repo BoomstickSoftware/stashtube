@@ -1,10 +1,10 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { CheckCheck, EyeOff, Heart, ListPlus, Play, Trash2 } from 'lucide-react'
+import { CheckCheck, EyeOff, Heart, ListPlus, Play, Trash2, Vault } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene } from '../lib/api'
+import { useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
 import { useClickOutside, useMediaQuery } from '../lib/hooks'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
@@ -27,6 +27,7 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
   const favorites = useFavoriteScenes()
   const toggleFavorite = useToggleFavoriteScene()
   const hide = useHideScene()
+  const unlist = useUnlistScene()
   const watched = useMarkWatched()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
@@ -106,6 +107,15 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
           showToast(
             'Marked not interested',
             <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+              Undo
+            </button>,
+          )
+        })}
+        {item(<Vault size={16} />, 'Unlist', () => {
+          unlist.mutate({ id: scene.id, unlisted: true })
+          showToast(
+            'Unlisted: in the Vault, off Home',
+            <button onClick={() => unlist.mutate({ id: scene.id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
               Undo
             </button>,
           )
