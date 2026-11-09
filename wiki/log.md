@@ -311,3 +311,7 @@ Two chips on Discover: only scenes not owned or on their way (`fresh=1`), and bl
 
 ## [2026-11-09] ingest | Hand fill of a studio Whisparr cannot search (180 scenes)
 Prowlarr crawl, SAB in batches of 4, ffprobe check, ManualImport by movieId; details and state in `private/wiki/history/2026-11-09-futanari-xxx-fill.md` (private: names the studio).
+
+## [2026-11-09] correct | Discover details as category pills; deploy check's source video
+Details: coloured category pills linking to library categories, no code or date → [[discover]];
+the deploy check no longer trusts a refreshing list for its normal video.

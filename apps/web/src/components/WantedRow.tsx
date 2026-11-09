@@ -9,6 +9,7 @@ import { asBool, oneOf, useStored } from '../lib/storage'
 import { Button, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
+import { CategoryPill } from './CategoryPill'
 import { canGetState } from '../lib/wanted'
 
 // How wide a card shows, so the browser picks the resized cover that fits (`srcSet`).
@@ -97,13 +98,12 @@ export function WantedCard({
   selecting?: boolean
   selected?: boolean
   onToggle?: () => void
-  details?: boolean // Discover's Details: the mirror's extra facts under the title (else on hover, with a mouse)
+  details?: boolean // Discover's Details: the categories as pills under the title (else over the picture on hover, with a mouse)
 }) {
   const getScene = useGetScene()
   const { data: features } = useFeatures()
   const stashdbHref = features?.stashdbWeb && w.stashdbId ? `${features.stashdbWeb}/scenes/${w.stashdbId}` : null
-  const extra = [w.code, w.stashdbAdded ? `on StashDB since ${fmtDate(w.stashdbAdded)}` : null].filter(Boolean).join(' · ')
-  const hasExtra = !!extra || !!w.tags?.length
+  const tags = w.tags ?? []
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
   const state = busy ? 'requested' : w.state
@@ -116,11 +116,12 @@ export function WantedCard({
         ) : (
           <div className="flex size-full items-center justify-center text-xs text-muted">No cover</div>
         )}
-        {/* the same facts as Details, over the picture while a mouse hovers it */}
-        {!details && hasExtra && (
-          <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2.5 pb-12 text-[11px] leading-snug text-white/90 opacity-0 transition-opacity [@media(hover:hover)]:flex [@media(hover:hover)]:group-hover/wanted:opacity-100">
-            {extra && <div className="font-semibold">{extra}</div>}
-            {!!w.tags?.length && <div className="line-clamp-4">{w.tags.join(' · ')}</div>}
+        {/* the categories, over the picture while a mouse hovers it (Details shows them below) */}
+        {!details && tags.length > 0 && (
+          <div className="pointer-events-none absolute inset-0 hidden flex-wrap content-end gap-1 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2.5 pb-12 opacity-0 transition-opacity [@media(hover:hover)]:flex [@media(hover:hover)]:group-hover/wanted:opacity-100">
+            {tags.slice(0, 10).map((t) => (
+              <CategoryPill key={t.name} name={t.name} />
+            ))}
           </div>
         )}
         <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
@@ -185,8 +186,13 @@ export function WantedCard({
         <div className="line-clamp-2 text-sm leading-snug font-semibold">{w.title}</div>
         {meta && <div className="truncate text-xs text-muted">{meta}</div>}
         {w.performers.length > 0 && <div className={clsx('text-xs text-muted', details ? 'line-clamp-3' : 'truncate')}>{w.performers.join(', ')}</div>}
-        {details && extra && <div className="mt-1 text-xs text-fg/80">{extra}</div>}
-        {details && !!w.tags?.length && <div className="mt-0.5 line-clamp-4 text-xs text-muted">{w.tags.join(' · ')}</div>}
+        {details && tags.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {tags.map((t) => (
+              <CategoryPill key={t.name} name={t.name} libraryId={t.libraryId} />
+            ))}
+          </div>
+        )}
       </div>
     </article>
   )

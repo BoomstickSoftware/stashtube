@@ -100,9 +100,18 @@ try {
       json('/api/scenes?noUnlisted=1&perPage=1'),
       json('/api/home'),
       json('/api/featured?seed=deploy-check&limit=60'),
-      json('/api/scenes?noUnlisted=1&sort=created_at&perPage=1'),
+      json('/api/scenes?noUnlisted=1&sort=created_at&perPage=10'),
     ])
-    const normal = recent.items[0]
+    // the source must not be Unlisted itself: a list can be served once more while it refreshes, so
+    // a video unlisted seconds ago may still be in it (a false leak on 2026-11-09). Ask its page.
+    let normal = null
+    for (const s of recent.items) {
+      const d = await json(`/api/scenes/${s.id}`)
+      if (!d.unlisted && !d.unlistedVia?.length) {
+        normal = s
+        break
+      }
+    }
     const related = normal ? await json(`/api/scenes/${normal.id}/related`) : []
     const leaks = [
       ...home.filter((r) => !String(r.key).startsWith('saved-')).flatMap((r) => r.items.filter((s) => ids.has(s.id)).map((s) => `${r.key}:${s.id}`)),

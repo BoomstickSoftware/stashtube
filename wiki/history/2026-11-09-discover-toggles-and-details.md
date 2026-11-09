@@ -28,3 +28,10 @@ related: [discover, 2026-11-09-discover-hides-vr]
   did not serve the new fields yet): chips wrap with no overflow, every chip and the StashDB button
   44 px, the link `https://stashdb.org/scenes/<id>` with `target=_blank`, Details shows code, date
   and categories and is remembered, the footer counts blocked, VR and in-motion scenes.
+
+## Later the same day
+
+- Details shows only the categories, as coloured pills that link to the library's category when it
+  has one; the code and "on StashDB since" line went (the user found it over-communicative).
+- `deploy-check.mjs` checks that its "normal" video is not Unlisted on the video's own page: a
+  list served once more while it refreshed made a just-unlisted video look normal (a false leak).

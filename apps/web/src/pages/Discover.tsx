@@ -96,7 +96,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
   const hidden = data?.pages.reduce((n, p) => n + p.hidden, 0) ?? 0
   const vr = data?.pages.reduce((n, p) => n + (p.vr ?? 0), 0) ?? 0
   const inMotion = data?.pages.reduce((n, p) => n + (p.inMotion ?? 0), 0) ?? 0
-  // categories, code and StashDB date under every card; remembered per browser
+  // the categories as pills under every card; remembered per browser
   const [details, setDetails] = useStored('flix.discover.details', asBool(false))
   const sort = search.sort ?? 'date'
   const hasFilter = filters.performers.length + filters.studios.length + filters.tags.length > 0 || !!filters.q

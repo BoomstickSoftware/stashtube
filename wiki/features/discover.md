@@ -43,10 +43,12 @@ StashDB work ([[stashdb-mirror]]).
   page can hold fewer.
 - **Show blocked & VR** (chip, `unblocked=1`): blocked and VR scenes too. _Until 2026-11-09 the
   API took `unblocked` but the page had no control for it._
-- **Details** (chip, per browser, `flix.discover.details`): each card adds the studio code, the
-  date the scene reached StashDB and its categories (from the mirror: `WantedScene.tags`, `code`,
-  `stashdbAdded`). Off, a mouse hovering the picture shows the same over it; phones have no hover.
-  StashDB's description is not fetched (`SCENE_FULL`), so it is not shown.
+- **Details** (chip, per browser, `flix.discover.details`): each card adds its StashDB categories
+  as coloured pills (`CategoryPill`; colour from the name's hash, `lib/color.ts`, the same
+  everywhere); a pill links to the library's category when one matches by StashDB id or by name
+  or alias (`stash.tagLookup`, one cached query). Off, a mouse hovering the picture shows the pills
+  over it; phones have no hover. _The studio code and StashDB date shown there for an hour on
+  2026-11-09 were dropped as noise (user)._ StashDB's description is not fetched (`SCENE_FULL`).
 - **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
   a top-right button opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
   the origin of the StashDB endpoint flix uses.

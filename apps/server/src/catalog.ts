@@ -217,13 +217,15 @@ async function blockedSets() {
 // Each scene as a card: owned (in Stash), what Whisparr is doing with it, or queued here; one
 // deleted before (an import exclusion) is marked, and a Get by hand may still fetch it.
 export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
-  const [owned, movies, a, excluded, queued] = await Promise.all([
+  const [owned, movies, a, excluded, queued, tagIds] = await Promise.all([
     stash.sceneStashIdMap(),
     config.whisparr ? whisparr.movies() : Promise.resolve([]),
     config.whisparr ? whisparr.activity() : Promise.resolve(null),
     config.whisparr ? whisparr.exclusionIds().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
     db.select({ id: getQueue.stashdbId }).from(getQueue),
+    stash.tagLookup().catch(() => new Map<string, string>()),
   ])
+  const libraryTag = (t: { id: string; name: string }) => tagIds.get(`sid:${t.id}`) ?? tagIds.get(`name:${t.name.toLowerCase()}`) ?? null
   const byStash = new Map(movies.filter((m) => m.stashId).map((m) => [m.stashId!, m]))
   const inQueue = new Set(queued.map((r) => r.id))
   return rows.map((r) => {
@@ -238,9 +240,7 @@ export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
       runtime: r.duration ? Math.round(r.duration / 60) : null,
       state: 'remote',
       ...(excluded.has(r.id.toLowerCase()) ? { deletedBefore: true } : {}),
-      tags: (r.tags as { name: string }[]).map((t) => t.name),
-      code: r.code,
-      stashdbAdded: r.created ? r.created.slice(0, 10) : null,
+      tags: (r.tags as { id: string; name: string }[]).map((t) => ({ name: t.name, libraryId: libraryTag(t) })),
     }
     const sceneId = owned.get(r.id)
     if (sceneId) return { ...base, state: 'owned', sceneId }

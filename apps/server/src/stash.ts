@@ -1583,6 +1583,19 @@ export async function libraryIdForStashId(kind: 'performer' | 'studio' | 'tag', 
   return d.findTags.tags[0]?.id ?? null
 }
 
+// Library categories by their StashDB id (`sid:<uuid>`) and by lower-case name and alias
+// (`name:<name>`): Discover's category pills link to the library's own. One query, cached until a
+// category changes.
+export async function tagLookup(): Promise<Map<string, string>> {
+  const d = await query<Pick<Query, 'findTags'>>(`{ findTags(filter: { per_page: -1 }) { tags { id name aliases stash_ids { stash_id } } } }`, {}, ['tag'])
+  const m = new Map<string, string>()
+  for (const t of d.findTags.tags) {
+    for (const s of t.stash_ids ?? []) m.set(`sid:${s.stash_id}`, t.id)
+    for (const n of [t.name, ...(t.aliases ?? [])]) if (!m.has(`name:${n.toLowerCase()}`)) m.set(`name:${n.toLowerCase()}`, t.id)
+  }
+  return m
+}
+
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes
