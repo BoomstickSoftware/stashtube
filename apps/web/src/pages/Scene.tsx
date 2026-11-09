@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2, Vault } from 'lucide-react'
+import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, ListX, Radio, Trash2, Vault } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { CastLine } from '../components/CastLine'
@@ -13,7 +13,7 @@ import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEdi
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { cachedCard, useAddO, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits, useUnlistScene } from '../lib/api'
+import { cachedCard, useAddO, useClearContinue, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits, useUnlistScene } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
@@ -46,6 +46,7 @@ function SceneView({ id }: { id: string }) {
   const addO = useAddO()
   const hide = useHideScene()
   const unlist = useUnlistScene()
+  const clearContinue = useClearContinue()
   const edits = useSceneEdits(id)
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
@@ -284,6 +285,15 @@ function SceneView({ id }: { id: string }) {
           </>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {scene.resumeTime > 0 && (
+            <button
+              onClick={() => clearContinue.mutate([scene.id], { onSuccess: () => showToast('Removed from Continue') })}
+              title="Clear the resume point; plays and History stay"
+              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
+            >
+              <ListX size={17} /> Remove from Continue
+            </button>
+          )}
           <IdentifyButton scene={scene} />
           {/* destructive, so away from the everyday actions above the fold */}
           {features?.deleteScenes && (

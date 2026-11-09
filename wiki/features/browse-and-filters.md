@@ -5,7 +5,7 @@ summary: The Filters dialog, the stackable per-browser filters, the People filte
 tags: [browse, filters, facets, people, sort]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 routes: [/browse, /performer/$id, /studio/$id, /tag/$id, /playlist/$id]
 api: [GET /api/scenes, GET /api/scenes/facets, GET /api/tags/tiles]
 code: [apps/web/src/components/Filters.tsx, apps/web/src/components/SceneBrowser.tsx, apps/web/src/components/AddFilter.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/lib/filters.ts, apps/web/src/lib/describe.ts, apps/server/src/stash.ts]
@@ -64,9 +64,11 @@ part of the query, so the Filters count and chips never showed why a list was sh
 
 ## Also on the page
 
-Category tiles, multi-select with bulk Favorite, Add to playlist and Delete, and the card menu
-(right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
-Save to playlist…, Mark as watched, Not interested, and with a mouse Delete…; "Station from
+Category tiles, multi-select with bulk Favorite, Add to playlist and Delete (icons only below
+`sm`; a page may put its own action first, as Continue's Remove, `bulkActions`), and the card
+menu (right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
+Save to playlist…, Mark as watched (unwatched or with a resume point), Remove from Continue
+(with a resume point), Not interested, Unlist, and with a mouse Delete…; "Station from
 here" was dropped and Delete left the phone's sheet on 2026-10-31, decision: a long press
 lands on it too easily). On a phone the filter bar is one sideways-scrolling row (Filters,
 sort, the count) with the list's actions (Select, Pin to home, Station) behind a "More"

@@ -5,7 +5,7 @@ summary: What the video page shows and lets you change, from inline title and ta
 tags: [scene, player, editing, stashdb]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 routes: [/scene/$id]
 api: [GET /api/scenes/:id, PATCH /api/scenes/:id, PUT /api/scenes/:id/rating, POST /api/scenes/:id/o, POST /api/scenes/:id/identify, GET /api/jobs/:id, PUT /api/scenes/:id/hidden, GET /api/scenes/:id/related]
 code: [apps/web/src/pages/Scene.tsx, apps/web/src/components/SceneEditor.tsx, apps/web/src/components/Moments.tsx, apps/web/src/components/EntityHeader.tsx]
@@ -42,7 +42,8 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
   in the action row next to Favorite_; destructive, so away from the everyday actions,
   [[delete-via-whisparr]]).
   **Mark as watched** is not on this page: it lives in the card's long-press / right-click
-  menu (`CardMenu.tsx`); _the page listed it until 2026-10-31_ (UX audit, F14 in
+  menu (`CardMenu.tsx`); **Remove from Continue** sits beside Identify when the video has a
+  resume point ([[continue-history-stats]], since 2026-11-09); _the page listed it until 2026-10-31_ (UX audit, F14 in
   `docs/audits/2026-10-31-ux/ia.md`).
 - **Playlist** opens the save-to-playlist menu (_the button said "Save" until 2026-10-31_).
 - **Station** by Related starts a drifting station from this scene ([[stations]]).

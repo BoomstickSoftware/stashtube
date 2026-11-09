@@ -4,6 +4,7 @@ import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
 import { castStatus, sceneCast, setOverride, syncCast } from './cast.ts'
+import { expireContinue } from './continue.ts'
 import { curated, dropUnlistedWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
@@ -421,6 +422,22 @@ api.post('/scenes/:id/play', async (c) => {
   return c.body(null, 204)
 })
 
+// "Mark as watched": one play, and the resume point cleared so it leaves Continue.
+api.post('/scenes/:id/watched', async (c) => {
+  const id = c.req.param('id')
+  await stash.addScenePlay(id)
+  await stash.saveSceneActivity(id, 0, 0)
+  rebuildHomeSoon()
+  return c.body(null, 204)
+})
+
+// Remove videos from Continue: their resume points go to 0. Plays and History are untouched.
+api.post('/continue/clear', async (c) => {
+  const { ids } = parse(z.object({ ids: z.array(z.string().regex(/^\d+$/)).min(1).max(1000) }), await c.req.json())
+  await stash.clearResume(ids)
+  return c.body(null, 204)
+})
+
 const activityBody = z.object({ resumeTime: z.number().min(0), playDuration: z.number().min(0) })
 
 api.post('/scenes/:id/activity', async (c) => {
@@ -575,7 +592,7 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 api.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean(), hideVr: z.boolean() })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean(), hideVr: z.boolean(), continueDays: z.number().int().min(0).max(365) })
       .partial(),
     await c.req.json(),
   )
@@ -589,6 +606,10 @@ api.put('/settings', async (c) => {
   }
   if (b.people) await setSetting('people', b.people)
   if (b.hideVr !== undefined) await setSetting('hideVr', b.hideVr)
+  if (b.continueDays !== undefined) {
+    await setSetting('continueDays', b.continueDays)
+    void expireContinue().catch((e) => console.error('continue expiry:', e.message))
+  }
   if (b.featured) await setSetting('featured', sanitizeWeights(b.featured, (await getSettings()).featured))
   if (b.people || b.featured) homeChanged() // the feed was built with the old defaults or dials
   return c.json(await getSettings())

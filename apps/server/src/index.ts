@@ -12,6 +12,7 @@ import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { exclusions } from './blocklist.ts'
 import { syncCast } from './cast.ts'
+import { startContinueExpiry } from './continue.ts'
 import { hostGuard, playbackOrigin, sameOriginWrites, securityHeaders } from './guard.ts'
 import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
@@ -152,6 +153,7 @@ warm()
 onStashChange(() => void syncCast().finally(warm))
 onStashChange(scheduleSweep())
 setTimeout(() => void syncCast(), 90_000).unref() // and are checked once after start
+startContinueExpiry() // resume points untouched for 30 days leave Continue (continue.ts)
 startSync() // the Whisparr guard: a few minutes after start, then every 15 minutes (sync.ts)
 startGetQueue() // paced Gets, weekly re-search of waiting scenes, daily discovery (getqueue.ts)
 

@@ -819,6 +819,21 @@ export async function saveSceneActivity(id: string, resumeTime: number, playDura
   }, [`scene:${id}`, 'activity:resume'], ['scene'])
 }
 
+// Clear resume points (Continue's Remove, the 30-day expiry); one write per video, in order.
+export async function clearResume(ids: string[]) {
+  for (const id of ids) await saveSceneActivity(id, 0, 0)
+}
+
+// Videos in Continue with the last time they were touched: the last play, or for a resume point
+// with no play on record (set before flix counted plays, or in Stash's own UI) when it was added.
+// Uncached: the expiry must see Stash as it is.
+export async function continueAges(): Promise<{ id: string; touched: string }[]> {
+  const d = await gql<Pick<Query, 'findScenes'>>(
+    `{ findScenes(filter: { per_page: -1 }, scene_filter: { resume_time: { value: 0, modifier: GREATER_THAN } }) { scenes { id last_played_at created_at } } }`,
+  )
+  return d.findScenes.scenes.map((s) => ({ id: s.id, touched: s.last_played_at ?? s.created_at }))
+}
+
 export async function addSceneO(id: string) {
   const d = await mutate<Pick<Mutation, 'sceneAddO'>>(`mutation($id: ID!) { sceneAddO(id: $id) { count } }`, { id }, [`scene:${id}`], ['scene'])
   return d.sceneAddO.count

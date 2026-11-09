@@ -346,3 +346,8 @@ Plays and progress saves no longer delete Home and the facets; the Cast sync no 
 cache or re-triggers itself; `sceneStashIdMap` tagged `library`; tiles read the whole library;
 snapshot not rewritten for expiries alone ([[2026-11-09-cache-tags-round]], [[caching]], [[cast]]).
 Corrected the 2026-10-31 claim that the old feed showed at once after a play.
+
+## [2026-11-09] ingest | Continue reset (initiative B)
+
+Select → Remove, card-menu and scene-page Remove, the 30-day expiry and Mark as watched clearing
+the resume point ([[2026-11-09-continue-reset]], [[continue-history-stats]]).

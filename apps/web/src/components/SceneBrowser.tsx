@@ -13,7 +13,7 @@ import { ageLabel, withBase } from '../lib/query'
 import { stationQuery } from '../lib/station'
 import { ActiveFilters, FilterDialog } from './Filters'
 import { clearAll, filterTotal } from '../lib/filters'
-import { BulkBar } from './Bulk'
+import { BulkBar, type BulkAction } from './Bulk'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
 import { Button, Chip, Empty, ErrorBox, Sentinel, Spinner } from './ui'
 import { useClickOutside } from '../lib/hooks'
@@ -31,6 +31,7 @@ export function SceneBrowser({
   forStation = false,
   cardMeta,
   omitPerformer,
+  bulkActions,
 }: {
   query: SceneQuery
   onChange: (patch: Patch) => void
@@ -40,6 +41,7 @@ export function SceneBrowser({
   forStation?: boolean // the station editor: just the grid (its filters are edited above it)
   cardMeta?: (s: SceneCardType) => string | null // one more fact per card, e.g. a performer's age at filming
   omitPerformer?: string // a performer page: leave its own name off every card
+  bulkActions?: BulkAction[] // the page's own actions for a selection, first in the bar (Continue's Remove)
 }) {
   const effective = useMemo(() => withBase(query, base, defaultSort), [query, base, defaultSort])
 
@@ -150,6 +152,7 @@ export function SceneBrowser({
             return { title: s?.title ?? `Scene ${id}`, size: s?.size ?? 0 }
           }}
           onClear={stopSelecting}
+          actions={bulkActions}
         />
       )}
     </div>

@@ -1,10 +1,10 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { CheckCheck, EyeOff, Heart, ListPlus, Play, Trash2, Vault } from 'lucide-react'
+import { CheckCheck, EyeOff, Heart, ListPlus, ListX, Play, Trash2, Vault } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
+import { useClearContinue, useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
 import { useClickOutside, useMediaQuery } from '../lib/hooks'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
@@ -29,6 +29,7 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
   const hide = useHideScene()
   const unlist = useUnlistScene()
   const watched = useMarkWatched()
+  const clear = useClearContinue()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -54,7 +55,7 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
 
   // keep a pointer menu on screen
   const W = 240
-  const H = 290
+  const H = 340
   const style = sheet ? undefined : { left: Math.min(at.x, innerWidth - W - 8), top: Math.min(at.y, innerHeight - H - 8) }
 
   if (saving)
@@ -101,7 +102,8 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
           toggleFavorite.mutate({ id: scene.id, favorite: !fav }),
         )}
         {item(<ListPlus size={16} />, 'Save to playlist…', () => setSaving(true), { keep: true })}
-        {scene.playCount === 0 && item(<CheckCheck size={16} />, 'Mark as watched', () => guardWrite(() => watched.mutate(scene.id)))}
+        {(scene.playCount === 0 || scene.resumeTime > 0) && item(<CheckCheck size={16} />, 'Mark as watched', () => guardWrite(() => watched.mutate(scene.id)))}
+        {scene.resumeTime > 0 && item(<ListX size={16} />, 'Remove from Continue', () => clear.mutate([scene.id]))}
         {item(<EyeOff size={16} />, 'Not interested', () => {
           hide.mutate({ id: scene.id, hidden: true })
           showToast(

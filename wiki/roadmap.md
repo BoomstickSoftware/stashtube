@@ -42,11 +42,7 @@ The brainstormed backlog of 2026-10-26 is exhausted except for the item below.
 From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initiative]]), in order.
 
 - **A. Cache tags** (S): done, [[2026-11-09-cache-tags-round]].
-- **B. Continue reset** (S–M), decision [[continue-clears-and-expires]]: Select and bulk
-  "Remove from Continue"; one-video removal in the card menu and on the scene page; resume
-  points untouched for 30 days expire (a daily server job, `guardWrite` not needed server-side
-  but never in the check scripts); Mark as watched clears the resume point and shows on played
-  videos too.
+- **B. Continue reset** (S–M): done, [[2026-11-09-continue-reset]] ([[continue-history-stats]]).
 - **C. Background load** (S–M):
   - Whisparr guard: hourly baseline; every 15 min only while flix is in use (an API request in
     the last 30 min, the same in-memory `lastActivity` change detection uses, `noteActivity()`

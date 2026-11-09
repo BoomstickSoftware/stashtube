@@ -1,11 +1,29 @@
 import { Heart, ListPlus, Plus, Trash2, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useBulk, useFeatures, usePlaylists } from '../lib/api'
 import { DeleteScenesDialog } from './DeleteScenes'
 import { useClickOutside } from '../lib/hooks'
 
+// A page's own action on the selected videos, shown first in the bar; `done` is the message after.
+export interface BulkAction {
+  label: string
+  icon: ReactNode
+  run: (ids: string[]) => Promise<unknown>
+  done: string
+}
+
 // Bottom bar while videos are selected in a grid.
-export function BulkBar({ ids, infoOf, onClear }: { ids: string[]; infoOf: (id: string) => { title: string; size: number }; onClear: () => void }) {
+export function BulkBar({
+  ids,
+  infoOf,
+  onClear,
+  actions = [],
+}: {
+  ids: string[]
+  infoOf: (id: string) => { title: string; size: number }
+  onClear: () => void
+  actions?: BulkAction[]
+}) {
   const bulk = useBulk()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
@@ -26,17 +44,23 @@ export function BulkBar({ ids, infoOf, onClear }: { ids: string[]; infoOf: (id: 
   if (!ids.length) return null
   return (
     <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-6">
-      <div className="flex items-center gap-1 rounded-full bg-surface py-1.5 pr-1.5 pl-5 shadow-2xl ring-1 ring-line">
-        <span className="mr-2 text-sm font-semibold tabular-nums">{done ?? `${ids.length} selected`}</span>
+      <div className="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface py-1.5 pr-1.5 pl-5 shadow-2xl ring-1 ring-line">
+        <span className="mr-2 text-sm font-semibold whitespace-nowrap tabular-nums">{done ?? `${ids.length} selected`}</span>
+        {actions.map((a) => (
+          <button key={a.label} onClick={() => a.run(ids).then(() => finish(a.done))} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap hover:bg-raised touch:py-3">
+            {a.icon} {a.label}
+          </button>
+        ))}
         <button
           onClick={() => bulk.favorite.mutate(ids, { onSuccess: () => finish('Added to Favorites') })}
-          className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm hover:bg-raised"
+          className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap hover:bg-raised touch:py-3"
+          aria-label="Favorite"
         >
-          <Heart size={16} /> Favorite
+          <Heart size={16} /> <span className="max-sm:hidden">Favorite</span>
         </button>
         <div ref={ref} className="relative">
-          <button onClick={() => setMenu((v) => !v)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm hover:bg-raised">
-            <ListPlus size={16} /> Add to playlist
+          <button onClick={() => setMenu((v) => !v)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap hover:bg-raised touch:py-3" aria-label="Add to playlist">
+            <ListPlus size={16} /> <span className="max-sm:hidden">Add to playlist</span>
           </button>
           {menu && (
             <div className="absolute right-0 bottom-12 w-72 overflow-hidden rounded-2xl bg-surface shadow-2xl ring-1 ring-line">
@@ -75,8 +99,8 @@ export function BulkBar({ ids, infoOf, onClear }: { ids: string[]; infoOf: (id: 
           )}
         </div>
         {features?.deleteScenes && (
-          <button onClick={() => setDeleting(true)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/15">
-            <Trash2 size={16} /> Delete
+          <button onClick={() => setDeleting(true)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap text-red-400 hover:bg-red-500/15 touch:py-3" aria-label="Delete">
+            <Trash2 size={16} /> <span className="max-sm:hidden">Delete</span>
           </button>
         )}
         <button onClick={onClear} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Clear selection">

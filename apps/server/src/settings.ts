@@ -4,7 +4,7 @@ import type { GenderCriterionInput } from './stash.schema.ts'
 import { db } from './db/index.ts'
 import { settings } from './db/schema.ts'
 
-const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/', playOnOpen: false, people: {}, featured: FEATURED_DEFAULTS, whisparrSync: false, hideVr: true }
+const defaults: Settings = { performerGender: 'women', introSkip: {}, panicUrl: 'https://www.google.com/', playOnOpen: false, people: {}, featured: FEATURED_DEFAULTS, whisparrSync: false, hideVr: true, continueDays: 30 }
 
 // Single replica, so an in-memory copy is authoritative after the first read.
 let cache: Settings | null = null

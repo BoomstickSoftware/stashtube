@@ -368,6 +368,7 @@ export interface Settings {
   whisparrSync: boolean // follow -> Whisparr watches the performer's new releases; off: the sync only plans
   hideVr: boolean // Discover leaves VR scenes out (title, category or studio says VR); on by default
   castSetup?: boolean // the Cast sync has applied its one-time defaults (Cast: M blocked)
+  continueDays: number // a resume point untouched this many days leaves Continue; 0 keeps it forever
 }
 
 // Cast categories (wiki features/cast): flix-maintained Stash categories from performer genders.

@@ -150,11 +150,16 @@ export function useAddO() {
 // by the players' watch accounting, which already checks the private session.
 export const addPlay = (id: string) =>
   send('POST', `/scenes/${id}/play`).then(() => patchScene(queryClient, id, (s) => ({ playCount: s.playCount + 1, lastPlayedAt: new Date().toISOString() })))
-// "Mark as watched": one play, so Unwatched lists and the New badge let it go.
+// "Mark as watched": one play, so Unwatched lists and the New badge let it go, and the resume
+// point cleared, so it leaves Continue (decisions/continue-clears-and-expires).
 export function useMarkWatched() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => addPlay(id),
+    mutationFn: (id: string) =>
+      send('POST', `/scenes/${id}/watched`).then(() => {
+        patchScene(queryClient, id, (s) => ({ playCount: s.playCount + 1, lastPlayedAt: new Date().toISOString() }))
+        noteResume(id, 0)
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scenes'] })
       qc.invalidateQueries({ queryKey: ['home'] })
@@ -163,6 +168,13 @@ export function useMarkWatched() {
 }
 export const saveActivity = (id: string, resumeTime: number, playDuration: number) =>
   send('POST', `/scenes/${id}/activity`, { resumeTime, playDuration }).then(() => noteResume(id, resumeTime))
+
+// Remove videos from Continue: their resume points go to 0; plays and History stay.
+export function useClearContinue() {
+  return useMutation({
+    mutationFn: (ids: string[]) => send('POST', '/continue/clear', { ids }).then(() => ids.forEach((id) => noteResume(id, 0))),
+  })
+}
 
 // The Continue badge in the nav and the Continue list change only when a resume point appears
 // or goes (not as it moves); the count is nudged at once and confirmed by a refetch.
