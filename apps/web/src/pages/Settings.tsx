@@ -55,6 +55,7 @@ export function Settings(): JSX.Element {
         <Group id="library" title="Library">
           <LibraryTools />
           <WhisparrSyncSetting />
+          <HideVrSetting />
           <UnlistedSetting />
           <BlocklistSetting />
           <HiddenSetting />
@@ -132,6 +133,26 @@ function LibraryTools() {
         <ChevronRight size={18} className="ml-auto shrink-0 text-muted" />
       </Link>
     </div>
+  )
+}
+
+// Discover's VR filter (shared; on by default): a scene whose title, category or studio says VR.
+function HideVrSetting() {
+  const { data: settings } = useSettings()
+  const save = useUpdateSettings()
+  return (
+    <section>
+      <label className="flex max-w-xl cursor-pointer items-start justify-between gap-4">
+        <span>
+          <span className="block text-sm font-medium">Leave VR scenes out of Discover</span>
+          <span className="mt-0.5 block text-sm text-muted">
+            A StashDB scene counts as VR when its title or a category says so ([VR], VR, Virtual Reality, 180°, 360°) or its studio’s
+            name carries VR or starts with “Virtual”. “Show blocked” on Discover brings them back for that view.
+          </span>
+        </span>
+        <Switch on={settings?.hideVr ?? true} disabled={!settings} onChange={(v) => save.mutate({ hideVr: v })} className="mt-0.5" />
+      </label>
+    </section>
   )
 }
 

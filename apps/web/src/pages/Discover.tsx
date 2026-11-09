@@ -93,6 +93,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
   const first = data?.pages[0]
   const selected = first?.selected ?? []
   const hidden = data?.pages.reduce((n, p) => n + p.hidden, 0) ?? 0
+  const vr = data?.pages.reduce((n, p) => n + (p.vr ?? 0), 0) ?? 0
   const sort = search.sort ?? 'date'
   const hasFilter = filters.performers.length + filters.studios.length + filters.tags.length > 0 || !!filters.q
 
@@ -199,6 +200,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
             {first?.count ? `${first.count.toLocaleString()} scenes` : null}
             {first?.source === 'mirror' ? ' · from flix’s copy of StashDB' : ' · asked StashDB (cached a day)'}
             {hidden ? ` · ${hidden} blocked left out` : ''}
+            {vr ? ` · ${vr} VR left out (Settings)` : ''}
           </p>
         </>
       )}

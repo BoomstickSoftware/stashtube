@@ -550,7 +550,7 @@ api.get('/settings', async (c) => c.json(await getSettings()))
 api.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean() })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean(), hideVr: z.boolean() })
       .partial(),
     await c.req.json(),
   )
@@ -563,6 +563,7 @@ api.put('/settings', async (c) => {
     kickSync()
   }
   if (b.people) await setSetting('people', b.people)
+  if (b.hideVr !== undefined) await setSetting('hideVr', b.hideVr)
   if (b.featured) await setSetting('featured', sanitizeWeights(b.featured, (await getSettings()).featured))
   if (b.people || b.featured) homeChanged() // the feed was built with the old defaults or dials
   return c.json(await getSettings())

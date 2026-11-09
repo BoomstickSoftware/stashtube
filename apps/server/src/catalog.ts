@@ -14,6 +14,7 @@ import { db } from './db/index.ts'
 import { blocks, getQueue, sdbEntities, sdbQueries, sdbScenes, sdbScopes } from './db/schema.ts'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
+import { getSettings } from './settings.ts'
 import * as stash from './stash.ts'
 import * as stashdb from './stashdb.ts'
 import type { SdbEntity, SdbSceneFull, SceneSort } from './stashdb.ts'
@@ -283,7 +284,7 @@ export async function discover(input: DiscoverQuery): Promise<DiscoverPage> {
   const local = !q.q && q.sort !== 'trending' && (await completeScope(q))
   const { rows, count } = local ? await fromMirror(q, page) : await fromStashDb(q, page)
   const blocked = q.unblocked ? null : await blockedSets()
-  const visible = blocked
+  const notBlocked = blocked
     ? rows.filter(
         (r) =>
           !(r.studioId && blocked.studios.has(r.studioId)) &&
@@ -291,13 +292,31 @@ export async function discover(input: DiscoverQuery): Promise<DiscoverPage> {
           !(r.tags as { name: string }[]).some((t) => blocked.tagNames.has(t.name.toLowerCase())),
       )
     : rows
+  // VR left out unless Settings says otherwise; "Show blocked" brings it back with the rest
+  const hideVr = !q.unblocked && (await getSettings()).hideVr
+  const visible = hideVr ? notBlocked.filter((r) => !isVrScene(r)) : notBlocked
   const selectedIds: [DiscoverEntity['kind'], string][] = [
     ...(q.performers ?? []).map((id): [DiscoverEntity['kind'], string] => ['performer', id]),
     ...(q.studios ?? []).map((id): [DiscoverEntity['kind'], string] => ['studio', id]),
     ...(q.tags ?? []).map((id): [DiscoverEntity['kind'], string] => ['tag', id]),
   ]
   const selected = (await Promise.all(selectedIds.map(([k, id]) => entity(k, id)))).filter((e): e is DiscoverEntity => !!e)
-  return { items: await label(visible), count, page, hasMore: page * PAGE < count, source: local ? 'mirror' : 'stashdb', selected, hidden: rows.length - visible.length }
+  return { items: await label(visible), count, page, hasMore: page * PAGE < count, source: local ? 'mirror' : 'stashdb', selected, hidden: rows.length - notBlocked.length, vr: notBlocked.length - visible.length }
+}
+
+// Is this StashDB scene VR? Any of: the title or a category says so ([VR], (VR), the word VR,
+// Virtual Reality, 180° or 360°), or the studio's name carries VR in capitals (how VR studios
+// brand themselves; capitals so a name merely containing the letters does not match) or starts
+// with "Virtual". Discover leaves these out when Settings hideVr is on.
+const VR_TEXT = /\bVR\b|virtual[\s-]*reality|\b(180|360)\s*(°|degrees?\b|vr\b)/i
+const VR_STUDIO = /VR/ // case-sensitive on purpose
+const VIRTUAL_STUDIO = /^virtual/i
+export function isVrScene(r: { title: string | null; studioName: string | null; tags: unknown }): boolean {
+  return (
+    VR_TEXT.test(r.title ?? '') ||
+    (r.tags as { name: string }[]).some((t) => VR_TEXT.test(t.name)) ||
+    (!!r.studioName && (VR_STUDIO.test(r.studioName) || VIRTUAL_STUDIO.test(r.studioName)))
+  )
 }
 
 // The filter pickers: StashDB's name search, kept a day per (kind, term).

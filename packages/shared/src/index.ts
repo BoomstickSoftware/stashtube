@@ -365,6 +365,7 @@ export interface Settings {
   people: PeopleFilter // performer age and ethnicity defaults for every list
   featured: FeaturedWeights // the Featured row's dials
   whisparrSync: boolean // follow -> Whisparr watches the performer's new releases; off: the sync only plans
+  hideVr: boolean // Discover leaves VR scenes out (title, category or studio says VR); on by default
 }
 
 export type StationMode = 'full' | 'moments'
@@ -554,6 +555,7 @@ export interface DiscoverPage {
   source: 'mirror' | 'stashdb' // answered from the local mirror, or StashDB was asked
   selected: DiscoverEntity[] // the filter chips, named
   hidden: number // blocked results left out of this page
+  vr: number // VR scenes left out of this page (Settings hideVr)
 }
 // Scenes fetched and still without a file, and selections still in the paced Get queue.
 export interface WaitingScene {

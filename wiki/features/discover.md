@@ -4,8 +4,8 @@ kind: feature
 summary: /discover browses StashDB through flix's mirror by performer, studio, category and words; Select picks up to 200 scenes for the paced Get queue; the Waiting tab lists fetched scenes still without a file.
 tags: [stashdb, whisparr, discover, ui]
 status: current
-verified: 2026-11-02
-updated: 2026-11-02
+verified: 2026-11-09
+updated: 2026-11-09
 code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx]
 related: [stashdb-mirror, whisparr-shelf, whisparr-sync, mobile-first-ui]
 ---
@@ -36,7 +36,13 @@ StashDB work ([[stashdb-mirror]]).
   "All N" (the loaded ones, up to 200, without those deleted before) and "Get N", which queues them; the server fetches one
   every 8 s.
 - The footer says how many scenes match, whether the page came from the mirror or StashDB, and how
-  many blocked ones were left out.
+  many blocked and VR ones were left out.
+- **VR is left out by default** (Settings → Library → "Leave VR scenes out of Discover",
+  `settings.hideVr`, since 2026-11-09): `isVrScene` in `catalog.ts` matches the title or a
+  category ([VR], (VR), the word VR, Virtual Reality, 180°/360°), or a studio name with VR in
+  capitals or starting with "Virtual". Filtered after the page arrives, like blocked ones, so a
+  page can hold fewer than 100; "Show blocked" (`unblocked=1`) shows VR too. The daily discovery
+  that queues followed performers' new releases does not apply it.
 
 ## The Waiting tab
 

@@ -17,6 +17,7 @@ export function useUpdateSettings() {
       // is the Performers page's own since 2026-10-31 and no longer reaches search.)
       if (patch.people) qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'settings' })
       else if (patch.featured) qc.invalidateQueries({ queryKey: ['home'] })
+      else if (patch.hideVr !== undefined) qc.invalidateQueries({ queryKey: ['discover'] })
     },
   })
 }
