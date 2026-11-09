@@ -53,8 +53,11 @@ StashDB work ([[stashdb-mirror]]).
 - **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
   a top-right button opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
   the origin of the StashDB endpoint flix uses.
-- **About** (ⓘ beside it, since 2026-11-09): StashDB's description of the scene in a sheet
-  (`SceneAbout.tsx`; bottom sheet on a phone). `GET /api/discover/scenes/:id/details` reads
+- **About** (ⓘ beside it, since 2026-11-09): StashDB's description of the scene in a popover
+  beside the button, no backdrop (`SceneAbout.tsx`). With a mouse it opens on hover after 250 ms
+  (so sweeping across cards does not queue StashDB calls) and stays while the pointer is on it;
+  on a phone a tap opens it, a tap outside or Esc closes it. _A click-to-open sheet with a dimmed
+  page until the user asked for hover, the same day._ `GET /api/discover/scenes/:id/details` reads
   `sdb_scenes.details`; a row stored before that column existed (null) is fetched once through
   the paced queue (`findScene { details }`) and kept; `''` means StashDB has none. New mirror
   rows carry it from `SCENE_FULL`.

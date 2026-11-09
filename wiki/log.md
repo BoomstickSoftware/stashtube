@@ -351,3 +351,6 @@ Corrected the 2026-10-31 claim that the old feed showed at once after a play.
 
 Select → Remove, card-menu and scene-page Remove, the 30-day expiry and Mark as watched clearing
 the resume point ([[2026-11-09-continue-reset]], [[continue-history-stats]]).
+
+## [2026-11-09] correct | Discover About opens on hover
+The ⓘ popover opens on hover with a mouse, without a backdrop (user) → [[discover]].
