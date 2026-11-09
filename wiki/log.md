@@ -324,3 +324,8 @@ categories kept in sync by flix, and Cast: M blocked → [[cast-taxonomy]], [[ca
 ## [2026-11-09] ingest | Browse Cast filter
 Filters → Cast: per-letter counts and Mix chips as category includes / excludes → [[cast]],
 [[2026-11-09-cast-categories]].
+
+## [2026-11-09] ingest | Cast set by hand
+A video whose performers miss someone (a men-only video with an unidentified woman) can have its
+cast set on its page; the sync files it by the override → [[cast]], [[data-model]],
+[[2026-11-09-cast-overrides]].

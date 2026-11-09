@@ -45,6 +45,18 @@ export const blocks = pgTable(
 
 // Unlisted categories, performers and studios (unlisted.ts): their videos stay out of what flix
 // picks for you and are listed in the Vault. A kind/id is never in `blocks` at the same time.
+// A video's cast set by hand (wiki features/cast): the counts of women, men and others when
+// Stash's performers are incomplete (a performer missing from StashDB). The Cast sync files the
+// video by these instead of the performers' genders.
+export const castOverrides = pgTable('cast_overrides', {
+  sceneId: text('scene_id').primaryKey(),
+  women: integer('women').notNull(),
+  men: integer('men').notNull(),
+  other: integer('other').notNull(),
+  title: text('title').notNull(), // when set, so Settings renders without Stash
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const unlisted = pgTable(
   'unlisted',
   {

@@ -1,7 +1,7 @@
 // The Cast classification (cast.ts castOf): what flix writes into Stash for each scene.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { ALL_TAGS, castOf, COUNT_TAGS, UNKNOWN } from './cast.ts'
+import { ALL_TAGS, castFrom, castOf, countOf, COUNT_TAGS, UNKNOWN } from './cast.ts'
 
 const F = 'FEMALE'
 const M = 'MALE'
@@ -30,5 +30,19 @@ describe('castOf', () => {
   it('only ever names categories the sync manages', () => {
     for (const gs of [[F], [M, M], [F, M, 'NON_BINARY'], ['INTERSEX'], [F, F, F, F]]) for (const t of castOf(gs)) assert.ok(ALL_TAGS.includes(t), t)
     assert.equal(COUNT_TAGS.length, 8)
+  })
+})
+
+describe('castFrom (a cast set by hand)', () => {
+  it('files a video by the counts, not the performers', () => {
+    assert.deepEqual(castFrom({ F: 1, M: 1, X: 0 }), ['Cast: F+M', 'Cast: Women 1+', 'Cast: Men 1+'])
+    assert.deepEqual(castFrom({ F: 4, M: 0, X: 0 }), ['Cast: F', 'Cast: Women 1+', 'Cast: Women 2+', 'Cast: Women 3+'])
+  })
+  it('is Unknown with nobody in it', () => {
+    assert.deepEqual(castFrom({ F: 0, M: 0, X: 0 }), [UNKNOWN])
+    assert.deepEqual(castFrom(null), [UNKNOWN])
+  })
+  it('agrees with castOf for the same people', () => {
+    assert.deepEqual(castFrom(countOf(['MALE', 'FEMALE'])), castOf(['MALE', 'FEMALE']))
   })
 })

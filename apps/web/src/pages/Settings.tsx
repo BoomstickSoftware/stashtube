@@ -14,7 +14,8 @@ import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
-import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSetSceneCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { castText } from '../lib/cast'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
 import { showToast } from '../lib/toast'
@@ -153,6 +154,7 @@ const MIX_LABEL: Record<string, string> = {
 function CastSetting() {
   const { data } = useCast()
   const sync = useSyncCast()
+  const setCast = useSetSceneCast()
   const { data: blocked } = useBlocklist()
   const { data: unl } = useUnlisted()
   const block = useBlock()
@@ -210,6 +212,25 @@ function CastSetting() {
         })}
         {!data && <li className="px-3 py-3 text-sm text-muted">Loading…</li>}
       </ul>
+      {!!data?.overrides.length && (
+        <>
+          <h4 className="mt-5 text-sm font-semibold">Set by hand</h4>
+          <p className="mt-0.5 max-w-xl text-xs text-muted">Videos whose cast you set on their page because Stash’s performers missed someone.</p>
+          <ul className="mt-2 max-w-xl divide-y divide-line rounded-xl bg-surface">
+            {data.overrides.map((o) => (
+              <li key={o.sceneId} className="flex items-center gap-3 px-3 py-2">
+                <Link to="/scene/$id" params={{ id: o.sceneId }} className="min-w-0 flex-1 hover:text-accent">
+                  <span className="block truncate text-sm font-medium">{o.title || `Video ${o.sceneId}`}</span>
+                  <span className="block text-xs text-muted">{castText(o)}</span>
+                </Link>
+                <Button onClick={() => setCast.mutate({ id: o.sceneId, cast: null })} disabled={setCast.isPending} className="shrink-0">
+                  Use performers
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <div className="mt-3 flex max-w-xl flex-wrap items-center gap-3 text-xs text-muted">
         <span>
           {last

@@ -71,6 +71,13 @@
       "when": 1794241166035,
       "tag": "0009_drop_edu_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794255061590,
+      "tag": "0010_complete_hex",
+      "breakpoints": true
     }
   ]
 }

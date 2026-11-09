@@ -294,7 +294,7 @@ const SCENE_CARD = `
 const SCENE_DETAIL = `
   ${SCENE_CARD}
   details code director urls
-  performers { image_path }
+  performers { image_path gender }
   studio { parent_studio { id } }
   tags { id name }
   files { size format video_codec audio_codec bit_rate frame_rate }
@@ -349,7 +349,7 @@ export function toSceneCard(s: Scene): SceneCard {
   }
 }
 
-function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden' | 'unlisted' | 'unlistedVia'> {
+function toSceneDetail(s: Scene): Omit<SceneDetail, 'hidden' | 'unlisted' | 'unlistedVia' | 'cast'> {
   const markers = (s.scene_markers ?? []).map(toMarker).sort((a, b) => a.seconds - b.seconds)
   const f = file(s)
   return {
@@ -694,6 +694,7 @@ export async function getScene(id: string) {
     performerIds: d.findScene.performers.map((p) => p.id),
     studioId: d.findScene.studio?.id ?? null,
     tagIds: d.findScene.tags.map((t) => t.id),
+    genders: d.findScene.performers.map((p) => p.gender ?? null), // for the Cast line
     marks: d.findScene as Pick<Scene, 'tags' | 'performers' | 'studio'>, // for unlistedReasons
   }
 }

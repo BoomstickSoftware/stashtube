@@ -3,7 +3,7 @@ import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
-import { castStatus, syncCast } from './cast.ts'
+import { castStatus, sceneCast, setOverride, syncCast } from './cast.ts'
 import { curated, dropUnlistedWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
@@ -343,7 +343,7 @@ api.get('/scenes/:id', async (c) => {
   const id = c.req.param('id')
   const r = await stash.getScene(id)
   if (!r) return notFound()
-  const [hidden, u] = await Promise.all([stash.hiddenTag(), unlistedList()])
+  const [hidden, u, cast] = await Promise.all([stash.hiddenTag(), unlistedList(), sceneCast(r.scene.id, r.genders)])
   // what keeps it off Home besides a hand unlist, named for the scene page's notice
   const via = [
     ...u.tags.filter((t) => r.tagIds.includes(t.id)),
@@ -355,6 +355,7 @@ api.get('/scenes/:id', async (c) => {
     hidden: !!hidden && r.tagIds.includes(hidden),
     unlisted: !!u.sceneTag && r.tagIds.includes(u.sceneTag),
     unlistedVia: via,
+    cast,
   } satisfies SceneDetail)
 })
 
@@ -695,6 +696,20 @@ api.get('/cast', async (c) => c.json(await castStatus()))
 api.post('/cast/sync', async (c) => {
   await syncCast()
   return c.json(await castStatus())
+})
+// A video's cast by hand, when Stash's performers miss someone; DELETE goes back to the performers.
+const castCount = z.object({ F: z.number().int().min(0).max(20), M: z.number().int().min(0).max(20), X: z.number().int().min(0).max(20) })
+api.put('/scenes/:id/cast', async (c) => {
+  const id = sceneId(c.req.param('id'))
+  const n = parse(castCount, await c.req.json())
+  const r = await stash.getScene(id)
+  if (!r) return notFound()
+  await setOverride(id, n, r.scene.title)
+  return c.body(null, 204)
+})
+api.delete('/scenes/:id/cast', async (c) => {
+  await setOverride(sceneId(c.req.param('id')), null)
+  return c.body(null, 204)
 })
 
 // --- Unlisted (unlisted.ts, wiki features/vault) --------------------------------------

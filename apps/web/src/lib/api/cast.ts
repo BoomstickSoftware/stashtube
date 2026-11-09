@@ -1,4 +1,4 @@
-import type { CastStatus } from '@flix/shared'
+import type { CastCount, CastStatus } from '@flix/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, invalidateLists, send } from './client'
 
@@ -12,6 +12,19 @@ export function useSyncCast() {
     mutationFn: () => send<CastStatus>('POST', '/cast/sync'),
     onSuccess: (s) => {
       qc.setQueryData(['cast'], s)
+      invalidateLists(qc)
+    },
+  })
+}
+
+// A video's cast set by hand (or, with null, back to its performers); the server syncs at once.
+export function useSetSceneCast() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, cast }: { id: string; cast: CastCount | null }) => (cast ? send('PUT', `/scenes/${id}/cast`, cast) : send('DELETE', `/scenes/${id}/cast`)),
+    onSettled: (_r, _e, { id }) => {
+      qc.invalidateQueries({ queryKey: ['scene', id] })
+      qc.invalidateQueries({ queryKey: ['cast'] })
       invalidateLists(qc)
     },
   })

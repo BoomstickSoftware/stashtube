@@ -6,8 +6,8 @@ tags: [cast, stash, filters, blocklist]
 status: current
 verified: 2026-11-09
 updated: 2026-11-09
-api: [GET /api/cast, POST /api/cast/sync]
-code: [apps/server/src/cast.ts, apps/server/src/stash.ts, apps/web/src/pages/Settings.tsx, apps/web/src/components/CastFilter.tsx, apps/web/src/lib/api/cast.ts, scripts/deploy-check.mjs]
+api: [GET /api/cast, POST /api/cast/sync, PUT /api/scenes/:id/cast, DELETE /api/scenes/:id/cast]
+code: [apps/server/src/cast.ts, apps/server/src/stash.ts, apps/web/src/pages/Settings.tsx, apps/web/src/components/CastFilter.tsx, apps/web/src/components/CastLine.tsx, apps/web/src/lib/api/cast.ts, scripts/deploy-check.mjs]
 related: [cast-taxonomy, blocklist-and-exclusions, vault, browse-and-filters, data-model]
 ---
 
@@ -32,6 +32,11 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
   Other Any / None / 1+ / 2+ / Exactly 1, and Mix chips (any of, with counts). `CastFilter.tsx`
   writes them as the includes and excludes in the table below into `tags` / `xtags` and reads
   them back, so pinned rows, stations, the Vault and shared URLs carry them.
+- **Set by hand**: the scene page's details show "Cast: 1 woman, 1 man" with Edit (women, men,
+  other steppers; Save; Use performers). Saving stores an override in `cast_overrides`
+  ([[data-model]]) and runs the sync, so the categories follow in about 3 s. For a video whose
+  performers in Stash miss someone (one not on StashDB). Settings → Cast lists them under "Set
+  by hand", each with Use performers. Since 2026-11-09.
 - **`Cast: M` is blocked** by the first sync (once; `settings.castSetup`), as the user chose. A
   solo male scene is `Cast: M` too (merged, by choice).
 
@@ -46,7 +51,7 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
 ## How
 
 - `syncCast()` reads every scene's performer genders and categories in one uncached query
-  (`castInputs`), compares with `castOf()`, and fixes each category with bulk add / remove
+  (`castInputs`) and the overrides, compares with `castOf()` (or `castFrom()` of the override), and fixes each category with bulk add / remove
   (`bulkSceneUpdate`, 500 ids a call). Categories are created on first run (`ensureTags`).
 - Runs 90 s after start, a minute after Stash reports changes (debounced), and from Settings.
   Its own writes trigger one more pass that finds nothing to do.
@@ -60,6 +65,8 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
 - Library on 2026-11-09: 1,716 performers (1,349 F, 362 M, 5 non-binary, none without a gender),
   2,753 videos: F+M 2,290, F 360, Unknown 80, M+X 10, F+M+X 9, F+X 3, M 1.
 - Counts cap at 3+ (women, men) and 2+ (other); FMMM+ (210 videos) all read Men 3+.
-- A performer with a wrong gender in Stash files the video wrongly; only a missing gender becomes
-  Unknown.
+- A performer with a wrong gender in Stash files the video wrongly, and so does a performer
+  missing from the video (the first case, 2026-11-09: a men-only video that has a woman nobody
+  identified); only a missing gender becomes Unknown. Fix the performer in Stash, or set the cast
+  by hand. An override outlives later changes to the performers: drop it once Stash is right.
 - Not in Discover yet: the StashDB mirror stores no performer genders.

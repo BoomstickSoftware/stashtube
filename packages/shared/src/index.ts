@@ -115,6 +115,7 @@ export interface SceneDetail extends SceneCard {
   playback: Playback
   markers: Marker[]
   hidden: boolean // "Not interested": kept out of every list (Settings lists them, to undo)
+  cast: SceneCast
 }
 
 export interface Page<T> {
@@ -379,6 +380,23 @@ export interface CastStatus {
   mixes: CastTag[] // one per scene: the letters present (F woman, M man, X other), or Unknown
   counts: CastTag[] // cumulative thresholds: Women 1+..3+, Men 1+..3+, Other 1+..2+
   lastSync: { at: string; scenes: number; added: number; removed: number; ms: number; error: string | null } | null
+  overrides: CastOverride[] // videos whose cast was set by hand
+}
+// Counts of women (F), men (M) and others (X) in one video.
+export interface CastCount {
+  F: number
+  M: number
+  X: number
+}
+export interface CastOverride extends CastCount {
+  sceneId: string
+  title: string
+}
+// A video's cast on its page: from its performers (null counts when one has no gender) or by hand.
+export interface SceneCast {
+  counts: CastCount | null
+  override: boolean
+  performers: CastCount | null // what the performers alone say
 }
 
 export type StationMode = 'full' | 'moments'

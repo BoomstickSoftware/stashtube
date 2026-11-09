@@ -25,6 +25,7 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
 | `playlist_items` | `(playlist_id, scene_id)` with `position` | `scene_id` is Stash's id as text; cascade on playlist delete |
 | `blocks` | the blocklist: `(kind ∈ tag/performer/studio, stash_id)` plus `name` at block time | the name lets Settings render the list without Stash ([[blocklist-and-exclusions]]) |
 | `unlisted` | Unlisted entities: `(kind ∈ tag/performer/studio, stash_id)` plus `name` when unlisted; never also in `blocks` | since 2026-11-09 ([[vault]]); _`edu_tags` held the Edu categories that morning, migrated in `0008` and dropped in `0009`_ |
+| `cast_overrides` | a video's cast set by hand: `scene_id` → `women`, `men`, `other`, `title` | the Cast sync files the video by these instead of performer genders ([[cast]], since 2026-11-09) |
 | `settings` | `key → jsonb value` | small preferences shared across devices: per-studio intro skip, panic URL, `playOnOpen`, `people` defaults, `featured` weights ([[settings-next-to-page]]); `performerGender` is still stored and accepted but read by nothing since 2026-10-31 (the switch is per browser, [[gender-switch-performers-page-only]]) |
 | `saved_rows` | Browse filters pinned to Home as rows: `title`, `query` jsonb, `position` | [[home-feed]] |
 | `stations` | named stations: `query` jsonb or `from_scene`, `mode` full/moments, `window` seconds, `position` | [[stations]] |

@@ -5,6 +5,7 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, Radio, Trash2, Vault } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
+import { CastLine } from '../components/CastLine'
 import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { PlayerSlot } from '../components/NowPlaying'
 import { Moments } from '../components/Moments'
@@ -252,6 +253,7 @@ function SceneView({ id }: { id: string }) {
         </div>
         {scene.details && <p className="mt-2 whitespace-pre-line text-white/80">{scene.details}</p>}
         {scene.director && <div className="mt-2 text-xs text-muted">Director: {scene.director}</div>}
+        <CastLine scene={scene} />
         <TagEditor scene={scene} />
         {/* File path, format and source links: only wanted for technical reasons, so folded. */}
         {(scene.file || scene.urls.length > 0) && (
