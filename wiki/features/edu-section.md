@@ -44,17 +44,21 @@ drops the cached Home feed and the web refetches every list.
 ## How
 
 - `exclusions()` carries `eduTags` (always) and `holdEdu` (off). `curated()` in `edu.ts` turns
-  it on for Home and Featured; `withExclusions` then adds a `tags EXCLUDES <edu> depth 0` level.
+  it on for Home and Featured; `withExclusions` then merges the Edu categories into the blocked
+  tags' one `tags EXCLUDES … depth -1` criterion (_a separate depth-0 level until 2026-11-09 was
+  ignored by Stash_, [[second-tags-exclusion-ignored]]).
 - `sceneFilter`: `edu` adds `tags INCLUDES <edu>` (with no Edu categories, `id EQUALS 0`, so
   nothing); `noEdu` turns the hold on; `edu` or a named Edu category turns it off.
 - After-the-fact filters (`isBlocked`: Because you watched, station resume) honour `holdEdu`.
 - `relatedSide()` picks the side for related videos; `relatedScenes(…, within)` restricts to Edu.
 - The station queue (`lib/station.ts`) asks `/scenes` with `noEdu=1`; previews and covers set it
   on the server.
-- Depth 0: a child of an Edu category is not Edu unless it is on the list itself.
+- Depth: the hold reaches child categories (depth -1, as the blocklist), but `/edu` and the
+  related-videos side test depth 0, so a child of an Edu category is held out yet listed on
+  `/edu` only if it is on the list itself.
 
 ## Limits and numbers
 
 - With no Edu categories (the state at deploy, 2026-11-09) no query changes shape.
-- Not verified against Stash before shipping (no local `.env` on 2026-11-09); the criteria are
-  the same generated types the blocklist and related videos already send.
+- `node scripts/deploy-check.mjs` checks the hold after every deploy once a category is set: no
+  Edu video on Home (pinned rows aside) or Featured, and `noEdu` smaller than the library.

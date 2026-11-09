@@ -70,4 +70,33 @@ for (const path of ROUTES) {
   }
 }
 console.log(bad ? `${bad} route(s) failed` : `all ${ROUTES.length} routes answered 200`)
+
+// The Edu hold (wiki features/edu-section): with Edu categories set, no Edu video may reach a
+// Home row flix fills itself (pinned rows may name one) or the Featured row, and `noEdu` must
+// shrink the library. Shipped broken once, when Stash ignored the exclusion (2026-11-09).
+const json = async (path) => (await fetch(`${FLIX}${path}`, { signal: AbortSignal.timeout(30000) })).json()
+try {
+  const eduTags = await json('/api/edu/tags')
+  if (!Array.isArray(eduTags) || !eduTags.length) console.log('edu  -    no Edu categories; hold not checked')
+  else {
+    const edu = await json('/api/scenes?edu=1&perPage=120')
+    const ids = new Set(edu.items.map((s) => s.id))
+    const [all, held, home, featured] = await Promise.all([
+      json('/api/scenes?perPage=1'),
+      json('/api/scenes?noEdu=1&perPage=1'),
+      json('/api/home'),
+      json('/api/featured?seed=deploy-check&limit=60'),
+    ])
+    const leaks = [
+      ...home.filter((r) => !String(r.key).startsWith('saved-')).flatMap((r) => r.items.filter((s) => ids.has(s.id)).map((s) => `${r.key}:${s.id}`)),
+      ...featured.filter((s) => ids.has(s.id)).map((s) => `featured:${s.id}`),
+    ]
+    const shrinks = !edu.total || held.total < all.total
+    if (leaks.length || !shrinks) bad++
+    console.log(`${leaks.length || !shrinks ? 'FAIL' : 'ok  '} edu  ${edu.total} Edu videos; noEdu ${held.total} of ${all.total}; ${leaks.length ? `leaks ${leaks.join(' ')}` : 'none on Home or Featured'}`)
+  }
+} catch (e) {
+  bad++
+  console.log(`FAIL edu  ${e instanceof Error ? e.message : e}`)
+}
 process.exit(bad || !match ? 1 : 0)

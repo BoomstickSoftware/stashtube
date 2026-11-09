@@ -57,7 +57,7 @@
     {
       "name": "deploy-check",
       "file": "scripts/deploy-check.mjs",
-      "does": "After a push: waits for /healthz on the cluster to report the pushed sha, then GETs the smoke routes and prints each status; shows the deployment's image when kubectl is present. Read-only.",
+      "does": "After a push: waits for /healthz on the cluster to report the pushed sha, then GETs the smoke routes and prints each status, and with Edu categories set fails if an Edu video is on Home or Featured or noEdu does not shrink the library; shows the deployment's image when kubectl is present. Read-only.",
       "usage": [
         "node scripts/deploy-check.mjs             # waits for HEAD, up to 10 min",
         "node scripts/deploy-check.mjs <sha>       # a specific commit",

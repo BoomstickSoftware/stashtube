@@ -276,3 +276,8 @@ Browse and search; Edu plays do not steer recommendations; "Edu" at /edu with a 
 icon; categories managed on their page and in Settings → [[edu-section]],
 [[edu-section-held-out-of-curated-views]], [[2026-11-09-edu-section]]; updated
 [[blocklist-and-exclusions]], [[home-feed]], [[related-videos]], [[stations]], [[data-model]].
+
+## [2026-11-09] correct | Edu hold ignored by Stash
+Edu videos stayed on Featured and Recently added: Stash ignored a second `tags EXCLUDES` level.
+Merged into the blocklist's criterion; deploy-check now tests the hold →
+[[second-tags-exclusion-ignored]], [[edu-section]], [[2026-11-09-edu-section]].

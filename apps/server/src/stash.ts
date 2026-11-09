@@ -482,10 +482,13 @@ const minResolution: Record<number, ResolutionEnum> = {
 function withExclusions(filter: SceneFilterType, ex: Exclusions, extra: SceneFilterType[] = []): SceneFilterType {
   const parts: SceneFilterType[] = [...extra]
   const people = peopleCriterion(ex.people)
-  if (ex.tags.length) parts.push({ tags: { value: ex.tags, modifier: 'EXCLUDES', depth: -1 } })
+  // Edu categories join the blocked tags in the one criterion: a second `tags EXCLUDES` (depth 0,
+  // its own AND level) was ignored by Stash, so Edu videos stayed on Home (2026-11-09, wiki
+  // gotchas/second-tags-exclusion-ignored)
+  const tagsOut = ex.holdEdu && ex.eduTags?.length ? [...new Set([...ex.tags, ...ex.eduTags])] : ex.tags
+  if (tagsOut.length) parts.push({ tags: { value: tagsOut, modifier: 'EXCLUDES', depth: -1 } })
   if (ex.performers.length) parts.push({ performers: { value: ex.performers, modifier: 'EXCLUDES' } })
   if (ex.studios.length) parts.push({ studios: { value: ex.studios, modifier: 'EXCLUDES', depth: -1 } })
-  if (ex.holdEdu && ex.eduTags?.length) parts.push({ tags: { value: ex.eduTags, modifier: 'EXCLUDES', depth: 0 } })
   // last: it may hold an OR, and Stash allows no AND beside an OR
   if (people) parts.push(people)
   let node = filter
