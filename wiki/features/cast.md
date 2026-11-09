@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-09
 updated: 2026-11-09
 api: [GET /api/cast, POST /api/cast/sync]
-code: [apps/server/src/cast.ts, apps/server/src/stash.ts, apps/web/src/pages/Settings.tsx, apps/web/src/lib/api/cast.ts, scripts/deploy-check.mjs]
+code: [apps/server/src/cast.ts, apps/server/src/stash.ts, apps/web/src/pages/Settings.tsx, apps/web/src/components/CastFilter.tsx, apps/web/src/lib/api/cast.ts, scripts/deploy-check.mjs]
 related: [cast-taxonomy, blocklist-and-exclusions, vault, browse-and-filters, data-model]
 ---
 
@@ -28,6 +28,10 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
   `Cast: Other 1+`, `2+`. Two women and a man carry Women 1+, Women 2+ and Men 1+.
 - **Settings → Library → Cast**: each mix with its count and Normal / Unlisted / Blocked (the
   category's own block and unlist); the last sync; Sync now.
+- **Browse → Filters → Cast**: Women and Men each Any / None / 1+ / 2+ / 3+ / Exactly 1 / 2,
+  Other Any / None / 1+ / 2+ / Exactly 1, and Mix chips (any of, with counts). `CastFilter.tsx`
+  writes them as the includes and excludes in the table below into `tags` / `xtags` and reads
+  them back, so pinned rows, stations, the Vault and shared URLs carry them.
 - **`Cast: M` is blocked** by the first sync (once; `settings.castSetup`), as the user chose. A
   solo male scene is `Cast: M` too (merged, by choice).
 
@@ -50,6 +54,9 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
 
 ## Limits and numbers
 
+- First production sync (2026-11-09): 2,774 videos, 9,019 categories added in 31 s; the mixes add
+  up to the library. Men 1+ with exactly 2 women: 390 videos, the same through the filter panel
+  and the API.
 - Library on 2026-11-09: 1,716 performers (1,349 F, 362 M, 5 non-binary, none without a gender),
   2,753 videos: F+M 2,290, F 360, Unknown 80, M+X 10, F+M+X 9, F+X 3, M 1.
 - Counts cap at 3+ (women, men) and 2+ (other); FMMM+ (210 videos) all read Men 3+.

@@ -27,3 +27,11 @@ related: [cast, cast-taxonomy]
 - `scripts/phone-flow.mjs` at 440×956 with `/api/cast` stubbed: the Cast rows, levels, 44 px
   controls, no overflow.
 - After deploy: see the deploy of this commit (the sync's first run in production).
+
+## The Browse filter (same day)
+
+- `CastFilter.tsx` in the filter panel: per-letter counts and Mix chips compiled to `tags` / `xtags`.
+- Verified against production at 440×956: Men 1+ and Women exactly 2 gave "Show 390 videos", the
+  URL `tags=<Men 1+>,<Women 2+>&xtags=<Women 3+>`, and 390 in Browse, matching the API.
+- First production sync: 2,774 videos, 9,019 adds in 31 s, `Cast: M` blocked, mixes summing to
+  the library (`deploy-check.mjs`: "mixes hold 2774 of 2774").

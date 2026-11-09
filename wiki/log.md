@@ -320,3 +320,7 @@ the deploy check no longer trusts a refreshing list for its normal video.
 User chose F / M / X letters (trans and non-binary as X), one mix plus cumulative counts as Stash
 categories kept in sync by flix, and Cast: M blocked → [[cast-taxonomy]], [[cast]],
 [[2026-11-09-cast-categories]]; [[data-model]].
+
+## [2026-11-09] ingest | Browse Cast filter
+Filters → Cast: per-letter counts and Mix chips as category includes / excludes → [[cast]],
+[[2026-11-09-cast-categories]].

@@ -1,4 +1,5 @@
 import type { SceneFacets, SceneQuery } from '@flix/shared'
+import { CastFilter } from './CastFilter'
 import clsx from 'clsx'
 import { Building2, Check, EyeOff, Minus, Plus, Search, SlidersHorizontal, Tag, Type, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -132,6 +133,9 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
             Age and ethnicity need one performer who matches both, and replace your Settings defaults here.
           </p>
         </div>
+      </Section>
+      <Section title="Cast">
+        <CastFilter query={q} onChange={onChange} />
       </Section>
       <Section title="Blocked">
         <Toggle on={!!q.unblocked} onChange={(v) => onChange({ unblocked: v || undefined })}>
