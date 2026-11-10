@@ -4,6 +4,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { AddFilterButton } from '../components/AddFilter'
 import { BlockButton, BlockedNotice, FollowButton, HeaderSkeleton, UnlistButton, UnlistedNotice } from '../components/EntityHeader'
 import { SceneBrowser } from '../components/SceneBrowser'
+import { StudioCategories } from '../components/StudioCategories'
 import { Chip, ErrorBox } from '../components/ui'
 import { WantedShelf } from '../components/WantedRow'
 import { useFavoriteStudio, useStudio } from '../lib/api'
@@ -57,6 +58,7 @@ function StudioHeader({ id, s }: { id: string; s: StudioDetail }) {
           <UnlistButton kind="studio" id={id} name={s.name} />
           <BlockButton kind="studio" id={id} name={s.name} />
         </div>
+        <StudioCategories id={id} name={s.name} />
         {s.children.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {s.children.map((c) => (

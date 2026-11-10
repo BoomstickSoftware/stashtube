@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
 import { byNameMatch } from './rank.ts'
 import { castStatus, sceneCast, setOverride, syncCast } from './cast.ts'
+import { setStudioCategories, studioCategoriesStatus, studioCategoryList, syncStudioCategories } from './studioCategories.ts'
 import { expireContinue } from './continue.ts'
 import { curated, dropHiddenWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
@@ -786,6 +787,21 @@ api.delete('/blocklist/:kind/:id', async (c) => {
   await unblock(parse(kind, c.req.param('kind')), c.req.param('id'))
   kickSync()
   return c.body(null, 204)
+})
+
+// --- Studio default categories (studioCategories.ts, wiki features/studio-default-categories) ---
+
+api.get('/studio-categories', async (c) => c.json(await studioCategoriesStatus()))
+// writes categories in Stash (the user asked for studio defaults to be kept on its videos, 2026-11-09)
+api.post('/studio-categories/sync', async (c) => {
+  await syncStudioCategories()
+  return c.json(await studioCategoriesStatus())
+})
+api.get('/studios/:id/categories', async (c) => c.json({ tags: await studioCategoryList(c.req.param('id')) }))
+api.put('/studios/:id/categories', async (c) => {
+  const { tagIds } = parse(z.object({ tagIds: z.array(z.string().regex(/^\d+$/)).max(50) }), await c.req.json())
+  const studio = (await stash.getStudio(c.req.param('id'))) ?? notFound()
+  return c.json(await setStudioCategories(studio.id, studio.name, tagIds))
 })
 
 // --- Cast categories (cast.ts, wiki features/cast) ------------------------------------

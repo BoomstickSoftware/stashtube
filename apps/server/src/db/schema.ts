@@ -197,3 +197,30 @@ export const getQueue = pgTable('get_queue', {
   attempts: integer('attempts').notNull().default(0),
   lastError: text('last_error'),
 })
+
+// Studio default categories (wiki features/studio-default-categories): flix keeps each on every
+// video of the studio itself (sub-studios have their own). Names are kept so Settings renders
+// without Stash.
+export const studioCategories = pgTable(
+  'studio_categories',
+  {
+    studioId: text('studio_id').notNull(),
+    studioName: text('studio_name').notNull(),
+    tagId: text('tag_id').notNull(),
+    tagName: text('tag_name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.studioId, t.tagId] })],
+)
+
+// Which videos the studio-defaults sync gave a category to (they lacked it). Only these lose it
+// when it stops being a default of their studio: a category Stash or StashDB put there stays.
+export const studioCategoryAdds = pgTable(
+  'studio_category_adds',
+  {
+    sceneId: text('scene_id').notNull(),
+    tagId: text('tag_id').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.sceneId, t.tagId] })],
+)

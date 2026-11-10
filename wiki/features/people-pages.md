@@ -9,7 +9,7 @@ updated: 2026-11-09
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
 code: [apps/web/src/pages/Directories.tsx, apps/web/src/pages/Performer.tsx, apps/web/src/pages/Studio.tsx, apps/web/src/pages/Tag.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/components/People.tsx, apps/server/src/api.ts]
-related: [browse-and-filters, whisparr-shelf, library-before-wanted-shelf, categories-and-us-spelling, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations, gender-switch-performers-page-only]
+related: [studio-default-categories, browse-and-filters, whisparr-shelf, library-before-wanted-shelf, categories-and-us-spelling, blocklist-and-exclusions, stash-owns-activity, playlists-and-favorites, stations, gender-switch-performers-page-only]
 ---
 
 # Performer, studio and tag pages
@@ -86,3 +86,6 @@ only from their page or the table view.
 
 `pages/Directories.tsx` holds all three directories; `EntityHeader.tsx` the shared header.
 Blocked ids are dropped after each finder query ([[stash-filters-have-no-id-criterion]]).
+
+A studio page also shows its **Default categories** under the header buttons, which flix keeps on
+every video of that studio ([[studio-default-categories]], since 2026-11-09).

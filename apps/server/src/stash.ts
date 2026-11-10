@@ -1724,6 +1724,19 @@ export async function bulkSceneTags(sceneIds: string[], add: string[], remove: s
   await acceptOwnChanges()
 }
 
+// Every scene's studio and categories, fresh (the studio-defaults sync).
+export async function studioTagInputs(): Promise<{ id: string; studioId: string | null; tagIds: string[] }[]> {
+  const d = await gql<Pick<Query, 'findScenes'>>(`{ findScenes(filter: { per_page: -1 }) { scenes { id studio { id } tags { id } } } }`)
+  return d.findScenes.scenes.map((s) => ({ id: s.id, studioId: s.studio?.id ?? null, tagIds: s.tags.map((t) => t.id) }))
+}
+
+// These categories' names, fresh; ids Stash no longer has are left out.
+export async function tagsByIds(ids: string[]): Promise<{ id: string; name: string }[]> {
+  if (!ids.length) return []
+  const d = await gql<Pick<Query, 'findTags'>>(`query($ids: [ID!]) { findTags(ids: $ids, filter: { per_page: -1 }) { tags { id name } } }`, { ids })
+  return d.findTags.tags.map((t) => ({ id: t.id, name: t.name }))
+}
+
 // Scene counts of these categories (the Settings Cast list).
 export async function tagCounts(ids: string[]): Promise<Map<string, number>> {
   if (!ids.length) return new Map()

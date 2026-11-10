@@ -85,6 +85,13 @@
       "when": 1794260101894,
       "tag": "0011_abandoned_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794279967965,
+      "tag": "0012_studio_categories",
+      "breakpoints": true
     }
   ]
 }

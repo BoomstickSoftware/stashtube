@@ -380,7 +380,7 @@ export interface CastTag {
 export interface CastStatus {
   mixes: CastTag[] // one per scene: the letters present (F woman, M man, X other), or Unknown
   counts: CastTag[] // cumulative thresholds: Women 1+..3+, Men 1+..3+, Other 1+..2+
-  lastSync: { at: string; scenes: number; added: number; removed: number; ms: number; error: string | null } | null
+  lastSync: SyncRun | null
   overrides: CastOverride[] // videos whose cast was set by hand
 }
 // Counts of women (F), men (M) and others (X) in one video.
@@ -626,4 +626,24 @@ export interface DeleteResult {
   title: string | null
   ok: boolean
   error?: string
+}
+
+// One run of a flix sync that writes categories into Stash (Cast, studio defaults).
+export interface SyncRun {
+  at: string
+  scenes: number // videos read
+  added: number // category additions written
+  removed: number // category removals written
+  ms: number
+  error: string | null
+}
+
+// Studio default categories (wiki features/studio-default-categories): flix keeps them on every
+// video of that studio (not its sub-studios).
+export interface StudioCategories {
+  tags: Ref[]
+}
+export interface StudioCategoriesStatus {
+  studios: { id: string; name: string; tags: Ref[] }[]
+  lastSync: SyncRun | null
 }

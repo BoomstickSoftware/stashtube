@@ -11,6 +11,7 @@ import { ManageRows } from '../components/ManageRows'
 import { PeopleControls } from '../components/People'
 import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
+import { StudioCategoriesSetting } from '../components/StudioCategories'
 import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
@@ -60,6 +61,7 @@ export function Settings(): JSX.Element {
           <WhisparrSyncSetting />
           <HideVrSetting />
           <CastSetting />
+          <StudioCategoriesSetting />
           <HiddenSetting />
         </Group>
         <Group id="feed" title="Feed">

@@ -12,6 +12,7 @@ import { api, homeRows } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { exclusions } from './blocklist.ts'
 import { syncCast } from './cast.ts'
+import { syncStudioCategories } from './studioCategories.ts'
 import { startContinueExpiry } from './continue.ts'
 import { hostGuard, playbackOrigin, sameOriginWrites, securityHeaders } from './guard.ts'
 import { config } from './config.ts'
@@ -150,9 +151,11 @@ warm()
 // Cast categories follow performer changes (cast.ts) and are put right before the warm, so the
 // sync's own tag writes do not expire what was just warmed (_until 2026-11-09 the sync ran a
 // minute after the warm and set off a second one_).
-onStashChange(() => void syncCast().finally(warm))
+// Studio default categories follow the same way, after the Cast sync (studioCategories.ts).
+const syncCategories = () => syncCast().then(syncStudioCategories)
+onStashChange(() => void syncCategories().finally(warm))
 onStashChange(scheduleSweep())
-setTimeout(() => void syncCast(), 90_000).unref() // and are checked once after start
+setTimeout(() => void syncCategories(), 90_000).unref() // and are checked once after start
 startContinueExpiry() // resume points untouched for 30 days leave Continue (continue.ts)
 startSync() // the Whisparr guard: a few minutes after start, then every 15 minutes (sync.ts)
 startGetQueue() // paced Gets, weekly re-search of waiting scenes, daily discovery (getqueue.ts)

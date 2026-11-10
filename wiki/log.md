@@ -391,3 +391,6 @@ The deploy check caught /api/featured 502: Stash's findScenes(ids) fails on one 
 
 ## [2026-11-09] ingest | Bulk categories
 At the user's request: add and remove categories on the selected videos or on every video in a list (a studio page covers the studio's whole library). POST /api/scenes/tags, BulkTagsSheet. Pages: browse-and-filters; history 2026-11-09-bulk-categories.
+
+## [2026-11-09] decide | Studio default categories
+User decisions: defaults stored in flix (not Stash's studio tags), own videos only (no sub-studios), put back if removed by hand, removal only where flix added them (provenance table). Neither Stash nor Whisparr copies studio categories to scenes. Pages: decisions/studio-defaults-stored-in-flix, features/studio-default-categories, data-model; history 2026-11-09-studio-default-categories.
