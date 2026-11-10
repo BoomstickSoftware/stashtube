@@ -2,23 +2,23 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, ExternalLink, FolderOpen, ListVideo, ListX, Radio, Trash2, Vault } from 'lucide-react'
+import { Droplet, Ellipsis, ExternalLink, FolderOpen, ListVideo, Radio } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { CastLine } from '../components/CastLine'
-import { DeleteScenesDialog } from '../components/DeleteScenes'
+import { CardMenu } from '../components/CardMenu'
 import { PlayerSlot } from '../components/NowPlaying'
 import { Moments } from '../components/Moments'
-import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEditor'
+import { EditableTitle, IdentifyStatus, TagEditor } from '../components/SceneEditor'
+import { useIdentify } from '../lib/identify'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { cachedCard, useAddO, useClearContinue, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useSceneEdits, useUnlistScene } from '../lib/api'
+import { cachedCard, useAddO, usePlaylist, useRateScene, useRelated, useScene, useSettings, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
-import { showToast } from '../lib/toast'
 import { asBool, useStored } from '../lib/storage'
 import { sized, srcSet } from '@flix/shared'
 
@@ -44,11 +44,9 @@ function SceneView({ id }: { id: string }) {
   const playlist = usePlaylist(playlistId)
   const rate = useRateScene()
   const addO = useAddO()
-  const unlist = useUnlistScene()
-  const clearContinue = useClearContinue()
   const edits = useSceneEdits(id)
-  const { data: features } = useFeatures()
-  const [deleting, setDeleting] = useState(false)
+  const identify = useIdentify(id)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
   const [autoplay, setAutoplay] = useStored('flix.autoplay', asBool(true))
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -164,25 +162,21 @@ function SceneView({ id }: { id: string }) {
             <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}
           </button>
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
-          <button
-            onClick={() => {
-              const on = !scene.unlisted
-              unlist.mutate({ id: scene.id, unlisted: on })
-              if (on)
-                showToast(
-                  'Unlisted: in the Vault, off Home',
-                  <button onClick={() => unlist.mutate({ id: scene.id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-                    Undo
-                  </button>,
-                )
-            }}
-            title={scene.unlisted ? 'Show it on Home and in recommendations again' : 'Unlist: keep it off Home, stations and recommendations; list it in the Vault'}
-            aria-pressed={scene.unlisted}
-            className={clsx('inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm hover:bg-line', scene.unlisted ? 'bg-white text-black hover:bg-white/80' : 'bg-raised')}
-          >
-            <Vault size={17} /> {scene.unlisted ? 'Unlisted ✓' : 'Unlist'}
-          </button>
           <PlaylistMenu sceneId={scene.id} />
+          {/* the rest (Mark as watched, Remove from Continue, Unlist, Identify, Delete) in the
+              same menu a card's "⋯" opens */}
+          <button
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect()
+              setMenu({ x: r.left, y: r.bottom + 6 })
+            }}
+            title="More actions"
+            aria-label="More actions"
+            aria-haspopup="menu"
+            className={clsx('inline-flex items-center rounded-full px-3 py-2 hover:bg-line touch:min-h-11 touch:px-3.5', scene.unlisted ? 'bg-white text-black hover:bg-white/80' : 'bg-raised')}
+          >
+            <Ellipsis size={18} />
+          </button>
         </div>
         {scene.unlistedVia.length > 0 && (
           <p className="mt-3 text-sm text-muted">
@@ -262,33 +256,13 @@ function SceneView({ id }: { id: string }) {
             )}
           </>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {scene.resumeTime > 0 && (
-            <button
-              onClick={() => clearContinue.mutate([scene.id], { onSuccess: () => showToast('Removed from Continue') })}
-              title="Clear the resume point; plays and History stay"
-              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
-            >
-              <ListX size={17} /> Remove from Continue
-            </button>
-          )}
-          <IdentifyButton scene={scene} />
-          {/* destructive, so away from the everyday actions above the fold */}
-          {features?.deleteScenes && (
-            <button
-              onClick={() => setDeleting(true)}
-              title="Not interested? Delete the video (it will not be downloaded again)"
-              className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm text-red-400 hover:bg-red-500/15"
-            >
-              <Trash2 size={17} /> Delete
-            </button>
-          )}
-        </div>
-        {deleting && (
-          <DeleteScenesDialog
-            scenes={[{ id: scene.id, title: scene.title, size: scene.file?.size }]}
-            onClose={() => setDeleting(false)}
-            onDeleted={() => (window.history.length > 1 ? window.history.back() : navigate({ to: '/' }))}
+        <IdentifyStatus identify={identify} />
+        {menu && (
+          <CardMenu
+            scene={scene}
+            at={menu}
+            onClose={() => setMenu(null)}
+            page={{ unlisted: scene.unlisted, identify, onDeleted: () => (window.history.length > 1 ? window.history.back() : navigate({ to: '/' })) }}
           />
         )}
       </div>

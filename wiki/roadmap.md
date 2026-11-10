@@ -46,9 +46,7 @@ From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initi
 - **C. Background load** (S–M): done, [[2026-11-09-background-load]].
 - **D. One "Hide" model** (M): done, [[2026-11-09-hide-model]] (decision
   [[hide-means-delete-block-or-unlist]]); the Hidden section stays in Settings until G.
-- **E. Scene page "⋯" sheet** (S): Stars, O, Favorite, Playlist stay in the row; the rest
-  (Unlist, Mark as watched, Remove from Continue, Identify, Delete) in a sheet shared with
-  `CardMenu`.
+- **E. Scene page "⋯" menu** (S): done, [[2026-11-09-scene-menu]].
 - **F. History** (M): repeat plays of a video grouped per day, paged, Select and bulk remove,
   Undo instead of `window.confirm` where Stash allows.
 - **G. Navigation** (M–L), decision [[five-tab-navigation]]: five tabs, a You section, a

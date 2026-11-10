@@ -67,7 +67,7 @@ part of the query, so the Filters count and chips never showed why a list was sh
 
 Category tiles, multi-select with bulk Favorite, Add to playlist and Delete (icons only below
 `sm`; a page may put its own action first, as Continue's Remove, `bulkActions`), and the card
-menu (right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
+menu (`CardMenu.tsx`, also the scene page's ⋯ since 2026-11-09, [[scene-page]]; right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
 Save to playlist…, Mark as watched (unwatched or with a resume point), Remove from Continue
 (with a resume point), Unlist, and **Not interested: delete…** (opens the delete dialog, on
 phones too since 2026-11-09, [[hide-means-delete-block-or-unlist]]); "Station from

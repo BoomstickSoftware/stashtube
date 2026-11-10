@@ -370,3 +370,6 @@ for a new seed 21 ms. Before: 31–39 ms of ranking on every call ([[featured-ra
 
 ## [2026-11-09] ingest | One hide model shipped (initiative D)
 Block left the library lists (downloads only: Discover, the not-downloaded shelf, the automatic Gets); Not interested opens the delete; Settings has one Hidden section; Cleanup lists old Not interested videos. Rewrote blocklist-and-exclusions and CLAUDE.md rule 4; playlists-ignore-blocklist superseded; Cast: M block left inert at the user's word. History: 2026-11-09-hide-model.
+
+## [2026-11-09] ingest | Scene page ⋯ menu shipped (initiative E)
+The scene page's row is Stars, O, Favorite, Playlist, ⋯; ⋯ opens CardMenu in page mode (Mark as watched, Remove from Continue, Unlist, Identify, Delete). Identify's run moved into useIdentify so it survives the menu closing. History: 2026-11-09-scene-menu.

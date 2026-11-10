@@ -1,14 +1,14 @@
 ---
 title: Scene page
 kind: feature
-summary: What the video page shows and lets you change, from inline title and tag edits to Identify, rating, O, Favorite, Delete and the Moments list.
+summary: What the video page shows and lets you change, from inline title and tag edits to rating, O, Favorite, Playlist, the ⋯ menu (Mark as watched, Remove from Continue, Unlist, Identify, Delete) and the Moments list.
 tags: [scene, player, editing, stashdb]
 status: current
 verified: 2026-10-31
 updated: 2026-11-09
 routes: [/scene/$id]
 api: [GET /api/scenes/:id, PATCH /api/scenes/:id, PUT /api/scenes/:id/rating, POST /api/scenes/:id/o, POST /api/scenes/:id/identify, GET /api/jobs/:id, PUT /api/scenes/:id/hidden, GET /api/scenes/:id/related]
-code: [apps/web/src/pages/Scene.tsx, apps/web/src/components/SceneEditor.tsx, apps/web/src/components/Moments.tsx, apps/web/src/components/EntityHeader.tsx]
+code: [apps/web/src/pages/Scene.tsx, apps/web/src/components/SceneEditor.tsx, apps/web/src/components/Moments.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/lib/identify.ts, apps/web/src/components/CardMenu.tsx]
 related: [player, mini-player, moments, related-videos, delete-via-whisparr, browse-and-filters, stash-owns-activity]
 ---
 
@@ -32,17 +32,22 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
   finished job, or 202 with the running one, which `GET /api/jobs/:id` then follows from the
   page; the server keeps following it too, so its caches are dropped even if you leave the page
   (since 2026-10-31, audit F6; _before, leaving the page lost the result for a minute or two_).
-  The button says "Identified (no change means no StashDB match)" or "Identify failed: …"
-  ([[stashdb]], [[caching]]).
-- **Rating** (stars, half steps), **O** counter, **Favorite** heart (the built-in Favorites
-  playlist, [[playlists-and-favorites]]), _Not interested_ left the row on 2026-11-09: it means delete now, which is the
-  Delete below ([[hide-means-delete-block-or-unlist]]). **Delete** sits in the details card beside Identify since 2026-10-31 (_it was
-  in the action row next to Favorite_; destructive, so away from the everyday actions,
-  [[delete-via-whisparr]]).
-  **Mark as watched** is not on this page: it lives in the card's long-press / right-click
-  menu (`CardMenu.tsx`); **Remove from Continue** sits beside Identify when the video has a
-  resume point ([[continue-history-stats]], since 2026-11-09); _the page listed it until 2026-10-31_ (UX audit, F14 in
-  `docs/audits/2026-10-31-ux/ia.md`).
+  It is started from the ⋯ menu, which stays open and shows the progress; the run belongs to the
+  page (`useIdentify` in `lib/identify.ts`), so a status line under the details card keeps
+  showing it after the menu closes: "Identifying 40%…", then "Identified (no change means no
+  StashDB match)" or "Identify failed: …" ([[stashdb]], [[caching]]). _A button in the details
+  card until 2026-11-09._
+- **The action row**: **Rating** (stars, half steps), **O** counter, **Favorite** heart (the
+  built-in Favorites playlist, [[playlists-and-favorites]]), **Playlist**, and **⋯**. Since
+  2026-11-09 (initiative E, [[2026-11-09-scene-menu]]) the ⋯ opens the card's own menu
+  (`CardMenu` with `page`; a bottom sheet on touch, a menu under the button with a mouse)
+  without Play, Favorite and Playlist, which the row has: **Mark as watched** (unwatched or with
+  a resume point), **Remove from Continue** (with a resume point; toast), **Unlist** ("Unlisted:
+  show on Home again" when unlisted by hand; the ⋯ button turns white then), **Identify on
+  StashDB**, **Not interested: delete…** (the delete dialog; then back,
+  [[hide-means-delete-block-or-unlist]], [[delete-via-whisparr]]). _Until 2026-11-09_ Unlist was
+  in the row and Remove from Continue, Identify and Delete were buttons in the details card;
+  Mark as watched was only on cards.
 - **Playlist** opens the save-to-playlist menu (_the button said "Save" until 2026-10-31_).
 - **Station** by Related starts a drifting station from this scene ([[stations]]).
 - **+** next to each performer, the studio and each tag adds it to the stacked filters
