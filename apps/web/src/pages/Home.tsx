@@ -7,10 +7,10 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { PreviewVideo } from '../components/PreviewVideo'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
-import { Empty, ErrorBox } from '../components/ui'
+import { Bone, Empty, ErrorBox } from '../components/ui'
 import { WantedRow } from '../components/WantedRow'
 import { useMediaQuery } from '../lib/hooks'
-import { useMoreFeatured, homeSeed, markHomeSeen, shuffleSeed, useHome, useRowMutations, useStationResumes, useWhisparrNew } from '../lib/api'
+import { useMoreFeatured, homeSeed, markHomeSeen, shuffleSeed, useHome, useRowMutations, useScenes, useStationResumes, useWhisparrNew } from '../lib/api'
 import { QuerySummary } from '../components/QuerySummary'
 import { stationSearchFor } from '../lib/station'
 import { duration } from '../lib/format'
@@ -48,11 +48,27 @@ export function Home(): JSX.Element {
     return unique.sort((a, b) => rank(a.id) - rank(b.id))
   }, [data, seed])
   if (error) return <ErrorBox error={error} />
+  // the skeleton has the page's own shape (a hero, then rows), so nothing jumps when it arrives
   if (isLoading)
     return (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }, (_, i) => (
-          <SceneCardSkeleton key={i} />
+      <div role="status" aria-label="Loading" className="space-y-10">
+        <div>
+          <Bone className="aspect-video w-full rounded-2xl sm:aspect-[21/9]" />
+          <Bone className="mt-5 h-3 w-28" />
+          <Bone className="mt-3 h-8 w-4/5" />
+          <Bone className="mt-6 h-12 w-32 rounded-full" />
+        </div>
+        {[0, 1].map((r) => (
+          <div key={r}>
+            <Bone className="mb-3 h-6 w-40" />
+            <div className="flex gap-4 overflow-hidden">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="w-[72vw] shrink-0 sm:w-72">
+                  <SceneCardSkeleton />
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     )
@@ -64,6 +80,7 @@ export function Home(): JSX.Element {
   return (
     <div className="space-y-10">
       <Hero order={order} seed={seed} more={!!featuredRow} />
+      <ContinueStrip />
       {!featuredRow && <PickUpStations cover={order.at(-1)} />}
       {data.map((r) =>
         r.savedId ? (
@@ -87,6 +104,54 @@ export function Home(): JSX.Element {
       )}
       <NotDownloaded />
     </div>
+  )
+}
+
+// What was left part-way, most recent first, right under the hero: one tap resumes and plays
+// (decisions/continue-strip-on-home). A compact strip, not a row of cards: it is a shortcut to the
+// last few, and "All" opens the Continue list. Nothing in progress, no strip.
+function ContinueStrip() {
+  const { data } = useScenes({ inProgress: true, sort: 'last_played_at' }, 6)
+  const items = data?.pages[0]?.items ?? []
+  if (!items.length) return null
+  return (
+    <section aria-label="Continue watching">
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-lg font-bold">Continue watching</h2>
+        <Link to="/continue" className="ml-auto inline-flex min-h-11 items-center rounded-full px-3 text-sm text-muted hover:bg-raised hover:text-fg">
+          All
+        </Link>
+      </div>
+      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
+        {items.map((s) => {
+          const left = Math.max(0, s.durationSec - s.resumeTime)
+          return (
+            <Link
+              key={s.id}
+              to="/scene/$id"
+              params={{ id: s.id }}
+              search={{ play: true }}
+              className="press press-soft w-40 shrink-0 snap-start sm:w-52"
+              aria-label={`Resume ${s.title}`}
+            >
+              <span className="relative block aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5">
+                <img src={sized(s.screenshot, 320)} srcSet={srcSet(s.screenshot)} sizes="13rem" alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-black/60 backdrop-blur">
+                    <Play size={18} className="translate-x-px fill-white" />
+                  </span>
+                </span>
+                <span className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                  <span className="block h-full bg-accent" style={{ width: `${Math.min(100, (s.resumeTime / (s.durationSec || 1)) * 100)}%` }} />
+                </span>
+              </span>
+              <span className="mt-1.5 block truncate text-meta font-semibold">{s.title}</span>
+              <span className="block text-micro text-muted">{duration(left)} left</span>
+            </Link>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

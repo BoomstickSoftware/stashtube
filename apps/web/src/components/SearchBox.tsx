@@ -133,6 +133,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
               </div>
             </button>
           ))}
+          {hits.length === 1 && <div className="px-4 pt-1 pb-2 text-xs text-muted">No performer, studio, category or title matches. Enter searches every video.</div>}
         </div>
       )}
     </div>

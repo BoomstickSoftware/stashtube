@@ -39,8 +39,7 @@ export function Stations(): JSX.Element {
             <Radio size={22} className="text-accent" /> Stations
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Endless play. Start one from the list or the video you were just on, pick a ready-made one, or make your own; Save a
-            station you like to keep it here.
+            Endless play from a list you define.
           </p>
         </div>
         <Link

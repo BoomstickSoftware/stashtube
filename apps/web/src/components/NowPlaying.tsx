@@ -1,10 +1,11 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Maximize2, Pause, Play, X } from 'lucide-react'
-import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { log } from '../lib/diag'
 import { duration as fmt } from '../lib/format'
 import { nowPlaying, useNowPlaying, useNowPlayingStatus } from '../lib/nowPlaying'
+import { showToast } from '../lib/toast'
 import { Player } from './Player'
 
 // The scene page's placeholder: the host below lays the one Player over it. `children` is
@@ -127,9 +128,40 @@ function BackToVideo({ id }: { id: string }) {
 // page (Expand is the visible, finger-sized way; the picture and title taps are shortcuts).
 function MiniBar({ scene }: { scene: { id: string; title: string } }) {
   const status = useNowPlayingStatus()
+  // Stop is one tap next to Play, so it can be taken back: the toast resumes where it was.
+  const stop = () => {
+    const t = Math.floor(nowPlaying.time())
+    nowPlaying.close()
+    showToast(
+      'Stopped',
+      <Link to="/scene/$id" params={{ id: scene.id }} search={{ t: t > 0 ? t : undefined, play: true }} className="inline-flex min-h-9 shrink-0 items-center rounded-full bg-raised px-3 text-xs font-semibold hover:bg-line">
+        Resume
+      </Link>,
+      6000,
+    )
+  }
+  // a swipe down on the bar puts the player away, like a sheet
+  const swipe = useRef<{ x: number; y: number } | null>(null)
   return (
     <>
-      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 lg:px-3 lg:py-2">
+      {/* how far in, along the dock's top edge */}
+      <div aria-hidden className="absolute inset-x-0 top-0 z-20 h-0.5 bg-white/10">
+        <div className="h-full bg-accent" style={{ width: `${status.dur ? Math.min(100, (status.time / status.dur) * 100) : 0}%` }} />
+      </div>
+      <div
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 lg:px-3 lg:py-2"
+        onTouchStart={(e) => {
+          swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }}
+        onTouchEnd={(e) => {
+          const s = swipe.current
+          swipe.current = null
+          if (!s) return
+          const dy = e.changedTouches[0].clientY - s.y
+          const dx = Math.abs(e.changedTouches[0].clientX - s.x)
+          if (dy > 48 && dy > dx * 1.5) stop()
+        }}
+      >
         <Link to="/scene/$id" params={{ id: scene.id }} onClick={() => log('dock: tap title')} className="block min-w-0 flex-1 text-left">
           <div className="line-clamp-2 text-xs leading-snug font-semibold lg:text-sm">{scene.title}</div>
           <div className="text-[11px] text-muted tabular-nums">
@@ -142,7 +174,7 @@ function MiniBar({ scene }: { scene: { id: string; title: string } }) {
         <button onClick={() => nowPlaying.toggle()} className="flex items-center justify-center rounded-full p-2 hover:bg-raised touch:size-11" aria-label={status.playing ? 'Pause' : 'Play'}>
           {status.playing ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" />}
         </button>
-        <button onClick={() => nowPlaying.close()} className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:size-11" aria-label="Stop">
+        <button onClick={stop} className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:size-11" aria-label="Stop">
           <X size={20} />
         </button>
       </div>

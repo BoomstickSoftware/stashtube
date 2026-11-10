@@ -98,7 +98,7 @@ export function History(): JSX.Element {
         <Empty>Nothing watched yet.</Empty>
       ) : (
         <>
-          <div className="sticky top-16 z-10 -mx-4 mb-3 flex items-center gap-2 bg-bg/85 px-4 py-2 backdrop-blur-xl sm:mx-0 sm:px-0">
+          <div className="sticky top-(--header-top) z-10 transition-[top] duration-200 -mx-4 mb-3 flex items-center gap-2 bg-bg/85 px-4 py-2 backdrop-blur-xl sm:mx-0 sm:px-0">
             {selecting ? (
               <>
                 <span className="text-sm font-semibold">{picked.size} selected</span>

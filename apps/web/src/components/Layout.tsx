@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { SHARED_STALE } from '../lib/api/client'
 import { filterCount, useBrowseFilters } from '../lib/filters'
-import { useMediaQuery } from '../lib/hooks'
+import { useMediaQuery, useScrolledAway } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
 import { useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
@@ -38,6 +38,12 @@ const tabOf = (path: string) =>
 export function Layout(): JSX.Element {
   const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: SHARED_STALE })
   const [mobileSearch, setMobileSearch] = useState(false)
+  // on a phone the header slides away while reading down a page and returns on the first scroll up
+  const touch = useMediaQuery('(pointer: coarse)')
+  const away = useScrolledAway(touch && !mobileSearch)
+  useEffect(() => {
+    document.documentElement.classList.toggle('header-hidden', away)
+  }, [away])
   const { data: unfinished = 0 } = useContinueCount()
   const stacked = filterCount(useBrowseFilters()) // performers, studios and tags added with "+"
   const path = useRouterState({ select: (s) => s.location.pathname })
@@ -80,7 +86,13 @@ export function Layout(): JSX.Element {
     // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
     // hidden, keeps the sticky header working)
     <div ref={root} className="relative min-h-dvh overflow-x-clip pb-(--tabbar-h)">
-      <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
+      <header
+        className={clsx(
+          'sticky top-0 z-(--z-header) h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl transition-transform duration-200 ease-(--ease-standard)',
+          priv && 'border-t-2 border-t-private',
+          away && '-translate-y-full',
+        )}
+      >
         {/* no gap on phones: the 44 px icons carry their own spacing */}
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-0 px-4 sm:gap-4 sm:px-6">
           {canGoBack && (

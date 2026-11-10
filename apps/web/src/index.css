@@ -96,6 +96,21 @@
   }
 }
 
+/* Page changes cross-fade (router.tsx `defaultViewTransition`): short, so a tap never waits on it.
+   The fixed bars keep their own layer and do not fade with the page. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.16s;
+  animation-timing-function: var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 /* The named layers, lowest first. Anything fixed takes one of these, never a number of its own. */
 :root {
   --z-header: 40;
@@ -110,6 +125,11 @@
      one: what floats at the bottom (toasts, the bulk bar, the dock itself) sits above both */
   --tabbar-h: calc(4.5rem + env(safe-area-inset-bottom));
   --dock-h: 0px;
+  /* where a bar that sticks under the header sits; 0 while the header is scrolled away on a phone */
+  --header-top: 4rem;
+}
+html.header-hidden {
+  --header-top: 0px;
 }
 html.has-dock {
   --dock-h: 5.25rem;

@@ -215,7 +215,7 @@ function FilterBar({
   const n = filterTotal(query)
 
   return (
-    <div className="z-20 -mx-4 mb-6 border-b sm:sticky sm:top-16 border-white/5 bg-bg/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+    <div className="z-20 -mx-4 mb-6 border-b sm:sticky sm:top-(--header-top) border-white/5 bg-bg/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
       {/* one row on a phone (it scrolls sideways; the list's actions sit behind "More"), wrapping from sm */}
       <div className="no-scrollbar flex items-center gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible">
         <button

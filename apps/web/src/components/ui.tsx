@@ -45,6 +45,7 @@ export function Stars({
   readOnly?: boolean
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  const [set, setSet] = useState<number | null>(null) // the star just tapped pops once
   const shown = hover ?? value ?? 0
   return (
     <div className="flex items-center" onMouseLeave={() => setHover(null)} role={readOnly ? undefined : 'radiogroup'}>
@@ -58,12 +59,15 @@ export function Stars({
             aria-label={`${n} star${n > 1 ? 's' : ''}`}
             className={clsx('relative p-0.5 touch:p-2.5', !readOnly && 'cursor-pointer transition-transform hover:scale-110')}
             onMouseEnter={() => !readOnly && setHover(n)}
-            onClick={() => onChange?.(value === n ? null : n)}
+            onClick={() => {
+              setSet(value === n ? null : n)
+              onChange?.(value === n ? null : n)
+            }}
           >
             <Star size={size} className="text-white/25" strokeWidth={1.5} />
             {/* the fill's inset matches the button's padding, or it sits up and left of its outline */}
             {fill > 0 && (
-              <span className="absolute inset-0.5 overflow-hidden touch:inset-2.5" style={{ width: fill === 1 ? undefined : size / 2 }}>
+              <span key={set === n ? 'set' : 'still'} className={clsx('absolute inset-0.5 overflow-hidden touch:inset-2.5', set === n && 'animate-pop')} style={{ width: fill === 1 ? undefined : size / 2 }}>
                 <Star size={size} className="fill-star text-star" strokeWidth={1.5} />
               </span>
             )}
@@ -84,6 +88,7 @@ export function Button({
   disabled,
   type = 'button',
   'aria-expanded': expanded,
+  'aria-pressed': pressed,
 }: {
   children: ReactNode
   onClick?: () => void
@@ -94,6 +99,7 @@ export function Button({
   disabled?: boolean
   type?: 'button' | 'submit'
   'aria-expanded'?: boolean // for a disclosure button (About, Links)
+  'aria-pressed'?: boolean // for a toggle (Favorite)
 }) {
   return (
     <button
@@ -101,6 +107,7 @@ export function Button({
       title={title}
       disabled={disabled}
       aria-expanded={expanded}
+      aria-pressed={pressed}
       onClick={onClick}
       className={clsx(
         'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50',

@@ -126,7 +126,8 @@ export const SceneCard = memo(function SceneCard({
       <Link
         to="/scene/$id"
         params={{ id: scene.id }}
-        search={playlist ? { playlist } : {}}
+        // a video left part-way resumes and plays from any list: its progress bar is the promise
+        search={{ ...(playlist ? { playlist } : {}), ...(progress > 0 ? { play: true } : {}) }}
         aria-label={scene.title}
         className={clsx(
           'relative block aspect-video overflow-hidden rounded-xl bg-surface ring-1 ring-white/5',

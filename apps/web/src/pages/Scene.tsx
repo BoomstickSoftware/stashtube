@@ -44,6 +44,7 @@ function SceneView({ id }: { id: string }) {
   const related = useRelated(id)
   const playlist = usePlaylist(playlistId)
   const rate = useRateScene()
+  const [oTapped, setOTapped] = useState(false)
   const addO = useAddO()
   const edits = useSceneEdits(id)
   const identify = useIdentify(id)
@@ -148,13 +149,16 @@ function SceneView({ id }: { id: string }) {
             <AddFilterButton kind="studio" id={scene.studio.id} name={scene.studio.name} variant={touch ? 'chip' : 'icon'} />
           </div>
         )}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-full bg-raised px-2 py-1">
+        {/* with a mouse: one row of pills. Under a finger: the stars on a line of their own, then four
+            equal buttons, so the row never wraps unevenly and every target is 44 px */}
+        <div className="ml-auto flex flex-wrap items-center gap-2 touch:ml-0 touch:grid touch:w-full touch:grid-cols-4 touch:[&>button]:min-h-11 touch:[&>button]:w-full touch:[&>button]:justify-center touch:[&>button]:gap-1.5 touch:[&>button]:px-2 touch:[&>div>button]:min-h-11 touch:[&>div>button]:w-full touch:[&>div>button]:justify-center touch:[&>div>button]:gap-1.5 touch:[&>div>button]:px-2">
+          <div className="flex items-center rounded-full bg-raised px-2 py-1 touch:col-span-4 touch:justify-center">
             <Stars value={scene.rating} onChange={(rating) => guardWrite(() => rate.mutate({ id: scene.id, rating }))} />
           </div>
           <button
             onClick={() =>
               guardWrite(() => {
+                setOTapped(true)
                 addO.mutate(scene.id)
                 // the moment matters as much as the count: mark it, once the video has been playing
                 const t = nowPlaying.time()
@@ -164,7 +168,7 @@ function SceneView({ id }: { id: string }) {
             title="Count an O here (adds a marker)"
             className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line"
           >
-            <Droplet size={17} className={scene.oCount ? 'fill-sky-400 text-sky-400' : ''} /> {scene.oCount}
+            <Droplet key={scene.oCount} size={17} className={scene.oCount ? clsx('fill-sky-400 text-sky-400', oTapped && 'animate-pop') : ''} /> {scene.oCount}
           </button>
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
           <PlaylistMenu sceneId={scene.id} />

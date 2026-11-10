@@ -75,6 +75,37 @@ export function useLongPress(onFire: (x: number, y: number) => void, { ms = 500,
   }
 }
 
+// True while the page is being scrolled down, false again on the first scroll up or near the
+// top: the phone header steps out of the way of the content and comes back the moment it is
+// wanted. `enabled` false keeps it false (a mouse, an open search field).
+export function useScrolledAway(enabled: boolean): boolean {
+  const [away, setAway] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    let last = window.scrollY
+    let turn = last // where the current direction began: a few px of jitter does not flip the header
+    let down = false
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y === last) return
+      if (y > last !== down) {
+        down = y > last
+        turn = last
+      }
+      if (y < 80) setAway(false)
+      else if (down && y - turn > 24) setAway(true)
+      else if (!down && turn - y > 24) setAway(false)
+      last = y
+    }
+    addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      removeEventListener('scroll', onScroll)
+      setAway(false)
+    }
+  }, [enabled])
+  return enabled && away
+}
+
 // What every modal surface needs (a sheet, a dialog): Esc closes it, the page behind does not
 // scroll, focus moves into it and returns to what opened it. Pass the panel's ref.
 let locks = 0

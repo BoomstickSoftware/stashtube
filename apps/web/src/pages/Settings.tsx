@@ -43,7 +43,7 @@ export function Settings(): JSX.Element {
       <h1 className="text-2xl font-black">Settings</h1>
       <nav
         aria-label="Settings sections"
-        className="no-scrollbar sticky top-16 z-10 -mx-4 mt-3 flex gap-2 overflow-x-auto bg-bg/85 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6"
+        className="no-scrollbar sticky top-(--header-top) z-10 transition-[top] duration-200 -mx-4 mt-3 flex gap-2 overflow-x-auto bg-bg/85 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6"
       >
         {GROUPS.map(([id, label]) => (
           <a

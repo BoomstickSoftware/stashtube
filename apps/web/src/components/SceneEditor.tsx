@@ -59,11 +59,15 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
   const dq = useDebounced(q.trim(), 150)
   const { data: found } = useTags({ q: dq || undefined, unblocked: true }, editing && dq.length >= 2)
   const ids = scene.tags.map((t) => t.id)
+  // a long list starts folded: the first few, then "+N more" (editing shows them all)
+  const [all, setAll] = useState(false)
+  const FOLD = 8
+  const shown = editing || all || scene.tags.length <= FOLD + 2 ? scene.tags : scene.tags.slice(0, FOLD)
 
   return (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-1.5">
-        {scene.tags.map((tag) =>
+        {shown.map((tag) =>
           editing ? (
             <Chip key={tag.id} tone="exclude" className="!py-0.5 !text-xs !no-underline" onClick={() => update.mutate({ removeTagIds: [tag.id] })}>
               {tag.name} <X size={12} />
@@ -76,6 +80,11 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
               <AddFilterButton kind="tag" id={tag.id} name={tag.name} className="mr-0.5 !size-5 !bg-transparent !ring-0" />
             </span>
           ),
+        )}
+        {shown.length < scene.tags.length && (
+          <button onClick={() => setAll(true)} className="inline-flex items-center rounded-full bg-raised px-3 py-0.5 text-xs text-muted hover:text-fg touch:min-h-9">
+            +{scene.tags.length - shown.length} more
+          </button>
         )}
         <button
           onClick={() => setEditing((v) => !v)}

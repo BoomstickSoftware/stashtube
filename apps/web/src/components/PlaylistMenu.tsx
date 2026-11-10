@@ -144,12 +144,17 @@ export function FavoriteSceneButton({ sceneId, variant = 'icon' }: { sceneId: st
   const favorites = useFavoriteScenes()
   const toggle = useToggleFavoriteScene()
   const on = favorites.has(sceneId)
-  const click = () => toggle.mutate({ id: sceneId, favorite: !on })
-  const icon = <Heart size={variant === 'icon' ? 18 : 17} className={on ? 'fill-accent text-accent' : ''} />
+  // the heart pops when a tap fills it, not when the page first shows it filled
+  const [tapped, setTapped] = useState(false)
+  const click = () => {
+    setTapped(true)
+    toggle.mutate({ id: sceneId, favorite: !on })
+  }
+  const icon = <Heart key={String(on)} size={variant === 'icon' ? 18 : 17} className={clsx(on && 'fill-accent text-accent', on && tapped && 'animate-pop')} />
   if (variant === 'button') {
     return (
-      <Button onClick={click} title={on ? 'Remove from Favorites' : 'Add to Favorites'}>
-        {icon} {on ? 'Favorited' : 'Favorite'}
+      <Button onClick={click} title={on ? 'Remove from Favorites' : 'Add to Favorites'} aria-pressed={on}>
+        {icon} Favorite
       </Button>
     )
   }
