@@ -133,9 +133,13 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
   useEffect(() => acct.reset(sceneId), [acct, sceneId])
 
   useEffect(() => {
+    // iOS often skips pagehide when the app is swiped away; hidden is the last event it does send
+    const onHide = () => document.visibilityState === 'hidden' && acct.flush()
     addEventListener('pagehide', acct.flush)
+    document.addEventListener('visibilitychange', onHide)
     return () => {
       removeEventListener('pagehide', acct.flush)
+      document.removeEventListener('visibilitychange', onHide)
       acct.flush()
     }
   }, [acct])

@@ -50,6 +50,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT),
+    // the last progress save is sent as the page is hidden or closed: keepalive lets it finish
+    keepalive: method === 'POST' && path.endsWith('/activity'),
   })
   if (res.status === 401 && !path.startsWith('/auth')) {
     window.dispatchEvent(new Event('flix:login-required'))
@@ -96,6 +98,11 @@ export const queryClient = new QueryClient({
     },
   },
 })
+
+// Settings, favourites and the session are kept in localStorage and also change on other devices:
+// five minutes fresh, then refetched on the next mount or focus (they were `Infinity`, so a change
+// made on the desktop never reached the phone until the phone wrote one itself).
+export const SHARED_STALE = 5 * 60_000
 
 // Queries kept in localStorage between visits (see main.tsx): small, and what the first
 // screen needs. They must outlive the default 5-minute gcTime, or leaving the page for a

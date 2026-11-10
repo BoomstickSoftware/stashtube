@@ -54,7 +54,8 @@ export const nowPlaying = {
   // nothing: the video keeps playing where it is.
   open(scene: SceneDetail, opts: { startAt?: number; autoStart: boolean; theater: boolean }) {
     if (state.scene?.id === scene.id) {
-      if (state.theater !== opts.theater) set({ theater: opts.theater })
+      // the same video, but its details may be newer (a marker just added): the player shows these
+      if (state.theater !== opts.theater || state.scene !== scene) set({ theater: opts.theater, scene })
       return
     }
     status = IDLE

@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { ChevronLeft, Clapperboard, Compass, Home, Radio, Search, Settings, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
+import { SHARED_STALE } from '../lib/api/client'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
@@ -35,7 +36,7 @@ const tabOf = (path: string) =>
   path === '/' ? '/' : nav.find((n) => n.owns.some((o) => (o.endsWith('/') ? path.startsWith(o) : path === o || path.startsWith(`${o}/`))))?.to
 
 export function Layout(): JSX.Element {
-  const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: Infinity })
+  const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: SHARED_STALE })
   const [mobileSearch, setMobileSearch] = useState(false)
   const { data: unfinished = 0 } = useContinueCount()
   const stacked = filterCount(useBrowseFilters()) // performers, studios and tags added with "+"

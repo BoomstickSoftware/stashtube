@@ -1,10 +1,10 @@
 import type { CacheScope, CacheStats, Features, Settings } from '@flix/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, send } from './client'
+import { get, send, SHARED_STALE } from './client'
 
 // Settings, what the server has enabled, the admin cache controls, and the optional login.
 
-export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => get<Settings>('/settings'), staleTime: Infinity })
+export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => get<Settings>('/settings'), staleTime: SHARED_STALE })
 
 export function useUpdateSettings() {
   const qc = useQueryClient()

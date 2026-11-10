@@ -38,6 +38,9 @@ export function useScenes(q: SceneQuery, perPage = 40) {
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.perPage < last.total ? last.page + 1 : undefined),
     placeholderData: keepPreviousData,
+    // a refetch re-reads every loaded page in turn; writes patch or invalidate lists themselves, so
+    // coming back to a deep list (or unlocking the phone) should not
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -251,6 +254,8 @@ export function useSceneEdits(id: string) {
     qc.invalidateQueries({ queryKey: ['scene', id] })
     qc.invalidateQueries({ queryKey: ['scenes'] })
   }
+  // a marker is on the scene and nowhere else: no list shows it
+  const refreshMarkers = () => qc.invalidateQueries({ queryKey: ['scene', id] })
   return {
     update: useMutation({
       mutationFn: (patch: { title?: string; addTagIds?: string[]; removeTagIds?: string[] }) => send('PATCH', `/scenes/${id}`, patch),
@@ -263,15 +268,15 @@ export function useSceneEdits(id: string) {
     }),
     addMarker: useMutation({
       mutationFn: (b: { seconds: number; title: string; tagId?: string }) => send<Marker>('POST', `/scenes/${id}/markers`, b),
-      onSuccess: refresh,
+      onSuccess: refreshMarkers,
     }),
     updateMarker: useMutation({
       mutationFn: ({ marker, ...patch }: { marker: string; title?: string; tagId?: string }) => send<Marker>('PUT', `/scenes/${id}/markers/${marker}`, patch),
-      onSuccess: refresh,
+      onSuccess: refreshMarkers,
     }),
     deleteMarker: useMutation({
       mutationFn: (marker: string) => send('DELETE', `/scenes/${id}/markers/${marker}`),
-      onSuccess: refresh,
+      onSuccess: refreshMarkers,
     }),
     // The server waits for Stash's Identify job (up to 40 s) and answers with its result; a job
     // still running then is remembered here, so the page keeps polling it (useJob) when it comes

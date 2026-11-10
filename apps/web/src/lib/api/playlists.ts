@@ -1,6 +1,6 @@
 import type { Playlist, PlaylistDetail } from '@flix/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, send } from './client'
+import { get, send, SHARED_STALE } from './client'
 
 // Playlists, the built-in Favorites playlist behind every video's heart, and the multi-select
 // bulk actions that add to both.
@@ -64,7 +64,7 @@ export function usePlaylistMutations() {
 const NO_FAVORITES: ReadonlySet<string> = new Set()
 const toSet = (ids: string[]): ReadonlySet<string> => new Set(ids)
 export function useFavoriteScenes(): ReadonlySet<string> {
-  const { data } = useQuery({ queryKey: ['favorite-scenes'], queryFn: () => get<string[]>('/favorites'), staleTime: Infinity, select: toSet })
+  const { data } = useQuery({ queryKey: ['favorite-scenes'], queryFn: () => get<string[]>('/favorites'), staleTime: SHARED_STALE, select: toSet })
   return data ?? NO_FAVORITES
 }
 
