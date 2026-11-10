@@ -7,9 +7,12 @@ import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
+import { nowPlaying } from '../lib/nowPlaying'
 import { useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
+import { showToast } from '../lib/toast'
 import { Login } from '../pages/Login'
+import { ErrorBoundary } from './ErrorBoundary'
 import { NowPlayingHost } from './NowPlaying'
 import { PinLock } from './PinLock'
 import { PrivacyMenu } from './PrivacyMenu'
@@ -128,7 +131,17 @@ export function Layout(): JSX.Element {
         <ShortcutsOverlay />
         <PinLock />
       </main>
-      <NowPlayingHost root={root} />
+      {/* a player that throws closes itself; the page under it stays */}
+      <ErrorBoundary
+        name="player"
+        onError={() => {
+          nowPlaying.close()
+          showToast('The player hit a problem and was closed')
+        }}
+        fallback={(_, reset) => <PlayerReset reset={reset} />}
+      >
+        <NowPlayingHost root={root} />
+      </ErrorBoundary>
 
       {/* mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
@@ -181,4 +194,11 @@ function usePanicKey() {
     window.addEventListener('keydown', h, true)
     return () => window.removeEventListener('keydown', h, true)
   }, [settings?.panicUrl])
+}
+
+// The player boundary's fallback shows nothing: the store is already closed, so it only re-arms
+// the boundary for the next video.
+function PlayerReset({ reset }: { reset: () => void }) {
+  useEffect(reset, [reset])
+  return null
 }

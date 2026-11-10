@@ -1003,14 +1003,20 @@ export async function namesFor(kind: 'tag' | 'performer' | 'studio', id: string)
 
 // --- edits ------------------------------------------------------------------------
 
-export async function updateScene(id: string, patch: { title?: string; tagIds?: string[] }) {
-  const input: SceneUpdateInput = { id }
-  if (patch.title !== undefined) input.title = patch.title
-  if (patch.tagIds !== undefined) input.tag_ids = patch.tagIds
+// Tags change as deltas (Stash adds or removes the given ids), never as a whole list: a list
+// read from a cached scene can be older than a sync or bulk edit, and writing it back dropped
+// the tags added since.
+export async function updateScene(id: string, patch: { title?: string; addTagIds?: string[]; removeTagIds?: string[] }) {
+  if (patch.title !== undefined) {
+    const input: SceneUpdateInput = { id, title: patch.title }
+    await mutate(`mutation($i: SceneUpdateInput!) { sceneUpdate(input: $i) { id } }`, { i: input }, [`scene:${id}`], ['scene'])
+  }
   // a tag change moves the scene counts on tag cards, so the 'tag' lists go stale too (nothing
   // needs them dropped: the facets and tiles are tagged 'scene')
-  const expires = ['scene', ...(patch.tagIds !== undefined ? ['tag'] : [])]
-  await mutate(`mutation($i: SceneUpdateInput!) { sceneUpdate(input: $i) { id } }`, { i: input }, [`scene:${id}`], expires)
+  for (const [ids, mode] of [[patch.addTagIds, 'ADD'], [patch.removeTagIds, 'REMOVE']] as const) {
+    if (!ids?.length) continue
+    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: [id], tag_ids: { ids, mode } } }, [`scene:${id}`], ['scene', 'tag'])
+  }
 }
 
 // What deleting a scene needs: its files and StashDB links. Uncached, so it sees the scene as it is now.
@@ -1072,9 +1078,8 @@ export const unlistedTag = reservedTag('Unlisted')
 
 async function setReservedTag(tagOf: (create: boolean) => Promise<string | null>, id: string, on: boolean) {
   const tag = await tagOf(on)
-  const r = tag ? await getScene(id) : null
-  if (!tag || !r) return
-  await updateScene(id, { tagIds: on ? [...new Set([...r.tagIds, tag])] : r.tagIds.filter((t) => t !== tag) })
+  if (!tag) return
+  await updateScene(id, on ? { addTagIds: [tag] } : { removeTagIds: [tag] })
 }
 export const setSceneHidden = (id: string, hidden: boolean) => setReservedTag(hiddenTag, id, hidden)
 export const setSceneUnlisted = (id: string, unlisted: boolean) => setReservedTag(unlistedTag, id, unlisted)

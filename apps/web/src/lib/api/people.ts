@@ -29,13 +29,24 @@ export function usePerformers(params: { q?: string; sort?: string; favorites?: b
   })
 }
 
+// A whole list, however long: pages of 500 until `total` is reached (a single capped request
+// silently left out the 201st studio and the 1,001st category).
+async function getAll<T>(path: string, params: object): Promise<Page<T>> {
+  const perPage = 500
+  const first = await get<Page<T>>(`${path}${qs({ ...params, page: 1, perPage })}`)
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, Math.ceil(first.total / perPage) - 1) }, (_, i) => get<Page<T>>(`${path}${qs({ ...params, page: i + 2, perPage })}`)),
+  )
+  return { ...first, items: [first, ...rest].flatMap((p) => p.items), perPage: first.total }
+}
+
 export const usePerformer = (id: string) =>
   useQuery({ queryKey: ['performer', id], queryFn: () => get<PerformerDetail>(`/performers/${id}`) })
 
 export const useStudios = (params: { q?: string; sort?: string }) =>
   useQuery({
     queryKey: ['studios', params],
-    queryFn: () => get<Page<StudioCard>>(`/studios${qs({ ...params, perPage: 200 })}`),
+    queryFn: () => getAll<StudioCard>('/studios', params),
     placeholderData: keepPreviousData,
   })
 
@@ -45,7 +56,7 @@ export const useStudio = (id: string) =>
 export const useTags = (params: { q?: string; sort?: string; unblocked?: boolean }, enabled = true) =>
   useQuery({
     queryKey: ['tags', params],
-    queryFn: () => get<Page<TagCard>>(`/tags${qs({ ...params, perPage: params.q ? 30 : 1000 })}`),
+    queryFn: () => (params.q ? get<Page<TagCard>>(`/tags${qs({ ...params, perPage: 30 })}`) : getAll<TagCard>('/tags', params)),
     placeholderData: keepPreviousData,
     enabled,
     staleTime: 5 * 60_000,

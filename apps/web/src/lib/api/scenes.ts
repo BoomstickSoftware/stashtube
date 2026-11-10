@@ -253,7 +253,7 @@ export function useSceneEdits(id: string) {
   }
   return {
     update: useMutation({
-      mutationFn: (patch: { title?: string; tagIds?: string[] }) => send('PATCH', `/scenes/${id}`, patch),
+      mutationFn: (patch: { title?: string; addTagIds?: string[]; removeTagIds?: string[] }) => send('PATCH', `/scenes/${id}`, patch),
       onSuccess: () => {
         refresh()
         // the title and tags also sit on Home's cards (persisted) and in related rows

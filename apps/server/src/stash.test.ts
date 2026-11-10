@@ -215,7 +215,7 @@ describe('writes and the query cache', () => {
       const before = dataCache.stats().staleHits
       assert.equal(await read('tags', ['tag']), 'old')
       assert.equal(dataCache.stats().staleHits, before, 'still fresh')
-      await updateScene('1', { tagIds: ['5'] })
+      await updateScene('1', { addTagIds: ['5'] })
       await read('tags', ['tag'])
       assert.equal(dataCache.stats().staleHits, before + 1, 'stale now')
     }))

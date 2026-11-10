@@ -486,7 +486,7 @@ api.post('/scenes/:id/o', async (c) => c.json({ oCount: await stash.addSceneO(c.
 
 api.patch('/scenes/:id', async (c) => {
   const b = parse(
-    z.object({ title: z.string().trim().max(300).optional(), tagIds: z.array(z.string().regex(/^\d+$/)).max(500).optional() }),
+    z.object({ title: z.string().trim().max(300).optional(), addTagIds: z.array(z.string().regex(/^\d+$/)).max(500).optional(), removeTagIds: z.array(z.string().regex(/^\d+$/)).max(500).optional() }),
     await c.req.json(),
   )
   await stash.updateScene(c.req.param('id'), b)

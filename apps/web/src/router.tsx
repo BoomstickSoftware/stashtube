@@ -1,4 +1,6 @@
 import { createRouter } from '@tanstack/react-router'
+import { PageError } from './components/ErrorBoundary'
+import { log } from './lib/diag'
 import { routeTree } from './routeTree.gen'
 
 // Routes live in src/routes (one file per path; the router plugin builds routeTree.gen.ts
@@ -7,6 +9,9 @@ export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  // a page that throws while rendering shows this inside the shell (header and tabs stay usable)
+  defaultErrorComponent: ({ error, reset }) => <PageError error={error} reset={reset} />,
+  defaultOnCatch: (error) => log(`render error on ${window.location.pathname}: ${error instanceof Error ? error.message : String(error)}`),
 })
 
 declare module '@tanstack/react-router' {

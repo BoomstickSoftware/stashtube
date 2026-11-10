@@ -59,14 +59,13 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
   const dq = useDebounced(q.trim(), 150)
   const { data: found } = useTags({ q: dq || undefined, unblocked: true }, editing && dq.length >= 2)
   const ids = scene.tags.map((t) => t.id)
-  const save = (tagIds: string[]) => update.mutate({ tagIds })
 
   return (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-1.5">
         {scene.tags.map((tag) =>
           editing ? (
-            <Chip key={tag.id} tone="exclude" className="!py-0.5 !text-xs !no-underline" onClick={() => save(ids.filter((x) => x !== tag.id))}>
+            <Chip key={tag.id} tone="exclude" className="!py-0.5 !text-xs !no-underline" onClick={() => update.mutate({ removeTagIds: [tag.id] })}>
               {tag.name} <X size={12} />
             </Chip>
           ) : (
@@ -100,7 +99,7 @@ export function TagEditor({ scene }: { scene: SceneDetail }) {
                   <button
                     key={t.id}
                     onClick={() => {
-                      save([...ids, t.id])
+                      update.mutate({ addTagIds: [t.id] })
                       setQ('')
                     }}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-white/5"
