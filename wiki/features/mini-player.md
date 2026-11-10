@@ -49,8 +49,9 @@ same `<video>` node is used wherever it shows, so nothing reloads.
 
 ## Play next
 
-A card's menu offers **Play next** while something plays (`lib/upNext.ts`, sessionStorage, up
-to 20). On the video's page the queued videos lead the Up next list, marked "Queued". Docked,
+A card's menu always offers **Play next** (`lib/upNext.ts`, sessionStorage, up to 20); with
+nothing playing the video waits for the next one started (_only while something played until
+the iPhone pass of 2026-11-10, where the item was simply missing_). On the video's page the queued videos lead the Up next list, marked "Queued". Docked,
 the player moves on to the first queued video when the current one ends, and stays docked.
 Opening a video takes it off the queue.
 

@@ -22,7 +22,10 @@ export function PlayerSlot({ theater, children }: { theater: boolean; children?:
   }, [])
   return (
     <div className="relative">
-      <div ref={attach} className={theater ? 'aspect-video max-h-[calc(100dvh-8rem)] w-full' : 'aspect-video'} />
+      {/* vt-media: a tapped card's picture grows into this box (index.css). The name is on the slot, not
+          on the host that lays the Player over it: the host is hidden until it has measured the slot,
+          which is after the transition takes its picture of the new page (seen 2026-11-10). */}
+      <div ref={attach} className={clsx('vt-media', theater ? 'aspect-video max-h-[calc(100dvh-8rem)] w-full' : 'aspect-video')} />
       {children}
     </div>
   )
@@ -100,7 +103,7 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
               'inset-x-2 bottom-[calc(var(--tabbar-h)+0.5rem)]',
               'lg:inset-x-auto lg:right-4 lg:bottom-4 lg:w-80 lg:flex-col',
             )
-          : 'vt-media absolute'
+          : 'absolute'
       }
       style={docked ? undefined : box ? { top: box.top, left: box.left, width: box.width } : { visibility: 'hidden', width: 0 }}
       role={docked ? 'region' : undefined}

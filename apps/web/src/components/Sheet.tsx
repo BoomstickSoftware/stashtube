@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { X } from 'lucide-react'
 import { type ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useClickOutside, useModal, useSheetDrag } from '../lib/hooks'
+import { useClickOutside, useKeyboardInset, useModal, useSheetDrag } from '../lib/hooks'
 
 // The grabber and the drag-to-dismiss strip at the top of a bottom sheet (phones only). Its
 // handlers come from useSheetDrag; the dialogs that build their own panel use it too.
@@ -38,6 +38,8 @@ export function Sheet({
   useClickOutside(ref, onClose)
   useModal(ref, onClose)
   const drag = useSheetDrag(ref, onClose)
+  // a sheet with a field sits on top of the keyboard, not behind it (iPhone, 2026-11-10)
+  const keyboard = useKeyboardInset()
   return createPortal(
     <div className={clsx('sheet-scrim fixed inset-0 bg-scrim backdrop-blur-sm', z)}>
       <div
@@ -46,6 +48,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}
         tabIndex={-1}
+        style={keyboard > 40 ? { bottom: keyboard, maxHeight: `calc(100dvh - ${keyboard}px - 3rem)`, paddingBottom: 0 } : undefined}
         className={clsx(
           'sheet-panel absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-2xl ring-1 ring-white/10 outline-none sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
           size === 'menu' ? 'sm:w-80' : 'sm:w-96',

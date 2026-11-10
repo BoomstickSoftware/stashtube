@@ -130,6 +130,26 @@ export function useModal(ref: RefObject<HTMLElement | null>, onClose: () => void
   }, [ref])
 }
 
+// How much of the bottom of the screen the on-screen keyboard covers, in px. iOS lays the keyboard
+// over the page without resizing it, so anything fixed to the bottom (a sheet with a field) sits
+// behind it; only the visual viewport knows. 0 with no keyboard, or where it resizes the page.
+export function useKeyboardInset(): number {
+  const [inset, setInset] = useState(0)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const measure = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+    measure()
+    vv.addEventListener('resize', measure)
+    vv.addEventListener('scroll', measure)
+    return () => {
+      vv.removeEventListener('resize', measure)
+      vv.removeEventListener('scroll', measure)
+    }
+  }, [])
+  return inset
+}
+
 // Drag a bottom sheet down by its header to dismiss it: the panel follows the finger 1:1, and on
 // release either leaves (past a third of its height, or flicked) or settles back. Spread the
 // returned handlers on the header; touch only, a mouse has the scrim and Esc.

@@ -52,4 +52,9 @@ user the same day.
   `matchMedia` with the new `init` step.
 - A leftover headless Chrome held the neutral profile and the next script could not connect:
   [[check-script-cannot-connect-profile-in-use]].
-- Not seen on the real iPhone: the pull, the card-to-player transition, the sheet focus.
+- The user's iPhone pass the same evening found three faults, fixed at once: the card-to-player
+  growth never showed (the name was on the player's host, still hidden and 0 px wide when the
+  transition pictured the new page; it is on the slot now, and a trace shows 198 px → 408 px);
+  the rename sheet sat behind the keyboard (`useKeyboardInset`); Play next was missing with
+  nothing playing (now always offered). Pull to refresh was right.
+- Still not seen on the real iPhone after those fixes: the pull, the card-to-player transition, the sheet focus.

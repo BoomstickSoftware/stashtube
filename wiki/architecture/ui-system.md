@@ -64,7 +64,10 @@ Built 2026-11-10 ([[2026-11-10-ux-revamp]]) against [[ux-delight-principles]]. T
 - A skeleton has the shape of what it stands for (Home: a hero and rows).
 - One sheet at a time; it has a visible close as well as the swipe.
 - Page changes cross-fade in 160 ms (`defaultViewTransition`). One thing more moves: a tapped
-  card's picture grows into the player (`.vt-media`, one element at a time may carry the name).
+  card's picture grows into the player (`.vt-media`, one element at a time may carry the name;
+  on the video page it is the slot, which has its size at once, never the host laid over it).
+- A sheet rises above the on-screen keyboard (`useKeyboardInset`): iOS lays the keyboard over
+  the page, so a field at the bottom of the screen would sit behind it.
 - A card or row has at most one "⋯"; its less frequent actions live in that sheet.
 - The header slides away on a phone while scrolling down and returns on the first scroll up
   (`useScrolledAway`).

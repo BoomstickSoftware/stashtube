@@ -427,3 +427,6 @@ The user asked for recent searches despite Discreet and Private; a private sessi
 
 ## [2026-11-10] ingest | Polish pass, shared player core, pre-push hook
 Recents, pull to refresh, Play next, Segmented, "⋯" sheets on station cards and pinned rows, skeletons, card-to-player transition, Browse section memory, `pickSource` and friends shared by both players, `.githooks/pre-push`. Pages: [[2026-11-10-polish-pass]], [[ui-system]], [[player]], [[mini-player]], [[stations]], [[navigation]], [[search]], [[home-feed]], [[run-checks]], [[roadmap]].
+
+## [2026-11-10] correct | iPhone pass: transition target, sheet above the keyboard, Play next always offered
+From the user's phone: the card-to-player growth did not show, the rename sheet was behind the keyboard, Play next was missing with nothing playing. Pages: [[ui-system]], [[mini-player]], [[2026-11-10-polish-pass]].

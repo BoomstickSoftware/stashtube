@@ -127,14 +127,11 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
         {!page && (
           <>
             {item(<Play size={16} />, 'Play', () => navigate({ to: '/scene/$id', params: { id: scene.id }, search: { play: true } }))}
-            {playing &&
-              playing.id !== scene.id &&
+            {/* lines the video up: after the one playing, or first under Up next on the next one opened */}
+            {playing?.id !== scene.id &&
               item(<ListEnd size={16} />, 'Play next', () => {
                 upNext.playNext(scene)
-                showToast(
-                  'Plays after this video',
-                  <UndoButton onClick={() => upNext.remove(scene.id)} />,
-                )
+                showToast(playing ? 'Plays after this video' : 'Queued: plays after the next video you start', <UndoButton onClick={() => upNext.remove(scene.id)} />)
               })}
             {item(<Heart size={16} className={fav ? 'fill-accent text-accent' : ''} />, fav ? 'Remove from Favorites' : 'Add to Favorites', () =>
               toggleFavorite.mutate({ id: scene.id, favorite: !fav }),
