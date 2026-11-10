@@ -4,8 +4,8 @@ kind: feature
 summary: Five tabs (Home, Browse, Stations, Discover, You), the header (Search, one privacy menu, Settings), Browse's section strip and the You hub; which paths light which tab.
 tags: [navigation, ui, mobile]
 status: current
-verified: 2026-11-09
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 routes: [/, /browse, /performers, /studios, /tags, /stations, /discover, /you]
 code: [apps/web/src/components/Layout.tsx, apps/web/src/components/PrivacyMenu.tsx, apps/web/src/components/BrowseStrip.tsx, apps/web/src/pages/You.tsx, apps/web/src/lib/recent.ts, apps/web/src/pages/Stations.tsx, apps/web/src/components/ManageRows.tsx]
 related: [five-tab-navigation, mobile-first-ui, stations, vault, continue-history-stats, private-session, discreet-mode, pin-lock, settings-page, home-feed]
@@ -43,6 +43,9 @@ Private were two header toggles before._
 
 ## Browse strip
 
+The Browse tab reopens the section last used (`lib/browse.ts`, `flix.browse.section`); tapped
+while already in Browse it goes to Videos. The Videos sort is kept with the stored filters.
+
 `BrowseStrip` at the top of `/browse`, `/performers`, `/studios`, `/tags`: Videos · Performers ·
 Studios · Categories (the directory pages keep a hidden `h1`).
 
@@ -55,7 +58,8 @@ Hidden and blocked (Settings `#hidden`), Settings. Each row opens the page it na
 
 The Station chips on lists (filter bar and its phone "More" sheet, so entity pages too), the
 video page's Related header and Home's "Because you watched" row are gone. The Stations tab's
-**Start from** offers the same in one tap (`lib/recent.ts`, localStorage):
+**Quick start** section offers the same in one tap under its ready-made stations
+(`lib/recent.ts`, localStorage; _its own "Start from" section until 2026-11-10_):
 
 - **The list you were on**: the last list's filters as `SceneBrowser` ran them (not Cleanup),
   shown only when it had filters (an unfiltered one is the Everything quick start).

@@ -4,8 +4,8 @@ kind: feature
 summary: How the one Player element follows you from the scene page to a docked strip or card without reloading the video, and what stops it.
 tags: [player, mini-player, layout]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-10
+updated: 2026-11-10
 code: [apps/web/src/lib/nowPlaying.ts, apps/web/src/components/NowPlaying.tsx, apps/web/src/components/Layout.tsx, apps/web/src/pages/Scene.tsx]
 related: [player, scene-page, stations, private-session, mobile-checks, diagnostics, next-video-opens-docked-over-its-own-page]
 ---
@@ -46,6 +46,13 @@ same `<video>` node is used wherever it shows, so nothing reloads.
 - Both placements share one element skeleton, so coming back to the scene finds it still
   playing. Verified 2026-10-30: a marker set on the node survived Home and back, and the time
   stayed monotonic.
+
+## Play next
+
+A card's menu offers **Play next** while something plays (`lib/upNext.ts`, sessionStorage, up
+to 20). On the video's page the queued videos lead the Up next list, marked "Queued". Docked,
+the player moves on to the first queued video when the current one ends, and stays docked.
+Opening a video takes it off the queue.
 
 ## What stops it
 

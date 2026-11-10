@@ -232,7 +232,7 @@
     {
       "name": "phone-flow",
       "file": "scripts/phone-flow.mjs",
-      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked; STUB answers chosen GET API paths with given JSON, to show a state production lacks. NEUTRAL BY DEFAULT: API answers reach the app with titles, names and descriptions masked, library pictures are grey placeholders and video is flattened, so screenshots and output show layout, never content; a screenshot is withheld if that cannot be confirmed; --content (or CONTENT=1) shows the real library, on the user's request only.",
+      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size), `init` (a script run before the app on later loads); writes are blocked; STUB answers chosen GET API paths with given JSON, to show a state production lacks. NEUTRAL BY DEFAULT: API answers reach the app with titles, names and descriptions masked, library pictures are grey placeholders and video is flattened, so screenshots and output show layout, never content; a screenshot is withheld if that cannot be confirmed; --content (or CONTENT=1) shows the real library, on the user's request only.",
       "usage": [
         "STEPS='[{\"goto\":\"/browse\",\"targets\":true},{\"tapText\":\"Filters\",\"shot\":\"sheet\"}]' node scripts/phone-flow.mjs <outdir> http://localhost:5174"
       ],

@@ -4,8 +4,8 @@ kind: feature
 summary: How the video player picks direct play or Stash's HLS transcode, what it records, its quality menu, resume pill, fullscreen and the touch controls.
 tags: [player, playback, hls, touch, resume]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-10
+updated: 2026-11-10
 routes: [/scene/$id]
 api: [GET /media/play/:id, GET /media/stash/scene/:id/stream.m3u8, POST /api/scenes/:id/play, POST /api/scenes/:id/activity]
 code: [apps/web/src/components/Player.tsx, apps/web/src/lib/playback.ts, apps/web/src/lib/media.ts, apps/server/src/media.ts, apps/server/src/signing.ts]
@@ -15,8 +15,13 @@ related: [seek-bar-markers, moments, mini-player, mobile-first-ui, safari-addres
 # Player
 
 `components/Player.tsx` is the one video player; `lib/playback.ts` holds what it shares with
-the station player: attaching a source (direct, or HLS through hls.js), the watch accounting,
-the key guard, marker jumps and the flash label.
+the station player: choosing a source (`pickSource`: direct or HLS, the quality tables),
+attaching it (hls.js where needed), the watch accounting, the clock (`syncClock`), hiding idle
+controls (`useIdle`), the keys both answer the same way (`transportKey`: space/k, arrows, j/l,
+b, [ ], m) and marker jumps. `PlayerParts.tsx` holds the shared `TimeReadout`, `Flash` and
+`PlayPause`. They stay two components: the Player is driven by state (quality, fullscreen, PiP,
+AirPlay), the station by a sequence of segments with fades; one `<video>` lifecycle for both
+was judged unsafe without a real-device pass (2026-11-10). The station always plays `auto`.
 
 ## Source
 

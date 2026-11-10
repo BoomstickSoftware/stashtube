@@ -4,8 +4,8 @@ kind: feature
 summary: The typeahead over scenes, performers, studios and tags, what one query returns and where the same search appears inside the Filters dialog.
 tags: [search, browse]
 status: current
-verified: 2026-10-30
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 api: [GET /api/search?q=]
 code: [apps/web/src/components/SearchBox.tsx, apps/server/src/api.ts]
 related: [browse-and-filters, blocklist-and-exclusions, keyboard-shortcuts]
@@ -30,8 +30,13 @@ The Filters dialog has its own search over performers, studios, tags and title w
 counts in the current set ([[browse-and-filters]]); the header search opens the entity or scene
 instead.
 
+## Recent searches
+
+Focusing the empty box lists the last eight searches and picks, kept in this browser
+(`lib/recents.ts`); a private session adds none ([[search-recents]]).
+
 ## Where
 
-`SearchBox.tsx`; the route in `api.ts`. It is one of the first-paint routes the deploy smoke
+`SearchBox.tsx`; the route in `routes/`. It is one of the first-paint routes the deploy smoke
 test hits (`/api/search?q=a`, [[forgejo-ci]]), which is how the tag-filter outage was found
 ([[stash-filters-have-no-id-criterion]]).

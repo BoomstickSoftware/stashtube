@@ -4,8 +4,8 @@ kind: feature
 summary: The rows the Home page shows, in order, where each comes from, and how the feed is seeded, warmed and persisted so a cold open paints at once.
 tags: [home, rows, recommendations, caching]
 status: current
-verified: 2026-10-31
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 routes: [/]
 api: [GET /api/home?seed=, GET /api/rows, POST /api/rows, PUT /api/rows/order, PUT /api/rows/:id, DELETE /api/rows/:id]
 code: [apps/server/src/api.ts, apps/server/src/rows.ts, apps/server/src/stash.ts, apps/web/src/pages/Home.tsx, apps/web/src/lib/api/home.ts]
@@ -46,6 +46,9 @@ The Settings people defaults apply to every row, the blocklist only to the not-d
 names the Unlisted entity ([[vault]]);
 the Performers page's Women / Men / Everyone switch does not (_it steered "For you" and "More
 with" until 2026-10-31_, [[gender-switch-performers-page-only]]).
+
+A pinned row's "⋯" renames, moves or unpins it. In the installed app a pull down at the top
+refreshes the page and draws new picks, as Shuffle does (`PullToRefresh.tsx`).
 
 ## Seeds
 

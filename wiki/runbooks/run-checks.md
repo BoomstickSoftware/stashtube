@@ -4,8 +4,8 @@ kind: runbook
 summary: The four checks every change passes before a commit (typecheck, lint, tests, image build), what the tests cover, and the fact that the image build runs typecheck and tests too.
 tags: [tests, lint, typecheck, docker, ci]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-10
+updated: 2026-11-10
 code: [scripts/check.mjs, package.json, apps/server/package.json, apps/web/package.json, Dockerfile]
 related: [coding-conventions, mobile-checks, one-commit-per-initiative, server-bff, scripts-library]
 ---
@@ -13,6 +13,13 @@ related: [coding-conventions, mobile-checks, one-commit-per-initiative, server-b
 # Run the checks
 
 Before every commit ([[one-commit-per-initiative]]); UI changes also get [[mobile-checks]].
+
+## Before every push
+
+`.githooks/pre-push` runs `node scripts/check.mjs`, so a push that would deploy a failing build
+or publish a library name stops (the privacy check cannot run in CI: its deny-list is not in
+git). A fresh clone needs `git config core.hooksPath .githooks` once. `git push --no-verify`
+skips it.
 
 ## Steps
 

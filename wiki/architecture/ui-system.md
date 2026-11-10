@@ -51,6 +51,10 @@ Built 2026-11-10 ([[2026-11-10-ux-revamp]]) against [[ux-delight-principles]]. T
 | `sheet-scrim` + `sheet-panel` classes | the entrance for those panels |
 | `showToast(text, action, ms)` | up to three stack, above the tab bar and the dock |
 | `UndoButton` | the action in a toast that takes it back |
+| `Segmented` | one of a few choices side by side (views, modes, tabs); the only shape for it |
+| `ActionSheet`, `RenameSheet` (`Sheet.tsx`) | a "⋯" menu of a card or row; one name to change |
+| `ListSkeleton` | rows of a picture and two lines while a list loads |
+| `PullToRefresh` | installed app only: pull down at the top to refetch the page |
 | `Bone`, `ErrorBox`, `PageError`, `Empty` | loading, a failed read, a render error, nothing here |
 
 ## Rules
@@ -59,12 +63,14 @@ Built 2026-11-10 ([[2026-11-10-ux-revamp]]) against [[ux-delight-principles]]. T
   be undone (Not interested: delete). No `window.confirm` remains.
 - A skeleton has the shape of what it stands for (Home: a hero and rows).
 - One sheet at a time; it has a visible close as well as the swipe.
-- Page changes cross-fade in 160 ms (`defaultViewTransition`); nothing else animates on navigation.
+- Page changes cross-fade in 160 ms (`defaultViewTransition`). One thing more moves: a tapped
+  card's picture grows into the player (`.vt-media`, one element at a time may carry the name).
+- A card or row has at most one "⋯"; its less frequent actions live in that sheet.
 - The header slides away on a phone while scrolling down and returns on the first scroll up
   (`useScrolledAway`).
 
 ## Not yet migrated
 
-About 150 raw `<button>` elements still carry their own classes (they get the press and focus
-behaviour globally, not the shared look), and the five segmented-control styles are not yet one
-component. Migrate a screen when it is touched ([[roadmap]]).
+About 130 raw `<button>` elements still carry their own classes (menu rows, chips, the players'
+controls); they get the press and focus behaviour globally, not the shared look. Migrate a screen
+when it is touched ([[roadmap]]).

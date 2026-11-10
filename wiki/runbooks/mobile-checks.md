@@ -113,3 +113,5 @@ test proves the write was attempted without touching Stash: `/api/scenes/*/play`
 
 - Nothing loads: Vite is not on 5174 ([[port-5173-taken]]).
 - The page looks stale: an old Chrome profile; delete the outdir and rerun.
+
+A script that cannot connect to its Chrome: [[check-script-cannot-connect-profile-in-use]].

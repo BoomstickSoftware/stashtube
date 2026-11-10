@@ -232,7 +232,8 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 From [[2026-11-10-architecture-and-ux-review]]; approved by the user 2026-11-10 and shipped the
 same day except where marked open ([[2026-11-10-hardening]]). Also open: zod-parsing StashDB and
-Whisparr responses, a typed route map in `@flix/shared`, a pre-push hook for `check.mjs`.
+Whisparr responses, a typed route map in `@flix/shared`. The pre-push hook is in
+([[run-checks]]).
 
 **Hardening** (each one initiative)
 
@@ -243,23 +244,20 @@ Whisparr responses, a typed route map in `@flix/shared`, a pre-push hook for `ch
 - ~~**H5. Split the two big server files**~~ Done 2026-11-10: `stash/`, `routes/`, `home.ts`, `UpstreamError`, id validation.
 - ~~**H6. One job registry**~~ Done 2026-11-10: `jobs.ts`; the hourly category sync is gated on the change fingerprint.
 - ~~**H7. Tests where it deletes and downloads**~~ Done 2026-11-10: server tests 155 → 209, the web's first 10.
-- **H8. One player core** (L), open: `useVideoSource` and shared controls for `Player` and
-  `Station`. Done 2026-11-10: the `<video>` is released on unmount, a station stops after three
-  failed videos.
+- **H8. One player core**: the shared core is in (`pickSource`, `syncClock`, `useIdle`,
+  `transportKey`, `PlayerParts.tsx`; [[player]], [[2026-11-10-polish-pass]]). Open, and only
+  after a real-iPhone pass: one `<video>` lifecycle for `Player` and `StationPlayer`.
 - ~~**H9. Wiki drift**~~ Done 2026-11-10: `server-bff`, `stash-layer`, `data-model`, `request-guard`, `caching`, `web-app`, `mobile-first-ui`.
 - ~~**H10. Finish the neutral suite**~~ Done 2026-11-10: every headless script is neutral by
   default, names print only on `--names` / `--show`, the server logs ids ([[neutral-observability]]).
 
 **UX revamp**: U1–U5 shipped 2026-11-10 ([[2026-11-10-ux-revamp]], [[ui-system]],
-[[continue-strip-on-home]]). Open from it:
+[[continue-strip-on-home]]); the items it left open shipped the same day
+([[2026-11-10-polish-pass]], [[search-recents]]). Still open:
 
-- **Needs the user**: search recents (they would show on the first screen of search, against
-  Discreet and Private).
-- Pull-to-refresh on Home; "Play next"; remembered Browse section and sort; shared-element
-  transitions from card to player; skeletons for History, Discover and Related.
-- One `Segmented` control; the remaining raw buttons onto `Button` / `IconButton`; a "⋯" sheet
-  for station cards and Home rows; the Stations start paths merged.
-- A pass on the real iPhone for the sheet drag, the header slide and the press states.
+- A pass on the real iPhone: the sheet drag, the header slide, the press states, pull to
+  refresh, the card-to-player transition.
+- About 130 raw buttons onto `Button` / `IconButton`, a screen at a time.
 
 ## Stash and Whisparr operations (moved from the nas repo, 2026-11-02)
 

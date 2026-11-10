@@ -1,7 +1,7 @@
 // Headless Chrome at iPhone size driven by a list of steps (JSON in env STEPS), modelled on
 // scripts/mobile-check.mjs. Steps: {goto:'/path'}, {tap:'css'}, {tapText:'label'} (the first visible
 // button/a/label whose text includes it), {longpress:'css'}, {type:'text'} (into the focused element), {key:'Enter'},
-// {scroll:px}, {scrollTo:'css'}, {wait:ms}, {eval:'expr'}, {shot:'name'}, {full:'name'} (whole page),
+// {scroll:px}, {scrollTo:'css'}, {wait:ms}, {eval:'expr'}, {init:'js'} (run before the app on later loads), {shot:'name'}, {full:'name'} (whole page),
 // {standalone:true} (display-mode: standalone), {back:true}, {targets:true} (list controls < 44px).
 // Plays, activity, markers, o, rating, deletes and whisparr gets are blocked, so nothing is recorded.
 // STUB='{"/api/settings": {...}}' answers those GET API paths from here instead of the server, to show
@@ -125,6 +125,7 @@ const targets = `(() => {
 for (const s of steps) {
   let note = ''
   if (s.standalone) await send('Emulation.setEmulatedMedia', { features: [{ name: 'display-mode', value: 'standalone' }] })
+  if (s.init) await send('Page.addScriptToEvaluateOnNewDocument', { source: s.init }) // runs before the app on every later load
   if (s.goto) { await send('Page.navigate', { url: base + s.goto }); await sleep(s.wait ?? 3500) }
   if (s.tap) { const r = await rectOf(s.tap); if (!r) note = 'NOT FOUND ' + s.tap; else { await sleep(150); await tapAt(r.x, r.y); note = `tap ${Math.round(r.w)}x${Math.round(r.h)}` } await sleep(s.wait ?? 1200) }
   if (s.tapText) { const r = await rectOfText(s.tapText); if (!r) note = 'NOT FOUND ' + s.tapText; else { await sleep(150); await tapAt(r.x, r.y); note = `tap "${r.text}" ${Math.round(r.w)}x${Math.round(r.h)}` } await sleep(s.wait ?? 1200) }

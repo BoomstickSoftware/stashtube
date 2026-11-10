@@ -1,7 +1,7 @@
 ---
 title: "2026-11-10: Hardening round H1 to H10"
 kind: history
-summary: The architecture fixes from the ground-up review as shipped: data-loss fixes, CI gates, fresh data on the phone, cache correctness, the server split into stash/ and routes/, one job registry, tests for delete and download, and what was left.
+summary: The ground-up review's architecture fixes as shipped: data-loss fixes, CI gates, fresh phone data, cache correctness, the server split, one job registry, delete and download tests.
 tags: [history, architecture, server, web, testing, caching]
 status: record
 date: 2026-11-10

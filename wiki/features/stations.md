@@ -4,8 +4,8 @@ kind: feature
 summary: Endless play from a filter set, a scene or a playlist, in Full or Moments mode, with saved stations, per-station resume, an editor and one previews request for the Stations page.
 tags: [stations, player, playlists, resume]
 status: current
-verified: 2026-10-31
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 routes: [/station, /stations, /stations/new, /stations/$id/edit]
 api: [GET /api/stations, POST /api/stations, PUT /api/stations/:id, PUT /api/stations/order, DELETE /api/stations/:id, GET /api/stations/previews?day=&q=, GET /api/stations/resume, PUT /api/stations/resume]
 code: [apps/web/src/pages/Station.tsx, apps/web/src/pages/Stations.tsx, apps/web/src/pages/StationEditor.tsx, apps/web/src/lib/station.ts, apps/server/src/stations.ts, apps/server/src/previews.ts, apps/server/src/db/schema.ts]
@@ -15,7 +15,7 @@ related: [player, seek-bar-markers, moments, browse-and-filters, playlists-and-f
 # Stations
 
 A station plays videos one after another, full screen, with Skip but no ratings: you steer
-with filters. It starts from the Stations tab's **Start from** (the last filtered list
+with filters. It starts from the Stations tab's **Quick start** (a ready-made station, the last filtered list
 you were on, or a drift through videos related to the last one you opened; [[navigation]]), from
 a saved station or quick start, or from a playlist (`/station?playlist=`). _Until 2026-11-09_
 lists, the video page's Related and Home rows had their own "Station" chips. Order is shuffled with no repeats until all
@@ -65,7 +65,10 @@ Entering a station stops the [[mini-player]].
   and on leaving, in `station_resume`, keyed `id:<n>` or `pl:<n>`; the newest 50 are kept. A
   station started from a video, a list or a quick start saves nothing
   ([[stations-only-user-made]]; until 2026-10-31 those were kept as `from:<scene>` and
-  `q:<filters>`). A card with a saved spot shows "Resume …"; **Shuffle** starts fresh.
+  `q:<filters>`). A card with a saved spot shows "Resume …" and its picture resumes. A card's "⋯" sheet has the
+  other starts (Resume, Start over shuffled, Unwatched only) and, for a saved station, Rename,
+  Edit and Delete (an Undo toast; the delete is sent 6 s later). _Until 2026-11-10_ the card
+  carried two start chips, a pencil, a bin and a tap-to-rename title.
   `/api/stations/resume` carries each station's or playlist's `name`, so Home's "Pick up a
   station" row needs no other list ([[home-feed]]). Deleting a station or a playlist deletes
   its row, and a row whose station or playlist is gone is left out (_until 2026-10-31_ a

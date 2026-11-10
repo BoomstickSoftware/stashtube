@@ -421,3 +421,9 @@ Tokens, press and focus states, one Sheet, stacked toasts, Undo for confirms, 44
 
 ## [2026-11-10] ingest | Hardening H5–H7: server split, job registry, tests
 stash.ts → stash/ behind a barrel, api.ts → routes/, home.ts, errors.ts (UpstreamError → 502), jobs.ts (eleven jobs, persisted last run), categorySync.ts (gated hourly). Server tests 155 → 209. Pages: [[server-bff]], [[stash-layer]], [[data-model]], [[request-guard]], [[caching]], [[2026-11-10-hardening]]; CLAUDE.md rule 3 and layout.
+
+## [2026-11-10] decide | Search recents: the restriction is lifted
+The user asked for recent searches despite Discreet and Private; a private session still adds none. Page: [[search-recents]].
+
+## [2026-11-10] ingest | Polish pass, shared player core, pre-push hook
+Recents, pull to refresh, Play next, Segmented, "⋯" sheets on station cards and pinned rows, skeletons, card-to-player transition, Browse section memory, `pickSource` and friends shared by both players, `.githooks/pre-push`. Pages: [[2026-11-10-polish-pass]], [[ui-system]], [[player]], [[mini-player]], [[stations]], [[navigation]], [[search]], [[home-feed]], [[run-checks]], [[roadmap]].

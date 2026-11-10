@@ -1,0 +1,5 @@
+#!/bin/sh
+# Every push to main deploys, so the checks run first (typecheck, lint, tests, privacy-check).
+# The privacy check cannot run in CI: its deny-list is in the gitignored private/.
+# Skip once with: git push --no-verify
+exec node scripts/check.mjs
