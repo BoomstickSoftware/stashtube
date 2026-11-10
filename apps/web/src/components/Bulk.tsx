@@ -1,4 +1,5 @@
 import { Heart, ListPlus, Plus, Tags, Trash2, X } from 'lucide-react'
+import { IconButton } from './ui'
 import { useRef, useState, type ReactNode } from 'react'
 import { useBulk, useFeatures, usePlaylists } from '../lib/api'
 import { BulkTagsSheet } from './BulkTags'
@@ -108,9 +109,9 @@ export function BulkBar({
             <Trash2 size={16} /> <span className="max-sm:hidden">Delete</span>
           </button>
         )}
-        <button onClick={onClear} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3" aria-label="Clear selection">
+        <IconButton label="Clear selection" onClick={onClear}>
           <X size={18} />
-        </button>
+        </IconButton>
       </div>
       {tagging && <BulkTagsSheet target={{ sceneIds: ids }} count={ids.length} onClose={() => setTagging(false)} />}
       {deleting && (

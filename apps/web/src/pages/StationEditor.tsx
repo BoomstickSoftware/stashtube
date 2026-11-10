@@ -1,12 +1,11 @@
 import type { SceneQuery, StationMode } from '@flix/shared'
 import type { JSX } from 'react'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import clsx from 'clsx'
 import { ArrowLeft, Play, Radio } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { FilterPanel } from '../components/Filters'
 import { SceneBrowser } from '../components/SceneBrowser'
-import { ErrorBox, Spinner } from '../components/ui'
+import { ErrorBox, Segmented, Spinner } from '../components/ui'
 import { useStationMutations, useStations } from '../lib/api'
 import { stationQuery, windows } from '../lib/station'
 
@@ -87,36 +86,16 @@ function Editor({
           placeholder="Name this station"
           className="h-10 w-full min-w-0 rounded-full bg-raised px-4 text-base outline-none placeholder:text-muted focus:ring-1 focus:ring-accent sm:w-72 sm:text-sm"
         />
-        <div role="radiogroup" aria-label="Plays" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-          {(['full', 'moments'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => setMode(m)}
-              className={clsx('rounded-full px-3 py-1.5', mode === m ? 'bg-white text-black' : 'text-muted hover:text-fg')}
-            >
-              {m === 'full' ? 'Full videos' : 'Moments'}
-            </button>
-          ))}
-        </div>
-        {mode === 'moments' && (
-          <div role="radiogroup" aria-label="Moment length" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-            {windows.map((w) => (
-              <button
-                key={w}
-                type="button"
-                role="radio"
-                aria-checked={secs === w}
-                onClick={() => setSecs(w)}
-                className={clsx('rounded-full px-3 py-1.5', secs === w ? 'bg-white text-black' : 'text-muted hover:text-fg')}
-              >
-                {w}s
-              </button>
-            ))}
-          </div>
-        )}
+        <Segmented
+          label="Plays"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'full', label: 'Full videos' },
+            { value: 'moments', label: 'Moments' },
+          ]}
+        />
+        {mode === 'moments' && <Segmented label="Moment length" value={secs} onChange={setSecs} options={windows.map((w) => ({ value: w, label: `${w}s` }))} />}
         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
           <button
             type="submit"

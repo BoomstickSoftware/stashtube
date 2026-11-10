@@ -4,7 +4,7 @@ import { Ban, Heart, Vault } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useBlock, useIsBlocked, useIsUnlisted, useUnlist } from '../lib/api'
 import { showToast } from '../lib/toast'
-import { bone, Button } from './ui'
+import { bone, Button, UndoButton } from './ui'
 
 // A row of button-shaped bones, the size of the real Follow / filter / Block pills.
 function ButtonBones({ className }: { className?: string }) {
@@ -81,9 +81,7 @@ export function BlockButton({ kind, id, name }: { kind: BlockKind; id: string; n
         if (!blocked)
           showToast(
             `Blocked: flix won’t download more of ${name}`,
-            <button onClick={() => block.mutate({ kind, id, blocked: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-              Undo
-            </button>,
+            <UndoButton onClick={() => block.mutate({ kind, id, blocked: false })} />,
           )
       }}
       title={blocked ? 'Allow downloads again' : 'Never download more: kept out of Discover and the automatic Gets; videos you have still show'}
@@ -162,9 +160,7 @@ export function UnlistButton({ kind, id, name }: { kind: BlockKind; id: string; 
         if (!unlisted)
           showToast(
             `${name} is unlisted: in the Vault, off Home`,
-            <button onClick={() => unlist.mutate({ kind, id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-              Undo
-            </button>,
+            <UndoButton onClick={() => unlist.mutate({ kind, id, unlisted: false })} />,
           )
       }}
       title={unlisted ? 'Show on Home and in recommendations again' : 'Keep its videos off Home, stations and recommendations; list them in the Vault'}

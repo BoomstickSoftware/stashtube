@@ -1,17 +1,19 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { CheckCheck, Heart, ListPlus, ListX, Play, Sparkles, Trash2, Vault } from 'lucide-react'
+import { CheckCheck, Heart, ListEnd, ListPlus, ListX, Play, Sparkles, Trash2, Vault } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useClearContinue, useFavoriteScenes, useFeatures, useMarkWatched, useRateScene, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
 import { useClickOutside, useMediaQuery, useModal, useSheetDrag } from '../lib/hooks'
+import { useNowPlaying } from '../lib/nowPlaying'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
+import { upNext } from '../lib/upNext'
 import { DeleteScenesDialog } from './DeleteScenes'
 import { PlaylistSheet } from './PlaylistMenu'
 import { SheetGrabber } from './Sheet'
-import { Stars } from './ui'
+import { Stars, UndoButton } from './ui'
 import type { Identify } from '../lib/identify'
 
 // A video's less frequent actions, on right-click (a menu at the pointer), a long press or a card's
@@ -46,6 +48,7 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
   const fav = favorites.has(scene.id)
+  const playing = useNowPlaying().scene // "Play next" needs something playing to follow
 
   // `keep`: the item opens something of its own (a dialog, a sheet) and closes the menu itself
   const item = (icon: ReactNode, label: string, run: () => void, opts: { tone?: 'danger'; keep?: boolean; disabled?: boolean } = {}) => (
@@ -68,7 +71,7 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
 
   // keep a pointer menu on screen
   const W = 240
-  const H = page ? 300 : 340
+  const H = page ? 300 : 380
   const style = sheet ? undefined : { left: Math.min(at.x, innerWidth - W - 8), top: Math.min(at.y, innerHeight - H - 8) }
 
   if (saving)
@@ -124,6 +127,15 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
         {!page && (
           <>
             {item(<Play size={16} />, 'Play', () => navigate({ to: '/scene/$id', params: { id: scene.id }, search: { play: true } }))}
+            {playing &&
+              playing.id !== scene.id &&
+              item(<ListEnd size={16} />, 'Play next', () => {
+                upNext.playNext(scene)
+                showToast(
+                  'Plays after this video',
+                  <UndoButton onClick={() => upNext.remove(scene.id)} />,
+                )
+              })}
             {item(<Heart size={16} className={fav ? 'fill-accent text-accent' : ''} />, fav ? 'Remove from Favorites' : 'Add to Favorites', () =>
               toggleFavorite.mutate({ id: scene.id, favorite: !fav }),
             )}
@@ -138,9 +150,7 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
           unlist.mutate({ id: scene.id, unlisted: true })
           showToast(
             'Unlisted: in the Vault, off Home',
-            <button onClick={() => unlist.mutate({ id: scene.id, unlisted: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-              Undo
-            </button>,
+            <UndoButton onClick={() => unlist.mutate({ id: scene.id, unlisted: false })} />,
           )
         })}
         {/* the menu stays open on a run, so its progress shows; the page shows it too once closed */}

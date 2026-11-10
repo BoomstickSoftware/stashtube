@@ -6,7 +6,7 @@ import { Link } from '@tanstack/react-router'
 import { useCallback, useRef, type ReactNode } from 'react'
 import { useFeatures, useGetScene, useStashDbIds, useWanted } from '../lib/api'
 import { asBool, oneOf, useStored } from '../lib/storage'
-import { Button, Sentinel, Spinner } from './ui'
+import { Button, Segmented, Sentinel, Spinner } from './ui'
 import { date as fmtDate } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { CategoryPill } from './CategoryPill'
@@ -223,25 +223,20 @@ function ViewToggle({ view, onChange }: { view: WantedView; onChange: (v: Wanted
     ['grid', 'Grid', LayoutGrid],
   ]
   return (
-    <div role="radiogroup" aria-label="View" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-      {views.map(([v, label, Icon]) => (
-        <button
-          key={v}
-          type="button"
-          role="radio"
-          aria-checked={view === v}
-          aria-label={label}
-          title={label}
-          onClick={() => onChange(v)}
-          className={clsx(
-            'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-colors touch:py-2.5 sm:px-3',
-            view === v ? 'bg-white text-black' : 'text-muted hover:text-fg',
-          )}
-        >
-          <Icon size={14} /> <span>{label}</span>
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="View"
+      value={view}
+      onChange={onChange}
+      options={views.map(([v, label, Icon]) => ({
+        value: v,
+        title: label,
+        label: (
+          <>
+            <Icon size={14} /> <span>{label}</span>
+          </>
+        ),
+      }))}
+    />
   )
 }
 

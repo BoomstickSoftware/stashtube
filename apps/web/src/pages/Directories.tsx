@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import { FollowHeart } from '../components/EntityHeader'
 import { Building2, ChevronDown, ChevronUp, Heart, LayoutGrid, Network, Search, Star, Table as TableIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { Avatar, Bone, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
+import { Avatar, Bone, Chip, Empty, ErrorBox, Segmented, Sentinel, Spinner } from '../components/ui'
 import { useDebounced } from '../lib/hooks'
 import { asBool, oneOf, useStored } from '../lib/storage'
 import { useFavoritePerformer, useFavoriteStudio, useFavoriteTag, usePerformers, useStudios, useTagTiles } from '../lib/api'
@@ -116,19 +116,7 @@ const genders: [PerformerGender, string][] = [
 function GenderSwitch({ value, onChange }: { value: PerformerGender; onChange: (g: PerformerGender) => void }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <div role="radiogroup" aria-label="Show performers" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-        {genders.map(([g, label]) => (
-          <button
-            key={g}
-            role="radio"
-            aria-checked={value === g}
-            onClick={() => onChange(g)}
-            className={clsx('rounded-full px-3 py-1 transition-colors', value === g ? 'bg-white text-black' : 'text-muted hover:text-fg')}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Segmented label="Show performers" value={value} onChange={onChange} options={genders.map(([g, label]) => ({ value: g, label }))} />
       <span className="text-[11px] leading-none text-muted">Only this page</span>
     </div>
   )
@@ -211,22 +199,19 @@ export function Studios(): JSX.Element {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="sr-only">Studios</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter studios" />
-        <div role="radiogroup" aria-label="View" className="flex rounded-full bg-raised p-0.5 text-[13px]">
-          {views.map(([v, label, Icon]) => (
-            <button
-              key={v}
-              role="radio"
-              aria-checked={prefs.view === v}
-              onClick={() => setPrefs({ view: v })}
-              className={clsx(
-                'flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors touch:py-1.5',
-                prefs.view === v ? 'bg-white text-black' : 'text-muted hover:text-fg',
-              )}
-            >
-              <Icon size={14} /> {label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="View"
+          value={prefs.view}
+          onChange={(v) => setPrefs({ view: v })}
+          options={views.map(([v, label, Icon]) => ({
+            value: v,
+            label: (
+              <>
+                <Icon size={14} /> {label}
+              </>
+            ),
+          }))}
+        />
         {view !== 'networks' && (
           <>
             <Chip tone={prefs.sort === 'videos' ? 'active' : 'default'} onClick={() => setPrefs({ sort: 'videos', dir: 'desc' })}>

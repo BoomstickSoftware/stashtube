@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { IconButton } from './ui'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -81,9 +82,9 @@ export function ShortcutsOverlay() {
       <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()} className="animate-pop-in w-full max-w-2xl rounded-2xl bg-surface p-5 shadow-2xl ring-1 ring-white/10">
         <div className="mb-4 flex items-center">
           <h2 className="text-lg font-bold">Keyboard shortcuts</h2>
-          <button onClick={() => setOpen(false)} className="ml-auto rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" aria-label="Close">
+          <IconButton label="Close" onClick={() => setOpen(false)} className="ml-auto">
             <X size={18} />
-          </button>
+          </IconButton>
         </div>
         <ShortcutList />
       </div>

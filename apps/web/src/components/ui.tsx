@@ -152,12 +152,67 @@ export function Chip({
   )
 }
 
+// One of a few choices, side by side in a pill: view switches, modes, tabs. The only shape for
+// this in the app; 32 px tall with a mouse, 44 px under a finger. `label` names the group.
+export function Segmented<T extends string | number | undefined>({
+  value,
+  onChange,
+  options,
+  label,
+  className,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: readonly { value: T; label: ReactNode; title?: string }[]
+  label: string
+  className?: string
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className={clsx('flex shrink-0 rounded-full bg-raised p-0.5 text-meta', className)}>
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          title={o.title}
+          onClick={() => onChange(o.value)}
+          className={clsx(
+            'flex min-h-7 items-center justify-center gap-1.5 rounded-full px-3 whitespace-nowrap transition-colors touch:min-h-10',
+            value === o.value ? 'bg-white text-black' : 'text-muted hover:text-fg',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // A loading placeholder the size of what it stands for. `bone` for an element that is one;
 // `Bone` for a block in a skeleton. Pulses, still under reduced motion. The skeleton's root
 // carries `role="status" aria-label="Loading"` and the bones are `aria-hidden`.
 export const bone = 'animate-pulse rounded-md bg-raised motion-reduce:animate-none'
 export function Bone({ className }: { className?: string }) {
   return <div aria-hidden className={clsx(bone, className)} />
+}
+
+// A list while it loads: rows of a picture and two lines, the shape of History, Waiting and the
+// Up next list. `thumb` is the picture's width class.
+export function ListSkeleton({ rows = 6, thumb = 'w-32', className }: { rows?: number; thumb?: string; className?: string }) {
+  return (
+    <div role="status" aria-label="Loading" className={clsx('space-y-3', className)}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Bone className={clsx('aspect-video shrink-0 rounded-lg', thumb)} />
+          <div className="min-w-0 flex-1">
+            <Bone className="h-4 w-4/5" />
+            <Bone className="mt-2 h-3 w-2/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // The button in a toast that takes the action back (lib/toast). Reversible actions get this

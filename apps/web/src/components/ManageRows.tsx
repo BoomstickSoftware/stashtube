@@ -1,4 +1,5 @@
 import type { SavedRow } from '@flix/shared'
+import { UndoButton } from './ui'
 import { ArrowDown, ArrowUp, Check, Pencil, PinOff, Rows3 } from 'lucide-react'
 import { useState } from 'react'
 import { useRowMutations, useRows } from '../lib/api'
@@ -21,9 +22,7 @@ export function ManageRows() {
       onSuccess: () =>
         showToast(
           `Unpinned “${r.title}”`,
-          <button onClick={() => m.pin.mutate({ title: r.title, query: r.query })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-            Undo
-          </button>,
+          <UndoButton onClick={() => m.pin.mutate({ title: r.title, query: r.query })} />,
         ),
     })
   return (

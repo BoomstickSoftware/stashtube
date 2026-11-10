@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { X } from 'lucide-react'
-import { type ReactNode, useRef } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useClickOutside, useModal, useSheetDrag } from '../lib/hooks'
 
@@ -64,5 +64,72 @@ export function Sheet({
       </div>
     </div>,
     document.body,
+  )
+}
+
+// A "⋯" menu: the less frequent actions of a card or a row, in the one sheet shape. Choosing an
+// action closes the sheet first.
+export interface SheetAction {
+  icon: ReactNode
+  label: string
+  run: () => void
+  hint?: string // a second, quieter line
+  tone?: 'danger'
+  disabled?: boolean
+}
+export function ActionSheet({ title, actions, onClose }: { title: ReactNode; actions: (SheetAction | false | null | undefined)[]; onClose: () => void }) {
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <div role="menu" className="py-1">
+        {actions.map(
+          (a) =>
+            a && (
+              <button
+                key={a.label}
+                type="button"
+                role="menuitem"
+                disabled={a.disabled}
+                onClick={() => {
+                  onClose()
+                  a.run()
+                }}
+                className={clsx('press-soft flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-white/10 disabled:opacity-40 touch:min-h-12', a.tone === 'danger' ? 'text-danger' : 'text-fg')}
+              >
+                <span className={clsx('flex w-5 shrink-0 justify-center', a.tone !== 'danger' && 'text-muted')}>{a.icon}</span>
+                <span className="min-w-0">
+                  <span className="block">{a.label}</span>
+                  {a.hint && <span className="block truncate text-xs text-muted">{a.hint}</span>}
+                </span>
+              </button>
+            ),
+        )}
+      </div>
+    </Sheet>
+  )
+}
+
+// One name to change: a field and Save, in a sheet (on a phone it sits above the keyboard).
+export function RenameSheet({ title, value, onSave, onClose }: { title: string; value: string; onSave: (name: string) => void; onClose: () => void }) {
+  const input = useRef<HTMLInputElement>(null)
+  // after the sheet has taken focus (useModal), the field takes it
+  useEffect(() => {
+    input.current?.focus()
+    input.current?.select()
+  }, [])
+  return (
+    <Sheet title={title} onClose={onClose} size="form">
+      <form
+        className="flex gap-2 p-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const name = input.current?.value.trim()
+          if (name && name !== value) onSave(name)
+          onClose()
+        }}
+      >
+        <input ref={input} defaultValue={value} maxLength={80} aria-label="Name" className="h-11 min-w-0 flex-1 rounded-full bg-raised px-4 text-base outline-none focus:ring-1 focus:ring-accent sm:text-sm" />
+        <button className="h-11 shrink-0 rounded-full bg-accent px-5 text-sm font-semibold text-white hover:bg-accent-hover">Save</button>
+      </form>
+    </Sheet>
   )
 }

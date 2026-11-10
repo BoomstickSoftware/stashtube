@@ -1,9 +1,10 @@
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Search, X } from 'lucide-react'
+import { Clapperboard, History, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearch } from '../lib/api'
 import { duration } from '../lib/format'
+import { type Recent, useRecents } from '../lib/recents'
 import { Avatar } from './ui'
 import { useClickOutside, useDebounced } from '../lib/hooks'
 import { sized } from '@flix/shared'
@@ -13,6 +14,7 @@ type Hit =
   | { kind: 'performer' | 'studio'; id: string; label: string; sub: string; image: string | null }
   | { kind: 'tag'; id: string; label: string; sub: string; image: null }
   | { kind: 'query'; id: string; label: string; sub: string; image: null }
+const KIND_LABEL: Record<Recent['kind'], string> = { query: 'Search', scene: 'Video', performer: 'Performer', studio: 'Studio', tag: 'Category' }
 
 export function SearchBox({ className, onDone, autoFocus }: { className?: string; onDone?: () => void; autoFocus?: boolean }) {
   const [q, setQ] = useState('')
@@ -24,6 +26,9 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
   const ref = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   useClickOutside(ref, () => setOpen(false), open)
+  // an empty box offers what was searched for or opened from here before
+  const { recents, add, remove, clear } = useRecents()
+  const showRecents = !q.trim() && recents.length > 0
 
   // "/" focuses search from anywhere.
   useEffect(() => {
@@ -49,14 +54,18 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
   }, [data, dq])
 
 
-  const go = (h: Hit | undefined) => {
+  const go = (h: Pick<Hit, 'kind' | 'id' | 'label'> | undefined, recent = false) => {
     setOpen(false)
     input.current?.blur()
     onDone?.()
     if (!h || h.kind === 'query') {
-      if (q.trim()) navigate({ to: '/browse', search: { q: q.trim() } })
+      const text = (recent && h ? h.id : q).trim()
+      if (!text) return
+      add({ kind: 'query', id: text, label: text })
+      navigate({ to: '/browse', search: { q: text } })
       return
     }
+    add({ kind: h.kind, id: h.id, label: h.label })
     setQ('')
     if (h.kind === 'scene') navigate({ to: '/scene/$id', params: { id: h.id } })
     if (h.kind === 'performer') navigate({ to: '/performer/$id', params: { id: h.id } })
@@ -82,12 +91,13 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') {
               e.preventDefault()
-              setActive((a) => Math.min(hits.length - 1, a + 1))
+              setActive((a) => Math.min((showRecents ? recents.length : hits.length) - 1, a + 1))
             } else if (e.key === 'ArrowUp') {
               e.preventDefault()
               setActive((a) => Math.max(0, a - 1))
             } else if (e.key === 'Enter') {
-              go(hits[active])
+              if (showRecents) go(recents[active], true)
+              else go(hits[active])
             } else if (e.key === 'Escape') {
               setOpen(false)
               input.current?.blur()
@@ -103,7 +113,33 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
         )}
         <kbd className="hidden rounded border border-line px-1.5 text-[11px] text-muted md:block">/</kbd>
       </div>
-      {open && hits.length > 0 && (
+      {open && showRecents && (
+        <div className="absolute inset-x-0 top-12 z-50 max-h-[70vh] overflow-y-auto rounded-2xl bg-surface py-2 shadow-2xl ring-1 ring-line">
+          <div className="flex items-center px-4 pb-1">
+            <span className="text-micro font-semibold tracking-wider text-muted uppercase">Recent</span>
+            <button onClick={clear} className="-my-1 ml-auto rounded-full px-2 py-1 text-xs text-muted hover:text-fg touch:min-h-9">
+              Clear
+            </button>
+          </div>
+          {recents.map((r, i) => (
+            <div key={`${r.kind}-${r.id}`} onMouseEnter={() => setActive(i)} className={clsx('flex items-center', i === active && 'bg-white/5')}>
+              <button onClick={() => go(r, true)} className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-3 text-left">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-raised text-muted">
+                  {r.kind === 'query' ? <History size={16} /> : r.kind === 'scene' ? <Clapperboard size={16} /> : r.kind === 'tag' ? '#' : <Search size={16} />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">{r.label}</span>
+                  <span className="block truncate text-xs text-muted">{KIND_LABEL[r.kind]}</span>
+                </span>
+              </button>
+              <button onClick={() => remove(r)} className="mr-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-raised hover:text-fg touch:size-11" aria-label="Remove from recent searches">
+                <X size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {open && !showRecents && hits.length > 0 && (
         <div className="absolute inset-x-0 top-12 z-50 max-h-[70vh] overflow-y-auto rounded-2xl bg-surface py-2 shadow-2xl ring-1 ring-line">
           {hits.map((h, i) => (
             <button

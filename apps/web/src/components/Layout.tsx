@@ -6,6 +6,7 @@ import { ChevronLeft, Clapperboard, Compass, Home, Radio, Search, Settings, User
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { SHARED_STALE } from '../lib/api/client'
+import { asBrowseSection, BROWSE_SECTION_KEY } from '../lib/browse'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery, useScrolledAway } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
@@ -17,9 +18,10 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { NowPlayingHost } from './NowPlaying'
 import { PinLock } from './PinLock'
 import { PrivacyMenu } from './PrivacyMenu'
+import { PullToRefresh } from './PullToRefresh'
 import { SearchBox } from './SearchBox'
 import { ShortcutsOverlay } from './Shortcuts'
-import { Spinner, Toaster } from './ui'
+import { IconButton, Spinner, Toaster } from './ui'
 
 // Five tabs on phone and desktop alike (decisions/five-tab-navigation, 2026-11-09). Each owns the
 // paths under it, so a tab stays lit on its sub-pages: Browse's strip (videos, performers, studios,
@@ -48,6 +50,10 @@ export function Layout(): JSX.Element {
   const stacked = filterCount(useBrowseFilters()) // performers, studios and tags added with "+"
   const path = useRouterState({ select: (s) => s.location.pathname })
   const tab = tabOf(path)
+  // the Browse tab reopens its last section (Videos, Performers, Studios, Categories); inside
+  // Browse it goes to Videos
+  const [section] = useStored(BROWSE_SECTION_KEY, asBrowseSection)
+  const dest = (to: (typeof nav)[number]['to']) => (to === '/browse' && tab !== '/browse' ? section : to)
   usePanicKey()
   // Installed on a home screen there is no browser chrome, so pages below the top level get
   // a Back button in the header.
@@ -96,9 +102,9 @@ export function Layout(): JSX.Element {
         {/* no gap on phones: the 44 px icons carry their own spacing */}
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-0 px-4 sm:gap-4 sm:px-6">
           {canGoBack && (
-            <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Back">
+            <IconButton label="Back" onClick={() => router.history.back()} className="-ml-2 lg:hidden">
               <ChevronLeft size={22} />
-            </button>
+            </IconButton>
           )}
           <Link to="/" className="flex shrink-0 items-center gap-1.5 text-xl font-black tracking-tight">
             <span className="flex size-7 items-center justify-center rounded-lg bg-accent">
@@ -113,7 +119,7 @@ export function Layout(): JSX.Element {
             {nav.slice(1).map((n) => (
               <Link
                 key={n.to}
-                to={n.to}
+                to={dest(n.to)}
                 aria-current={tab === n.to ? 'page' : undefined}
                 className={clsx('rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:text-fg', tab === n.to && '!text-fg bg-raised')}
               >
@@ -123,9 +129,9 @@ export function Layout(): JSX.Element {
             ))}
           </nav>
           <SearchBox className="ml-auto hidden w-full max-w-md lg:block" />
-          <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Search">
+          <IconButton label="Search" onClick={() => setMobileSearch((v) => !v)} className="ml-auto lg:hidden">
             <Search size={20} />
-          </button>
+          </IconButton>
           <PrivacyMenu />
           <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />
@@ -141,6 +147,7 @@ export function Layout(): JSX.Element {
       <main className="mx-auto max-w-[1920px] px-4 py-6 sm:px-6">
         <Outlet />
         <Toaster />
+        <PullToRefresh />
         <ShortcutsOverlay />
         <PinLock />
       </main>
@@ -161,7 +168,7 @@ export function Layout(): JSX.Element {
         {nav.map((n) => (
           <Link
             key={n.to}
-            to={n.to}
+            to={dest(n.to)}
             aria-current={tab === n.to ? 'page' : undefined}
             className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] text-muted', tab === n.to && '!text-accent')}
           >

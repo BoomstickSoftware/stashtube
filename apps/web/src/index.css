@@ -103,6 +103,22 @@
   animation-duration: 0.16s;
   animation-timing-function: var(--ease-standard);
 }
+/* A card's picture grows into the player when its video opens: the tapped card takes this name
+   for the navigation (SceneCard), the player on its page has it (NowPlaying, ScenePlaceholder).
+   One element at a time may carry it. */
+.vt-media {
+  view-transition-name: scene-media;
+}
+::view-transition-group(scene-media) {
+  animation-duration: 0.28s;
+  animation-timing-function: var(--ease-emphasized, var(--ease-standard));
+}
+::view-transition-old(scene-media),
+::view-transition-new(scene-media) {
+  animation-duration: 0.28s;
+  height: 100%;
+  object-fit: cover;
+}
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),

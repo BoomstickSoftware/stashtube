@@ -3,7 +3,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Check, CheckSquare, Trash2, X } from 'lucide-react'
 import { useCallback, useMemo, useState, type JSX, type ReactNode } from 'react'
-import { Button, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
+import { Button, Empty, ErrorBox, ListSkeleton, Sentinel, Spinner, UndoButton } from '../components/ui'
 import { historyKey, useHistory, useRemoveFromHistory, useRestoreHistory, useStats } from '../lib/api'
 import { showToast } from '../lib/toast'
 import { duration } from '../lib/format'
@@ -68,9 +68,7 @@ export function History(): JSX.Element {
         const plays = gone.reduce((n, e) => n + e.times.length, 0)
         showToast(
           gone.length === 1 ? 'Removed from History' : `Removed ${gone.length} from History (${plays} plays)`,
-          <button onClick={() => restore.mutate(gone)} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-            Undo
-          </button>,
+          <UndoButton onClick={() => restore.mutate(gone)} />,
         )
       },
     })
@@ -93,7 +91,7 @@ export function History(): JSX.Element {
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
-        <Spinner className="mx-auto mt-24" />
+        <ListSkeleton rows={8} className="mt-4" />
       ) : !entries.length ? (
         <Empty>Nothing watched yet.</Empty>
       ) : (

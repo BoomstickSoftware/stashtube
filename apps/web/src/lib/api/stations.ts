@@ -30,6 +30,22 @@ export function useStationMutations() {
       },
     }),
     reorder: useMutation({ mutationFn: (ids: number[]) => send('PUT', '/stations/order', { ids }), onSuccess: done }),
+    // Delete with an Undo instead of a confirm (as playlists do): the station leaves the list now
+    // and is deleted after `ms`, unless the returned function is called first. Closing the app in
+    // between keeps the station, which is the safe way to fail.
+    removeLater: (id: number, ms = 6000) => {
+      qc.setQueryData<SavedStation[]>(['stations'], (d) => d?.filter((s) => s.id !== id))
+      const timer = window.setTimeout(() => {
+        send('DELETE', `/stations/${id}`).finally(() => {
+          done()
+          qc.invalidateQueries({ queryKey: ['station-resume'] })
+        })
+      }, ms)
+      return () => {
+        clearTimeout(timer)
+        qc.invalidateQueries({ queryKey: ['stations'] })
+      }
+    },
   }
 }
 

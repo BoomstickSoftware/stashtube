@@ -13,10 +13,11 @@ import { EditableTitle, IdentifyStatus, TagEditor } from '../components/SceneEdi
 import { useIdentify } from '../lib/identify'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
-import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
+import { Avatar, ErrorBox, ListSkeleton, Spinner, Stars, Switch } from '../components/ui'
 import { cachedCard, useAddO, usePlaylist, useRateScene, useRelated, useScene, useSettings, useSceneEdits } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
+import { upNext, useUpNext, withQueued } from '../lib/upNext'
 import { nowPlaying } from '../lib/nowPlaying'
 import { rememberScene } from '../lib/recent'
 import { guardWrite } from '../lib/privacy'
@@ -59,13 +60,18 @@ function SceneView({ id }: { id: string }) {
   // "follow" and its title never shows (phone audit, item 7).
   const touch = useMediaQuery('(pointer: coarse)')
 
-  const queue: Scene[] = useMemo(() => {
+  const rest: Scene[] = useMemo(() => {
     if (playlist.data) {
       const i = playlist.data.items.findIndex((s) => s.id === id)
       return playlist.data.items.slice(i + 1)
     }
     return related.data ?? []
   }, [playlist.data, related.data, id])
+  // anything lined up with "Play next" goes first; opening a video takes it off that list
+  const queued = useUpNext()
+  const queue = useMemo(() => withQueued(queued, rest, id), [queued, rest, id])
+  const nQueued = queued.filter((q) => q.id !== id).length
+  useEffect(() => upNext.remove(id), [id])
   const next = queue[0]
   const capped = sideBySide && !playlist.data
   const listed = capped ? queue.slice(0, SIDEBAR_MAX) : queue
@@ -292,16 +298,16 @@ function SceneView({ id }: { id: string }) {
         </div>
       )}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="mr-auto font-bold">{playlist.data ? 'Up next' : 'Related'}</h2>
+        <h2 className="mr-auto font-bold">{playlist.data || nQueued > 0 ? 'Up next' : 'Related'}</h2>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
           Autoplay
           <Switch size="sm" on={autoplay} onChange={setAutoplay} />
         </label>
       </div>
       <div className="space-y-3">
-        {related.isLoading && !playlist.data && <Spinner className="mx-auto my-8" />}
-        {listed.map((s) => (
-          <UpNextItem key={s.id} scene={s} playlist={playlistId} />
+        {related.isLoading && !playlist.data && <ListSkeleton rows={6} thumb="w-40" />}
+        {listed.map((s, i) => (
+          <UpNextItem key={s.id} scene={s} playlist={playlistId} queued={i < nQueued} />
         ))}
       </div>
     </aside>
@@ -346,7 +352,7 @@ function SceneView({ id }: { id: string }) {
   )
 }
 
-function UpNextItem({ scene, playlist }: { scene: Scene; playlist?: number }) {
+function UpNextItem({ scene, playlist, queued }: { scene: Scene; playlist?: number; queued?: boolean }) {
   return (
     <Link
       to="/scene/$id"
@@ -367,6 +373,7 @@ function UpNextItem({ scene, playlist }: { scene: Scene; playlist?: number }) {
         <div className="line-clamp-2 text-sm leading-snug font-semibold group-hover:text-white">{scene.title}</div>
         <div className="mt-1 truncate text-xs text-muted">{scene.studio?.name}</div>
         <div className="truncate text-xs text-muted">{scene.performers.map((p) => p.name).slice(0, 3).join(', ')}</div>
+        {queued && <div className="mt-1 text-micro font-semibold text-accent">Queued</div>}
       </div>
     </Link>
   )
@@ -378,7 +385,7 @@ function ScenePlaceholder({ id, theater }: { id: string; theater: boolean }): JS
   const card = cachedCard(id)
   if (!card) return <Spinner className="mx-auto mt-32" />
   const picture = (
-    <div className={clsx('relative aspect-video overflow-hidden bg-black', theater ? 'max-h-[calc(100dvh-8rem)] w-full' : 'rounded-2xl')}>
+    <div className={clsx('vt-media relative aspect-video overflow-hidden bg-black', theater ? 'max-h-[calc(100dvh-8rem)] w-full' : 'rounded-2xl')}>
       <img src={sized(card.screenshot, 960)} srcSet={srcSet(card.screenshot)} sizes="(min-width: 1024px) 70vw, 100vw" alt="" className="size-full object-contain opacity-80" />
       <Spinner className="absolute inset-0 m-auto size-10" />
     </div>

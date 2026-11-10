@@ -170,7 +170,14 @@ export const SceneCard = memo(function SceneCard({
           setMenu({ x: e.clientX, y: e.clientY })
         }}
         onClick={(e) => {
-          if (dragged.current) e.preventDefault()
+          if (dragged.current) return e.preventDefault()
+          // the picture grows into the player (index.css, .vt-media); the page being left may
+          // already hold the player, and a name can be on one element only
+          if (!select && !document.querySelector('.vt-media')) {
+            const el = e.currentTarget
+            el.classList.add('vt-media')
+            setTimeout(() => el.classList.remove('vt-media'), 1000) // a new-tab click leaves this page up
+          }
         }}
         onPointerMove={hovering ? onScrub : undefined}
       >

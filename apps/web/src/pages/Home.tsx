@@ -2,12 +2,15 @@ import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { HomeRow, SceneCard, StationResume } from '@flix/shared'
 import clsx from 'clsx'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, Pencil, Play, Radio, Shuffle, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, History, MoreHorizontal, Pencil, Play, Radio, Shuffle, X } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewVideo } from '../components/PreviewVideo'
+import { REFRESH_EVENT } from '../components/PullToRefresh'
 import { Row } from '../components/Row'
 import { SceneCardSkeleton } from '../components/SceneCard'
-import { Bone, Empty, ErrorBox } from '../components/ui'
+import { ActionSheet, RenameSheet } from '../components/Sheet'
+import { Bone, Empty, ErrorBox, IconButton } from '../components/ui'
+import { showToast } from '../lib/toast'
 import { WantedRow } from '../components/WantedRow'
 import { useMediaQuery } from '../lib/hooks'
 import { useMoreFeatured, homeSeed, markHomeSeen, shuffleSeed, useHome, useRowMutations, useScenes, useStationResumes, useWhisparrNew } from '../lib/api'
@@ -32,6 +35,12 @@ export function Home(): JSX.Element {
       document.removeEventListener('visibilitychange', onVisibility)
       markHomeSeen()
     }
+  }, [])
+  // a pull to refresh draws new picks, as Shuffle does
+  useEffect(() => {
+    const onRefresh = () => setSeed(shuffleSeed())
+    addEventListener(REFRESH_EVENT, onRefresh)
+    return () => removeEventListener(REFRESH_EVENT, onRefresh)
   }, [])
   const { data, error, isLoading } = useHome(seed)
   // Hero: the Featured row in score order, then (Hero fetches it) the same ranking further
@@ -91,9 +100,9 @@ export function Home(): JSX.Element {
               title={r.title}
               items={r.items}
               actions={
-                <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg touch:p-3" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
-                  <Shuffle size={15} />
-                </button>
+                <IconButton label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
+                  <Shuffle size={16} />
+                </IconButton>
               }
             />
             <PickUpStations cover={order.at(-1)} />
@@ -350,11 +359,11 @@ function Hero({ order, seed, more }: { order: SceneCard[]; seed: string; more: b
   )
 }
 
-// A row pinned from Browse: rename, move, unpin in place.
+// A row pinned from Browse. Its "⋯" renames, moves or unpins it; _until 2026-11-10_ those were
+// four icon buttons beside every pinned row's title.
 function PinnedRow({ row, order }: { row: HomeRow; order: number[] }) {
   const m = useRowMutations()
-  const [editing, setEditing] = useState(false)
-  const [title, setTitle] = useState(row.title)
+  const [menu, setMenu] = useState<'actions' | 'rename' | null>(null)
   const id = row.savedId!
   const i = order.indexOf(id)
   const move = (d: number) => {
@@ -362,48 +371,32 @@ function PinnedRow({ row, order }: { row: HomeRow; order: number[] }) {
     next.splice(i + d, 0, next.splice(i, 1)[0])
     m.reorder.mutate(next)
   }
-  const btn = 'rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3'
-  const heading = editing ? (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (title.trim()) m.rename.mutate({ id, title: title.trim() }, { onSuccess: () => setEditing(false) })
-      }}
-    >
-      <input
-        autoFocus
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => setEditing(false)}
-        maxLength={80}
-        className="rounded-lg bg-raised px-2 py-1 text-lg font-bold outline-none focus:ring-1 focus:ring-accent"
-      />
-    </form>
-  ) : (
-    row.title
-  )
   return (
-    <Row
-      title={heading}
-      browse={row.browse}
-      items={row.items}
-      actions={
-        <>
-          <button className={btn} title="Rename" onClick={() => setEditing(true)}>
-            <Pencil size={15} />
-          </button>
-          <button className={btn} title="Move up" disabled={i === 0} onClick={() => move(-1)}>
-            <ArrowUp size={15} />
-          </button>
-          <button className={btn} title="Move down" disabled={i === order.length - 1} onClick={() => move(1)}>
-            <ArrowDown size={15} />
-          </button>
-          <button className={btn} title="Unpin" onClick={() => m.unpin.mutate(id)}>
-            <X size={15} />
-          </button>
-        </>
-      }
-    />
+    <>
+      <Row
+        title={row.title}
+        browse={row.browse}
+        items={row.items}
+        actions={
+          <IconButton label={`More for ${row.title}`} onClick={() => setMenu('actions')}>
+            <MoreHorizontal size={18} />
+          </IconButton>
+        }
+      />
+      {menu === 'actions' && (
+        <ActionSheet
+          title={row.title}
+          onClose={() => setMenu(null)}
+          actions={[
+            { icon: <Pencil size={16} />, label: 'Rename', run: () => setMenu('rename') },
+            { icon: <ArrowUp size={16} />, label: 'Move up', disabled: i === 0, run: () => move(-1) },
+            { icon: <ArrowDown size={16} />, label: 'Move down', disabled: i === order.length - 1, run: () => move(1) },
+            { icon: <X size={16} />, label: 'Unpin from Home', tone: 'danger', run: () => m.unpin.mutate(id, { onSuccess: () => showToast('Unpinned from Home') }) },
+          ]}
+        />
+      )}
+      {menu === 'rename' && <RenameSheet title="Rename row" value={row.title} onSave={(title) => m.rename.mutate({ id, title })} onClose={() => setMenu(null)} />}
+    </>
   )
 }
 

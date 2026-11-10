@@ -1,16 +1,14 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-
-// Browse's sections (decisions/five-tab-navigation): videos and the three directories share the
-// Browse tab, switched by this strip at the top of each. It scrolls sideways on a narrow phone.
-const sections = [
-  ['/browse', 'Videos'],
-  ['/performers', 'Performers'],
-  ['/studios', 'Studios'],
-  ['/tags', 'Categories'],
-] as const
+import { useEffect } from 'react'
+import { BROWSE_SECTION_KEY, browseSections as sections } from '../lib/browse'
+import { writeStored } from '../lib/storage'
 
 export function BrowseStrip({ className }: { className?: string }) {
+  const path = useRouterState({ select: (s) => s.location.pathname })
+  useEffect(() => {
+    if (sections.some(([to]) => to === path)) writeStored(BROWSE_SECTION_KEY, path)
+  }, [path])
   return (
     <nav aria-label="Browse" className={clsx('no-scrollbar -mx-4 mb-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0', className)}>
       {sections.map(([to, label]) => (

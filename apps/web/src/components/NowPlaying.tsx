@@ -2,10 +2,13 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { Maximize2, Pause, Play, X } from 'lucide-react'
 import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { queryClient } from '../lib/api/client'
+import { sceneQuery } from '../lib/api/scenes'
 import { log } from '../lib/diag'
 import { duration as fmt } from '../lib/format'
 import { nowPlaying, useNowPlaying, useNowPlayingStatus } from '../lib/nowPlaying'
 import { showToast } from '../lib/toast'
+import { upNext } from '../lib/upNext'
 import { Player } from './Player'
 
 // The scene page's placeholder: the host below lays the one Player over it. `children` is
@@ -80,7 +83,7 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
       startAt={np.startAt}
       autoStart={np.autoStart}
       onNext={np.handlers.onNext}
-      onEnded={() => np.handlers.onEnded?.()}
+      onEnded={() => (docked ? playQueued() : np.handlers.onEnded?.())}
       mini={docked}
       onStatus={nowPlaying.report}
     />
@@ -97,7 +100,7 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
               'inset-x-2 bottom-[calc(var(--tabbar-h)+0.5rem)]',
               'lg:inset-x-auto lg:right-4 lg:bottom-4 lg:w-80 lg:flex-col',
             )
-          : 'absolute'
+          : 'vt-media absolute'
       }
       style={docked ? undefined : box ? { top: box.top, left: box.left, width: box.width } : { visibility: 'hidden', width: 0 }}
       role={docked ? 'region' : undefined}
@@ -109,6 +112,18 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
       </div>
       {docked && <MiniBar scene={scene} />}
     </div>
+  )
+}
+
+// The docked video ended: move on to what was lined up with "Play next", still docked. On the
+// video's own page that page decides (its countdown, its Up next list).
+function playQueued() {
+  const next = upNext.list()[0]
+  if (!next) return
+  upNext.remove(next.id)
+  queryClient.fetchQuery({ ...sceneQuery(next.id), staleTime: 60_000 }).then(
+    (scene) => nowPlaying.open(scene, { autoStart: true, theater: false }),
+    () => showToast('The next video could not be loaded'),
   )
 }
 

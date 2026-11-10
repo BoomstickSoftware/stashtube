@@ -13,7 +13,7 @@ import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
 import { StudioCategoriesSetting } from '../components/StudioCategories'
 import { WhisparrSyncSetting } from '../components/WhisparrSync'
-import { Button, Chip, Switch } from '../components/ui'
+import { Button, Chip, Segmented, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
 import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSetSceneCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings } from '../lib/api'
@@ -190,23 +190,12 @@ function CastSetting() {
                   {m.name} · {m.scenes.toLocaleString()} videos
                 </span>
               </Link>
-              <div role="radiogroup" aria-label={`${MIX_LABEL[m.name] ?? m.name}: how it shows`} className="flex shrink-0 rounded-full bg-raised p-0.5 text-[13px]">
-                {(['normal', 'unlisted'] as const).map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    role="radio"
-                    aria-checked={now === l}
-                    onClick={() => setLevel(m.id, l)}
-                    className={clsx(
-                      'rounded-full px-3 py-1 capitalize touch:min-h-11 touch:px-3.5',
-                      now === l ? 'bg-white text-black' : 'text-muted hover:text-fg',
-                    )}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
+              <Segmented
+                label={`${MIX_LABEL[m.name] ?? m.name}: how it shows`}
+                value={now}
+                onChange={(l) => setLevel(m.id, l)}
+                options={(['normal', 'unlisted'] as const).map((l) => ({ value: l, label: <span className="capitalize">{l}</span> }))}
+              />
             </li>
           )
         })}

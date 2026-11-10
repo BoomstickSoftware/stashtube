@@ -1,11 +1,13 @@
 import type { SavedStation, SceneQuery, StationPreview, StationResume } from '@flix/shared'
 import type { JSX } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Check, History, ListFilter, Pencil, Play, Plus, Radio, Shuffle, Sparkles, Star, Trash2, Users, Waypoints } from 'lucide-react'
+import { History, ListFilter, MoreHorizontal, Pencil, Play, Plus, Radio, Shuffle, SlidersHorizontal, Sparkles, Star, Trash2, Users, Waypoints } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { QuerySummary } from '../components/QuerySummary'
-import { Bone, ErrorBox } from '../components/ui'
+import { ActionSheet, RenameSheet, type SheetAction } from '../components/Sheet'
+import { Bone, ErrorBox, IconButton, UndoButton } from '../components/ui'
+import { showToast } from '../lib/toast'
 import { useMediaQuery } from '../lib/hooks'
 import { previewFor, useStationMutations, useStationPreviews, useStationResumes, useStations } from '../lib/api'
 import { duration as fmt } from '../lib/format'
@@ -50,8 +52,6 @@ export function Stations(): JSX.Element {
         </Link>
       </section>
 
-      <StartFrom />
-
       <section>
         <h2 className="mb-3 text-lg font-bold">Your stations</h2>
         {error ? (
@@ -75,6 +75,8 @@ export function Stations(): JSX.Element {
         )}
       </section>
 
+      {/* every way to start without saving anything, in one place: the ready-made stations, then
+          one from where you just were */}
       <section>
         <h2 className="mb-3 text-lg font-bold">Quick start</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -82,6 +84,7 @@ export function Stations(): JSX.Element {
             <QuickCard key={q.name} {...q} preview={previewFor(previews, q)} pending={previewsPending} resume={resumeFor(stationKey({ query: q.query }))} offset={i + 1} />
           ))}
         </div>
+        <StartFrom />
       </section>
     </div>
   )
@@ -99,9 +102,8 @@ function StartFrom() {
   const card = 'flex min-w-0 items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line hover:bg-raised touch:min-h-14'
   const icon = 'flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/90 text-white'
   return (
-    <section>
-      <h2 className="mb-3 text-lg font-bold">Start from</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {list && (
           <Link to="/station" search={stationQuery(list)} className={card}>
             <span className={icon}>
@@ -127,7 +129,7 @@ function StartFrom() {
           </Link>
         )}
       </div>
-    </section>
+    </>
   )
 }
 
@@ -136,13 +138,9 @@ function StationCardSkeleton() {
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Bone className="aspect-video rounded-none" />
-      <div className="p-3 pb-1">
+      <div className="p-3">
         <Bone className="h-5 w-2/3" />
         <Bone className="mt-2 h-3 w-full" />
-      </div>
-      <div className="flex gap-1.5 px-3 pt-2 pb-3">
-        <Bone className="h-7 w-20 rounded-full" />
-        <Bone className="h-7 w-24 rounded-full" />
       </div>
     </div>
   )
@@ -245,8 +243,20 @@ const PlayBadge = () => (
   </span>
 )
 
-// Tap the picture to pick up where the station was left (or start it); the buttons start a
-// fresh shuffle or only unwatched videos.
+// The ways to start a station other than the tap on its picture, for its "⋯" sheet: the tap
+// resumes when there is a place to resume, so a fresh shuffle is always offered here.
+type StartSearch = { id?: number; start?: 'resume' } & SceneQuery
+function startActions(search: StartSearch, resume: StationResume | undefined, go: (search: StartSearch) => void): SheetAction[] {
+  return [
+    ...(resume ? [{ icon: <History size={16} />, label: 'Resume', hint: `From ${fmt(resume.seconds)} into the last video`, run: () => go({ ...search, start: 'resume' }) }] : []),
+    { icon: <Shuffle size={16} />, label: resume ? 'Start over, shuffled' : 'Shuffle', hint: 'A fresh random order', run: () => go(search) },
+    ...(search.unwatched ? [] : [{ icon: <Sparkles size={16} />, label: 'Unwatched only', hint: 'Videos never watched', run: () => go({ ...search, unwatched: true }) }]),
+  ]
+}
+
+// One tap on the picture picks up where the station was left (or starts it). Everything else
+// (a fresh shuffle, unwatched only, rename, edit, delete) is in the "⋯" sheet; _until 2026-11-10_
+// the card carried two start chips, a pencil, a bin and a tap-to-rename title.
 function StationCard({
   station: s,
   preview,
@@ -260,13 +270,13 @@ function StationCard({
   resume?: StationResume
   offset: number
 }) {
-  const { update, remove } = useStationMutations()
-  const [editing, setEditing] = useState(false)
-  const [confirm, setConfirm] = useState(false)
-  const btn = 'rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3.5'
+  const { update, removeLater } = useStationMutations()
+  const navigate = useNavigate()
+  const [menu, setMenu] = useState<'actions' | 'rename' | null>(null)
+  const go = (search: StartSearch) => navigate({ to: '/station', search })
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
-      <Link to="/station" search={resume ? { id: s.id, start: 'resume' } : { id: s.id }} className="block">
+      <Link to="/station" search={resume ? { id: s.id, start: 'resume' } : { id: s.id }} className="press press-soft block">
         <Preview data={preview} cover={s.cover} pending={pending} offset={offset} className="aspect-video">
           <PlayBadge />
           <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold backdrop-blur">
@@ -275,65 +285,36 @@ function StationCard({
           {resume && <ResumePill resume={resume} />}
         </Preview>
       </Link>
-      <div className="flex items-start gap-1 p-3 pb-1">
+      <div className="flex items-center gap-1 py-2 pr-1 pl-3">
         <div className="min-w-0 flex-1">
-          {editing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                const name = String(new FormData(e.currentTarget).get('name') ?? '').trim()
-                if (name) update.mutate({ id: s.id, name })
-                setEditing(false)
-              }}
-            >
-              <input
-                name="name"
-                autoFocus
-                defaultValue={s.name}
-                maxLength={80}
-                onBlur={(e) => e.currentTarget.form?.requestSubmit()}
-                className="w-full rounded-lg bg-raised px-2 py-1 text-base font-semibold outline-none focus:ring-1 focus:ring-accent sm:text-sm"
-              />
-            </form>
-          ) : (
-            <button className="block max-w-full truncate text-left font-semibold hover:text-accent" title="Rename" onClick={() => setEditing(true)}>
-              {s.name}
-            </button>
-          )}
-          <div className="mt-0.5 line-clamp-2 text-xs text-muted">
-            {s.from ? 'Drifts through videos like one scene' : <QuerySummary query={s.query} />}
-          </div>
+          <div className="truncate font-semibold">{s.name}</div>
+          <div className="mt-0.5 line-clamp-2 text-xs text-muted">{s.from ? 'Drifts through videos like one scene' : <QuerySummary query={s.query} />}</div>
         </div>
-        <Link to="/stations/$id/edit" params={{ id: String(s.id) }} className={btn} title="Edit filters and settings" aria-label={`Edit ${s.name}`}>
-          <Pencil size={15} />
-        </Link>
-        {confirm ? (
-          <button className="rounded-full p-2 text-danger hover:bg-red-500/15 touch:p-3.5" title="Confirm delete" onClick={() => remove.mutate(s.id)}>
-            <Check size={15} />
-          </button>
-        ) : (
-          <button className={btn} title="Delete station" onClick={() => setConfirm(true)} onBlur={() => setConfirm(false)}>
-            <Trash2 size={15} />
-          </button>
-        )}
+        <IconButton label={`More for ${s.name}`} onClick={() => setMenu('actions')}>
+          <MoreHorizontal size={18} />
+        </IconButton>
       </div>
-      <StartButtons search={{ id: s.id }} />
-    </div>
-  )
-}
-
-function StartButtons({ search }: { search: { id?: number } & SceneQuery }) {
-  const chip = 'flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-xs font-medium hover:bg-line touch:min-h-11 touch:px-4'
-  return (
-    <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-      <Link to="/station" search={search} className={chip} title="A fresh shuffle">
-        <Shuffle size={13} /> Shuffle
-      </Link>
-      {!search.unwatched && (
-        <Link to="/station" search={{ ...search, unwatched: true }} className={chip} title="Only videos never watched">
-          <Sparkles size={13} /> Unwatched
-        </Link>
+      {menu === 'actions' && (
+        <ActionSheet
+          title={s.name}
+          onClose={() => setMenu(null)}
+          actions={[
+            ...startActions({ id: s.id }, resume, go),
+            { icon: <Pencil size={16} />, label: 'Rename', run: () => setMenu('rename') },
+            { icon: <SlidersHorizontal size={16} />, label: 'Edit filters and settings', run: () => navigate({ to: '/stations/$id/edit', params: { id: String(s.id) } }) },
+            {
+              icon: <Trash2 size={16} />,
+              label: 'Delete station',
+              tone: 'danger',
+              run: () => {
+                const undo = removeLater(s.id)
+                showToast('Station deleted', <UndoButton onClick={undo} />, 6000)
+              },
+            },
+          ]}
+        />
       )}
+      {menu === 'rename' && <RenameSheet title="Rename station" value={s.name} onSave={(name) => update.mutate({ id: s.id, name })} onClose={() => setMenu(null)} />}
     </div>
   )
 }
@@ -355,16 +336,18 @@ function QuickCard({
   resume?: StationResume
   offset: number
 }) {
+  const navigate = useNavigate()
+  const [menu, setMenu] = useState(false)
   return (
-    <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
-      <Link to="/station" search={resume ? { ...query, start: 'resume' } : query} className="block">
+    <div className="group relative min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      <Link to="/station" search={resume ? { ...query, start: 'resume' } : query} className="press press-soft block">
         <Preview data={preview} pending={pending} offset={offset} className="aspect-video">
           <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-          <span className="absolute bottom-2 left-2 flex min-w-0 items-center gap-2">
+          <span className="absolute right-11 bottom-2 left-2 flex min-w-0 items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/90 text-white">
               <Icon size={15} />
             </span>
-            <span className="truncate text-sm font-semibold">{name}</span>
+            <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
           </span>
           {resume && (
             <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[11px] backdrop-blur">
@@ -373,9 +356,11 @@ function QuickCard({
           )}
         </Preview>
       </Link>
-      <div className="pt-2">
-        <StartButtons search={query} />
-      </div>
+      {/* over the picture's corner, outside the link: the other ways to start this one */}
+      <IconButton label={`More for ${name}`} tone="fg" onClick={() => setMenu(true)} className="absolute right-0.5 bottom-0.5 hover:bg-white/15">
+        <MoreHorizontal size={18} />
+      </IconButton>
+      {menu && <ActionSheet title={name} onClose={() => setMenu(false)} actions={startActions(query, resume, (search) => navigate({ to: '/station', search }))} />}
     </div>
   )
 }

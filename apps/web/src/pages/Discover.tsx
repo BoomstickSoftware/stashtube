@@ -5,7 +5,8 @@ import clsx from 'clsx'
 import { Ban, Building2, Download, Hourglass, Plus, RefreshCw, Search, Sparkles, Tags, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import { Sheet } from '../components/Sheet'
-import { Avatar, Button, Chip, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
+import { Avatar, Button, Chip, Empty, ErrorBox, ListSkeleton, Segmented, Sentinel, Spinner } from '../components/ui'
+import { SceneCardSkeleton } from '../components/SceneCard'
 import { WantedCard } from '../components/WantedRow'
 import { canGetState } from '../lib/wanted'
 import { useCancelQueued, useDiscover, useDiscoverNames, useGetMany, useGiveUp, useRunDiscovery, useSearchAgain, useStashDbOn, useWaiting } from '../lib/api'
@@ -43,24 +44,16 @@ export function Discover(): JSX.Element {
     <div className="pb-28">
       <div className="mb-4 flex items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Discover</h1>
-        <div role="tablist" className="ml-auto flex rounded-full bg-raised p-0.5 text-sm">
-          {(
-            [
-              [undefined, 'StashDB'],
-              ['waiting', `Waiting${nWaiting ? ` · ${nWaiting}` : ''}`],
-            ] as const
-          ).map(([tab, label]) => (
-            <button
-              key={label}
-              role="tab"
-              aria-selected={search.tab === tab}
-              onClick={() => set({ tab })}
-              className={clsx('rounded-full px-3 py-1.5 touch:min-h-11', search.tab === tab ? 'bg-white text-black' : 'text-muted hover:text-fg')}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Show"
+          className="ml-auto"
+          value={search.tab}
+          onChange={(tab) => set({ tab })}
+          options={[
+            { value: undefined, label: 'StashDB' },
+            { value: 'waiting', label: `Waiting${nWaiting ? ` · ${nWaiting}` : ''}` },
+          ]}
+        />
       </div>
       {search.tab === 'waiting' ? <Waiting /> : on ? <Catalog search={search} set={set} /> : <Empty>StashDB is not configured on the server.</Empty>}
     </div>
@@ -191,7 +184,11 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
       {error ? (
         <ErrorBox error={error} />
       ) : isPending ? (
-        <Spinner className="mx-auto my-16" />
+        <div role="status" aria-label="Loading" className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 2xl:grid-cols-5">
+          {Array.from({ length: 10 }, (_, i) => (
+            <SceneCardSkeleton key={i} />
+          ))}
+        </div>
       ) : !items.length ? (
         <Empty>Nothing on StashDB matches.</Empty>
       ) : (
@@ -334,7 +331,7 @@ function Waiting() {
           <Sparkles size={16} /> {run.isPending ? 'Looking…' : 'Find new releases'}
         </Button>
       </div>
-      {error ? <ErrorBox error={error} /> : isPending ? <Spinner className="mx-auto my-16" /> : !data?.length ? <Empty>Nothing is waiting.</Empty> : (
+      {error ? <ErrorBox error={error} /> : isPending ? <ListSkeleton rows={6} thumb="w-28" /> : !data?.length ? <Empty>Nothing is waiting.</Empty> : (
         <ul className="divide-y divide-white/5">
           {data.map((w) => (
             <WaitingRow key={w.scene.stashdbId ?? w.scene.whisparrId} w={w} />

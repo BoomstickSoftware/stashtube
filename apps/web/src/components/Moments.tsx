@@ -1,4 +1,5 @@
 // A video's markers as a list you can come back to: frame, time, title and primary tag, each
+import { UndoButton } from './ui'
 // editable in place, with delete and undo. Marks come from a hold on the picture, `b`, the gear
 // menu or the O counter (title `O`); `[` and `]` jump between them in the player.
 import type { Marker, SceneDetail } from '@flix/shared'
@@ -61,12 +62,7 @@ function MomentRow({ scene, marker, sprites, onSeek }: { scene: SceneDetail; mar
         onSuccess: () =>
           showToast(
             `Removed the moment at ${duration(marker.seconds)}`,
-            <button
-              onClick={() => addMarker.mutate({ seconds: marker.seconds, title: marker.title === marker.tag ? '' : marker.title, tagId: marker.tagId || undefined })}
-              className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line"
-            >
-              Undo
-            </button>,
+            <UndoButton onClick={() => addMarker.mutate({ seconds: marker.seconds, title: marker.title === marker.tag ? '' : marker.title, tagId: marker.tagId || undefined })} />,
           ),
       }),
     )

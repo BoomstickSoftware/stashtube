@@ -3,7 +3,8 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, GripVertical, ListVideo, Play, Plus, Radio, Shuffle, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { HeaderSkeleton } from '../components/EntityHeader'
-import { Bone, Button, Empty, ErrorBox, Spinner, UndoButton } from '../components/ui'
+import { SceneCardSkeleton } from '../components/SceneCard'
+import { Bone, Button, Empty, ErrorBox, IconButton, UndoButton } from '../components/ui'
 import { showToast } from '../lib/toast'
 import { usePlaylist, usePlaylistMutations, usePlaylists } from '../lib/api'
 import { ago, duration } from '../lib/format'
@@ -40,7 +41,11 @@ export function Playlists(): JSX.Element {
       {error ? (
         <ErrorBox error={error} />
       ) : isLoading ? (
-        <Spinner className="mx-auto mt-24" />
+        <div role="status" aria-label="Loading" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <SceneCardSkeleton key={i} />
+          ))}
+        </div>
       ) : !data?.length ? (
         <Empty>No playlists yet. Use “Save” on any video, or create one above.</Empty>
       ) : (
@@ -217,12 +222,12 @@ export function PlaylistPage(): JSX.Element {
                 </div>
               </div>
               <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                <button onClick={() => move(i, i - 1)} disabled={i === 0} className="inline-flex rounded-full p-2 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3" aria-label="Move up">
+                <IconButton label="Move up" onClick={() => move(i, i - 1)} disabled={i === 0}>
                   <ArrowUp size={16} />
-                </button>
-                <button onClick={() => move(i, i + 1)} disabled={i === p.items.length - 1} className="inline-flex rounded-full p-2 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3" aria-label="Move down">
+                </IconButton>
+                <IconButton label="Move down" onClick={() => move(i, i + 1)} disabled={i === p.items.length - 1}>
                   <ArrowDown size={16} />
-                </button>
+                </IconButton>
                 <button
                   onClick={() =>
                     m.removeItem.mutate(
