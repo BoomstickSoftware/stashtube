@@ -18,6 +18,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// a hit is reported as file:line and the term's length; --show prints the matched name
+const SHOW = process.argv.includes('--show')
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PRIV = join(ROOT, 'private')
 const AUTO = join(PRIV, 'denylist.auto.txt')
@@ -81,7 +84,7 @@ function check() {
   for (const f of files) {
     const lines = readFileSync(join(ROOT, f), 'utf8').split('\n')
     lines.forEach((line, i) => {
-      for (const m of line.matchAll(re)) hits.push(`${f}:${i + 1}: ${m[0]}`)
+      for (const m of line.matchAll(re)) hits.push(`${f}:${i + 1}: ${SHOW ? m[0] : `<term len=${m[0].length} col=${m.index + 1}>`}`)
     })
   }
   for (const h of hits) console.log(h)
@@ -100,14 +103,14 @@ function history(range = 'github/main..HEAD') {
     if (line.startsWith('@@commit ')) { commit = line.slice(9); continue }
     if (line.startsWith('+++ ')) { file = line.replace(/^\+\+\+ (b\/)?/, ''); continue }
     if (!line.startsWith('+') || SKIP.some((r) => r.test(file))) continue
-    for (const x of line.matchAll(m.re)) hits.push(`${commit.slice(0, 60)} | ${file}: ${x[0]}`)
+    for (const x of line.matchAll(m.re)) hits.push(`${commit.slice(0, 9)} | ${file}: ${SHOW ? x[0] : `<term len=${x[0].length}>`}`)
   }
   for (const h of hits) console.log(h)
   console.log(`privacy history ${range}: ${git(['rev-list', range]).length} commits, ${m.count} terms, ${hits.length} hit(s)`)
   return hits.length ? 1 : 0
 }
 
-const [cmd, arg] = process.argv.slice(2)
+const [cmd, arg] = process.argv.slice(2).filter((a) => a !== '--show')
 if (cmd === 'refresh') await refresh(arg)
 else if (cmd === 'history') process.exit(history(arg))
 else process.exit(check())

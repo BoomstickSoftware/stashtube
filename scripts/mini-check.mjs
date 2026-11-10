@@ -6,28 +6,35 @@
 // recorded in Stash.
 // usage: node scripts/mini-check.mjs <outdir> http://localhost:5174 /scene/<id>
 // env: W, H (viewport), STEP (ms to wait after a tap, 1500)
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): names and titles reach the app as filler, pictures are grey
+// placeholders and video is flattened, so a screenshot shows layout, never content. --content (or CONTENT=1) opts out.
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const [outDir, base, path] = process.argv.slice(2)
+import { capture, installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
+
+const [outDir, base, path] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
 const STEP = Number(process.env.STEP ?? 1500)
 // Chrome picks a free port and writes it to the profile. A fixed port would silently attach to
 // any headless Chrome left running from an earlier check (and keep driving its page).
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -46,17 +53,18 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', {
-  urls: [
-    '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
-    '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
-  ],
-})
+const BLOCKED = [
+  '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
+  '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
+]
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+const neutral = NEUTRAL ? await installNeutral({ send, ws, base, blocked: BLOCKED }) : null
 const requests = new Map()
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data)
   if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, `${m.params.request.method} ${m.params.request.url}`)
-  if (m.method === 'Network.loadingFailed' && m.params.blockedReason) console.log('  blocked:', requests.get(m.params.requestId) ?? m.params.requestId)
+  if (m.method === 'Network.loadingFailed' && m.params.blockedReason && !neutral?.wasBlockedHere(m.params.requestId)) console.log('  blocked:', (requests.get(m.params.requestId) ?? m.params.requestId).replace(/\?.*$/, ''))
 })
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true })
 await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })
@@ -69,8 +77,7 @@ const rect = (sel) => evaluate(`(() => { const el = document.querySelector(${JSO
 const state = () => evaluate(`(() => { const v = document.querySelector('video'); const dock = document.querySelector('[role=region][aria-label="Now playing"]'); return { path: location.pathname, docked: !!dock, video: !!v, paused: v?.paused, t: v ? +v.currentTime.toFixed(1) : null } })()`)
 let n = 0
 const shot = async (name) => {
-  const s = await send('Page.captureScreenshot', { format: 'png' })
-  writeFileSync(`${outDir}/${++n}-${name}.png`, Buffer.from(s.result.data, 'base64'))
+  await capture({ send, neutral, file: `${outDir}/${++n}-${name}.png` })
 }
 const step = async (name, fn) => {
   await fn()

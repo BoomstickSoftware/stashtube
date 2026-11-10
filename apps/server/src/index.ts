@@ -32,7 +32,8 @@ app.use('*', securityHeaders, hostGuard) // guard.ts: what keeps other web pages
 app.use('/api/*', sameOriginWrites)
 app.use('/media/*', sameOriginWrites)
 
-app.use('/api/*', logger())
+// search text stays out of the log (wiki/decisions/content-neutral-sessions.md)
+app.use('/api/*', logger((line, ...rest) => console.log(line.replace(/([?&]q=)[^&\s]*/g, '$1…'), ...rest)))
 app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
 app.use('/api/*', ...conditional) // inside compress: the ETag is of the JSON, a 304 has no body to compress
 // Liveness, and which build this is: the deploy workflow waits for its commit to appear here

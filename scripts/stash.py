@@ -9,6 +9,11 @@ Usage:
   stash.py q '<graphql>' [vars-json] run a query; a mutation is a dry run unless --apply
   stash.py jobs [--wait]            job queue; --wait polls every 30s until it is empty
 
+  stash.py --neutral <command…>     the same, printed only through `node scripts/neutral.mjs redact`: no name,
+                                    title or path is shown (wiki/runbooks/neutral-observability.md). Use this
+                                    form in an assistant session; without a .env, `node scripts/neutral.mjs stash …`
+                                    reaches Stash from inside the flix pod instead.
+
 Mutations print the request and stop unless --apply is given. Bodies may use ${env:NAME}
 placeholders, filled from .env at send time so secrets never appear in arguments or output.
 Output is redacted (api keys, passwords, tokens).
@@ -136,4 +141,7 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    if "--neutral" in sys.argv:
+        from arrlib.core import run_neutral
+        sys.exit(run_neutral(__file__, sys.argv[1:]))
     sys.exit(main(sys.argv[1:]))

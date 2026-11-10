@@ -3,27 +3,34 @@
 // scrolling a card away stops it, and a tap still opens the scene. Chrome holds back touchmoves inside its
 // ~15 px tap slop (iOS Safari does not), so the test drags 25 px.
 // usage: node scripts/card-check.mjs <outdir> http://localhost:5173 /browse
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): names and titles reach the app as filler, pictures are grey
+// placeholders and video is flattened, so a screenshot shows layout, never content. --content (or CONTENT=1) opts out.
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const [outDir, base, path] = process.argv.slice(2)
+import { capture, installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
+
+const [outDir, base, path] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
 // Chrome picks a free port and writes it to the profile. A fixed port would silently attach to
 // any headless Chrome left running from an earlier check (and keep driving its page).
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -42,7 +49,10 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity'] })
+const BLOCKED = ['*/api/scenes/*/play', '*/api/scenes/*/activity']
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+const neutral = NEUTRAL ? await installNeutral({ send, ws, base, blocked: BLOCKED }) : null
 const desktop = !!process.env.DESKTOP
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: desktop ? 1 : 2, mobile: !desktop })
 if (!desktop) {

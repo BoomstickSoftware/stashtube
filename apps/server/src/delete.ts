@@ -14,8 +14,9 @@ import { deleteMovie, exclude, movieForFile } from './whisparr.ts'
 export async function deleteScene(id: string): Promise<DeleteResult> {
   const scene = await sceneForDeletion(id)
   if (!scene) return { id, title: null, ok: false, error: 'not in Stash' }
-  const fail = (error: string): DeleteResult => {
-    console.warn(`delete scene ${id} "${scene.title}" failed: ${error}`)
+  // the log carries ids only (wiki/decisions/content-neutral-sessions.md); the title and file name go to the user
+  const fail = (error: string, logged = error): DeleteResult => {
+    console.warn(`delete scene ${id} failed: ${logged}`)
     return { id, title: scene.title, ok: false, error }
   }
   try {
@@ -23,7 +24,7 @@ export async function deleteScene(id: string): Promise<DeleteResult> {
     for (const path of scene.paths) {
       const movie = await movieForFile(path, scene.stashIds)
       if (movie) movies.set(movie.id, movie.stashId ?? null)
-      else if (!(await gone(path))) return fail(`Whisparr has no entry for ${path.split('/').pop()}; nothing was deleted`)
+      else if (!(await gone(path))) return fail(`Whisparr has no entry for ${path.split('/').pop()}; nothing was deleted`, 'Whisparr has no entry for one of its files; nothing was deleted')
     }
     for (const [movieId, stashId] of movies) await deleteMovie(movieId, stashId)
     if (!movies.size) await exclude(scene.stashDbIds, scene.title)
@@ -33,7 +34,7 @@ export async function deleteScene(id: string): Promise<DeleteResult> {
       return fail(`the file is deleted, but Stash is busy (${(e as Error).message}); delete again later to remove the entry`)
     }
     await forgetScene(id)
-    console.log(`deleted scene ${id} "${scene.title}" (whisparr ${[...movies.keys()].join(', ') || 'none: file already gone'})`)
+    console.log(`deleted scene ${id} (whisparr ${[...movies.keys()].join(', ') || 'none: file already gone'})`)
     return { id, title: scene.title, ok: true }
   } catch (e) {
     return fail((e as Error).message)

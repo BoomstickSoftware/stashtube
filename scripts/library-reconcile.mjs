@@ -22,6 +22,8 @@ const args = process.argv.slice(2)
 const doScan = args.includes('--scan')
 const doLink = args.includes('--link')
 const doFill = args.includes('--fill')
+// counts and ids by default; --names prints paths, folders and titles (wiki/decisions/content-neutral-sessions.md)
+const NAMES = args.includes('--names')
 const env = (k) => process.env[k] ?? (() => { throw new Error(`${k} is not set`) })()
 const [stashPrefix, localRoot] = env('MEDIA_PATH_MAP').split('=')
 const [, whisparrRoot] = env('WHISPARR_PATH_MAP').split('=')
@@ -74,7 +76,8 @@ const disagree = scenes.filter((s) => s.stash_ids.length).map((s) => ({ s, m: by
 const noFile = movies.filter((m) => !m.hasFile)
 const bare = scenes.filter((s) => s.stash_ids.length && !(s.title && s.studio) && !s.files[0]?.path.startsWith(`${stashPrefix}/movies/`))
 
-const show = (title, items, f = (x) => x) => { console.log(`\n${title}: ${items.length}`); for (const i of items.slice(0, 50)) console.log(`  ${f(i)}`); if (items.length > 50) console.log(`  … ${items.length - 50} more`) }
+const idOf = (i) => i?.s?.id ?? i?.id
+const show = (title, items, f = (x) => x) => { console.log(`\n${title}: ${items.length}`); if (!NAMES) { const ids = items.map(idOf).filter((x) => x !== undefined); if (ids.length) console.log(`  ids: ${ids.slice(0, 50).join(' ')}${ids.length > 50 ? ' …' : ''}`); return } for (const i of items.slice(0, 50)) console.log(`  ${f(i)}`); if (items.length > 50) console.log(`  … ${items.length - 50} more`) }
 console.log(`disk ${disk.size} videos under ${root} | Stash ${scenes.length} scenes | Whisparr ${movies.length} records, ${byWhisparrPath.size} with a file`)
 show('On disk, not in Stash (needs a scan)', notInStash)
 show('On disk, not in Whisparr (a film: add it by hand, GET movie/lookup?term=<title>, POST movie with the folder as path, then RescanMovie)', notInWhisparr)

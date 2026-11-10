@@ -27,7 +27,7 @@ if [ -z "$ROUTES" ]; then ROUTES=$(mktemp); cat > "$ROUTES" <<'ROUTES_EOF'
 /api/tags/25
 /api/scenes?tags=25&perPage=40
 /api/search?q=a
-/api/search?q=blonde%20teen%20anal
+/api/search?q=the%20first%20one
 /api/whisparr/performer/447
 /api/whisparr/performer/807
 /api/whisparr/studio/6

@@ -293,6 +293,24 @@ def err_line(app, e):
     print(f"ERR\t{app}\t{e.code}\t{e.detail}\t{e.hint or '-'}", file=sys.stderr)
 
 
+# --- neutral output ----------------------------------------------------------------------
+
+def run_neutral(script, argv):
+    """--neutral: run the same command without the flag and print its stdout and stderr only
+    through `node scripts/neutral.mjs redact` (wiki/runbooks/neutral-observability.md): ids,
+    numbers, dates and enums stay, every name, title and path becomes a token. Options after
+    `--` go to the redactor (--full, --items N, --pick '$.path')."""
+    import subprocess
+    extra = argv[argv.index("--") + 1:] if "--" in argv else []
+    args = [a for a in (argv[:argv.index("--")] if "--" in argv else argv) if a != "--neutral"]
+    run = subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True)
+    redactor = ["node", str(Path(script).resolve().parent / "neutral.mjs"), "redact", *extra]
+    for text in (run.stdout, run.stderr):
+        if text.strip():
+            subprocess.run(redactor, input=text, text=True, check=False)
+    return run.returncode
+
+
 # --- small formatters -------------------------------------------------------------------
 
 def human_bytes(n):

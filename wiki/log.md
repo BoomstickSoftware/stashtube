@@ -400,3 +400,12 @@ Discover performer search 500'd (StashDB HTTP 422), then tripped the 5-minute pa
 
 ## [2026-11-10] correct | Studio default categories: when they apply, hourly sync
 User saw two new downloads lack a studio's default category until Sync now. Not a fault: the change-triggered sync waits for two quiet polls and at most one run per 5 min, and the user clicked first. Gap found: change detection polls only while flix is in use, so imports while idle waited for the next visit. User asked for an hourly sync regardless of use; added in index.ts. Page: features/studio-default-categories.
+
+## [2026-11-10] ingest | Neutral observability suite
+User asked that an assistant session work with ids and counts, not library names. Added scripts/neutral.mjs (API, Stash, Whisparr, Postgres, logs, stdin filter) over an allow-list redactor (scripts/lib/neutral.mjs, unit-tested in check.mjs), --neutral on stash.py and whisparr.py, and neutral-by-default screenshots in phone-flow, mobile-check and desktop-check. Exercised read-only against flix.lan and the pod. Found: the checks' `*/play` block also blocks GET /scenes/<id>/playlists. Pages: runbooks/neutral-observability (new), scripts-library, mobile-checks, gather-context.
+
+## [2026-11-10] decide | Sessions work with ids and counts, never library names
+User asked for content-neutral scripts and working rules. Recorded as [[content-neutral-sessions]]; rule 12 added to CLAUDE.md.
+
+## [2026-11-10] ingest | Ground-up architecture and UX review, delight research
+Five-agent workflow: server, web, UI audit, research, neutral suite. Filed [[2026-11-10-architecture-and-ux-review]] (findings, measurements, wiki drift), [[ux-delight-principles]] (researched rules and checklist) and a proposed roadmap section (H1–H10, U1–U5). No app code changed.

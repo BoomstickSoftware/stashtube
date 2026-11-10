@@ -4,27 +4,34 @@
 // track, double tap the right side (+10 s), swipe sideways on the picture (scrubs, the page
 // must not pan), tap the centre play/pause. Prints the player state after each step. Plays and progress are blocked, so nothing is recorded in Stash.
 // usage: node scripts/touch-check.mjs <outdir> http://localhost:5173 /scene/<id>
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): names and titles reach the app as filler, pictures are grey
+// placeholders and video is flattened, so a screenshot shows layout, never content. --content (or CONTENT=1) opts out.
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const [outDir, base, path] = process.argv.slice(2)
+import { capture, installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
+
+const [outDir, base, path] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
 // Chrome picks a free port and writes it to the profile. A fixed port would silently attach to
 // any headless Chrome left running from an earlier check (and keep driving its page).
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -43,7 +50,10 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', { urls: ['*/api/scenes/*/play', '*/api/scenes/*/activity'] })
+const BLOCKED = ['*/api/scenes/*/play', '*/api/scenes/*/activity']
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+const neutral = NEUTRAL ? await installNeutral({ send, ws, base, blocked: BLOCKED }) : null
 const desktop = !!process.env.DESKTOP
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: desktop ? 1 : 2, mobile: !desktop })
 if (!desktop) {
@@ -98,8 +108,7 @@ const s4 = await state(); console.log('before swipe', s4)
 await touch('touchStart', vx + vw * 0.2, vy + vh * 0.25) // above the centre buttons
 for (let i = 1; i <= 10; i++) { await touch('touchMove', vx + vw * (0.2 + i * 0.03), vy + vh * 0.25); await sleep(20) }
 console.log('mid-swipe (t unchanged, controls shown)', await state())
-const shotSwipe = await send('Page.captureScreenshot', { format: 'png' })
-writeFileSync(`${outDir}/swipe.png`, Buffer.from(shotSwipe.result.data, 'base64'))
+await capture({ send, neutral, file: `${outDir}/swipe.png` })
 await touch('touchEnd'); await sleep(800)
 console.log(`after sideways swipe (t ~ ${(s4.t + (s4.dur * vw * 0.3) / s4.bar[2]).toFixed(1)}, scrollX 0)`, await state())
 // 5. the big play/pause in the middle must take the tap (the controls' gradient once covered it)
@@ -108,6 +117,5 @@ let pb = await play()
 if (!pb.shown) { await tap(pb.x, pb.y); await sleep(400); pb = await play() }
 await tap(pb.x, pb.y); await sleep(500)
 console.log('centre button: was', pb.label, '-> paused', (await state()).paused)
-const shot = await send('Page.captureScreenshot', { format: 'png' })
-writeFileSync(`${outDir}/interact.png`, Buffer.from(shot.result.data, 'base64'))
+await capture({ send, neutral, file: `${outDir}/interact.png` })
 ws.close(); chrome.kill()

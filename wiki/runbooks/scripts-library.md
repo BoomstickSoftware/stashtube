@@ -5,9 +5,9 @@ summary: The rule that an operations task is done by a registered script when on
 tags: [scripts, meta, checks, deploy]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-10
 code: [scripts/manifest.json, scripts/scripts.mjs]
-related: [run-checks, deploy-and-verify, mobile-checks, regenerate-stash-schema, gather-context]
+related: [run-checks, deploy-and-verify, mobile-checks, regenerate-stash-schema, gather-context, neutral-observability]
 ---
 
 # Use and grow the scripts library
@@ -39,7 +39,10 @@ node scripts/scripts.mjs show <name>        # the full entry: usage, env, what i
    `usage` (copyable lines), `env` (optional), `writes` (what it touches; "nothing" when
    read-only), `tags`, `wiki` (the runbook or feature page that explains the task). A script
    that reaches Stash, Whisparr or the cluster is read-only unless the user asked for the write
-   ([[prod-checks-read-only]]).
+   ([[prod-checks-read-only]]). A script that prints live data prints it neutrally (ids, counts,
+   shapes) through `scripts/lib/neutral.mjs`, or says in its `does` that it shows content
+   ([[neutral-observability]]). Shared modules go in `scripts/lib/` (the lint registers only
+   the top-level files).
 
 4. Mention the script in the wiki page that owns the task (its `code:` list and the step that
    uses it), then:
@@ -52,7 +55,7 @@ node scripts/scripts.mjs lint
    registered, an entry whose file or `wiki` page does not exist, a duplicate name or a
    missing key.
 
-## What is in it (2026-11-04)
+## What is in it (2026-11-10)
 
 | Script | Does |
 |---|---|
@@ -61,6 +64,7 @@ node scripts/scripts.mjs lint
 | `mobile-check.mjs`, `touch-check.mjs`, `card-check.mjs` | the headless phone checks ([[mobile-checks]]) |
 | `stash-schema.mjs` | refreshes the Stash schema ([[regenerate-stash-schema]]) |
 | `library-reconcile.mjs` | disk vs Stash vs Whisparr, run inside the flix pod; `--scan`, `--link` ([[library-reconcile]]) |
+| `neutral.mjs` (+ `lib/neutral*.mjs`) | flix's API, Stash, Whisparr, Postgres and the pod's logs as ids, counts and shapes, no library names; the first tool for any look at live data ([[neutral-observability]]) |
 | `wiki.mjs` | wiki search, index, lint ([[CONVENTIONS]]) |
 | `scripts.mjs` | this registry |
 

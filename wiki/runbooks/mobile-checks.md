@@ -5,9 +5,9 @@ summary: The headless check scripts (overflow, touch player, drag-to-preview, mi
 tags: [mobile, testing, headless, chrome, scripts]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-10
 code: [scripts/mobile-check.mjs, scripts/touch-check.mjs, scripts/card-check.mjs, scripts/mini-check.mjs, scripts/webkit-mini-check.mjs, scripts/phone-flow.mjs, scripts/desktop-check.mjs]
-related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs, next-video-opens-docked-over-its-own-page]
+related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attached-to-stale-chrome, check-scripts-wrote-plays-to-stash, scripts-library, playwright-webkit-install-hangs, next-video-opens-docked-over-its-own-page, neutral-observability]
 ---
 
 # Run the headless mobile checks
@@ -15,6 +15,12 @@ related: [mobile-first-ui, dev-setup, prod-checks-read-only, check-scripts-attac
 Use after any UI change, before the commit. They drive headless Chrome at iPhone 17 Pro Max
 size against a running Vite (`pnpm dev`, [[dev-setup]]) and need Chrome installed on the Mac.
 Write to a scratch directory, not the repo.
+
+`mobile-check`, `phone-flow` and `desktop-check` are **neutral by default** since 2026-11-10
+([[neutral-observability]]): titles and names reach the app as filler of the same shape,
+pictures are grey placeholders, video is flattened, and a screenshot is withheld unless the
+page confirms it. `--content` (or `CONTENT=1`) shows the real library, on the user's request
+only. The other scripts here still capture real screenshots.
 
 ## Steps
 

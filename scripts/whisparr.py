@@ -23,6 +23,12 @@ Writes (dry run unless --apply; --apply runs the app's Backup first unless --no-
                        secrets stay intact because the object is never round-tripped through redaction
   cmd <Name> [k=v..]   app command, waits for completion (RssSync, RescanSeries seriesId=11, ...)
 
+Neutral output: add --neutral to any command and everything it prints goes through
+`node scripts/neutral.mjs redact` first: ids, numbers, dates and states stay, every title, name,
+path, indexer and release name becomes a token (wiki/runbooks/neutral-observability.md). Use this
+form in an assistant session; without a .env, `node scripts/neutral.mjs whisparr …` reaches
+Whisparr from inside the flix pod instead.
+
 Output: TSV with a header line on stdout (--json: one JSON object per line).
 Failures: one line per app on stderr: ERR<TAB>app<TAB>code<TAB>detail<TAB>hint.
 Exit: 0 ok, 1 some apps failed, 2 usage or .env problem, 3 every app failed.
@@ -148,4 +154,6 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    if "--neutral" in sys.argv:
+        sys.exit(core.run_neutral(__file__, sys.argv[1:]))
     sys.exit(main(sys.argv[1:]))

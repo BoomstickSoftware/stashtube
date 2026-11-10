@@ -2,7 +2,10 @@
 // steps (real mouse moves, clicks, right-clicks, key presses, Tab, typing, scrolling, eval) and
 // save screenshots along the way. Modelled on scripts/mobile-check.mjs; the Stash-write block is
 // kept verbatim so nothing is recorded.
-// usage: node scripts/desktop-check.mjs <outdir> <base> <scenario.json>
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): titles, names and descriptions reach the app as
+// filler of the same shape, library pictures are grey placeholders and video is flattened to grey, so the
+// screenshots and eval lines show layout, never content. --content (or CONTENT=1): the real library, on request only.
+// usage: node scripts/desktop-check.mjs <outdir> <base> <scenario.json> [--content]
 // env: W, H (viewport; default 1440x900); LATENCY=<ms> added to every /api and /media answer,
 //   to catch loading states (skeletons, placeholders) that the LAN answers before the first shot
 // scenario.json: [{ name, path, steps: [ {wait:ms} | {mouse:[x,y]} | {click:[x,y]} | {rclick:[x,y]}
@@ -11,23 +14,27 @@
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
 
-const [outDir, base, scenarioFile] = process.argv.slice(2)
+const [outDir, base, scenarioFile] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache, and a content run's must not be shown
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 1440)
 const H = Number(process.env.H ?? 900)
 const scenarios = JSON.parse(readFileSync(scenarioFile, 'utf8'))
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -46,26 +53,27 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', {
-  urls: [
-    '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
-    '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
-  ],
-})
+const BLOCKED = [
+  '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
+  '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
+]
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+const latency = Number(process.env.LATENCY ?? 0)
+const neutral = NEUTRAL ? await installNeutral({ send, ws, base, blocked: BLOCKED, latency }) : null
 // Say what was blocked: a gesture test asserts that the write was at least attempted.
 const requests = new Map()
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data)
   if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, `${m.params.request.method} ${m.params.request.url}`)
-  if (m.method === 'Network.loadingFailed' && m.params.blockedReason) console.log('  blocked:', requests.get(m.params.requestId) ?? m.params.requestId)
+  if (m.method === 'Network.loadingFailed' && m.params.blockedReason && !neutral?.wasBlockedHere(m.params.requestId)) console.log('  blocked:', NEUTRAL ? (requests.get(m.params.requestId) ?? '').replace(/\?.*$/, '') : (requests.get(m.params.requestId) ?? m.params.requestId))
 })
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false })
 await send('Page.enable')
 // LATENCY delays the BFF's answers only (/api and /media), not Vite's own modules: a global
 // Network.emulateNetworkConditions stalled the dev server's module chain for longer than any
 // scenario waited, and the pages never painted at all.
-const latency = Number(process.env.LATENCY ?? 0)
-if (latency > 0) {
+if (latency > 0 && !NEUTRAL) {
   // every request is paused and the path decides: a CDP glob like `*/api/*` also matches
   // Vite's `/src/lib/api/*.ts` modules
   ws.addEventListener('message', (e) => {
@@ -100,6 +108,10 @@ const press = async (name, modifiers = 0) => {
 const mouse = async (type, x, y, button = 'none', extra = {}) =>
   send('Input.dispatchMouseEvent', { type, x, y, button, pointerType: 'mouse', ...extra })
 const shot = async (name) => {
+  if (neutral) {
+    const ok = await neutral.ready()
+    if (!ok.ok) return console.log(`  NOT NEUTRAL, ${name}.png withheld: ${JSON.stringify(ok)}`)
+  }
   const r = await send('Page.captureScreenshot', { format: 'png' })
   writeFileSync(`${outDir}/${name}.png`, Buffer.from(r.result.data, 'base64'))
   console.log('  shot', name)
@@ -132,5 +144,7 @@ for (const sc of scenarios) {
     else if (st.shot) await shot(`${sc.name}_${st.shot}`)
   }
 }
+if (neutral) console.log(`neutral: ${neutral.stats.api} API answers masked, ${neutral.stats.pictures} pictures replaced, ${neutral.stats.unreadable} withheld`)
+else console.log('CONTENT MODE: the screenshots and the lines above show the real library')
 ws.close()
 chrome.kill()

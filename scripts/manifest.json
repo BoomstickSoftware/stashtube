@@ -7,7 +7,7 @@
       "does": "Lists, searches and lints this manifest: the way to find out whether a script already exists before doing a thing by hand.",
       "usage": [
         "node scripts/scripts.mjs list",
-        "node scripts/scripts.mjs search <words\u2026>",
+        "node scripts/scripts.mjs search <words…>",
         "node scripts/scripts.mjs show <name>",
         "node scripts/scripts.mjs lint"
       ],
@@ -23,7 +23,7 @@
       "file": "scripts/wiki.mjs",
       "does": "Searches, indexes and lints the wiki/ knowledge base; run `search` before reading pages by hand, `index` then `lint` after any wiki edit.",
       "usage": [
-        "node scripts/wiki.mjs search <words\u2026> [--kind k] [--tag t] [-n 10]",
+        "node scripts/wiki.mjs search <words…> [--kind k] [--tag t] [-n 10]",
         "node scripts/wiki.mjs index",
         "node scripts/wiki.mjs lint",
         "node scripts/wiki.mjs tags",
@@ -40,7 +40,7 @@
     {
       "name": "check",
       "file": "scripts/check.mjs",
-      "does": "Runs the pre-commit checks in order (typecheck, the web's tsc, lint with the known-warning baseline, tests, optionally the image build) and stops at the first failure.",
+      "does": "Runs the pre-commit checks in order (typecheck, the web's tsc, lint with the known-warning baseline, the server tests, the scripts' own tests, the privacy check, optionally the image build) and stops at the first failure.",
       "usage": [
         "node scripts/check.mjs            # typecheck, web tsc, lint, test",
         "node scripts/check.mjs --docker   # plus docker build -t flix ."
@@ -78,7 +78,7 @@
     {
       "name": "mobile-check",
       "file": "scripts/mobile-check.mjs",
-      "does": "Headless Chrome at iPhone size: per page, reports horizontal overflow and saves a screenshot; blocks every write that would record viewing.",
+      "does": "Headless Chrome at iPhone size: per page, reports horizontal overflow and saves a screenshot; blocks every write that would record viewing. NEUTRAL BY DEFAULT: API answers reach the app with titles, names and descriptions masked, library pictures are grey placeholders and video is flattened, so screenshots and output show layout, never content; a screenshot is withheld if that cannot be confirmed; --content (or CONTENT=1) shows the real library, on the user's request only.",
       "usage": [
         "node scripts/mobile-check.mjs <outdir> http://localhost:5174 / /browse /scene/<id>"
       ],
@@ -87,9 +87,10 @@
         "H": "viewport height (956); W=932 H=430 is landscape",
         "DESKTOP": "1 for no touch",
         "WAIT": "ms per page",
-        "EVAL": "an expression printed per page"
+        "EVAL": "an expression printed per page",
+        "CONTENT": "1 turns neutral mode off (same as --content)"
       },
-      "writes": "<outdir>/<page>.png and a Chrome profile under <outdir>",
+      "writes": "<outdir>/<page>.png and a Chrome profile under <outdir> (profile-neutral, or profile with --content)",
       "tags": [
         "mobile",
         "headless",
@@ -101,7 +102,7 @@
     {
       "name": "touch-check",
       "file": "scripts/touch-check.mjs",
-      "does": "Drives the player with real touch events in headless Chrome (tap, seek drag, bar tap, double tap, sideways swipe, centre play/pause) and prints the player state after each step; writes are blocked.",
+      "does": "Drives the player with real touch events in headless Chrome (tap, seek drag, bar tap, double tap, sideways swipe, centre play/pause) and prints the player state after each step; writes are blocked. Neutral by default (names as filler, grey pictures); --content opts out.",
       "usage": [
         "node scripts/touch-check.mjs <outdir> http://localhost:5174 /scene/<id>"
       ],
@@ -121,7 +122,7 @@
     {
       "name": "mini-check",
       "file": "scripts/mini-check.mjs",
-      "does": "Checks the mini-player round trip with real touch events in headless Chrome: play a scene, tap Home (docks), tap the docked picture, the title and Expand (each restores the full player), then tap a related card, go Back and tap it again (each opens on its own page, never docked); writes are blocked. Run it against a production build (vite preview): dev's StrictMode remount hides the scene-to-scene slot bug.",
+      "does": "Checks the mini-player round trip with real touch events in headless Chrome: play a scene, tap Home (docks), tap the docked picture, the title and Expand (each restores the full player), then tap a related card, go Back and tap it again (each opens on its own page, never docked); writes are blocked. Run it against a production build (vite preview): dev's StrictMode remount hides the scene-to-scene slot bug. Neutral by default; --content opts out.",
       "usage": [
         "node scripts/mini-check.mjs <outdir> http://localhost:5175 /scene/<id>   # after: pnpm --filter @flix/web exec vite build && FLIX_SERVER=http://flix.lan pnpm --filter @flix/web exec vite preview --port 5175 --strictPort",
         "node scripts/mini-check.mjs <outdir> http://localhost:5174 /scene/<id>   # against Vite dev: the Home round trips only are meaningful"
@@ -143,7 +144,7 @@
     {
       "name": "card-check",
       "file": "scripts/card-check.mjs",
-      "does": "Checks drag-to-preview on scene cards in headless Chrome (a 25 px drag starts the preview without opening the video, a tap still opens it); writes are blocked.",
+      "does": "Checks drag-to-preview on scene cards in headless Chrome (a 25 px drag starts the preview without opening the video, a tap still opens it); writes are blocked. Neutral by default; --content opts out.",
       "usage": [
         "node scripts/card-check.mjs <outdir> http://localhost:5174 /browse"
       ],
@@ -165,7 +166,7 @@
       "file": "scripts/stash-schema.mjs",
       "does": "Refreshes apps/server/stash.schema.graphql from a running Stash (or a saved introspection JSON) so codegen can regenerate stash.schema.ts after a Stash upgrade.",
       "usage": [
-        "STASH_URL=http://stash:9999 STASH_API_KEY=\u2026 node scripts/stash-schema.mjs",
+        "STASH_URL=http://stash:9999 STASH_API_KEY=… node scripts/stash-schema.mjs",
         "node scripts/stash-schema.mjs introspection.json"
       ],
       "env": {
@@ -183,7 +184,7 @@
     {
       "name": "webkit-mini-check",
       "file": "scripts/webkit-mini-check.mjs",
-      "does": "The mini-player round trip in real WebKit (Playwright's build, iPhone emulation with touch): play, tap Home (docks), tap Expand, the title and the picture (each restores); prints console, page errors and failed requests; writes are blocked.",
+      "does": "The mini-player round trip in real WebKit (Playwright's build, iPhone emulation with touch): play, tap Home (docks), tap Expand, the title and the picture (each restores); prints console, page errors and failed requests; writes are blocked. Neutral by default; --content opts out.",
       "usage": [
         "node scripts/webkit-mini-check.mjs <outdir> http://localhost:5174 /scene/<id>"
       ],
@@ -204,7 +205,7 @@
     {
       "name": "perf-check",
       "file": "scripts/perf-check.mjs",
-      "does": "Client performance per route in headless Chrome (phone or desktop): cold-load timing, requests and bytes by type, API call sequence, largest responses, first-screen image variant fit, CLS/LCP/long tasks, optional page-by-page scroll cost, then a second load for HTTP-cache hits; writes result.json; writes are blocked.",
+      "does": "Client performance per route in headless Chrome (phone or desktop): cold-load timing, requests and bytes by type, API call sequence, largest responses, first-screen image variant fit, CLS/LCP/long tasks, optional page-by-page scroll cost, then a second load for HTTP-cache hits; writes result.json; writes are blocked. Saves a screenshot only with --content.",
       "usage": [
         "node scripts/perf-check.mjs <outdir> http://localhost:5174 / /browse /scene/<id>",
         "DESKTOP=1 W=1440 H=900 node scripts/perf-check.mjs <outdir> http://localhost:5174 /browse",
@@ -231,7 +232,7 @@
     {
       "name": "phone-flow",
       "file": "scripts/phone-flow.mjs",
-      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked; STUB answers chosen GET API paths with given JSON, to show a state production lacks.",
+      "does": "Step-driven headless Chrome at iPhone size: goto, tap, tapText, longpress, type, key, scroll, scrollTo, back, eval, shot, full-page shot, and `targets` (every visible control under 44 px with its size); writes are blocked; STUB answers chosen GET API paths with given JSON, to show a state production lacks. NEUTRAL BY DEFAULT: API answers reach the app with titles, names and descriptions masked, library pictures are grey placeholders and video is flattened, so screenshots and output show layout, never content; a screenshot is withheld if that cannot be confirmed; --content (or CONTENT=1) shows the real library, on the user's request only.",
       "usage": [
         "STEPS='[{\"goto\":\"/browse\",\"targets\":true},{\"tapText\":\"Filters\",\"shot\":\"sheet\"}]' node scripts/phone-flow.mjs <outdir> http://localhost:5174"
       ],
@@ -239,9 +240,10 @@
         "STEPS": "JSON array of steps",
         "W": "viewport width (440)",
         "H": "viewport height (956)",
-        "STUB": "JSON map of GET API pathname \u2192 JSON answer, stubbed in the browser (reads only)"
+        "STUB": "JSON map of GET API pathname → JSON answer, stubbed in the browser (reads only)",
+        "CONTENT": "1 turns neutral mode off (same as --content)"
       },
-      "writes": "screenshots under <outdir>",
+      "writes": "screenshots under <outdir> and a Chrome profile (profile-neutral, or profile with --content)",
       "tags": [
         "mobile",
         "headless",
@@ -253,7 +255,7 @@
     {
       "name": "desktop-check",
       "file": "scripts/desktop-check.mjs",
-      "does": "Scenario-driven headless Chrome at desktop size: real mouse moves, clicks, right-clicks, key presses, Tab, typing, scroll, eval and screenshots per scenario; writes are blocked. Example scenario: scripts/examples/desktop-scenario.json.",
+      "does": "Scenario-driven headless Chrome at desktop size: real mouse moves, clicks, right-clicks, key presses, Tab, typing, scroll, eval and screenshots per scenario; writes are blocked. Example scenario: scripts/examples/desktop-scenario.json. NEUTRAL BY DEFAULT: API answers reach the app with titles, names and descriptions masked, library pictures are grey placeholders and video is flattened, so screenshots and output show layout, never content; a screenshot is withheld if that cannot be confirmed; --content (or CONTENT=1) shows the real library, on the user's request only.",
       "usage": [
         "node scripts/desktop-check.mjs <outdir> http://localhost:5174 scripts/examples/desktop-scenario.json",
         "W=1920 H=1080 node scripts/desktop-check.mjs <outdir> http://localhost:5174 <scenario.json>",
@@ -262,9 +264,10 @@
       "env": {
         "W": "viewport width (1440)",
         "H": "viewport height (900)",
-        "LATENCY": "ms added to every /api and /media answer (0; Vite's modules are not delayed); with a scenario `wait` under it, the first shot catches skeletons and placeholders"
+        "LATENCY": "ms added to every /api and /media answer (0; Vite's modules are not delayed); with a scenario `wait` under it, the first shot catches skeletons and placeholders",
+        "CONTENT": "1 turns neutral mode off (same as --content)"
       },
-      "writes": "screenshots under <outdir>",
+      "writes": "screenshots under <outdir> and a Chrome profile (profile-neutral, or profile with --content)",
       "tags": [
         "desktop",
         "headless",
@@ -309,11 +312,12 @@
     {
       "name": "whisparr",
       "file": "scripts/whisparr.py",
-      "does": "Whisparr v3 API client (moved from the nas repo's arr.py): ping, status, queue, history, wanted, logs, config, snapshot to private/ops/inventory/whisparr3/, raw get, and dry-run-by-default writes (set, put, post, delete, cmd).",
+      "does": "Whisparr v3 API client (moved from the nas repo's arr.py): ping, status, queue, history, wanted, logs, config, snapshot to private/ops/inventory/whisparr3/, raw get, and dry-run-by-default writes (set, put, post, delete, cmd). --neutral prints everything through `neutral.mjs redact` (ids, counts, dates and states only): the form for an assistant session.",
       "usage": [
         "scripts/whisparr.py ping",
         "scripts/whisparr.py get movie --json",
-        "scripts/whisparr.py set performer/<id> whisparrMonitorNewItems=false   # dry run; add --apply"
+        "scripts/whisparr.py set performer/<id> whisparrMonitorNewItems=false   # dry run; add --apply",
+        "scripts/whisparr.py --neutral queue --json   # output only through neutral.mjs redact"
       ],
       "env": [
         "WHISPARR_URL",
@@ -330,11 +334,12 @@
     {
       "name": "stash",
       "file": "scripts/stash.py",
-      "does": "Stash GraphQL client (moved from the nas repo): ping, status, redacted config, job queue, and any query; a mutation is a dry run unless --apply.",
+      "does": "Stash GraphQL client (moved from the nas repo): ping, status, redacted config, job queue, and any query; a mutation is a dry run unless --apply. --neutral prints everything through `neutral.mjs redact` (ids, counts, dates and states only): the form for an assistant session.",
       "usage": [
         "scripts/stash.py ping",
         "scripts/stash.py q '{ version { version } }'",
-        "scripts/stash.py jobs --wait"
+        "scripts/stash.py jobs --wait",
+        "scripts/stash.py --neutral status   # output only through neutral.mjs redact: no name, title or path"
       ],
       "env": [
         "STASH_URL",
@@ -351,7 +356,7 @@
     {
       "name": "privacy-check",
       "file": "scripts/privacy-check.mjs",
-      "does": "Fails when a tracked or new file names a performer, studio or indexer from the library (the repo is mirrored publicly); history scans every line the commits in a range add (default github/main..HEAD, what the next mirror push publishes); refresh rebuilds the generated denylist from flix's API.",
+      "does": "Fails when a tracked or new file names a performer, studio or indexer from the library (the repo is mirrored publicly); history scans every line the commits in a range add (default github/main..HEAD, what the next mirror push publishes); refresh rebuilds the generated denylist from flix's API. A hit is file:line and the term length; --show prints the name.",
       "usage": [
         "node scripts/privacy-check.mjs",
         "node scripts/privacy-check.mjs history [github/main..HEAD]",
@@ -368,7 +373,7 @@
     {
       "name": "whisparr-sync",
       "file": "scripts/whisparr-sync.mjs",
-      "does": "Runs the Whisparr guard on the flix server: every performer and studio in Whisparr is unmonitored, and a monitored scene stays monitored only if flix fetched it or it is downloading; prints the plan or the result. Dry run unless --apply.",
+      "does": "Runs the Whisparr guard on the flix server: every performer and studio in Whisparr is unmonitored, and a monitored scene stays monitored only if flix fetched it or it is downloading; prints the plan or the result. Dry run unless --apply. Prints counts; --names lists each item.",
       "usage": [
         "node scripts/whisparr-sync.mjs",
         "node scripts/whisparr-sync.mjs --apply",
@@ -403,7 +408,7 @@
     {
       "name": "library-reconcile",
       "file": "scripts/library-reconcile.mjs",
-      "does": "Reconciles the video files on disk with Stash and Whisparr: files Stash never scanned, files Whisparr does not track, records whose file is gone, Stash scenes without a StashDB id that Whisparr's folder name supplies, linked scenes Identify left bare, and ids that differ between the two. Runs inside the flix pod (keys and NFS mount there, no .env needed). Report only unless --scan (Stash scan of the unscanned folders), --link (set the ids, one Identify) or --fill (scrape bare linked scenes by id and write title, studio, performers, tags, cover).",
+      "does": "Reconciles the video files on disk with Stash and Whisparr: files Stash never scanned, files Whisparr does not track, records whose file is gone, Stash scenes without a StashDB id that Whisparr's folder name supplies, linked scenes Identify left bare, and ids that differ between the two. Runs inside the flix pod (keys and NFS mount there, no .env needed). Report only unless --scan (Stash scan of the unscanned folders), --link (set the ids, one Identify) or --fill (scrape bare linked scenes by id and write title, studio, performers, tags, cover). Prints counts and ids; --names prints paths and titles.",
       "usage": [
         "kubectl -n flix exec -i deploy/flix -- node - < scripts/library-reconcile.mjs",
         "kubectl -n flix exec -i deploy/flix -- node - --scan < scripts/library-reconcile.mjs",
@@ -421,6 +426,42 @@
         "operations"
       ],
       "wiki": "library-reconcile"
+    },
+    {
+      "name": "neutral",
+      "file": "scripts/neutral.mjs",
+      "does": "Content-neutral observability: reads flix's API, Stash, Whisparr, flix's Postgres tables and the pod's logs and prints only ids, counts, shapes, timings, dates and enums; every name, title, description, path, indexer or release name becomes a salted token `<str:LEN #HASH>`. Read-only everywhere (GET, Stash queries with mutations refused, a READ ONLY transaction). The first tool to reach for when investigating; ids in, counts out.",
+      "usage": [
+        "node scripts/neutral.mjs api '/api/scenes?perPage=24' [--n 5]     # status, ms, bytes, cache headers, one line per JSON path",
+        "node scripts/neutral.mjs api /api/scenes/<id> --full              # the redacted JSON; --pick '$.items[].id' prints one path's values",
+        "node scripts/neutral.mjs routes                                   # the GET routes of the API",
+        "node scripts/neutral.mjs stash summary                            # library counts, missing-metadata counts, job queue",
+        "node scripts/neutral.mjs stash q '{ findScene(id: <id>) { id organized files { video_codec } } }'",
+        "node scripts/neutral.mjs whisparr summary                         # records, files, monitored (rule 9), queue, history, health",
+        "node scripts/neutral.mjs whisparr get queue pageSize=50",
+        "node scripts/neutral.mjs db                                       # every table: rows, nulls, id and time ranges, enum counts, jsonb shape",
+        "node scripts/neutral.mjs db sql 'select kind, count(*) from blocks group by 1'",
+        "node scripts/neutral.mjs logs --since 1h [--lines]                # requests by route and status with timings, other lines scrubbed",
+        "scripts/whisparr.py queue --json 2>&1 | node scripts/neutral.mjs redact   # scrub any command's JSON, JSON lines, TSV or text"
+      ],
+      "env": {
+        "FLIX": "flix's address for `api` (http://flix.lan); --base overrides",
+        "NEUTRAL_SALT": "hash salt (default: private/neutral.salt, created on first use, so tokens are stable across runs)",
+        "--local": "run the Stash / Whisparr / Postgres fetcher here with STASH_URL, STASH_API_KEY, WHISPARR_URL, WHISPARR_API_KEY, DATABASE_URL from the environment or .env, instead of inside the flix pod"
+      },
+      "writes": "nothing in flix, Stash, Whisparr or Postgres; private/neutral.salt once (gitignored)",
+      "tags": [
+        "neutral",
+        "privacy",
+        "observability",
+        "stash",
+        "whisparr",
+        "postgres",
+        "logs",
+        "api",
+        "context"
+      ],
+      "wiki": "neutral-observability"
     }
   ],
   "external": []

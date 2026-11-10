@@ -11,7 +11,10 @@ import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-const [outDir, base, ...paths] = process.argv.slice(2)
+const [outDir, base, ...paths] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+// The numbers need the real responses, so this script does not mask them; it prints routes, ids, sizes and timings only,
+// and saves a screenshot (which would show the library) only with --content or CONTENT=1.
+const CONTENT = process.argv.includes('--content') || process.env.CONTENT === '1'
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
@@ -118,7 +121,7 @@ function collect(from) {
   return { t0, list }
 }
 
-const short = (u) => u.replace(base, '').replace(/^\/media\/stash\//, 'm:/').replace(/[?&]t=\d+/, '').slice(0, 110)
+const short = (u) => u.replace(base, '').replace(/^\/media\/stash\//, 'm:/').replace(/[?&]t=\d+/, '').replace(/([?&]q=)[^&]*/, '$1…').slice(0, 110)
 const byType = (list) => {
   const out = {}
   for (const r of list) {
@@ -170,8 +173,10 @@ for (const p of paths) {
   const met = await metrics()
   const first = await evaluate(FIRST_SCREEN)
   const { list } = collect(from)
-  const shot = await send('Page.captureScreenshot', { format: 'png' })
-  writeFileSync(`${outDir}/${name}.png`, Buffer.from(shot.result.data, 'base64'))
+  if (CONTENT) {
+    const shot = await send('Page.captureScreenshot', { format: 'png' })
+    writeFileSync(`${outDir}/${name}.png`, Buffer.from(shot.result.data, 'base64'))
+  }
   const api = list.filter((r) => r.kind === 'api').map((r) => ({ url: short(r.url), t: r.t, dur: r.dur, bytes: r.bytes, status: r.status, cached: !!(r.memory || r.disk) })).sort((a, b) => a.t - b.t)
   const largest = [...list].sort((a, b) => b.bytes - a.bytes).slice(0, 5).map((r) => ({ url: short(r.url), kind: r.kind, bytes: r.bytes, status: r.status }))
   const images = list.filter((r) => r.kind === 'image')

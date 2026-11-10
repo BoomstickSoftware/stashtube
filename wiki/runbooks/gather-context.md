@@ -5,8 +5,8 @@ summary: Where to look, and which read-only tools to use, when a question is abo
 tags: [context, nas, k8s, stash, whisparr, tools]
 status: current
 verified: 2026-10-30
-updated: 2026-11-02
-related: [overview, stash-api, whisparr-api, stash-and-whisparr-clients, kubernetes-deployment, forgejo-ci, k8s-clone-on-side-branch]
+updated: 2026-11-10
+related: [overview, stash-api, whisparr-api, stash-and-whisparr-clients, kubernetes-deployment, forgejo-ci, k8s-clone-on-side-branch, neutral-observability]
 ---
 
 # Gather context from the other systems
@@ -27,6 +27,12 @@ the owning wiki page with a `sources:` pointer and a date.
 | The compose stack that runs Stash and Whisparr | `~/code/flotilla` (compose, pinned tags) |
 
 ## Read-only tools
+
+In an assistant session, reach live data through the neutral tools first ([[neutral-observability]]):
+`node scripts/neutral.mjs api|stash|whisparr|db|logs` print ids, counts and shapes with every
+library name tokenised, and need no `.env` (they read from inside the flix pod). The commands
+below print content as it is; add `--neutral` to the two clients, or pipe through
+`node scripts/neutral.mjs redact`.
 
 ```sh
 # Stash GraphQL with the real key (schema introspection, reproduce a failing query)

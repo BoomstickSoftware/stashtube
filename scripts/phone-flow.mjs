@@ -6,27 +6,36 @@
 // Plays, activity, markers, o, rating, deletes and whisparr gets are blocked, so nothing is recorded.
 // STUB='{"/api/settings": {...}}' answers those GET API paths from here instead of the server, to show
 // a state production does not have (a Settings value, an empty list); writes are never stubbed.
-// usage: STEPS='[...]' node scripts/phone-flow.mjs <outdir> http://localhost:5174
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): the app gets every API answer with titles, names
+// and descriptions replaced by filler of the same shape, every library picture is a grey placeholder and video
+// is flattened to grey, so the screenshots and this script's output show layout and controls, never content.
+// tapText therefore finds the app's own labels only; open a video, performer or studio by id ({goto:'/scene/<id>'}).
+// --content (or CONTENT=1) shows the real library: only when the user asks for it.
+// usage: STEPS='[...]' node scripts/phone-flow.mjs <outdir> http://localhost:5174 [--content]
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
 
-const [outDir, base] = process.argv.slice(2)
+const [outDir, base] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache, and a content run's must not be shown
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
 const steps = JSON.parse(process.env.STEPS ?? '[]')
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -45,34 +54,37 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', {
-  urls: [
-    '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
-    '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
-  ],
-})
+const BLOCKED = [
+  '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
+  '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
+]
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+// Stubbed reads (env STUB): a GET whose pathname is a key gets that JSON as its 200 answer.
+const stubs = Object.entries(JSON.parse(process.env.STUB ?? '{}'))
+const stubFor = (request) => stubs.find(([path]) => request.method === 'GET' && new URL(request.url).pathname === path)?.[1]
+let neutral = null
+if (NEUTRAL) neutral = await installNeutral({ send, ws, base, blocked: BLOCKED, stub: stubFor })
 const requests = new Map()
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data)
   if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, `${m.params.request.method} ${m.params.request.url}`)
-  if (m.method === 'Network.loadingFailed' && m.params.blockedReason) console.log('  blocked:', requests.get(m.params.requestId) ?? m.params.requestId)
+  if (m.method === 'Network.loadingFailed' && m.params.blockedReason && !neutral?.wasBlockedHere(m.params.requestId)) console.log('  blocked:', NEUTRAL ? (requests.get(m.params.requestId) ?? '').replace(/\?.*$/, '') : (requests.get(m.params.requestId) ?? m.params.requestId))
 })
-// Stubbed reads (env STUB): a GET whose pathname is a key gets that JSON as its 200 answer.
-const stubs = Object.entries(JSON.parse(process.env.STUB ?? '{}'))
-if (stubs.length) {
+if (stubs.length && !NEUTRAL) {
   await send('Fetch.enable', { patterns: stubs.map(([path]) => ({ urlPattern: `*${path}*`, requestStage: 'Request' })) })
   ws.addEventListener('message', (e) => {
     const m = JSON.parse(e.data)
     if (m.method !== 'Fetch.requestPaused') return
     const { requestId, request } = m.params
-    const hit = stubs.find(([path]) => request.method === 'GET' && new URL(request.url).pathname === path)
-    if (!hit) return send('Fetch.continueRequest', { requestId })
+    const hit = stubFor(request)
+    if (hit === undefined) return send('Fetch.continueRequest', { requestId })
     console.log('  stubbed:', request.url)
     send('Fetch.fulfillRequest', {
       requestId,
       responseCode: 200,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-      body: Buffer.from(JSON.stringify(hit[1])).toString('base64'),
+      body: Buffer.from(JSON.stringify(hit)).toString('base64'),
     })
   })
 }
@@ -87,6 +99,10 @@ const rectOfText = (text) => evaluate(`(() => { const els = [...document.querySe
 const tapAt = async (x, y) => { await touch('touchStart', x, y); await sleep(40); await touch('touchEnd'); }
 const state = () => evaluate(`(() => ({ path: location.pathname + location.search, dialog: !!document.querySelector('[role=dialog],[role=menu]'), title: document.title }))()`)
 const shot = async (name, full) => {
+  if (neutral) {
+    const r = await neutral.ready()
+    if (!r.ok) return console.log(`  NOT NEUTRAL, ${name}.png withheld: ${JSON.stringify(r)}`)
+  }
   let clip
   if (full) {
     const h = await evaluate('Math.min(document.documentElement.scrollHeight, 8000)')
@@ -125,5 +141,7 @@ for (const s of steps) {
   if (s.full) await shot(s.full, true)
   console.log(JSON.stringify(s).slice(0, 70).padEnd(72), JSON.stringify(await state()), note)
 }
+if (neutral) console.log(`neutral: ${neutral.stats.api} API answers masked, ${neutral.stats.pictures} pictures replaced, ${neutral.stats.unreadable} withheld`)
+else console.log('CONTENT MODE: the screenshots and the lines above show the real library')
 ws.close()
 chrome.kill()

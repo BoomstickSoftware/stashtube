@@ -5,8 +5,8 @@ summary: Where flix stands, what is left on the backlog, what is deferred, the k
 tags: [roadmap, backlog]
 status: current
 verified: 2026-10-30
-updated: 2026-11-09
-related: [overview, log, 2026-10-31-ux-audit, 2026-11-09-strategy-review]
+updated: 2026-11-10
+related: [overview, log, 2026-10-31-ux-audit, 2026-11-09-strategy-review, 2026-11-10-architecture-and-ux-review]
 ---
 
 # Roadmap
@@ -227,6 +227,59 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 10. ~~A persistent "Stash is busy" pill~~ Decided: the toast only ([[failed-writes-toast-only]]).
 11. ~~A 480-px image variant for desktop grids (client Q3)?~~ Yes: [[image-variant-480]] (2026-10-31).
 12. ~~Browse on the phone: one column or two (phone 10)?~~ Two for now: [[browse-two-columns-on-phones]] (2026-10-31).
+
+## Ground-up review roadmap (2026-11-10)
+
+From [[2026-11-10-architecture-and-ux-review]]. **Proposed, none started**: the user picks the
+order. Reliability comes before polish ([[ux-delight-principles]], section 1).
+
+**Hardening** (each one initiative)
+
+- **H1. Stop losing data** (S): tag writes as ADD/REMOVE deltas, never read-modify-write from a
+  cached scene; page the studio and tag lists until `total`; an error boundary for the router
+  and one around the player host.
+- **H2. Gate what ships** (S): CI runs `node scripts/check.mjs` (lint, privacy check); lint
+  `apps/server`; an `unhandledRejection` logger; compress `/assets/*`.
+- **H3. Fresh data on the phone** (S): finite `staleTime` for `settings`, `favorite-scenes`,
+  `session`; the player reads live markers; `scenes` lists stop refetching every page on focus;
+  marker writes stop invalidating lists; flush progress on `visibilitychange` with `keepalive`.
+- **H4. Cache correctness** (S): a build stamp on the query-cache snapshot; a Stash change
+  expires Stash tags only.
+- **H5. Split the two big server files** (M): `stash/` behind an index, `dataCache` to `cache/`,
+  Home and Featured to `home.ts`, `api.ts` into Hono sub-apps; pin "only `stash/` imports
+  `stash.schema.ts`" with a test; `UpstreamError` → 502; an `idParam` validator.
+- **H6. One job registry** (M): name, interval, persisted last run, overlap guard, status;
+  hourly syncs gated on the change fingerprint; the guard re-reads Gets before applying.
+- **H7. Tests where it deletes and downloads** (M): pure predicates out of `getqueue`, `delete`
+  ordering, `app.request()` tests for write routes; `node:test` files for the web's pure `lib/`.
+- **H8. One player core** (L): `useVideoSource` and `useAutoHide` shared by `Player` and
+  `Station`; cap consecutive station failures; release the `<video>` on unmount.
+- **H9. Wiki drift** (S): the pages listed in the review.
+- ~~**H10. Finish the neutral suite**~~ Done 2026-11-10: every headless script is neutral by
+  default, names print only on `--names` / `--show`, the server logs ids ([[neutral-observability]]).
+
+**UX revamp** (phone first; each phase ends with neutral `phone-flow` shots)
+
+- **U1. One component system** (M): `IconButton` (44 px on touch), `Button` sizes and variants,
+  one `Sheet` with slots, one `Segmented`, `Badge`/`Pill`; tokens for two small text sizes,
+  danger/warn/private/ok colours, hairlines, a named z scale, `--tabbar-h`, three icon sizes,
+  motion durations and easings; one rule for the primary colour. No visible redesign yet.
+- **U2. Touch feel** (S–M): press states in every control, hover only under `(hover:hover)`;
+  the sheet slides up in about 220 ms with a grabber, drag-to-dismiss, scrim fade, focus trap
+  and scroll lock; the 44 px sweep (player bar, dock, Stations, Playlists, filter dialog);
+  toasts stack and clear the dock; Undo replaces the two `window.confirm` calls.
+- **U3. Fewer taps on the common flows** (M): a Continue strip under the Home hero that resumes
+  and plays in one tap (**needs the user**: additive to [[five-tab-navigation]]); rating in the
+  card menu; a fixed icon action bar on the scene page; playlist reorder on touch; one "⋯"
+  sheet per station card and per Home row; search recents and a "No matches" row.
+- **U4. Motion and perceived speed** (M): view transitions from card to scene and between tabs
+  (feature-detected, fades under reduced motion); skeletons shaped like Home, History,
+  Discover and Related; the header hides on scroll down.
+- **U5. Delighters** (S each, last): a pop on Favorite, O and stars; a swipeable mini-player
+  with a progress line; pull-to-refresh on Home that reshuffles Featured; remembered Browse
+  section and sort; "Play next".
+- **Simplify along the way**: one entry to Settings from You; Continue expiry behind "More";
+  scene file and cast details behind one disclosure; Stations' three start paths merged.
 
 ## Stash and Whisparr operations (moved from the nas repo, 2026-11-02)
 

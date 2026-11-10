@@ -20,14 +20,18 @@ const res = await fetch(`${server}/api/sync/run`, {
   signal: AbortSignal.timeout(15 * 60_000),
 })
 if (!res.ok) {
-  console.error(`POST /api/sync/run: HTTP ${res.status} ${await res.text()}`)
+  console.error(`POST /api/sync/run: HTTP ${res.status}${names ? ` ${await res.text()}` : ' (--names prints the body)'}`)
   process.exit(1)
 }
 const s = await res.json()
 const by = (a) => s.items.filter((i) => i.action === a)
+// counts by default; --names lists each performer and studio (wiki/decisions/content-neutral-sessions.md)
+const names = args.includes('--names')
 const show = (title, items) => {
   if (!items.length) return
-  console.log(`\n${title} (${items.length})`)
+  const kinds = Object.entries(Object.groupBy(items, (i) => i.kind)).map(([k, v]) => `${v.length} ${k}`).join(', ')
+  console.log(`\n${title} (${items.length}: ${kinds}${items.some((i) => i.error) ? `; ${items.filter((i) => i.error).length} FAILED` : ''})`)
+  if (!names) return
   for (const i of items) console.log(`  ${i.kind.padEnd(9)} ${i.name}${i.error ? `  FAILED: ${i.error}` : ''}${i.action === 'unmonitor' ? `  (${i.reason})` : ''}`)
 }
 console.log(`${s.outcome}: ${s.detail}`)

@@ -89,7 +89,8 @@ Record only the flix-facing fact in `wiki/integrations/`; link the source. Detai
 | What is Whisparr's state, what does its API return? | `scripts/whisparr.py` (key from flix's `.env`) | `scripts/whisparr.py get movie\|studio\|queue --json`; `private/wiki/integrations/whisparr-instance.md` |
 | Stash config, library layout, scans | this repo: `private/wiki/integrations/stash-instance.md`, `scripts/stash.py status` | NFS export: nas repo | `nas:docs/services.md` stash row, `nas:docs/network.md`, `nas:docs/operations.md` |
 | How is flix deployed, which secrets, which IP, backups | k8s repo (its clone may be on a side branch) | `cd ~/code/k8s && git show origin/main:infra/flix/deployment.yaml`, `git show origin/main:docs/flix.md` |
-| What is running right now | the cluster | `kubectl -n flix get deploy flix -o wide`, `kubectl -n flix logs deploy/flix --since=5m`, `curl -s http://192.168.1.152/healthz` |
+| What is running right now | the cluster | `kubectl -n flix get deploy flix -o wide`, `node scripts/neutral.mjs logs --since 5m`, `curl -s http://192.168.1.152/healthz` |
+| What does flix, Stash, Whisparr or Postgres hold (counts, shapes, ids) | `scripts/neutral.mjs` (rule 12) | `node scripts/neutral.mjs api '/api/scenes?perPage=24'`, `… stash summary`, `… whisparr summary`, `… db` |
 | Did the last push deploy | Forgejo | `tea actions runs` (status per run, newest first); the run of `.forgejo/workflows/deploy.yml` at git.lan:3000/zbmowrey/flix/actions; a failure is posted to the forge Discord channel |
 
 ## Rules that must be in every session
@@ -131,6 +132,16 @@ Each has a wiki page with the full story; these are the one-line versions.
     (`wiki/decisions/one-commit-per-initiative.md`, `wiki/runbooks/deploy-and-verify.md`).
 11. **A new write that records what was watched goes through `guardWrite()` or checks `isPrivate()`**
     (`wiki/features/private-session.md`).
+12. **Library content stays out of the conversation, as far as is reasonable.** A principle, not a
+    hard line: the user can lift it for a task, and a real bug that needs the content outranks it
+    (say so, then use `--content` / `--names` / `--show` for that step only). By default work with
+    ids, counts, shapes and timings: "scene 3079", "tag id 41", "a studio". Read live data through
+    `node scripts/neutral.mjs api|stash|whisparr|db|logs` (or `… redact` on a pipe, `--neutral` on
+    `stash.py` / `whisparr.py`); every headless check script takes neutral screenshots by default.
+    Do not type a name or title into a command, and do not read `private/` unless the task needs
+    it. A new script or log line that carries live data prints ids, or goes through
+    `scripts/lib/neutral.mjs` (`wiki/decisions/content-neutral-sessions.md`,
+    `wiki/runbooks/neutral-observability.md`).
 
 ## Quick reference
 

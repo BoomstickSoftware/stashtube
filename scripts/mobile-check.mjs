@@ -1,30 +1,37 @@
 // Headless Chrome at iPhone 17 Pro Max size: per page, report horizontal overflow and the
 // elements that stick out past the viewport, and save a screenshot. Plays and progress are
 // blocked, so opening a scene records nothing in Stash.
-// usage: node scripts/mobile-check.mjs <outdir> http://localhost:5173 / /browse /scene/<id>
+// NEUTRAL BY DEFAULT (wiki/runbooks/neutral-observability.md): titles, names and descriptions reach the app as
+// filler of the same shape, library pictures are grey placeholders and video is flattened to grey, so the
+// screenshots show layout, never content. --content (or CONTENT=1) shows the real library: only on request.
+// usage: node scripts/mobile-check.mjs <outdir> http://localhost:5173 / /browse /scene/<id> [--content]
 // env: W, H (viewport; W=932 H=430 for landscape), DESKTOP=1 (no touch), WAIT (ms per page),
 //      EVAL (an expression to print per page)
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { installNeutral, wantsNeutral } from './lib/neutral-page.mjs'
 
-const [outDir, base, ...paths] = process.argv.slice(2)
+const [outDir, base, ...paths] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const NEUTRAL = wantsNeutral()
+// a neutral run has its own browser profile: the app persists its query cache, and a content run's must not be shown
+const profile = `${outDir}/${NEUTRAL ? 'profile-neutral' : 'profile'}`
 mkdirSync(outDir, { recursive: true })
 const W = Number(process.env.W ?? 440)
 const H = Number(process.env.H ?? 956)
 // Chrome picks a free port and writes it to the profile. A fixed port would silently attach to
 // any headless Chrome left running from an earlier check (and keep driving its page).
-rmSync(`${outDir}/profile/DevToolsActivePort`, { force: true })
+rmSync(`${profile}/DevToolsActivePort`, { force: true })
 let port
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
-  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${outDir}/profile`,
+  '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
   '--no-first-run', '--autoplay-policy=no-user-gesture-required', 'about:blank',
 ], { stdio: 'ignore' })
 
 let ws
 for (let i = 0; i < 50; i++) {
   try {
-    port ??= readFileSync(`${outDir}/profile/DevToolsActivePort`, 'utf8').split('\n')[0]
+    port ??= readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
     const page = list.find((t) => t.type === 'page')
     if (page) { ws = new WebSocket(page.webSocketDebuggerUrl); break }
@@ -43,18 +50,19 @@ const evaluate = async (expr) => (await send('Runtime.evaluate', { expression: e
 
 // Never record plays or progress in Stash, or delete anything, from a test run.
 await send('Network.enable')
-await send('Network.setBlockedURLs', {
-  urls: [
-    '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
-    '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
-  ],
-})
+const BLOCKED = [
+  '*/api/scenes/*/play', '*/api/scenes/*/activity', '*/api/scenes/*/markers*', '*/api/scenes/*/o', '*/api/scenes/*/rating',
+  '*/api/scenes/delete', '*/api/whisparr/get/*', '*/api/whisparr/get-remote/*',
+]
+// neutral mode blocks these itself, anchored: the CDP pattern is a prefix match and would also stop GET …/playlists
+if (!NEUTRAL) await send('Network.setBlockedURLs', { urls: BLOCKED })
+const neutral = NEUTRAL ? await installNeutral({ send, ws, base, blocked: BLOCKED }) : null
 // Say what was blocked: a gesture test asserts that the write was at least attempted.
 const requests = new Map()
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data)
   if (m.method === 'Network.requestWillBeSent') requests.set(m.params.requestId, `${m.params.request.method} ${m.params.request.url}`)
-  if (m.method === 'Network.loadingFailed' && m.params.blockedReason) console.log('  blocked:', requests.get(m.params.requestId) ?? m.params.requestId)
+  if (m.method === 'Network.loadingFailed' && m.params.blockedReason && !neutral?.wasBlockedHere(m.params.requestId)) console.log('  blocked:', NEUTRAL ? (requests.get(m.params.requestId) ?? '').replace(/\?.*$/, '') : (requests.get(m.params.requestId) ?? m.params.requestId))
 })
 const desktop = !!process.env.DESKTOP
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: desktop ? 1 : 2, mobile: !desktop })
@@ -91,10 +99,16 @@ for (const p of paths) {
   const r = await evaluate(probe)
   if (process.env.EVAL) console.log('  eval:', JSON.stringify(await evaluate(process.env.EVAL)))
   const name = p.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') || 'home'
-  const shot = await send('Page.captureScreenshot', { format: 'png' })
-  writeFileSync(`${outDir}/${name}.png`, Buffer.from(shot.result.data, 'base64'))
+  const ready = neutral ? await neutral.ready() : { ok: true }
+  if (!ready.ok) console.log(`  NOT NEUTRAL, ${name}.png withheld: ${JSON.stringify(ready)}`)
+  else {
+    const shot = await send('Page.captureScreenshot', { format: 'png' })
+    writeFileSync(`${outDir}/${name}.png`, Buffer.from(shot.result.data, 'base64'))
+  }
   console.log(`${p}\tvw=${r?.vw} scrollW=${r?.scrollW}${r?.scrollW > r?.vw ? '  OVERFLOW' : ''}`)
   for (const o of r?.offenders ?? []) console.log(`    ${o}`)
 }
+if (neutral) console.log(`neutral: ${neutral.stats.api} API answers masked, ${neutral.stats.pictures} pictures replaced, ${neutral.stats.unreadable} withheld`)
+else console.log('CONTENT MODE: the screenshots show the real library')
 ws.close()
 chrome.kill()
