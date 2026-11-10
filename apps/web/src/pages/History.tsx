@@ -1,10 +1,11 @@
 import type { HistoryEntry, Ref, Stats as StatsData } from '@flix/shared'
 import { Link, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { X } from 'lucide-react'
-import { useState, type JSX, type ReactNode } from 'react'
-import { Empty, ErrorBox, Spinner } from '../components/ui'
-import { useHistory, useRemoveFromHistory, useStats } from '../lib/api'
+import { Check, CheckSquare, Trash2, X } from 'lucide-react'
+import { useCallback, useMemo, useState, type JSX, type ReactNode } from 'react'
+import { Button, Empty, ErrorBox, Sentinel, Spinner } from '../components/ui'
+import { historyKey, useHistory, useRemoveFromHistory, useRestoreHistory, useStats } from '../lib/api'
+import { showToast } from '../lib/toast'
 import { duration } from '../lib/format'
 import { sized } from '@flix/shared'
 
@@ -34,23 +35,58 @@ export function WatchTabs() {
   )
 }
 
-const dayLabel = (iso: string) => {
-  const d = new Date(iso)
+// `day` is YYYY-MM-DD in this browser's zone (the server groups by it)
+const dayLabel = (day: string) => {
+  const d = new Date(`${day}T12:00:00`)
   const today = new Date()
   const yesterday = new Date(Date.now() - 86_400_000)
   if (d.toDateString() === today.toDateString()) return 'Today'
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' })
 }
+const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 
+// One row per video per day ("3 plays · last 9:41 PM"), 40 a page as you scroll. A row's ×, or
+// Select then Remove, takes those plays out of Stash at once with Undo in the toast (wiki
+// features/continue-history-stats); the resume point stays.
 export function History(): JSX.Element {
-  const { data, error, isLoading } = useHistory()
+  const { data, error, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useHistory()
   const remove = useRemoveFromHistory()
+  const restore = useRestoreHistory()
+  const [selecting, setSelecting] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const entries = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])
+  const total = data?.pages[0]?.total ?? 0
   const days = new Map<string, HistoryEntry[]>()
-  for (const e of data ?? []) {
-    const k = dayLabel(e.playedAt)
-    days.set(k, [...(days.get(k) ?? []), e])
+  for (const e of entries) days.set(e.day, [...(days.get(e.day) ?? []), e])
+  const more = useCallback(() => void (hasNextPage && !isFetchingNextPage && fetchNextPage()), [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const drop = (gone: HistoryEntry[]) => {
+    if (!gone.length) return
+    remove.mutate(gone, {
+      onSuccess: () => {
+        const plays = gone.reduce((n, e) => n + e.times.length, 0)
+        showToast(
+          gone.length === 1 ? 'Removed from History' : `Removed ${gone.length} from History (${plays} plays)`,
+          <button onClick={() => restore.mutate(gone)} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
+            Undo
+          </button>,
+        )
+      },
+    })
   }
+  const stopSelecting = () => {
+    setSelecting(false)
+    setPicked(new Set())
+  }
+  const toggle = (k: string) =>
+    setPicked((s) => {
+      const n = new Set(s)
+      if (n.has(k)) n.delete(k)
+      else n.add(k)
+      return n
+    })
+
   return (
     <div className="[&>*:not(:first-child)]:max-w-4xl">
       <WatchTabs />
@@ -58,48 +94,119 @@ export function History(): JSX.Element {
         <ErrorBox error={error} />
       ) : isLoading ? (
         <Spinner className="mx-auto mt-24" />
-      ) : !data?.length ? (
+      ) : !entries.length ? (
         <Empty>Nothing watched yet.</Empty>
       ) : (
-        [...days.entries()].map(([day, entries]) => (
-          <section key={day} className="mb-6">
-            <h2 className="mb-2 text-sm font-bold text-muted">{day}</h2>
-            <div className="space-y-1">
-              {entries.map((e) => (
-                <div key={`${e.scene.id}-${e.playedAt}`} className="group flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface">
-                  <Link to="/scene/$id" params={{ id: e.scene.id }} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg sm:w-44">
-                    <img src={sized(e.scene.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
-                    <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(e.scene.durationSec)}</span>
-                    {e.scene.resumeTime > 0 && (
-                      <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
-                        <div className="h-full bg-accent" style={{ width: `${(e.scene.resumeTime / e.scene.durationSec) * 100}%` }} />
-                      </div>
-                    )}
-                  </Link>
-                  <div className="min-w-0 flex-1">
-                    <Link to="/scene/$id" params={{ id: e.scene.id }} className="line-clamp-2 text-sm font-semibold hover:text-accent">
-                      {e.scene.title}
-                    </Link>
-                    <div className="truncate text-xs text-muted">
-                      {[e.scene.studio?.name, e.scene.performers.map((p) => p.name).slice(0, 3).join(', ')].filter(Boolean).join(' · ')}
-                    </div>
-                    <div className="text-xs text-muted/80">{new Date(e.playedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Remove this video from your history? Its play count and resume point are cleared too.')) remove.mutate(e.scene.id)
-                    }}
-                    title="Remove from history"
-                    className="rounded-full p-2 text-muted opacity-100 hover:bg-raised hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))
+        <>
+          <div className="sticky top-16 z-10 -mx-4 mb-3 flex items-center gap-2 bg-bg/85 px-4 py-2 backdrop-blur-xl sm:mx-0 sm:px-0">
+            {selecting ? (
+              <>
+                <span className="text-sm font-semibold">{picked.size} selected</span>
+                <button
+                  onClick={() => setPicked(new Set(entries.map(historyKey)))}
+                  className="rounded-full px-3 py-1.5 text-sm text-muted hover:bg-raised hover:text-fg touch:min-h-11"
+                >
+                  All loaded
+                </button>
+                <Button
+                  variant="danger"
+                  disabled={!picked.size}
+                  onClick={() => {
+                    drop(entries.filter((e) => picked.has(historyKey(e))))
+                    stopSelecting()
+                  }}
+                  className="ml-auto touch:min-h-11"
+                >
+                  <Trash2 size={16} /> Remove
+                </Button>
+                <Button onClick={stopSelecting} className="touch:min-h-11">
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-muted">{total.toLocaleString()} {total === 1 ? 'entry' : 'entries'}</span>
+                <Button onClick={() => setSelecting(true)} className="ml-auto touch:min-h-11">
+                  <CheckSquare size={16} /> Select
+                </Button>
+              </>
+            )}
+          </div>
+          {[...days.entries()].map(([day, list]) => (
+            <section key={day} className="mb-6">
+              <h2 className="mb-2 text-sm font-bold text-muted">{dayLabel(day)}</h2>
+              <div className="space-y-1">
+                {list.map((e) => (
+                  <HistoryRow
+                    key={historyKey(e)}
+                    entry={e}
+                    selecting={selecting}
+                    picked={picked.has(historyKey(e))}
+                    onToggle={() => toggle(historyKey(e))}
+                    onRemove={() => drop([e])}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          <Sentinel onVisible={more} disabled={!hasNextPage} />
+          {isFetchingNextPage && <Spinner className="mx-auto my-6" />}
+        </>
       )}
+    </div>
+  )
+}
+
+function HistoryRow({ entry: e, selecting, picked, onToggle, onRemove }: { entry: HistoryEntry; selecting: boolean; picked: boolean; onToggle: () => void; onRemove: () => void }) {
+  const n = e.times.length
+  const thumb = (
+    <>
+      <img src={sized(e.scene.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
+      <span className="absolute right-1 bottom-1 rounded bg-black/75 px-1 text-[11px] tabular-nums">{duration(e.scene.durationSec)}</span>
+      {e.scene.resumeTime > 0 && (
+        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
+          <div className="h-full bg-accent" style={{ width: `${(e.scene.resumeTime / e.scene.durationSec) * 100}%` }} />
+        </div>
+      )}
+    </>
+  )
+  const text = (
+    <>
+      <div className="line-clamp-2 text-sm font-semibold">{e.scene.title}</div>
+      <div className="truncate text-xs text-muted">{[e.scene.studio?.name, e.scene.performers.map((p) => p.name).slice(0, 3).join(', ')].filter(Boolean).join(' · ')}</div>
+      <div className="text-xs text-muted/80">{n > 1 ? `${n} plays · last ${clock(e.playedAt)}` : clock(e.playedAt)}</div>
+    </>
+  )
+  if (selecting)
+    return (
+      <button
+        onClick={onToggle}
+        aria-pressed={picked}
+        className={clsx('flex w-full items-center gap-3 rounded-xl p-1.5 text-left', picked ? 'bg-accent/15 ring-1 ring-accent/50' : 'hover:bg-surface')}
+      >
+        <span className={clsx('flex size-6 shrink-0 items-center justify-center rounded-md ring-1', picked ? 'bg-accent text-white ring-accent' : 'ring-white/30')}>
+          {picked && <Check size={15} />}
+        </span>
+        <span className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-lg sm:w-44">{thumb}</span>
+        <span className="min-w-0 flex-1">{text}</span>
+      </button>
+    )
+  return (
+    <div className="group flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface">
+      <Link to="/scene/$id" params={{ id: e.scene.id }} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg sm:w-44">
+        {thumb}
+      </Link>
+      <Link to="/scene/$id" params={{ id: e.scene.id }} className="min-w-0 flex-1 hover:[&>div:first-child]:text-accent">
+        {text}
+      </Link>
+      <button
+        onClick={onRemove}
+        title={n > 1 ? `Remove these ${n} plays from History` : 'Remove from History'}
+        aria-label="Remove from History"
+        className="rounded-full p-2 text-muted hover:bg-raised hover:text-red-400 touch:size-11 touch:p-0 touch:flex touch:items-center touch:justify-center sm:opacity-0 sm:group-hover:opacity-100 sm:touch:opacity-100"
+      >
+        <X size={16} />
+      </button>
     </div>
   )
 }

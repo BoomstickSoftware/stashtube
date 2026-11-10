@@ -1347,14 +1347,30 @@ export const withinReasons = (reasons: Set<string>, allowed: Set<string>) => [..
 
 const weight = (s: Scene) => (s.play_count ?? 0) + 2 * (s.o_counter ?? 0) + (s.rating100 ? (s.rating100 / 20 - 3) * 1.5 : 0)
 
-export async function history(limit = 300, blocked?: Exclusions): Promise<HistoryEntry[]> {
+// Every play, one entry per video per day (`tz`: the browser's getTimezoneOffset(), minutes), newest
+// first, a page at a time. _Until 2026-11-09_ every play was its own row, the newest 300 only.
+export async function history(page: number, perPage: number, tz: number, blocked?: Exclusions): Promise<{ items: HistoryEntry[]; total: number }> {
   const scenes = (await activityScenes()).filter((s) => !blocked || !isBlocked(s, blocked))
-  const out: HistoryEntry[] = []
-  for (const s of scenes) {
-    const card = toSceneCard(s)
-    for (const t of s.play_history ?? []) out.push({ playedAt: t, scene: card })
+  return groupHistory(scenes.map((s) => ({ card: toSceneCard(s), times: s.play_history ?? [] })), tz, page, perPage)
+}
+
+export function groupHistory(scenes: { card: SceneCard; times: string[] }[], tz: number, page: number, perPage: number): { items: HistoryEntry[]; total: number } {
+  const all: HistoryEntry[] = []
+  for (const { card, times } of scenes) {
+    const days = new Map<string, string[]>()
+    for (const t of times) {
+      const ms = Date.parse(t)
+      if (Number.isNaN(ms)) continue
+      const day = new Date(ms - tz * 60_000).toISOString().slice(0, 10)
+      days.set(day, [...(days.get(day) ?? []), t])
+    }
+    for (const [day, ts] of days) {
+      ts.sort((a, b) => Date.parse(b) - Date.parse(a))
+      all.push({ playedAt: ts[0], day, times: ts, scene: card })
+    }
   }
-  return out.sort((a, b) => b.playedAt.localeCompare(a.playedAt)).slice(0, limit)
+  all.sort((a, b) => Date.parse(b.playedAt) - Date.parse(a.playedAt))
+  return { items: all.slice((page - 1) * perPage, page * perPage), total: all.length }
 }
 
 // The last video played, for "Because you watched": the touched scenes come newest play first,
@@ -1365,9 +1381,15 @@ export async function lastPlayed(blocked?: Exclusions): Promise<{ id: string; ti
   return s ? { id: s.id, title: toSceneCard(s).title } : null
 }
 
-export async function removeFromHistory(id: string) {
-  await mutate(`mutation($id: ID!) { sceneResetPlayCount(id: $id) }`, { id }, ['scene'])
-  await mutate(`mutation($id: ID!) { sceneResetActivity(id: $id, reset_resume: true, reset_duration: true) }`, { id }, ['scene'])
+// History's remove and its Undo: exactly these plays out of (or back into) Stash's play history;
+// the play count follows, the resume point and play time stay. Like a play, it drops the scene's
+// own queries and the activity ones and leaves the lists stale (_until 2026-11-09 it reset the
+// play count and resume point and dropped every 'scene' query_).
+export async function deletePlays(id: string, times: string[]) {
+  await mutate(`mutation($id: ID!, $t: [Timestamp!]) { sceneDeletePlay(id: $id, times: $t) { count } }`, { id, t: times }, [`scene:${id}`, 'activity:play'], ['scene'])
+}
+export async function addPlays(id: string, times: string[]) {
+  await mutate(`mutation($id: ID!, $t: [Timestamp!]) { sceneAddPlay(id: $id, times: $t) { count } }`, { id, t: times }, [`scene:${id}`, 'activity:play'], ['scene'])
 }
 
 export async function stats(blocked?: Exclusions): Promise<Stats> {

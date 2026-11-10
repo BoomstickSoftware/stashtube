@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-09
 updated: 2026-11-09
 routes: [/continue, /history, /stats]
-api: [GET /api/history, DELETE /api/history/:id, GET /api/stats, POST /api/continue/clear, POST /api/scenes/:id/watched]
+api: [GET /api/history, POST /api/history/remove, POST /api/history/restore, GET /api/stats, POST /api/continue/clear, POST /api/scenes/:id/watched]
 code: [apps/web/src/pages/Continue.tsx, apps/web/src/pages/History.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/components/CardMenu.tsx, apps/server/src/api.ts, apps/server/src/continue.ts, apps/server/src/stash.ts]
 related: [player, stations, private-session, stash-owns-activity, home-feed, continue-clears-and-expires]
 ---
@@ -47,9 +47,18 @@ day (resume point 0 through `POST /api/scenes/:id/activity`; plays untouched): 4
 - One cached query of every touched video feeds History, Stats and "For you"; cold it takes
   ~0.06 s (Stats answered in 0.05–0.15 s cold, 0.5 s before 2026-10-31, when it also asked
   Stash to count each tag's scenes; see [[featured-ranking]]).
-- **History**: Stash's play history (`GET /api/history`). An entry can be removed with
-  `DELETE /api/history/:id` (`removeFromHistory`); the check scripts never call it, and an
-  accidental real play once had to be reset by hand ([[check-scripts-wrote-plays-to-stash]]).
+- **History**: Stash's play history, **one row per video per day** in the browser's time zone
+  (`GET /api/history?page&perPage=40&tz=<getTimezoneOffset>` → `Page<HistoryEntry>`, grouped by
+  `groupHistory` in `stash.ts`; "3 plays · last 9:41 PM"), 40 at a time as you scroll. A row's ×,
+  or **Select** (tap rows, "All loaded") then **Remove**, takes exactly those plays out of Stash at
+  once (`POST /api/history/remove` → `sceneDeletePlay` with their times) and the toast's **Undo**
+  puts the same times back (`POST /api/history/restore` → `sceneAddPlay`). The play count
+  follows; the resume point and play time stay (Continue is cleared on its own tab). Undo is not
+  held back by a [[private-session]]: it restores plays, it records no viewing. The check scripts
+  never call either ([[check-scripts-wrote-plays-to-stash]]). _Until 2026-11-09_ every play was
+  its own row (the newest 300 only, no paging), and × asked `window.confirm` and then reset the
+  video's whole play count and resume point (`DELETE /api/history/:id`), dropping every cached
+  `scene` query; there was no undo.
 - **Stats**: `GET /api/stats`; top performers count everyone (_limited to the Settings performer
   gender until 2026-10-31_, [[gender-switch-performers-page-only]]).
 - A play counts after 20 s watched; "Mark as watched" on a scene counts one at once. Nothing is

@@ -3,7 +3,7 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter, isBlocked, unlistedReasons, withinReasons, groupFolder, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked, unlistedReasons, withinReasons, groupFolder, groupHistory, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
 
 const tick = () => new Promise((r) => setTimeout(r, 5))
 
@@ -275,4 +275,27 @@ describe('groupFolder', () => {
     assert.equal(groupFolder(undefined), null)
   })
 })
+})
+
+describe('groupHistory', () => {
+  const card = (id: string) => ({ id }) as unknown as Parameters<typeof groupHistory>[0][number]['card']
+  it("folds a video's plays per day in the browser's zone, newest first, and pages", () => {
+    const scenes = [
+      // 03:00 UTC on the 2nd is still the 1st in New York (tz 300)
+      { card: card('1'), times: ['2026-11-01T20:00:00Z', '2026-11-02T03:00:00Z', '2026-11-02T18:00:00Z'] },
+      { card: card('2'), times: ['2026-11-02T12:00:00Z'] },
+    ]
+    const ny = groupHistory(scenes, 300, 1, 10)
+    assert.equal(ny.total, 3)
+    assert.deepEqual(
+      ny.items.map((e) => [e.scene.id, e.day, e.times.length, e.playedAt]),
+      [
+        ['1', '2026-11-02', 1, '2026-11-02T18:00:00Z'],
+        ['2', '2026-11-02', 1, '2026-11-02T12:00:00Z'],
+        ['1', '2026-11-01', 2, '2026-11-02T03:00:00Z'],
+      ],
+    )
+    assert.equal(groupHistory(scenes, 0, 1, 10).total, 3) // UTC: 20:00 on the 1st alone, the two on the 2nd together
+    assert.deepEqual(groupHistory(scenes, 300, 2, 2).items.map((e) => e.day), ['2026-11-01'])
+  })
 })

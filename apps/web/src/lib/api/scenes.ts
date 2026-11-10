@@ -2,6 +2,7 @@ import type {
   DeleteResult,
   Duplicates,
   HistoryEntry,
+  HistoryPlays,
   HomeRow,
   JobStatus,
   Marker,
@@ -13,7 +14,7 @@ import type {
   SearchResult,
   Stats,
 } from '@flix/shared'
-import { keepPreviousData, type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type InfiniteData, keepPreviousData, type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, invalidateLists, qs, queryClient, send } from './client'
 
 // Videos: lists, one scene, search, and everything written about a scene (rating, O, plays,
@@ -208,21 +209,39 @@ export function useKeepScene() {
 
 // --- history and stats -------------------------------------------------------------
 
-export const useHistory = () => useQuery({ queryKey: ['scenes', 'history'], queryFn: () => get<HistoryEntry[]>('/history') })
+// One entry per video per day in this browser's time zone, newest first, 40 a page.
+export const historyKey = (e: HistoryEntry) => `${e.scene.id}|${e.day}`
+export const useHistory = () =>
+  useInfiniteQuery({
+    queryKey: ['scenes', 'history'],
+    queryFn: ({ pageParam }) => get<Page<HistoryEntry>>(`/history${qs({ page: pageParam, perPage: 40, tz: new Date().getTimezoneOffset() })}`),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.perPage < last.total ? last.page + 1 : undefined),
+  })
 export const useStats = () => useQuery({ queryKey: ['scenes', 'stats'], queryFn: () => get<Stats>('/stats') })
 
-export function useRemoveFromHistory() {
+// Remove takes exactly those plays out of Stash (the play count follows; the resume point stays);
+// restore is its Undo and puts the same times back. Removed entries leave the list at once.
+function useHistoryWrite(path: 'remove' | 'restore') {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => send('DELETE', `/history/${id}`),
-    onMutate: (id) => qc.setQueryData<HistoryEntry[]>(['scenes', 'history'], (d) => d?.filter((e) => e.scene.id !== id)),
-    onSettled: (_r, _e, id) => {
+    mutationFn: (entries: HistoryEntry[]) => send('POST', `/history/${path}`, { plays: entries.map((e) => ({ id: e.scene.id, times: e.times })) } satisfies HistoryPlays),
+    onMutate: (entries) => {
+      if (path !== 'remove') return
+      const gone = new Set(entries.map(historyKey))
+      qc.setQueryData<InfiniteData<Page<HistoryEntry>>>(['scenes', 'history'], (d) =>
+        d && { ...d, pages: d.pages.map((p) => ({ ...p, items: p.items.filter((e) => !gone.has(historyKey(e))) })) },
+      )
+    },
+    onSettled: (_r, _e, entries) => {
       qc.invalidateQueries({ queryKey: ['scenes'] })
       qc.invalidateQueries({ queryKey: ['home'] })
-      qc.invalidateQueries({ queryKey: ['scene', id] }) // its play count and resume point are gone
+      for (const id of new Set(entries.map((e) => e.scene.id))) qc.invalidateQueries({ queryKey: ['scene', id] }) // its play count
     },
   })
 }
+export const useRemoveFromHistory = () => useHistoryWrite('remove')
+export const useRestoreHistory = () => useHistoryWrite('restore')
 
 // --- scene edits, markers, identify ---------------------------------------------------
 

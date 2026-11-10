@@ -373,3 +373,6 @@ Block left the library lists (downloads only: Discover, the not-downloaded shelf
 
 ## [2026-11-09] ingest | Scene page ⋯ menu shipped (initiative E)
 The scene page's row is Stars, O, Favorite, Playlist, ⋯; ⋯ opens CardMenu in page mode (Mark as watched, Remove from Continue, Unlist, Identify, Delete). Identify's run moved into useIdentify so it survives the menu closing. History: 2026-11-09-scene-menu.
+
+## [2026-11-09] ingest | History rework shipped (initiative F)
+History is one row per video per day, paged 40 at a time, with Select and bulk Remove; removal deletes exactly those plays in Stash (sceneDeletePlay) and Undo re-adds them (sceneAddPlay). History: 2026-11-09-history-rework.

@@ -452,9 +452,17 @@ export interface TagTile {
   favorite: boolean // pinned on the Categories page (Stash's tag favourite)
 }
 
+// One video's plays on one day (the browser's day: GET /history?tz=), newest first. History is
+// paged (Page<HistoryEntry>); removing an entry deletes exactly `times` from Stash.
 export interface HistoryEntry {
-  playedAt: string
+  playedAt: string // the latest of `times`
+  day: string // YYYY-MM-DD in the browser's time zone
+  times: string[] // every play that day, newest first, as Stash keeps them
   scene: SceneCard
+}
+// Plays to take out of History, or to put back (Undo)
+export interface HistoryPlays {
+  plays: { id: string; times: string[] }[]
 }
 
 export interface Stats {
