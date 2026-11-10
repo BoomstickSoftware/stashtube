@@ -394,3 +394,6 @@ At the user's request: add and remove categories on the selected videos or on ev
 
 ## [2026-11-09] decide | Studio default categories
 User decisions: defaults stored in flix (not Stash's studio tags), own videos only (no sub-studios), put back if removed by hand, removal only where flix added them (provenance table). Neither Stash nor Whisparr copies studio categories to scenes. Pages: decisions/studio-defaults-stored-in-flix, features/studio-default-categories, data-model; history 2026-11-09-studio-default-categories.
+
+## [2026-11-09] correct | Performer search 422 after StashDB schema change
+Discover performer search 500'd (StashDB HTTP 422), then tripped the 5-minute pause for all StashDB calls. StashDB's searchPerformers now returns { count performers facets }. Query fixed; gql() keeps the 422 reason. Pages: gotchas/stashdb-http-422-schema-change, stashdb-mirror.

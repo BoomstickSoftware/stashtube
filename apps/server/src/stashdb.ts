@@ -116,8 +116,9 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
   return enqueue(async () => {
     try {
       const res = await send(b, JSON.stringify({ query, variables }))
-      if (!res.ok) throw new Error(`StashDB HTTP ${res.status}`)
-      const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
+      // A query StashDB's schema rejects comes back 422 with the reason in the body; keep it.
+      const body = (await res.json().catch(() => ({}))) as { data?: T; errors?: { message: string }[] }
+      if (!res.ok) throw new Error(`StashDB HTTP ${res.status}${body.errors?.length ? `: ${body.errors[0].message}` : ''}`)
       if (body.errors?.length) throw new Error(`StashDB: ${body.errors.map((e) => e.message).join('; ')}`)
       limiter.consecutive = 0
       return body.data as T
@@ -264,7 +265,8 @@ const fromTag = (t: RawTag): SdbEntity => ({ kind: 'tag', id: t.id, name: t.name
 export async function searchEntities(kind: SdbEntity['kind'], term: string, limit = 12): Promise<SdbEntity[]> {
   const t = term.trim().slice(0, 100)
   if (!t) return []
-  if (kind === 'performer') return (await gql<{ searchPerformers: RawPerformer[] }>(`query($t: String!, $l: Int) { searchPerformers(term: $t, limit: $l) { ${PERFORMER} } }`, { t, l: limit })).searchPerformers.map(fromPerformer)
+  // searchPerformers returns { count performers facets } since StashDB's 2026-11 schema (was a bare list).
+  if (kind === 'performer') return (await gql<{ searchPerformers: { performers: RawPerformer[] } }>(`query($t: String!, $l: Int) { searchPerformers(term: $t, limit: $l) { performers { ${PERFORMER} } } }`, { t, l: limit })).searchPerformers.performers.map(fromPerformer)
   if (kind === 'studio') return (await gql<{ searchStudio: RawStudio[] }>(`query($t: String!, $l: Int) { searchStudio(term: $t, limit: $l) { ${STUDIO} } }`, { t, l: limit })).searchStudio.map(fromStudio)
   return (await gql<{ searchTag: RawTag[] }>(`query($t: String!, $l: Int) { searchTag(term: $t, limit: $l) { ${TAG} } }`, { t, l: limit })).searchTag.map(fromTag)
 }

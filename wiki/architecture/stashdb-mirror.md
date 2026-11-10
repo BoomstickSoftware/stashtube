@@ -4,10 +4,10 @@ kind: architecture
 summary: One rate-limited queue for every StashDB call, a Postgres mirror so each record is fetched once, and the paced queue that fetches picked scenes through Whisparr one at a time.
 tags: [stashdb, whisparr, caching, architecture, downloads]
 status: current
-verified: 2026-11-08
+verified: 2026-11-09
 updated: 2026-11-09
 code: [apps/server/src/stashdb.ts, apps/server/src/catalog.ts, apps/server/src/getqueue.ts, apps/server/src/db/schema.ts, apps/server/src/api.ts]
-related: [stashdb, discover, whisparr-unwatched-studios-stop-learning-scenes, whisparr-sync, whisparr-nothing-monitored, caching, whisparr-shelf]
+related: [stashdb, discover, stashdb-http-422-schema-change, whisparr-unwatched-studios-stop-learning-scenes, whisparr-sync, whisparr-nothing-monitored, caching, whisparr-shelf]
 ---
 
 # StashDB mirror, rate limiter and the paced Get queue
@@ -21,7 +21,9 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
 - One queue for every StashDB request: **one in flight**, request starts at least **1.1 s** apart.
 - 429 or 503: wait `Retry-After` when given, else 5 s, 15 s, 60 s, then give up that call.
 - **5 consecutive failures pause all StashDB calls for 5 minutes**; calls during the pause fail
-  at once with the pause time, so nothing piles up.
+  at once with the pause time, so nothing piles up. Any failure counts, a query StashDB's schema
+  rejects (HTTP 422, its reason now kept in the error) included: see
+  [[stashdb-http-422-schema-change]].
 - Counters at `GET /api/admin/stashdb` (requests, throttled, failures, pausedUntil, lastError).
   `GET /api/admin/stashdb/type/:name` introspects a schema type through the same queue.
 
