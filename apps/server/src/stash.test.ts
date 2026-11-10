@@ -3,7 +3,7 @@
 // Stash, so they are pinned here.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { type Exclusions, findFilter, sceneFilter, isBlocked, unlistedReasons, withinReasons, groupFolder, groupHistory, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
+import { type Exclusions, findFilter, sceneFilter, isBlocked, unlistedReasons, withinReasons, groupFolder, groupHistory, missingSceneId, dataCache, updateSceneRating, addSceneO, setPerformerFavorite, updateScene, WarmDebounce } from './stash.ts'
 
 const tick = () => new Promise((r) => setTimeout(r, 5))
 
@@ -297,5 +297,12 @@ describe('groupHistory', () => {
     )
     assert.equal(groupHistory(scenes, 0, 1, 10).total, 3) // UTC: 20:00 on the 1st alone, the two on the 2nd together
     assert.deepEqual(groupHistory(scenes, 300, 2, 2).items.map((e) => e.day), ['2026-11-01'])
+  })
+})
+
+describe('findScenesByIds', () => {
+  it("reads the id of a deleted scene from Stash's error", () => {
+    assert.equal(missingSceneId(new Error('stash: scene with id 3302 not found')), '3302')
+    assert.equal(missingSceneId(new Error('Stash: database is locked')), null)
   })
 })

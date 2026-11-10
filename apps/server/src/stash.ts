@@ -700,17 +700,32 @@ export async function existingSceneIds(sceneIds: string[]): Promise<Set<string>>
 }
 
 // `blocked`: leave out what the blocklist and "Not interested" exclude (station resume points).
+// Stash fails the whole call when one id is gone ("scene with id 3302 not found") instead of
+// skipping it: a ranking or list cached before a delete then broke Featured with a 502
+// (2026-11-09, after the snapshot restored a pre-delete ranking). Drop the missing id and ask again.
 export async function findScenesByIds(sceneIds: string[], blocked?: Exclusions): Promise<SceneCard[]> {
-  if (!sceneIds.length) return []
-  const d = await query<Pick<Query, 'findScenes'>>(
-    `query($ids: [ID!]) { findScenes(ids: $ids) { scenes { ${SCENE_CARD} ${blocked ? BLOCK_FIELDS : ''} } } }`,
-    { ids: sceneIds },
-    ['scene'],
-  )
+  let ids = sceneIds
+  let d: Pick<Query, 'findScenes'> | null = null
+  while (!d) {
+    if (!ids.length) return []
+    try {
+      d = await query<Pick<Query, 'findScenes'>>(
+        `query($ids: [ID!]) { findScenes(ids: $ids) { scenes { ${SCENE_CARD} ${blocked ? BLOCK_FIELDS : ''} } } }`,
+        { ids },
+        ['scene'],
+      )
+    } catch (e) {
+      const gone = missingSceneId(e)
+      if (!gone || !ids.includes(gone)) throw e
+      ids = ids.filter((id) => id !== gone)
+    }
+  }
   const scenes = blocked ? d.findScenes.scenes.filter((s) => !isBlocked(s, blocked)) : d.findScenes.scenes
   const byId = new Map<string, SceneCard>(scenes.map((s) => [s.id, toSceneCard(s)]))
   return sceneIds.map((id) => byId.get(id)).filter((s): s is SceneCard => !!s)
 }
+
+export const missingSceneId = (e: unknown): string | null => /scene with id (\d+) not found/.exec(e instanceof Error ? e.message : String(e))?.[1] ?? null
 
 export async function getScene(id: string) {
   const d = await query<Pick<Query, 'findScene'>>(`query($id: ID!) { findScene(id: $id) { ${SCENE_DETAIL} } }`, { id }, ['scene', `scene:${id}`])

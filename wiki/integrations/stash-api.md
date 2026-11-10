@@ -5,7 +5,7 @@ summary: What flix relies on in Stash v0.31.1's GraphQL and asset endpoints — 
 tags: [stash, graphql, api, hls, assets]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 sources: [nas:docs/services.md]
 code: [apps/server/src/stash.ts, apps/server/src/media.ts]
 related: [stash-layer, media-proxy, caching, stash-database-locked, stash-library, regenerate-stash-schema]
@@ -55,6 +55,12 @@ images come from `/performer|studio|tag/<id>/image`.
 against the stash-box, `configuration.general.stashBoxes` ([[stashdb]]).
 
 ## Semantics that matter
+
+- **`findScenes(ids: [...])` fails the whole call when one id no longer exists** ("scene with id
+  3302 not found") rather than skipping it. `findScenesByIds` in `stash.ts` drops the missing id
+  and asks again (`missingSceneId`, since 2026-11-09). Seen when a Featured ranking cached before
+  six deletes was restored from the snapshot after a deploy: `/api/featured` answered 502 until
+  the ranking refreshed.
 
 - `metadataIdentify` returns a job id; `findJob(input: { id })` answers `status`, `progress`
   and `error`, and `null` for a job no longer in the queue (inferred from the schema, 2026-10-31;

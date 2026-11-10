@@ -385,3 +385,6 @@ At the user's request: the StashDB badge went, ⓘ About moved to top left, ↗ 
 
 ## [2026-11-09] ingest | Exact names first in the pickers
 User report: an exact category was crowded out of the search list. Discover's picker took StashDB's first 12 (no "Creampie" for "creampie"); now 30 plus an exact lookup (findTagOrAlias / findStudio by name), ranked by rank.ts. Library /api/search and /api/tags?q rank the same way. Pages: stashdb-mirror, search.
+
+## [2026-11-09] correct | Featured 502 after deletes
+The deploy check caught /api/featured 502: Stash's findScenes(ids) fails on one deleted id. findScenesByIds now drops it and retries. integrations/stash-api.
