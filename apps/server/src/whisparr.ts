@@ -65,7 +65,7 @@ async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, 
   const res = await fetch(`${w.url}/api/v3${path}`, {
     method,
     headers: { 'X-Api-Key': w.apiKey, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(TIMEOUT),
   }).catch((e: Error) => {
     throw new Error(e.name === 'TimeoutError' ? `Whisparr: no answer in ${TIMEOUT / 1000} s` : `Whisparr: ${e.message}`)

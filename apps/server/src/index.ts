@@ -25,6 +25,9 @@ import { startGetQueue } from './getqueue.ts'
 import { scheduleWarm } from './warm.ts'
 import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
 
+// A promise nobody awaited must not take the process down (Node's default): log it and carry on.
+process.on('unhandledRejection', (reason) => console.error('unhandled rejection:', reason instanceof Error ? (reason.stack ?? reason.message) : reason))
+
 const app = new Hono()
 const VERSION = process.env.FLIX_VERSION ?? 'dev'
 
@@ -34,7 +37,8 @@ app.use('/media/*', sameOriginWrites)
 
 // search text stays out of the log (wiki/decisions/content-neutral-sessions.md)
 app.use('/api/*', logger((line, ...rest) => console.log(line.replace(/([?&]q=)[^&\s]*/g, '$1…'), ...rest)))
-app.use('/api/*', compress()) // JSON lists compress 5-10x; assets and video are already compact
+app.use('/api/*', compress()) // JSON lists compress 5-10x; pictures and video are already compact
+app.use('/assets/*', compress()) // the app's JS and CSS: 526 kB raw, about 156 kB gzipped (2026-11-10)
 app.use('/api/*', ...conditional) // inside compress: the ETag is of the JSON, a 304 has no body to compress
 // Liveness, and which build this is: the deploy workflow waits for its commit to appear here
 // before smoke-testing the rollout.

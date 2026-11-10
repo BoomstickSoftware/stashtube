@@ -353,7 +353,7 @@ export class AssetCache {
   async clear() {
     await this.ready
     this.missing.clear()
-    for (const k of [...this.index.keys()]) {
+    for (const k of Array.from(this.index.keys())) {
       if (!this.inflight.has(k)) await this.remove(k)
     }
   }

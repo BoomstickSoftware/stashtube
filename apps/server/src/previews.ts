@@ -9,7 +9,7 @@ export const previewSeed = (day: number, q: SceneQuery) => day + [...JSON.string
 // `Promise.all` with at most `limit` tasks in flight, in input order. Stash answers a handful of
 // queries at once happily; a few dozen at once would only queue inside it.
 export async function mapBounded<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out = new Array<R>(items.length)
+  const out: R[] = Array.from({ length: items.length })
   let next = 0
   const worker = async () => {
     while (next < items.length) {

@@ -21,6 +21,8 @@ const steps = [
   ['typecheck (server, shared)', 'pnpm', ['typecheck']],
   ['typecheck (web)', 'npx', ['tsc', '-b'], resolve(ROOT, 'apps/web')],
   ['lint (web)', 'pnpm', ['--filter', '@flix/web', 'lint'], ROOT, lintOk],
+  // the server and the shared contract have no accepted warnings: any warning fails
+  ['lint (server, shared)', resolve(ROOT, 'apps/web/node_modules/.bin/oxlint'), ['apps/server/src', 'packages/shared/src', '--ignore-pattern', '**/stash.schema.ts', '--deny-warnings']],
   ['tests (server)', 'pnpm', ['test']],
   ['tests (scripts: neutral redaction)', 'node', ['--test', 'scripts/lib/neutral.test.mjs']],
   ['privacy (no library names in tracked files)', 'node', ['scripts/privacy-check.mjs']],
@@ -59,7 +61,7 @@ function lintOk(r, out) {
 }
 
 function summary(name, out) {
-  if (name.startsWith('lint')) return `  ${lintCounts(out).warnings} warnings (baseline ${LINT_WARNINGS_BASELINE})`
+  if (name === 'lint (web)') return `  ${lintCounts(out).warnings} warnings (baseline ${LINT_WARNINGS_BASELINE})`
   if (name.startsWith('tests')) {
     const pass = out.match(/\bpass (\d+)/)
     const fail = out.match(/\bfail (\d+)/)

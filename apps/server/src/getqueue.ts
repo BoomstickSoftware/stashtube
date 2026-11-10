@@ -183,8 +183,12 @@ export function startGetQueue() {
       .pruneQueries()
       .then((n) => n && console.log(`stashdb: pruned ${n} cached searches unused for 30 days`))
       .catch((e: Error) => console.error('pruning stashdb searches:', e.message))
-    if (!(await getSettings()).whisparrSync) return
-    await discoverNew().catch((e: Error) => (queueStatus.lastError = e.message))
+    try {
+      if (!(await getSettings()).whisparrSync) return
+      await discoverNew()
+    } catch (e) {
+      queueStatus.lastError = (e as Error).message
+    }
   }
   setTimeout(daily, 5 * 60_000).unref()
   setInterval(daily, DISCOVER_EVERY).unref()
