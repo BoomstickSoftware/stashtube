@@ -16,7 +16,7 @@ import type {
   TagCard,
   TagDetail,
   TagTile, SceneFacets, Marker } from '@flix/shared'
-import { MemoryCache, PINNED, VOLATILE } from './cache/memory.ts'
+import { MemoryCache, PINNED, RAW, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { signScene } from './signing.ts'
 // Generated from stash.schema.graphql (Stash's own schema; see codegen.ts). Filter inputs are
@@ -127,7 +127,7 @@ function dropBlocked<T extends { id: string }>(r: { total: number; items: T[] },
 // 'scene:<id>' for one scene; same for performer, studio, tag. 'activity:play' and
 // 'activity:resume' mark results that depend on play counts or resume points.
 function query<T>(q: string, variables: Record<string, unknown>, tags: string[], ttl = config.cache.dataTtl): Promise<T> {
-  return dataCache.get(JSON.stringify([q, variables]), ttl, tags, () => gql<T>(q, variables))
+  return dataCache.get(JSON.stringify([q, variables]), ttl, [...tags, RAW], () => gql<T>(q, variables))
 }
 
 // A computed answer (facets, tiles) cached over cached reads: its loader's reads wait for
@@ -251,7 +251,7 @@ async function checkForChanges() {
   const changed = lastFingerprint !== null && fp !== lastFingerprint
   if (changed) {
     console.log('stash data changed; refreshing cached queries')
-    dataCache.expire()
+    dataCache.expireExcept('whisparr', 'stashdb') // those answers do not come from Stash
   }
   if (warmDebounce.poll(changed)) {
     console.log('stash data settled; re-warming')

@@ -136,9 +136,9 @@ await migrateDb()
 // here, saved every few minutes and on shutdown. Then the home feed is warmed in the
 // background, and again whenever Stash changes, so nobody waits for a cold build.
 const dataFile = join(config.cache.dir, 'data.json')
-const restored = await dataCache.load(dataFile)
+const restored = await dataCache.load(dataFile, VERSION)
 if (restored) console.log(`restored ${restored} cached queries`)
-const saveData = () => dataCache.save(dataFile).catch((e) => console.error('saving query cache:', e.message))
+const saveData = () => dataCache.save(dataFile, VERSION).catch((e) => console.error('saving query cache:', e.message))
 setInterval(saveData, 2 * 60_000).unref()
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {

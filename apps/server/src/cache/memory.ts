@@ -41,6 +41,10 @@ export interface MemoryStats {
 export const VOLATILE = 'volatile'
 const EXPIRED_SAVE_GAP = 15 * 60_000
 export const PINNED = 'pinned'
+// An upstream's own answer, keyed by the query that asked for it: its shape belongs to the
+// upstream, not to this build, so it may be restored by a newer build. Anything else in the
+// snapshot was shaped by flix's code and is dropped when the build changes.
+export const RAW = 'raw'
 
 // Set while a `freshInputs` loader runs: nested reads must not answer with a stale entry.
 const wantFresh = new AsyncLocalStorage<true>()
@@ -176,6 +180,26 @@ export class MemoryCache {
     this.expiredOnly = true
   }
 
+  // Mark every entry stale except those carrying one of these tags (another upstream's answers:
+  // a change in Stash says nothing about Whisparr's 41 MB list). Their running fetches are kept.
+  expireExcept(...keep: string[]) {
+    const kept = (tags: string[]) => tags.some((t) => keep.includes(t))
+    this.tick++
+    const seen = new Set<string>()
+    for (const e of this.entries.values()) {
+      if (kept(e.tags)) continue
+      e.fresh = 0
+      for (const t of e.tags) seen.add(t)
+    }
+    for (const [k, f] of this.inflight) {
+      if (kept(f.tags)) continue
+      for (const t of f.tags) seen.add(t)
+      this.inflight.delete(k)
+    }
+    for (const t of seen) this.changed.set(t, this.tick)
+    this.expiredOnly = true
+  }
+
   clear() {
     this.mark([])
     this.s.invalidations += this.entries.size
@@ -184,7 +208,7 @@ export class MemoryCache {
   }
 
   // Write all live entries to `file` (atomically) if anything changed since the last save.
-  async save(file: string) {
+  async save(file: string, version = '') {
     const now = Date.now()
     if (!this.dirty && !(this.expiredOnly && now - this.lastSave >= EXPIRED_SAVE_GAP)) return
     this.dirty = false
@@ -192,22 +216,25 @@ export class MemoryCache {
     this.lastSave = now
     const live = [...this.entries].filter(([, e]) => e.stale > now && !e.tags.includes(VOLATILE) && !e.tags.includes(PINNED))
     await mkdir(dirname(file), { recursive: true })
-    await writeFile(`${file}.tmp`, JSON.stringify(live))
+    await writeFile(`${file}.tmp`, JSON.stringify({ version, entries: live }))
     await rename(`${file}.tmp`, file)
   }
 
   // Restore entries saved by save(); expired ones are skipped. A missing or unreadable file
   // just means a cold start.
-  async load(file: string): Promise<number> {
-    let saved: [string, Entry<unknown>][]
+  // A snapshot written by another build keeps only its RAW entries: a computed answer has the
+  // shape that build's code gave it, and a deploy that changed a mapper must not serve it.
+  async load(file: string, version = ''): Promise<number> {
+    let saved: { version?: string; entries?: [string, Entry<unknown>][] }
     try {
       saved = JSON.parse(await readFile(file, 'utf8'))
     } catch {
       return 0
     }
+    const same = saved.version === version
     const now = Date.now()
-    for (const [k, e] of saved) {
-      if (e.stale > now && !this.entries.has(k)) this.entries.set(k, e)
+    for (const [k, e] of Array.isArray(saved.entries) ? saved.entries : []) {
+      if (e.stale > now && !this.entries.has(k) && (same || e.tags.includes(RAW))) this.entries.set(k, e)
     }
     return this.entries.size
   }

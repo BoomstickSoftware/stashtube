@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
-import { MemoryCache, PINNED, VOLATILE } from './memory.ts'
+import { MemoryCache, PINNED, RAW, VOLATILE } from './memory.ts'
 
 const tick = () => new Promise((r) => setTimeout(r, 5))
 
@@ -75,8 +75,8 @@ describe('MemoryCache', () => {
       await c.get('keep', 1000, ['scene'], async () => 'v')
       await c.get('big', 1000, ['scene', VOLATILE], async () => 'x'.repeat(100))
       await c.save(file)
-      const saved = JSON.parse(await readFile(file, 'utf8')) as [string, unknown][]
-      assert.deepEqual(saved.map(([k]) => k), ['keep'])
+      const saved = JSON.parse(await readFile(file, 'utf8')) as { entries: [string, unknown][] }
+      assert.deepEqual(saved.entries.map(([k]) => k), ['keep'])
       const d = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
       assert.equal(await d.load(file), 1)
       assert.equal(await d.get('keep', 1000, [], async () => 'reloaded'), 'v')
@@ -99,7 +99,7 @@ describe('MemoryCache', () => {
       await assert.rejects(readFile(file, 'utf8'), 'an expiry alone waits for the gap')
       await c.get('other', 1000, ['scene'], async () => 'v2')
       await c.save(file)
-      assert.equal((JSON.parse(await readFile(file, 'utf8')) as unknown[]).length, 2)
+      assert.equal((JSON.parse(await readFile(file, 'utf8')) as { entries: unknown[] }).entries.length, 2)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -158,8 +158,8 @@ describe('MemoryCache', () => {
       assert.equal(await c.get('p1', 1000, [VOLATILE], async () => 'again'), 'again', 'the oldest page was')
       const file = join(dir, 'data.json')
       await c.save(file)
-      const saved = JSON.parse(await readFile(file, 'utf8')) as [string, unknown][]
-      assert.deepEqual(saved.map(([k]) => k), [], 'memory only')
+      const saved = JSON.parse(await readFile(file, 'utf8')) as { entries: [string, unknown][] }
+      assert.deepEqual(saved.entries.map(([k]) => k), [], 'memory only')
       c.invalidate('whisparr')
       assert.equal(await c.get('movies', 1000, ['whisparr', PINNED], async () => 'refetched'), 'refetched', 'still dropped by its tag')
     } finally {
@@ -193,5 +193,37 @@ describe('MemoryCache', () => {
     c.patch<number[]>('missing', () => [9])
     assert.deepEqual(await c.get('list', 1000, ['whisparr'], async () => [0]), [1, 2, 3])
     assert.equal(c.stats().misses, 1)
+  })
+
+  it('a snapshot from another build restores only the raw upstream answers', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'flix-mem-'))
+    try {
+      const file = join(dir, 'data.json')
+      const c = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
+      await c.get('raw', 1000, ['scene', RAW], async () => 'r')
+      await c.get('computed', 1000, ['scene'], async () => 'c')
+      await c.save(file, 'build-1')
+      const same = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
+      assert.equal(await same.load(file, 'build-1'), 2)
+      const next = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
+      assert.equal(await next.load(file, 'build-2'), 1)
+      assert.equal(await next.get('computed', 1000, [], async () => 'rebuilt'), 'rebuilt')
+      assert.equal(await next.get('raw', 1000, [], async () => 'refetched'), 'r')
+    } finally {
+      await rm(dir, { recursive: true })
+    }
+  })
+
+  it('expireExcept leaves the other upstreams fresh and their fetches running', async () => {
+    const c = new MemoryCache({ maxEntries: 10, staleFor: 10_000 })
+    await c.get('scenes', 1000, ['scene'], async () => 'old')
+    await c.get('movies', 1000, ['whisparr'], async () => 'old')
+    c.expireExcept('whisparr', 'stashdb')
+    assert.equal(await c.get('movies', 1000, ['whisparr'], async () => 'new'), 'old')
+    assert.equal(c.stats().staleHits, 0)
+    assert.equal(await c.get('scenes', 1000, ['scene'], async () => 'new'), 'old') // served stale once
+    assert.equal(c.stats().staleHits, 1)
+    await tick()
+    assert.equal(await c.get('scenes', 1000, ['scene'], async () => 'newer'), 'new')
   })
 })
