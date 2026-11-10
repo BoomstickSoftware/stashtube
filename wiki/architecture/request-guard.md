@@ -4,10 +4,10 @@ kind: architecture
 summary: What keeps other web pages away from flix without a login — cross-site writes refused, foreign host names (DNS rebinding) refused, no framing, no sniffing, no referrer — and what is always let through.
 tags: [security, server, csrf, headers]
 status: current
-verified: 2026-10-31
-updated: 2026-10-31
+verified: 2026-11-10
+updated: 2026-11-10
 code: [apps/server/src/guard.ts, apps/server/src/guard.test.ts, apps/server/src/index.ts]
-related: [lan-only-no-ingress, single-user-no-login, optional-login, media-proxy, kubernetes-deployment]
+related: [lan-only-no-ingress, single-user-no-login, optional-login, media-proxy, kubernetes-deployment, server-bff]
 ---
 
 # Request guard
@@ -44,4 +44,10 @@ write rule.
 ## Avoid
 
 A new state-changing route needs nothing extra: the guard covers every method but GET, HEAD and
-OPTIONS. Do not add a GET that changes state; it would pass the guard.
+OPTIONS. Do not add a GET that changes state; it would pass the guard. Two did until 2026-11-10:
+`GET /api/cast` created missing Cast categories in Stash (it now only looks them up; the sync
+creates them) and `GET /api/stations/resume` deleted leftover ad hoc resume points (the ghost
+sweep does that now). No GET under `/api` writes to Stash or Postgres since.
+
+What a route accepts (ids, bodies) and how failures map to status codes is not the guard's
+job: see "Errors and bad input" in [[server-bff]].

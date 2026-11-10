@@ -2,15 +2,18 @@ import type { PerformerWatch, WantedList, WantedScene, WantedState, WhisparrActi
 import { PINNED, VOLATILE } from './cache/memory.ts'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
-import { dataCache, sceneStashIdMap } from './stash.ts'
+import { dataCache } from './cache/data.ts'
+import { UpstreamError } from './errors.ts'
+import { sceneStashIdMap } from './stash.ts'
 import * as stashdb from './stashdb.ts'
 
 // Whisparr v3 (Radarr-based; scenes are "movies"). flix reads what it knows and has not
 // downloaded, and writes three things besides deleting: fetch ONE scene the user clicked
-// (`getScene` refuses anything but a single id), and, for the follow sync (sync.ts), a
-// performer's or studio's monitoring flags and tags. The policy (decisions/whisparr-nothing-
-// monitored): only followed performers are monitored, for new releases only; nothing here ever
-// starts a search of a performer or studio, and no flag write touches their back catalogue.
+// (`getScene` refuses anything but a single id), and, for the guard (sync.ts), a performer's
+// or studio's monitoring flags and tags, which it only ever turns off. The policy
+// (decisions/whisparr-nothing-monitored): no performer or studio is monitored, followed ones
+// too; only the scenes flix fetched are. Nothing here ever starts a search of a performer or
+// studio.
 
 export interface Movie {
   id: number
@@ -56,7 +59,7 @@ const GRABBED_FOR = 48 * 3_600_000 // a grab older than this with no download is
 // A Get the user pressed, until Whisparr's queue or grabs show it (or this long has passed with
 // nothing: the search found no release). Kept in memory, movie id → ms; it outlives the 15 min
 // list refresh and is gone after a restart, when the cards fall back to Whisparr's own states.
-const REQUESTED_FOR = 60 * 60_000
+export const REQUESTED_FOR = 60 * 60_000
 export const requested = new Map<number, number>()
 
 async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, body?: unknown): Promise<T> {
@@ -68,9 +71,9 @@ async function call<T>(method: 'GET' | 'DELETE' | 'PUT' | 'POST', path: string, 
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(TIMEOUT),
   }).catch((e: Error) => {
-    throw new Error(e.name === 'TimeoutError' ? `Whisparr: no answer in ${TIMEOUT / 1000} s` : `Whisparr: ${e.message}`)
+    throw new UpstreamError('whisparr', e.name === 'TimeoutError' ? `Whisparr: no answer in ${TIMEOUT / 1000} s` : `Whisparr: ${e.message}`)
   })
-  if (!res.ok) throw new Error(`Whisparr HTTP ${res.status} on ${method} ${path.split('?')[0]}`)
+  if (!res.ok) throw new UpstreamError('whisparr', `Whisparr HTTP ${res.status} on ${method} ${path.split('?')[0]}`)
   return (method === 'DELETE' ? undefined : await res.json()) as T
 }
 
@@ -322,7 +325,7 @@ async function placementFor(studioForeignId: string | null | undefined): Promise
     cached('qualityprofile', LIST_TTL, [LIST, VOLATILE], () => call<{ id: number }[]>('GET', '/qualityprofile')),
     cached('rootfolder', LIST_TTL, [LIST, VOLATILE], () => call<{ path: string }[]>('GET', '/rootfolder')),
   ])
-  if (!profiles[0] || !roots[0]) throw new Error('Whisparr has no quality profile or root folder to add a scene to')
+  if (!profiles[0] || !roots[0]) throw new UpstreamError('whisparr', 'Whisparr has no quality profile or root folder to add a scene to')
   return { qualityProfileId: profiles[0].id, rootFolderPath: roots[0].path }
 }
 

@@ -123,6 +123,9 @@ async function run() {
   }
 }
 
+// Whether the last sync finished without an error (categorySync.ts keeps its baseline by it).
+export const studioCategoriesSyncOk = () => status?.error === null
+
 export async function studioCategoryList(studioId: string): Promise<Ref[]> {
   const rows = await db.select().from(studioCategories).where(eq(studioCategories.studioId, studioId)).orderBy(studioCategories.tagName)
   return rows.map((r) => ({ id: r.tagId, name: r.tagName }))

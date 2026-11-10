@@ -9,12 +9,14 @@
 // - All of it goes through stashdb.ts's single rate-limited queue; background work runs one
 //   scope at a time.
 import type { DiscoverEntity, DiscoverPage, DiscoverQuery, WantedScene } from '@flix/shared'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, arrayContains, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from './db/index.ts'
-import { blocks, getQueue, sdbEntities, sdbQueries, sdbScenes, sdbScopes } from './db/schema.ts'
+import { getQueue, sdbEntities, sdbQueries, sdbScenes, sdbScopes } from './db/schema.ts'
+import { blockedStashDbIds } from './blocklist.ts'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
 import { getSettings } from './settings.ts'
+import { dataCache } from './cache/data.ts'
 import * as stash from './stash.ts'
 import * as stashdb from './stashdb.ts'
 import { byNameMatch } from './rank.ts'
@@ -124,6 +126,14 @@ export function syncScope(kind: ScopeKind, id: string) {
     .finally(() => pending.delete(key))
 }
 
+// Pure, for tests: bringing a complete scope up to date reads its changes newest first and stops
+// at the first page that holds one already known (everything older is known too), or at the
+// last page.
+export const refreshDone = (o: { fresh: number; got: number; page: number; count: number }, pageSize = SCOPE_PAGE) => o.fresh < o.got || o.page * pageSize >= o.count
+
+// Pure, for tests: a catalogue this size is copied whole; a bigger one is paged on demand.
+export const copyWhole = (count: number) => count <= FULL_SCOPE
+
 export async function fillScope(kind: ScopeKind, id: string) {
   const key = scopeKey(kind, id)
   const [scope] = await db.select().from(sdbScopes).where(eq(sdbScopes.key, key))
@@ -136,7 +146,7 @@ export async function fillScope(kind: ScopeKind, id: string) {
       const fresh = scenes.filter((s) => (s.updated ?? '') > scope.newestUpdated!)
       await storeScenes(fresh)
       for (const s of fresh) if ((s.updated ?? '') > newest) newest = s.updated!
-      if (fresh.length < scenes.length || page * SCOPE_PAGE >= count) {
+      if (refreshDone({ fresh: fresh.length, got: scenes.length, page, count })) {
         await db.update(sdbScopes).set({ total: count, newestUpdated: newest, syncedAt: new Date() }).where(eq(sdbScopes.key, key))
         return
       }
@@ -146,7 +156,7 @@ export async function fillScope(kind: ScopeKind, id: string) {
   // Not held yet: copy it whole when small enough.
   const first = await stashdb.queryScenes({ ...scopeQuery(kind, id), sort: 'UPDATED_AT', page: 1, perPage: SCOPE_PAGE })
   await storeScenes(first.scenes)
-  if (first.count > FULL_SCOPE) {
+  if (!copyWhole(first.count)) {
     await db.insert(sdbScopes).values({ key, total: first.count, complete: false, syncedAt: new Date() }).onConflictDoUpdate({ target: sdbScopes.key, set: { total: first.count, syncedAt: new Date() } })
     return
   }
@@ -172,13 +182,19 @@ async function completeScope(q: DiscoverQuery): Promise<boolean> {
 
 // ---------- answering ----------
 
-async function fromMirror(q: DiscoverQuery, page: number): Promise<{ rows: SceneRow[]; count: number }> {
+// The mirror's filter. The id lists are bound as array parameters (_spliced into the SQL text
+// with sql.raw until 2026-11-10; only well-formed uuids ever reached it, but nothing here said so_).
+export function mirrorWhere(q: Pick<DiscoverQuery, 'performers' | 'tags' | 'studios'>) {
   const where = [
-    ...(q.performers?.length ? [sql`${sdbScenes.performerIds} @> ${sql.raw(`ARRAY[${q.performers.map((p) => `'${p}'`).join(',')}]::text[]`)}`] : []),
-    ...(q.tags?.length ? [sql`${sdbScenes.tagIds} @> ${sql.raw(`ARRAY[${q.tags.map((p) => `'${p}'`).join(',')}]::text[]`)}`] : []),
+    ...(q.performers?.length ? [arrayContains(sdbScenes.performerIds, q.performers)] : []),
+    ...(q.tags?.length ? [arrayContains(sdbScenes.tagIds, q.tags)] : []),
     ...(q.studios?.length ? [inArray(sdbScenes.studioId, q.studios)] : []),
   ]
-  const cond = where.length ? and(...where) : undefined
+  return where.length ? and(...where) : undefined
+}
+
+async function fromMirror(q: DiscoverQuery, page: number): Promise<{ rows: SceneRow[]; count: number }> {
+  const cond = mirrorWhere(q)
   const order = q.sort === 'added' ? [desc(sdbScenes.created)] : [sql`${sdbScenes.date} desc nulls last`, desc(sdbScenes.created)]
   const [rows, [{ n }]] = await Promise.all([
     db.select().from(sdbScenes).where(cond).orderBy(...order).limit(PAGE).offset((page - 1) * PAGE),
@@ -214,14 +230,6 @@ async function fromStashDb(q: DiscoverQuery, page: number): Promise<{ rows: Scen
 export async function pruneQueries(): Promise<number> {
   const gone = await db.delete(sdbQueries).where(sql`${sdbQueries.fetchedAt} < now() - interval '30 days'`).returning({ key: sdbQueries.key })
   return gone.length
-}
-
-// What the blocklist hides here: blocked performers and studios by their StashDB ids, blocked
-// categories by name (Stash's tags carry no StashDB id).
-async function blockedSets() {
-  const rows = await db.select().from(blocks)
-  const ids = async (kind: 'performer' | 'studio') => new Set((await Promise.all(rows.filter((r) => r.kind === kind).map((r) => stash.stashIdsOf(kind, r.stashId)))).flat())
-  return { performers: await ids('performer'), studios: await ids('studio'), tagNames: new Set(rows.filter((r) => r.kind === 'tag').map((r) => r.name.toLowerCase())) }
 }
 
 // Whisparr's ~13k movies by StashDB id, built once per fetched (or patched) list, not per page.
@@ -299,7 +307,7 @@ export async function discover(input: DiscoverQuery): Promise<DiscoverPage> {
   }
   const local = !q.q && q.sort !== 'trending' && (await completeScope(q))
   const { rows, count } = local ? await fromMirror(q, page) : await fromStashDb(q, page)
-  const blocked = q.unblocked ? null : await blockedSets()
+  const blocked = q.unblocked ? null : await blockedStashDbIds() // what the blocklist hides here
   const notBlocked = blocked
     ? rows.filter(
         (r) =>
@@ -360,7 +368,7 @@ export async function searchNames(kind: DiscoverEntity['kind'], term: string): P
   // StashDB answers in its own order and the picker shows 12, so the exact name could miss the cut
   // ("creampie": 12 longer names, not "Creampie"): ask for more, look the exact one up (a category
   // by name or alias, a studio by name), and rank (rank.ts). _Until 2026-11-09: 12, StashDB's order._
-  const found = await stash.dataCache.get(`sdb-search2:${kind}:${t}`, SEARCH_TTL, ['stashdb'], async () => {
+  const found = await dataCache.get(`sdb-search2:${kind}:${t}`, SEARCH_TTL, ['stashdb'], async () => {
     const [hits, exact] = await Promise.all([stashdb.searchEntities(kind, t, 30), stashdb.findByName(kind, t).catch(() => null)])
     const es = byNameMatch([...(exact ? [exact] : []), ...hits.filter((h) => h.id !== exact?.id)], t, (e) => e.name).slice(0, 12)
     await storeEntities(es)
@@ -372,6 +380,7 @@ export async function searchNames(kind: DiscoverEntity['kind'], term: string): P
 // A followed performer's or studio's scenes released on or after `since` (YYYY-MM-DD), newest
 // first: one or two StashDB pages a day, or the mirror when it holds the scope.
 export async function recentOf(kind: ScopeKind, id: string, since: string): Promise<SceneRow[]> {
+  if (!stashdb.isStashDbId(id)) return [] // an id Stash holds from another stash-box, or a malformed one
   const q: DiscoverQuery = kind === 'performer' ? { performers: [id] } : { studios: [id] }
   const out: SceneRow[] = []
   for (let page = 1; page <= 5; page++) {

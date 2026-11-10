@@ -230,7 +230,9 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 ## Ground-up review roadmap (2026-11-10)
 
-From [[2026-11-10-architecture-and-ux-review]]; approved by the user 2026-11-10.
+From [[2026-11-10-architecture-and-ux-review]]; approved by the user 2026-11-10 and shipped the
+same day except where marked open ([[2026-11-10-hardening]]). Also open: zod-parsing StashDB and
+Whisparr responses, a typed route map in `@flix/shared`, a pre-push hook for `check.mjs`.
 
 **Hardening** (each one initiative)
 
@@ -238,16 +240,13 @@ From [[2026-11-10-architecture-and-ux-review]]; approved by the user 2026-11-10.
 - ~~**H2. Gate what ships**~~ Done 2026-11-10: the image build runs lint and tests, the server is linted, assets are gzipped, unhandled rejections are logged. The privacy check stays local: its deny-list is not in git.
 - ~~**H3. Fresh data on the phone**~~ Done 2026-11-10: 5-minute freshness for settings, favourites and session; live markers in the player; lists no longer refetch every page on focus; the last progress save uses keepalive.
 - ~~**H4. Cache correctness**~~ Done 2026-11-10: the snapshot carries the build; a Stash change leaves Whisparr and StashDB entries alone.
-- **H5. Split the two big server files** (M): `stash/` behind an index, `dataCache` to `cache/`,
-  Home and Featured to `home.ts`, `api.ts` into Hono sub-apps; pin "only `stash/` imports
-  `stash.schema.ts`" with a test; `UpstreamError` → 502; an `idParam` validator.
-- **H6. One job registry** (M): name, interval, persisted last run, overlap guard, status;
-  hourly syncs gated on the change fingerprint; the guard re-reads Gets before applying.
-- **H7. Tests where it deletes and downloads** (M): pure predicates out of `getqueue`, `delete`
-  ordering, `app.request()` tests for write routes; `node:test` files for the web's pure `lib/`.
-- **H8. One player core** (L): `useVideoSource` and `useAutoHide` shared by `Player` and
-  `Station`; cap consecutive station failures; release the `<video>` on unmount.
-- **H9. Wiki drift** (S): the pages listed in the review.
+- ~~**H5. Split the two big server files**~~ Done 2026-11-10: `stash/`, `routes/`, `home.ts`, `UpstreamError`, id validation.
+- ~~**H6. One job registry**~~ Done 2026-11-10: `jobs.ts`; the hourly category sync is gated on the change fingerprint.
+- ~~**H7. Tests where it deletes and downloads**~~ Done 2026-11-10: server tests 155 → 209, the web's first 10.
+- **H8. One player core** (L), open: `useVideoSource` and shared controls for `Player` and
+  `Station`. Done 2026-11-10: the `<video>` is released on unmount, a station stops after three
+  failed videos.
+- ~~**H9. Wiki drift**~~ Done 2026-11-10: `server-bff`, `stash-layer`, `data-model`, `request-guard`, `caching`, `web-app`, `mobile-first-ui`.
 - ~~**H10. Finish the neutral suite**~~ Done 2026-11-10: every headless script is neutral by
   default, names print only on `--names` / `--show`, the server logs ids ([[neutral-observability]]).
 

@@ -1,29 +1,31 @@
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { type Context, Hono } from 'hono'
-import { HTTPException } from 'hono/http-exception'
 import { compress } from 'hono/compress'
 import { conditional } from './conditional.ts'
 import { logger } from 'hono/logger'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { admin } from './admin.ts'
-import { api, homeRows } from './api.ts'
+import { api } from './api.ts'
 import { auth, requireSession } from './auth.ts'
 import { exclusions } from './blocklist.ts'
-import { syncCast } from './cast.ts'
-import { syncStudioCategories } from './studioCategories.ts'
-import { startContinueExpiry } from './continue.ts'
+import { dataCache } from './cache/data.ts'
+import { syncCategories } from './categorySync.ts'
+import './continue.ts' // registers the Continue expiry (resume points untouched for 30 days leave Continue)
+import { errorHandler } from './errors.ts'
+import './getqueue.ts' // registers the paced Gets, the weekly re-search of waiting scenes, daily discovery
+import { homeRows } from './home.ts'
+import { register, startJobs } from './jobs.ts'
 import { hostGuard, playbackOrigin, sameOriginWrites, securityHeaders } from './guard.ts'
 import { config } from './config.ts'
 import { migrateDb, pingDb } from './db/index.ts'
 import { assetCache, media } from './media.ts'
 import { playbackScene } from './signing.ts'
-import { scheduleSweep } from './sweep.ts'
-import { startSync } from './sync.ts'
-import { startGetQueue } from './getqueue.ts'
-import { scheduleWarm } from './warm.ts'
-import { dataCache, noteActivity, onStashChange, sceneFacets, startChangeDetection, StashError, tagTiles } from './stash.ts'
+import { sweepJob } from './sweep.ts'
+import './sync.ts' // registers the Whisparr guard: a few minutes after start, then every 15 minutes
+import './warm.ts' // registers the nightly artwork warm
+import { checkForChanges, noteActivity, onStashChange, sceneFacets, tagTiles, usedRecently } from './stash.ts'
 
 // A promise nobody awaited must not take the process down (Node's default): log it and carry on.
 process.on('unhandledRejection', (reason) => console.error('unhandled rejection:', reason instanceof Error ? (reason.stack ?? reason.message) : reason))
@@ -87,16 +89,7 @@ app.route('/api/admin', admin)
 app.route('/api', api)
 app.route('/media', media)
 
-app.onError((err, c) => {
-  if (err instanceof HTTPException) return c.json({ error: err.message }, err.status)
-  if (err instanceof StashError) {
-    console.error('stash:', err.message)
-    return c.json({ error: `Stash: ${err.message}` }, 502)
-  }
-  if ((err as Error).name === 'AbortError') return c.body(null, 499 as 400)
-  console.error(err)
-  return c.json({ error: 'internal error' }, 500)
-})
+app.onError(errorHandler) // errors.ts: an upstream that did not answer is a 502, whichever it was
 
 if (config.webDist) {
   const dist = config.webDist
@@ -139,7 +132,7 @@ const dataFile = join(config.cache.dir, 'data.json')
 const restored = await dataCache.load(dataFile, VERSION)
 if (restored) console.log(`restored ${restored} cached queries`)
 const saveData = () => dataCache.save(dataFile, VERSION).catch((e) => console.error('saving query cache:', e.message))
-setInterval(saveData, 2 * 60_000).unref()
+register({ name: 'cache-save', every: 2 * 60_000, firstAfter: 2 * 60_000, run: saveData })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     void saveData().finally(() => process.exit(0))
@@ -157,18 +150,12 @@ warm()
 // sync's own tag writes do not expire what was just warmed (_until 2026-11-09 the sync ran a
 // minute after the warm and set off a second one_).
 // Studio default categories follow the same way, after the Cast sync (studioCategories.ts).
-const syncCategories = () => syncCast().then(syncStudioCategories)
+// They are also checked once after start and every hour, used or not (categorySync.ts).
 onStashChange(() => void syncCategories().finally(warm))
-onStashChange(scheduleSweep())
-setTimeout(() => void syncCategories(), 90_000).unref() // and are checked once after start
-// and every hour, used or not: change detection polls only while flix is in use, so an import
-// that lands while nobody is looking would otherwise wait for the next visit.
-setInterval(() => void syncCategories(), 60 * 60_000).unref()
-startContinueExpiry() // resume points untouched for 30 days leave Continue (continue.ts)
-startSync() // the Whisparr guard: a few minutes after start, then every 15 minutes (sync.ts)
-startGetQueue() // paced Gets, weekly re-search of waiting scenes, daily discovery (getqueue.ts)
-
-startChangeDetection()
-scheduleWarm()
-setInterval(() => assetCache.flushAccessTimes(), 10 * 60_000).unref()
+onStashChange(() => void sweepJob.trigger())
+// Scans, Identify and edits in Stash's own UI: one small query per poll, only while flix is in use.
+if (config.cache.pollInterval) register({ name: 'stash-change-check', every: config.cache.pollInterval, firstAfter: config.cache.pollInterval, gate: usedRecently, run: checkForChanges })
+register({ name: 'asset-access-flush', every: 10 * 60_000, firstAfter: 10 * 60_000, run: async () => assetCache.flushAccessTimes() })
+// Every background job is registered by now (jobs.ts); this schedules their first runs.
+await startJobs()
 serve({ fetch: app.fetch, port: config.port }, (info) => console.log(`flix listening on :${info.port}`))

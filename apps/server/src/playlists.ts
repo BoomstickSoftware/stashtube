@@ -95,6 +95,22 @@ export async function addToPlaylist(id: number, sceneId: string) {
   await touch(id)
 }
 
+// Several at once (multi-select), appended in the given order by one insert (_one read and two
+// writes per video until 2026-11-10_). A video already in the list keeps its place.
+export async function addManyToPlaylist(id: number, sceneIds: string[]) {
+  const ids = [...new Set(sceneIds)]
+  if (!ids.length) return
+  const [{ next }] = await db
+    .select({ next: sql<number>`coalesce(max(${playlistItems.position}), -1)::int + 1` })
+    .from(playlistItems)
+    .where(eq(playlistItems.playlistId, id))
+  await db
+    .insert(playlistItems)
+    .values(ids.map((sceneId, i) => ({ playlistId: id, sceneId, position: next + i })))
+    .onConflictDoNothing()
+  await touch(id)
+}
+
 export async function removeFromPlaylist(id: number, sceneId: string) {
   await db.delete(playlistItems).where(and(eq(playlistItems.playlistId, id), eq(playlistItems.sceneId, sceneId)))
   await touch(id)
@@ -105,16 +121,16 @@ export async function forgetScene(sceneId: string) {
   await db.delete(playlistItems).where(eq(playlistItems.sceneId, sceneId))
 }
 
-// Full order from the client; ids not in the playlist are ignored.
+// Full order from the client; ids not in the playlist are ignored. One UPDATE joined to the new
+// positions (_one UPDATE per video in a transaction until 2026-11-10_); a repeated id takes its
+// last position, as it did then.
+export const reorderStatement = (id: number, sceneIds: string[]) => {
+  const positions = new Map(sceneIds.map((sceneId, position) => [sceneId, position]))
+  const rows = [...positions].map(([sceneId, position]) => sql`(${sceneId}::text, ${position}::int)`)
+  return sql`update ${playlistItems} set "position" = v.position from (values ${sql.join(rows, sql`, `)}) as v(scene_id, position) where ${playlistItems.playlistId} = ${id} and ${playlistItems.sceneId} = v.scene_id`
+}
 export async function reorderPlaylist(id: number, sceneIds: string[]) {
-  await db.transaction(async (tx) => {
-    for (const [position, sceneId] of sceneIds.entries()) {
-      await tx
-        .update(playlistItems)
-        .set({ position })
-        .where(and(eq(playlistItems.playlistId, id), eq(playlistItems.sceneId, sceneId)))
-    }
-  })
+  if (sceneIds.length) await db.execute(reorderStatement(id, sceneIds))
   await touch(id)
 }
 

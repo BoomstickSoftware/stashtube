@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
-import { itemsOf, planSync, refusal, timedRunDue, type Entity, type Kind } from './sync.ts'
+import { describe, it, test } from 'node:test'
+import { itemsOf, planSync, refusal, timedRunDue, type Entity, type Kind, stillUnwanted } from './sync.ts'
+import { changedSince } from './categorySync.ts'
 
 const TAG = 7
 const ent = (kind: Kind, id: number, foreignId: string, o: Partial<Entity> = {}): Entity => ({ kind, id, name: `${kind}${id}`, foreignId, monitored: false, whisparrMonitorNewItems: false, tags: [], ...o })
@@ -87,4 +88,29 @@ test('the timed run: never while off, every tick while flix is in use, hourly wh
   assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: 45 * min }), false)
   assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: 60 * min }), true)
   assert.equal(timedRunDue({ enabled: true, active: false, sinceLast: Infinity }), true, 'the first run after start')
+})
+
+describe('the write, after the lists were read', () => {
+  const HOUR = 3_600_000
+  it('leaves alone a scene fetched since the plan was made', () => {
+    assert.deepEqual(stillUnwanted([1, 2, 3], new Set([2]), new Map()), [1, 3])
+  })
+  it('leaves alone a scene requested within the hour, and unmonitors one requested longer ago', () => {
+    const now = 10 * HOUR
+    assert.deepEqual(stillUnwanted([1, 2, 3], new Set(), new Map([[1, now - 5_000], [3, now - 2 * HOUR]]), now), [2, 3])
+  })
+  it('unmonitors the whole plan when nothing was fetched meanwhile', () => {
+    assert.deepEqual(stillUnwanted([1, 2], new Set([9]), new Map([[8, Date.now()]])), [1, 2])
+  })
+})
+
+describe('the hourly category check', () => {
+  it('syncs when nothing has synced yet, when the fingerprint is unknown and when it moved', () => {
+    assert.equal(changedSince(null, 'a'), true)
+    assert.equal(changedSince('a', null), true)
+    assert.equal(changedSince('a', 'b'), true)
+  })
+  it('skips the whole-library reads when the library is as the last sync left it', () => {
+    assert.equal(changedSince('a', 'a'), false)
+  })
 })

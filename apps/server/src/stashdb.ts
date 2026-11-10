@@ -1,7 +1,9 @@
 import type { WantedScene } from '@flix/shared'
 import { config } from './config.ts'
 import { remoteImageUrl } from './remote.ts'
-import { dataCache, stashBoxes } from './stash.ts'
+import { dataCache } from './cache/data.ts'
+import { UpstreamError } from './errors.ts'
+import { stashBoxes } from './stash.ts'
 
 // StashDB (stash-box) is the catalogue: every scene a performer or studio has, whether or not
 // Whisparr lists it. flix reads it with Stash's own stash-box credentials (Stash already holds a
@@ -81,7 +83,7 @@ let lastStart = 0
 
 function enqueue<T>(job: () => Promise<T>): Promise<T> {
   const run = lane.then(async () => {
-    if (Date.now() < limiter.pausedUntil) throw new Error(`StashDB calls paused until ${new Date(limiter.pausedUntil).toISOString()} after repeated failures`)
+    if (Date.now() < limiter.pausedUntil) throw new UpstreamError('stashdb', `StashDB calls paused until ${new Date(limiter.pausedUntil).toISOString()} after repeated failures`)
     const wait = lastStart + MIN_GAP - Date.now()
     if (wait > 0) await sleep(wait)
     lastStart = Date.now()
@@ -100,7 +102,7 @@ async function send(b: Box, body: string): Promise<Response> {
       body,
       signal: AbortSignal.timeout(TIMEOUT),
     }).catch((e: Error) => {
-      throw new Error(e.name === 'TimeoutError' ? `StashDB: no answer in ${TIMEOUT / 1000} s` : `StashDB: ${e.message}`)
+      throw new UpstreamError('stashdb', e.name === 'TimeoutError' ? `StashDB: no answer in ${TIMEOUT / 1000} s` : `StashDB: ${e.message}`)
     })
     if ((res.status !== 429 && res.status !== 503) || attempt >= BACKOFF.length) return res
     limiter.throttled++
@@ -110,6 +112,23 @@ async function send(b: Box, body: string): Promise<Response> {
   }
 }
 
+// StashDB answered, and said no. `counts`: whether it counts toward the pause. Only StashDB not
+// answering (a transport error or timeout, thrown by send), HTTP 5xx and 429 do. A query its
+// schema rejects (HTTP 4xx such as 422, or GraphQL validation errors) is flix's own mistake: the
+// reason is surfaced and recorded, and the next call goes out as usual (_until 2026-11-10 five
+// rejections paused every StashDB call for five minutes_).
+class StashDbRefusal extends UpstreamError {
+  counts: boolean
+  constructor(message: string, counts: boolean) {
+    super('stashdb', message)
+    this.counts = counts
+  }
+}
+type GqlError = { message: string; extensions?: { code?: string } }
+// Exported for tests.
+export const countsTowardPause = (e: unknown) => !(e instanceof StashDbRefusal) || e.counts
+const isValidation = (e: GqlError) => e.extensions?.code === 'GRAPHQL_VALIDATION_FAILED' || e.extensions?.code === 'GRAPHQL_PARSE_FAILED'
+
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
   const b = await stashBox()
   if (!b) throw new Error('StashDB is not configured')
@@ -117,15 +136,15 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
     try {
       const res = await send(b, JSON.stringify({ query, variables }))
       // A query StashDB's schema rejects comes back 422 with the reason in the body; keep it.
-      const body = (await res.json().catch(() => ({}))) as { data?: T; errors?: { message: string }[] }
-      if (!res.ok) throw new Error(`StashDB HTTP ${res.status}${body.errors?.length ? `: ${body.errors[0].message}` : ''}`)
-      if (body.errors?.length) throw new Error(`StashDB: ${body.errors.map((e) => e.message).join('; ')}`)
+      const body = (await res.json().catch(() => ({}))) as { data?: T; errors?: GqlError[] }
+      if (!res.ok) throw new StashDbRefusal(`StashDB HTTP ${res.status}${body.errors?.length ? `: ${body.errors[0].message}` : ''}`, res.status >= 500 || res.status === 429)
+      if (body.errors?.length) throw new StashDbRefusal(`StashDB: ${body.errors.map((e) => e.message).join('; ')}`, !body.errors.every(isValidation))
       limiter.consecutive = 0
       return body.data as T
     } catch (e) {
       limiter.failures++
       limiter.lastError = (e as Error).message
-      if (++limiter.consecutive >= TRIP_AFTER) {
+      if (countsTowardPause(e) && ++limiter.consecutive >= TRIP_AFTER) {
         limiter.pausedUntil = Date.now() + PAUSE
         limiter.consecutive = 0
       }

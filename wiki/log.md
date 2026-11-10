@@ -418,3 +418,6 @@ User approved the UX plan, which includes [[continue-strip-on-home]], and said t
 
 ## [2026-11-10] ingest | UX revamp U1–U5
 Tokens, press and focus states, one Sheet, stacked toasts, Undo for confirms, 44 px targets, Continue strip, rating in the card menu, page cross-fades, hide-on-scroll header. Pages: [[ui-system]], [[2026-11-10-ux-revamp]], [[mobile-first-ui]].
+
+## [2026-11-10] ingest | Hardening H5–H7: server split, job registry, tests
+stash.ts → stash/ behind a barrel, api.ts → routes/, home.ts, errors.ts (UpstreamError → 502), jobs.ts (eleven jobs, persisted last run), categorySync.ts (gated hourly). Server tests 155 → 209. Pages: [[server-bff]], [[stash-layer]], [[data-model]], [[request-guard]], [[caching]], [[2026-11-10-hardening]]; CLAUDE.md rule 3 and layout.

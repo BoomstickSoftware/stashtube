@@ -2,9 +2,10 @@ import type { BlockKind, Unlisted, WantedScene } from '@flix/shared'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { sdbScenes, unlisted } from './db/schema.ts'
-import { blocklist } from './blocklist.ts'
+import { blockedStashDbIds, stashDbIdSets } from './blocklist.ts'
 import * as stash from './stash.ts'
-import { dataCache, type Exclusions, HOME, type UnlistedSets } from './stash.ts'
+import { dataCache, HOME } from './cache/data.ts'
+import type { Exclusions, UnlistedSets } from './stash.ts'
 
 // Unlisted (wiki features/vault): a category, performer, studio or one video (the "Unlisted"
 // Stash tag) whose videos stay out of everything flix picks for you: Home and its rows, Featured,
@@ -60,16 +61,17 @@ export function relatedSide(marks: Parameters<typeof stash.unlistedReasons>[0], 
 // StashDB's tag ids are not Stash's). Matched through flix's StashDB mirror, so a scene the mirror
 // has never seen is judged only by the followed performers it came from.
 export async function dropHiddenWanted(items: WantedScene[]): Promise<WantedScene[]> {
-  const [u, b] = await Promise.all([unlistedList(), blocklist()])
-  const tags = [...u.tags, ...b.tags]
-  const performers = [...u.performers, ...b.performers]
-  const studios = [...u.studios, ...b.studios]
-  if (!items.length || (!tags.length && !performers.length && !studios.length)) return items
-  const [perfIds, studioIds] = await Promise.all([
-    Promise.all(performers.map((p) => stash.stashIdsOf('performer', p.id).catch(() => []))).then((x) => new Set(x.flat())),
-    Promise.all(studios.map((s) => stash.stashIdsOf('studio', s.id).catch(() => []))).then((x) => new Set(x.flat())),
+  if (!items.length) return items
+  const u = await unlistedList()
+  const row = (kind: BlockKind) => (r: { id: string; name: string }) => ({ kind, stashId: r.id, name: r.name })
+  const [hidden, blocked] = await Promise.all([
+    stashDbIdSets([...u.tags.map(row('tag')), ...u.performers.map(row('performer')), ...u.studios.map(row('studio'))], true),
+    blockedStashDbIds(true),
   ])
-  const tagNames = new Set(tags.map((t) => t.name.toLowerCase()))
+  const perfIds = new Set([...hidden.performers, ...blocked.performers])
+  const studioIds = new Set([...hidden.studios, ...blocked.studios])
+  const tagNames = new Set([...hidden.tagNames, ...blocked.tagNames])
+  if (!perfIds.size && !studioIds.size && !tagNames.size) return items
   const ids = items.map((i) => i.stashdbId).filter((x): x is string => !!x)
   const rows = ids.length ? await db.select({ id: sdbScenes.id, performerIds: sdbScenes.performerIds, studioId: sdbScenes.studioId, tags: sdbScenes.tags }).from(sdbScenes).where(inArray(sdbScenes.id, ids)) : []
   const byId = new Map(rows.map((r) => [r.id, r]))

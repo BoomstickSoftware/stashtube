@@ -42,6 +42,9 @@ export const config = {
           pathMap: pathMap(process.env.WHISPARR_PATH_MAP),
         }
       : null,
+  // Where Whisparr keeps feature films, as Whisparr sees it: "Restore film" only takes a folder
+  // under it (routes/whisparr.ts).
+  filmRoot: `${(process.env.WHISPARR_FILM_ROOT || '/volume1/Media/adult/movies').replace(/\/+$/, '')}/`,
   // StashDB is the catalogue behind the "not in your library" shelf. By default flix takes the
   // endpoint and key from Stash's own stash-box configuration at run time; these override it.
   stashdb: {

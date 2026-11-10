@@ -4,6 +4,7 @@
 import type { WarmStatus } from '@flix/shared'
 import { readFile } from 'node:fs/promises'
 import { config } from './config.ts'
+import { register } from './jobs.ts'
 import { assetCache } from './media.ts'
 import { allArtwork } from './stash.ts'
 
@@ -20,18 +21,11 @@ let status: WarmStatus = {
   nextRun: null,
 }
 
-export const warmStatus = (): WarmStatus => status
+export const warmStatus = (): WarmStatus => ({ ...status, nextRun: warmJob.status().nextRun })
 
 export function startWarm(): boolean {
   if (status.running) return false
-  void run().catch((e) => {
-    console.error('warming assets:', (e as Error).message)
-    status = {
-      ...status,
-      running: false,
-      finishedAt: new Date().toISOString(),
-    }
-  })
+  void warmJob.trigger()
   return true
 }
 
@@ -85,16 +79,23 @@ const RESIZED: [RegExp, number[]][] = [
 // "/media/stash/scene/1/screenshot?t=…" -> "/scene/1/screenshot?t=…", the asset cache's key
 const local = (url: string) => url.replace(/^\/media\/stash/, '')
 
-// Once a day at WARM_AT_UTC (hour, may be fractional); unset or negative turns it off.
-export function scheduleWarm() {
+// Once a day at WARM_AT_UTC (hour, may be fractional); unset turns the timer off, and the job
+// then runs only from Settings.
+function untilWarmHour(): number | undefined {
   const at = config.cache.warmAtUtc
-  if (at === null) return
+  if (at === null) return undefined
   const next = new Date()
   next.setUTCHours(Math.floor(at), Math.round((at % 1) * 60), 0, 0)
   if (next.getTime() <= Date.now()) next.setUTCDate(next.getUTCDate() + 1)
-  status.nextRun = next.toISOString()
-  setTimeout(() => {
-    startWarm()
-    scheduleWarm()
-  }, next.getTime() - Date.now()).unref()
+  return next.getTime() - Date.now()
 }
+const warmJob = register({
+  name: 'artwork-warm',
+  every: config.cache.warmAtUtc === null ? undefined : 86_400_000,
+  firstAfter: untilWarmHour(),
+  run: () =>
+    run().catch((e) => {
+      status = { ...status, running: false, finishedAt: new Date().toISOString() }
+      throw e // the registry logs and records it
+    }),
+})

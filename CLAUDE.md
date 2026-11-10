@@ -103,8 +103,9 @@ Each has a wiki page with the full story; these are the one-line versions.
 2. **Stash owns ratings, play counts, resume points, O-counts, markers, favourites, titles and tags.**
    Postgres holds only what Stash cannot: playlists, blocklist, pinned rows, stations, settings
    (`wiki/architecture/data-model.md`, `wiki/decisions/stash-owns-activity.md`).
-3. **The web app knows only `@flix/shared` types**, never Stash shapes. `stash.ts` is the only file
-   that knows Stash's schema (`wiki/architecture/stash-layer.md`).
+3. **The web app knows only `@flix/shared` types**, never Stash shapes. Only `apps/server/src/stash/`
+   (behind the `stash.ts` barrel) knows Stash's schema; a test fails if another file imports it
+   (`wiki/architecture/stash-layer.md`).
 4. **Block stops downloads, Unlist keeps owned videos off what flix picks, Not interested deletes.**
    The blocklist applies to Discover, the not-downloaded shelf and the automatic Gets, never to
    library lists; library finders call `exclusions()` and feeds `curated()`
@@ -157,7 +158,7 @@ node scripts/wiki.mjs search <words> | index | lint | tags | stale
 Layout (details in `wiki/architecture/server-bff.md` and `wiki/architecture/web-app.md`):
 
 ```
-apps/server      Hono BFF, Node 26 runs .ts natively; src/stash.ts is the only Stash-aware module
+apps/server      Hono BFF, Node 26 runs .ts natively; src/stash/ is the only Stash-aware code, src/routes/ the API, src/jobs.ts the timers
 apps/web         Vite + React 19 + Tailwind 4 + TanStack Router (file routes) / Query
 packages/shared  API contract types and the few values both sides need; shipped in the image
 scripts/         the scripts library, registered in scripts/manifest.json (`node scripts/scripts.mjs list`);

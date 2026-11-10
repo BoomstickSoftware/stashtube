@@ -11,7 +11,10 @@ import { deleteMovie, exclude, movieForFile } from './whisparr.ts'
 // the file is already gone from disk (e.g. Whisparr deleted it but Stash was busy): then the
 // Stash scene is removed and its StashDB ids are excluded in Whisparr, so discovery never
 // fetches it again.
-export async function deleteScene(id: string): Promise<DeleteResult> {
+// `deps`: what it calls, so the order of the writes can be tested without Stash or Whisparr.
+const real = { sceneForDeletion, movieForFile, deleteMovie, exclude, destroyScene, forgetScene, gone }
+export async function deleteScene(id: string, deps: typeof real = real): Promise<DeleteResult> {
+  const { sceneForDeletion, movieForFile, deleteMovie, exclude, destroyScene, forgetScene, gone } = deps
   const scene = await sceneForDeletion(id)
   if (!scene) return { id, title: null, ok: false, error: 'not in Stash' }
   // the log carries ids only (wiki/decisions/content-neutral-sessions.md); the title and file name go to the user

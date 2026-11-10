@@ -31,7 +31,9 @@ export const playlistItems = pgTable(
   (t) => [primaryKey({ columns: [t.playlistId, t.sceneId] })],
 )
 
-// Hidden everywhere unless a query asks for unblocked results.
+// The blocklist: what flix must not download. It applies to Discover, the not-downloaded shelf
+// and the automatic Gets, never to library lists (decisions/hide-means-delete-block-or-unlist;
+// _until 2026-11-09 a block also hid the entry's videos everywhere_).
 export const blocks = pgTable(
   'blocks',
   {
@@ -43,8 +45,6 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.kind, t.stashId] })],
 )
 
-// Unlisted categories, performers and studios (unlisted.ts): their videos stay out of what flix
-// picks for you and are listed in the Vault. A kind/id is never in `blocks` at the same time.
 // A video's cast set by hand (wiki features/cast): the counts of women, men and others when
 // Stash's performers are incomplete (a performer missing from StashDB). The Cast sync files the
 // video by these instead of the performers' genders.
@@ -57,6 +57,8 @@ export const castOverrides = pgTable('cast_overrides', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+// Unlisted categories, performers and studios (unlisted.ts): their videos stay out of what flix
+// picks for you and are listed in the Vault. Independent of `blocks`: one entity may be in both.
 export const unlisted = pgTable(
   'unlisted',
   {
@@ -69,6 +71,8 @@ export const unlisted = pgTable(
 )
 
 // Small UI preferences, kept next to the page they affect (e.g. the performer gender switch).
+// Also holds the job registry's last run times under `job:<name>` keys (jobs.ts), which
+// settings.ts leaves out of the settings it serves.
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
   value: jsonb('value').notNull(),
@@ -97,7 +101,8 @@ export const stations = pgTable('stations', {
 })
 
 // Where each station was last left: the scene playing and how far in. Keyed by station
-// (`id:<n>` saved, `q:<filters>` ad hoc, `from:<scene>` drifting); the newest 50 are kept.
+// (`id:<n>` saved, `pl:<n>` a playlist; ad hoc stations are not remembered since 2026-10-31);
+// the newest 50 are kept.
 export const stationResume = pgTable('station_resume', {
   key: text('key').primaryKey(),
   sceneId: text('scene_id').notNull(),
@@ -105,8 +110,8 @@ export const stationResume = pgTable('station_resume', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-// Whisparr scenes fetched with Get (one scene per click). The follow sync (sync.ts) never
-// unmonitors these, so a scene waiting for a release keeps waiting; the row goes once Whisparr
+// Whisparr scenes fetched with Get (one scene per click, or one from the queue). The guard
+// (sync.ts) never unmonitors these, so a scene waiting for a release keeps waiting; the row goes once Whisparr
 // has the file.
 export const whisparrGets = pgTable('whisparr_gets', {
   movieId: integer('movie_id').primaryKey(),
@@ -114,9 +119,9 @@ export const whisparrGets = pgTable('whisparr_gets', {
   searchedAt: timestamp('searched_at', { withTimezone: true }), // the last search flix started for it (re-search of waiting scenes)
 })
 
-// When the follow sync started watching a performer or studio (StashDB id). Whisparr's "new
-// items" also monitors OLD scenes it learns about later, so the sync unmonitors any of their
-// scenes released before this date (less a short grace), keeping only real new releases.
+// When flix started following a performer or studio (StashDB id). Discovery (getqueue.ts)
+// fetches only their scenes released after this date, less a short grace, so following someone
+// does not pull in their back catalogue. The guard forgets a row once they are no longer followed.
 export const whisparrWatch = pgTable(
   'whisparr_watch',
   {

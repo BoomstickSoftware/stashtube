@@ -2,6 +2,7 @@
 // `settings.continueDays` days (30 by default; 0 keeps them) is cleared, so Continue does not
 // grow forever. Runs a few minutes after start, then daily, and when the setting changes.
 // Clears only resume points: plays and History stay.
+import { register } from './jobs.ts'
 import { getSettings } from './settings.ts'
 import { clearResume, continueAges } from './stash.ts'
 
@@ -29,8 +30,5 @@ export function expireContinue(): Promise<number> {
   return running
 }
 
-export function startContinueExpiry() {
-  const run = () => void expireContinue().catch((e) => console.error('continue expiry:', e.message))
-  setTimeout(run, 5 * 60_000).unref()
-  setInterval(run, DAY).unref()
-}
+// Daily, counted from its last run (kept across restarts), not from each deploy.
+export const continueJob = register({ name: 'continue-expiry', every: DAY, firstAfter: 5 * 60_000, persist: true, run: expireContinue })

@@ -13,8 +13,10 @@
 import type { SyncItem, SyncStatus } from '@flix/shared'
 import { and, eq } from 'drizzle-orm'
 import { db } from './db/index.ts'
-import { blocks, whisparrGets, whisparrWatch } from './db/schema.ts'
+import { whisparrGets, whisparrWatch } from './db/schema.ts'
+import { blockedStashDbIds } from './blocklist.ts'
 import { config } from './config.ts'
+import { register } from './jobs.ts'
 import { getSettings } from './settings.ts'
 import * as stash from './stash.ts'
 import * as whisparr from './whisparr.ts'
@@ -89,6 +91,13 @@ export function planSync(input: {
   return plan
 }
 
+// Pure: the planned scenes still safe to unmonitor at the moment of writing: not fetched since
+// the plan was made (`gets`, read again) and not requested within the hour (`requested`, movie
+// id → ms, whisparr.ts).
+export function stillUnwanted(scenes: number[], gets: Set<number>, requested: Map<number, number>, now = Date.now()): number[] {
+  return scenes.filter((id) => !gets.has(id) && !(requested.has(id) && now - requested.get(id)! <= whisparr.REQUESTED_FOR))
+}
+
 // Why a plan must not be applied, or null: far fewer follows than recorded looks like Stash
 // answering wrongly, and would forget follow start dates.
 export function refusal(plan: Plan, recorded: number, force = false): string | null {
@@ -139,16 +148,15 @@ async function run({ apply, force = false }: { apply?: boolean; force?: boolean 
   let blocked: { performer: Set<string>; studio: Set<string> }
   let gets: Set<number>, since: Map<string, number>
   try {
-    const [fp, fs, rows, g, w] = await Promise.all([
+    const [fp, fs, b, g, w] = await Promise.all([
       stash.favoritePerformers(),
       stash.favoriteStudios(),
-      db.select({ kind: blocks.kind, stashId: blocks.stashId }).from(blocks),
+      blockedStashDbIds(),
       db.select().from(whisparrGets),
       db.select().from(whisparrWatch),
     ])
     favourites = { performer: fp, studio: fs }
-    const ids = async (kind: Kind) => new Set((await Promise.all(rows.filter((r) => r.kind === kind).map((r) => stash.stashIdsOf(kind, r.stashId)))).flat())
-    blocked = { performer: await ids('performer'), studio: await ids('studio') }
+    blocked = { performer: b.performers, studio: b.studios }
     gets = new Set(g.map((r) => r.movieId))
     since = new Map(w.map((r) => [key(r.kind as Kind, r.foreignId), r.since.getTime()]))
   } catch (e) {
@@ -160,7 +168,7 @@ async function run({ apply, force = false }: { apply?: boolean; force?: boolean 
     const [performers, studios, m, a, t] = await Promise.all([whisparr.listPerformers(), whisparr.listStudios(), whisparr.movies(), whisparr.activity(), whisparr.listTags()])
     entities = [...performers.map(fromPerformer), ...studios.map(fromStudio)]
     movies = m
-    busy = new Set([...a.downloading, ...a.grabbedAt.keys()])
+    busy = new Set([...a.downloading, ...a.grabbedAt.keys(), ...a.requestedAt.keys()]) // a Get just pressed counts too
     tagId = t.find((x) => x.label === TAG)?.id ?? null
   } catch (e) {
     return done('skipped', `Whisparr did not answer (${(e as Error).message}); nothing changed`)
@@ -186,7 +194,17 @@ async function run({ apply, force = false }: { apply?: boolean; force?: boolean 
     const flags = { monitored: false, whisparrMonitorNewItems: false, tags: e.tags.filter((x) => x !== tagId) }
     await attempt(e.name, () => (e.kind === 'performer' ? whisparr.patchPerformer(e.id, flags) : whisparr.patchStudio(e.id, flags)))
   }
-  if (plan.scenes.length) await attempt('scenes', () => whisparr.unmonitorMovies(plan.scenes))
+  // Whisparr's lists took a while to read (the movie list alone is ~41 MB), and a Get pressed
+  // meanwhile monitors a scene this plan would now unmonitor: read the Gets again right before
+  // the write and leave those scenes alone (_until 2026-11-10 the plan's own, older reading was
+  // applied_). If that read fails, no scene is unmonitored this run.
+  let unmonitored = plan.scenes
+  if (plan.scenes.length)
+    await attempt('scenes', async () => {
+      const fresh = await db.select({ movieId: whisparrGets.movieId }).from(whisparrGets)
+      unmonitored = stillUnwanted(plan.scenes, new Set(fresh.map((r) => r.movieId)), whisparr.requested)
+      if (unmonitored.length) await whisparr.unmonitorMovies(unmonitored)
+    })
   await attempt('bookkeeping', async () => {
     for (const w of plan.watchEnd) await db.delete(whisparrWatch).where(and(eq(whisparrWatch.kind, w.kind), eq(whisparrWatch.foreignId, w.foreignId)))
     for (const id of plan.getsDone) await db.delete(whisparrGets).where(eq(whisparrGets.movieId, id))
@@ -218,19 +236,18 @@ export function timedRunDue(o: { enabled: boolean; active: boolean; sinceLast: n
   return o.active || o.sinceLast >= IDLE_EVERY - TICK / 2
 }
 
-let lastTimed = -Infinity
-async function tick() {
-  const enabled = (await getSettings().catch(() => null))?.whisparrSync ?? false
-  const now = Date.now()
-  if (!timedRunDue({ enabled, active: stash.activeWithin(ACTIVE), sinceLast: now - lastTimed })) return
-  lastTimed = now
-  await runSync()
-}
-
-export function startSync() {
-  if (!config.whisparr) return
-  setTimeout(() => {
-    tick().catch(() => {})
-    setInterval(() => tick().catch(() => {}), TICK).unref()
-  }, FIRST_AFTER).unref()
-}
+// The timer: its last timed run is kept across restarts, so a deploy does not pull Whisparr's
+// lists again within the same TICK.
+export const guardJob = config.whisparr
+  ? register({
+      name: 'whisparr-guard',
+      every: TICK,
+      firstAfter: FIRST_AFTER,
+      persist: true,
+      gate: async ({ lastRun }) => {
+        const enabled = (await getSettings().catch(() => null))?.whisparrSync ?? false
+        return timedRunDue({ enabled, active: stash.activeWithin(ACTIVE), sinceLast: Date.now() - (lastRun ?? -Infinity) })
+      },
+      run: () => runSync(),
+    })
+  : null

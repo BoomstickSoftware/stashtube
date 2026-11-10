@@ -1,8 +1,10 @@
 import type { CacheScope, CacheStats } from '@flix/shared'
 import { Hono } from 'hono'
 import { config } from './config.ts'
+import { jobsStatus } from './jobs.ts'
 import { assetCache } from './media.ts'
-import { dataCache, upstream } from './stash.ts'
+import { dataCache } from './cache/data.ts'
+import { upstream } from './stash.ts'
 import { startWarm, warmStatus } from './warm.ts'
 
 export const admin = new Hono()
@@ -11,13 +13,18 @@ const startedAt = new Date().toISOString()
 
 admin.get('/cache', (c) =>
   c.json({
+    // every background job's last run, error, duration and next run (jobs.ts); beside the
+    // contract's fields, which the Settings page reads
+    jobs: jobsStatus(),
+    ...({
     since: startedAt,
     data: { ...dataCache.stats(), ttlMinutes: config.cache.dataTtl / 60_000 },
     assets: { ...assetCache.stats(), ttlHours: config.cache.assetTtl / 3_600_000 },
     upstream: { ...upstream },
     changePollSeconds: config.cache.pollInterval / 1000,
     warm: warmStatus(),
-  } satisfies CacheStats),
+    } satisfies CacheStats),
+  }),
 )
 
 admin.post('/cache/clear', async (c) => {

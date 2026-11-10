@@ -95,12 +95,18 @@ async function run() {
   }
 }
 
+// Reads only (a GET answers with it): the categories are looked up, never created here (_until
+// 2026-11-10 this created any that were missing_). The sync creates them; one it has not made
+// yet is left out of the lists.
 export async function castStatus(): Promise<CastStatus> {
-  const ids = await stash.ensureTags(ALL_TAGS, PARENT)
+  const ids = await stash.tagIdsByName(ALL_TAGS)
   const counts = await stash.tagCounts([...ids.values()])
-  const row = (name: string) => ({ name, id: ids.get(name)!, scenes: counts.get(ids.get(name)!) ?? 0 })
-  return { mixes: [...MIXES.map(mixTag), UNKNOWN].map(row), counts: COUNT_TAGS.map(row), lastSync: status, overrides: await listOverrides() }
+  const rows = (names: string[]) => names.filter((n) => ids.has(n)).map((name) => ({ name, id: ids.get(name)!, scenes: counts.get(ids.get(name)!) ?? 0 }))
+  return { mixes: rows([...MIXES.map(mixTag), UNKNOWN]), counts: rows(COUNT_TAGS), lastSync: status, overrides: await listOverrides() }
 }
+
+// Whether the last sync finished without an error (categorySync.ts keeps its baseline by it).
+export const castSyncOk = () => status?.error === null
 
 // --- overrides ---------------------------------------------------------------------------
 

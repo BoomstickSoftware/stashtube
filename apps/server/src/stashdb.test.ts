@@ -220,3 +220,41 @@ test('every StashDB request waits its turn: at least MIN_GAP between two starts'
   assert.equal(starts.length, 3)
   for (let i = 1; i < starts.length; i++) assert.ok(starts[i] - starts[i - 1] >= 1_050, `gap ${starts[i] - starts[i - 1]} ms`)
 })
+
+test('a query StashDB rejects surfaces its reason and does not count toward the pause; a 5xx does', async () => {
+  const sdb = await import('./stashdb.ts')
+  const { UpstreamError } = await import('./errors.ts')
+  const realFetch = globalThis.fetch
+  const answers = [
+    new Response(JSON.stringify({ errors: [{ message: 'Cannot query field "nope" on type "Tag".' }] }), { status: 422 }),
+    new Response(JSON.stringify({ errors: [{ message: 'unknown argument', extensions: { code: 'GRAPHQL_VALIDATION_FAILED' } }] }), { status: 200 }),
+    new Response(JSON.stringify({ errors: [{ message: 'internal system error' }] }), { status: 200 }),
+    new Response('', { status: 500 }),
+  ]
+  globalThis.fetch = (async () => answers.shift()!) as typeof fetch
+  const failed = async () => {
+    try {
+      await sdb.searchEntities('tag', 'a')
+    } catch (e) {
+      return e as Error
+    }
+    throw new Error('expected a failure')
+  }
+  const before = sdb.limiter.consecutive
+  try {
+    const rejected = await failed()
+    assert.ok(rejected instanceof UpstreamError && rejected.source === 'stashdb')
+    assert.equal(rejected.message, 'StashDB HTTP 422: Cannot query field "nope" on type "Tag".')
+    assert.equal(sdb.countsTowardPause(rejected), false)
+    assert.equal(sdb.limiter.lastError, rejected.message)
+    assert.equal(sdb.countsTowardPause(await failed()), false) // a validation error in a 200
+    assert.equal(sdb.limiter.consecutive, before)
+    assert.equal(sdb.countsTowardPause(await failed()), true) // StashDB's own failure in a 200
+    assert.equal(sdb.countsTowardPause(await failed()), true) // HTTP 500
+    assert.equal(sdb.limiter.consecutive, before + 2)
+    assert.equal(sdb.countsTowardPause(new UpstreamError('stashdb', 'StashDB: no answer in 30 s')), true) // transport
+  } finally {
+    globalThis.fetch = realFetch
+    sdb.limiter.consecutive = before
+  }
+})
