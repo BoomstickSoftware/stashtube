@@ -230,21 +230,14 @@ by the bar's own "Filters 2" button, so the tab badge stays a number like Contin
 
 ## Ground-up review roadmap (2026-11-10)
 
-From [[2026-11-10-architecture-and-ux-review]]. **Proposed, none started**: the user picks the
-order. Reliability comes before polish ([[ux-delight-principles]], section 1).
+From [[2026-11-10-architecture-and-ux-review]]; approved by the user 2026-11-10.
 
 **Hardening** (each one initiative)
 
-- **H1. Stop losing data** (S): tag writes as ADD/REMOVE deltas, never read-modify-write from a
-  cached scene; page the studio and tag lists until `total`; an error boundary for the router
-  and one around the player host.
-- **H2. Gate what ships** (S): CI runs `node scripts/check.mjs` (lint, privacy check); lint
-  `apps/server`; an `unhandledRejection` logger; compress `/assets/*`.
-- **H3. Fresh data on the phone** (S): finite `staleTime` for `settings`, `favorite-scenes`,
-  `session`; the player reads live markers; `scenes` lists stop refetching every page on focus;
-  marker writes stop invalidating lists; flush progress on `visibilitychange` with `keepalive`.
-- **H4. Cache correctness** (S): a build stamp on the query-cache snapshot; a Stash change
-  expires Stash tags only.
+- ~~**H1. Stop losing data**~~ Done 2026-11-10: tag writes are deltas, studio and category lists load whole, error boundaries.
+- ~~**H2. Gate what ships**~~ Done 2026-11-10: the image build runs lint and tests, the server is linted, assets are gzipped, unhandled rejections are logged. The privacy check stays local: its deny-list is not in git.
+- ~~**H3. Fresh data on the phone**~~ Done 2026-11-10: 5-minute freshness for settings, favourites and session; live markers in the player; lists no longer refetch every page on focus; the last progress save uses keepalive.
+- ~~**H4. Cache correctness**~~ Done 2026-11-10: the snapshot carries the build; a Stash change leaves Whisparr and StashDB entries alone.
 - **H5. Split the two big server files** (M): `stash/` behind an index, `dataCache` to `cache/`,
   Home and Featured to `home.ts`, `api.ts` into Hono sub-apps; pin "only `stash/` imports
   `stash.schema.ts`" with a test; `UpstreamError` → 502; an `idParam` validator.
@@ -258,28 +251,16 @@ order. Reliability comes before polish ([[ux-delight-principles]], section 1).
 - ~~**H10. Finish the neutral suite**~~ Done 2026-11-10: every headless script is neutral by
   default, names print only on `--names` / `--show`, the server logs ids ([[neutral-observability]]).
 
-**UX revamp** (phone first; each phase ends with neutral `phone-flow` shots)
+**UX revamp**: U1–U5 shipped 2026-11-10 ([[2026-11-10-ux-revamp]], [[ui-system]],
+[[continue-strip-on-home]]). Open from it:
 
-- **U1. One component system** (M): `IconButton` (44 px on touch), `Button` sizes and variants,
-  one `Sheet` with slots, one `Segmented`, `Badge`/`Pill`; tokens for two small text sizes,
-  danger/warn/private/ok colours, hairlines, a named z scale, `--tabbar-h`, three icon sizes,
-  motion durations and easings; one rule for the primary colour. No visible redesign yet.
-- **U2. Touch feel** (S–M): press states in every control, hover only under `(hover:hover)`;
-  the sheet slides up in about 220 ms with a grabber, drag-to-dismiss, scrim fade, focus trap
-  and scroll lock; the 44 px sweep (player bar, dock, Stations, Playlists, filter dialog);
-  toasts stack and clear the dock; Undo replaces the two `window.confirm` calls.
-- **U3. Fewer taps on the common flows** (M): a Continue strip under the Home hero that resumes
-  and plays in one tap (**needs the user**: additive to [[five-tab-navigation]]); rating in the
-  card menu; a fixed icon action bar on the scene page; playlist reorder on touch; one "⋯"
-  sheet per station card and per Home row; search recents and a "No matches" row.
-- **U4. Motion and perceived speed** (M): view transitions from card to scene and between tabs
-  (feature-detected, fades under reduced motion); skeletons shaped like Home, History,
-  Discover and Related; the header hides on scroll down.
-- **U5. Delighters** (S each, last): a pop on Favorite, O and stars; a swipeable mini-player
-  with a progress line; pull-to-refresh on Home that reshuffles Featured; remembered Browse
-  section and sort; "Play next".
-- **Simplify along the way**: one entry to Settings from You; Continue expiry behind "More";
-  scene file and cast details behind one disclosure; Stations' three start paths merged.
+- **Needs the user**: search recents (they would show on the first screen of search, against
+  Discreet and Private).
+- Pull-to-refresh on Home; "Play next"; remembered Browse section and sort; shared-element
+  transitions from card to player; skeletons for History, Discover and Related.
+- One `Segmented` control; the remaining raw buttons onto `Button` / `IconButton`; a "⋯" sheet
+  for station cards and Home rows; the Stations start paths merged.
+- A pass on the real iPhone for the sheet drag, the header slide and the press states.
 
 ## Stash and Whisparr operations (moved from the nas repo, 2026-11-02)
 

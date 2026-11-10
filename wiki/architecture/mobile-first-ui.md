@@ -5,7 +5,7 @@ summary: Phones (an iPhone in particular) are the first-class client; the touch 
 tags: [mobile, touch, ios, css, ux]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-10
 code: [apps/web/src/index.css, apps/web/src/components/SceneCard.tsx, apps/web/src/components/Layout.tsx]
 related: [player, installable-app, mobile-checks, safari-address-bar-needs-page-scroll, grid-column-overflow]
 ---
@@ -21,7 +21,9 @@ has to be fine). Every change is checked headless at that size ([[mobile-checks]
 - **Every control is at least 44 px on touch** (since 2026-10-31, UX audit): `touch:p-3` on
   icon buttons (header, card heart and save), `touch:min-h-11` on `Chip`, `touch:p-2.5` on
   `Stars`, `touch:py-2.5` on the Filters button and the sort pill, `touch:size-10` on the
-  "+" filter badges, a padded hit area on the title pencil and the search Clear.
+  "+" filter badges, a padded hit area on the title pencil and the search Clear. Since
+  2026-11-10 also the player bar (`touch:size-11`), the dock's buttons, Stations, Playlists, the
+  filter dialog and the bulk bar; a new icon-only control is an `IconButton` ([[ui-system]]).
 - **The phone layout (icon header, bottom tab bar, docked strip) holds up to `lg`** (1024 px),
   not `md`: a phone in landscape (932 px) hit the desktop breakpoint and the header's Settings
   gear was clipped off-screen by the layout root's `overflow-x-clip`. Tablets in portrait get
@@ -60,7 +62,8 @@ frames.
   ([[safari-address-bar-needs-page-scroll]], [[player]]).
 - Installed ("Add to Home Screen") flix runs standalone with no browser Back, so the header
   shows one on phones below the top level (`display-mode: standalone`) ([[installable-app]]).
-- **Menus that must not be clipped are a `Sheet`** (`components/Sheet.tsx`, since 2026-10-31):
+- **Menus that must not be clipped are a `Sheet`** (`components/Sheet.tsx`, since 2026-10-31;
+  it rises, drags down to dismiss and locks the page behind it since 2026-11-10, [[ui-system]]):
   a bottom sheet on a phone, a small centred panel with a mouse, portalled to `<body>`; used
   by the card menu's Save to playlist, the playlist menu on touch, the filter bar's "More",
   the Pin to home form and the player's gear menu. A popover inside an element with

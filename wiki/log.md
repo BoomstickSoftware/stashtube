@@ -409,3 +409,12 @@ User asked for content-neutral scripts and working rules. Recorded as [[content-
 
 ## [2026-11-10] ingest | Ground-up architecture and UX review, delight research
 Five-agent workflow: server, web, UI audit, research, neutral suite. Filed [[2026-11-10-architecture-and-ux-review]] (findings, measurements, wiki drift), [[ux-delight-principles]] (researched rules and checklist) and a proposed roadmap section (H1–H10, U1–U5). No app code changed.
+
+## [2026-11-10] ingest | Hardening H1–H4, neutral suite finished
+Tag writes as deltas, whole studio and category lists, error boundaries; lint and tests in the image build, gzipped assets; fresh settings and favourites on the phone; build-stamped cache snapshot. Every headless script neutral by default; names only on --names / --show / --content. Pages: [[web-app]], [[neutral-observability]], [[roadmap]].
+
+## [2026-11-10] decide | Continue strip on Home; content neutrality is a principle, not a hard line
+User approved the UX plan, which includes [[continue-strip-on-home]], and said the neutral rule should be reinforced without ridiculous hoops ([[content-neutral-sessions]], CLAUDE.md rule 12).
+
+## [2026-11-10] ingest | UX revamp U1–U5
+Tokens, press and focus states, one Sheet, stacked toasts, Undo for confirms, 44 px targets, Continue strip, rating in the card menu, page cross-fades, hide-on-scroll header. Pages: [[ui-system]], [[2026-11-10-ux-revamp]], [[mobile-first-ui]].

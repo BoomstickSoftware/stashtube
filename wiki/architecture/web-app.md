@@ -4,10 +4,10 @@ kind: architecture
 summary: Layout of apps/web, which is Vite + React 19 + Tailwind 4 + TanStack Router and Query, with file-based routes, lazy pages, one API-hook module per domain and persisted queries.
 tags: [web, react, vite, tanstack, routing]
 status: current
-verified: 2026-10-31
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 code: [apps/web/src/routes, apps/web/src/lib/api/index.ts, apps/web/src/main.tsx, apps/web/vite.config.ts]
-related: [shared-contract, mobile-first-ui, coding-conventions, caching, keyboard-shortcuts]
+related: [shared-contract, mobile-first-ui, ui-system, web-errors, coding-conventions, caching, keyboard-shortcuts]
 ---
 
 # Web app
@@ -21,10 +21,15 @@ The TanStack router plugin (`@tanstack/router-plugin`, `autoCodeSplitting`) writ
 `src/routeTree.gen.ts` (committed) and splits every page into its own chunk, loaded on intent.
 Route files hold the search-param validation; the page component lives in `src/pages/`.
 Naming: `scene.$id.tsx` is `/scene/:id`; `stations_.new.tsx` is `/stations/new` **outside**
-the `/stations` layout (the trailing underscore). Routes on 2026-10-30: `index` (home),
+the `/stations` layout (the trailing underscore). Routes on 2026-11-10: `index` (home),
 `browse`, `scene.$id`, `performers`, `performer.$id`, `studios`, `studio.$id`, `tags`, `tag.$id`,
 `playlists`, `playlist.$id`, `continue`, `history`, `stats`, `station`, `stations`,
-`stations_.new`, `stations_.$id.edit`, `cleanup`, `duplicates`, `settings`, plus `__root`.
+`stations_.new`, `stations_.$id.edit`, `cleanup`, `duplicates`, `settings`, `discover`, `vault`
+(`edu` is its old path), `you`, plus `__root`. The router's `defaultErrorComponent` is
+`PageError` and the player host sits in its own `ErrorBoundary`
+(`components/ErrorBoundary.tsx`): a render error shows Try again, Reload and Home inside the
+shell, and a player that throws closes itself (since 2026-11-10; before, a blank screen).
+`defaultViewTransition` cross-fades pages where the browser supports it ([[ui-system]]).
 
 ## API hooks (`src/lib/api/`)
 
@@ -39,32 +44,38 @@ One module per domain, re-exported by `index.ts`, so pages import from `'../lib/
 | `stations.ts` | stations, resume, previews |
 | `home.ts` | home rows, Featured preview, pinned rows |
 | `settings.ts` | settings, features, admin cache, login |
+| `cast.ts`, `discover.ts`, `studioCategories.ts`, `unlisted.ts` | the Cast taxonomy, Discover, a studio's default categories, Unlist and the Vault |
 | `whisparr.ts` | `useWanted`, `useWhisparrNew`, `useGetScene` (_`useWhisparrActivity`, which nothing rendered, was removed 2026-10-31_) |
 
 ## Helpers (`src/lib/`)
 
-`storage.ts` (the only localStorage access), `playback.ts` (shared by both players),
+`storage.ts` (localStorage for app state; `main.tsx` persists the query cache itself, and
+`privacy.ts` / `lock.ts` use sessionStorage), `playback.ts` (shared by both players),
 `nowPlaying.ts` (mini-player store), `privacy.ts`, `lock.ts`, `filters.ts` (stacked filters per
 browser), `describe.ts` (one `describeQuery` for chips, station summaries, row titles),
 `station.ts`, `toast.ts`, `hooks.ts` (`useLongPress` and friends), `media.ts` (`mediaUrl()`),
-`query.ts`, `format.ts`.
+`query.ts`, `format.ts`, `cast.ts`, `color.ts`, `diag.ts`, `identify.ts`, `recent.ts`,
+`update.ts` (follows deploys), `wanted.ts`.
 
 ## Components (`src/components/`)
 
 Layout, Player, SeekBar, SpriteThumb, PreviewVideo, SceneCard, SceneBrowser, Row, Filters,
 AddFilter, People, QuerySummary, SearchBox, Bulk, CardMenu, PlaylistMenu, SceneEditor, Moments,
 NowPlaying, Privacy, PinLock, DeleteScenes, WantedRow, EntityHeader, FeaturedDials, CachePanel,
-Shortcuts, `ui.tsx` (primitives incl. `Switch`).
+Shortcuts, ErrorBoundary, Sheet, `ui.tsx` (the primitives, [[ui-system]]); 43 files on 2026-11-10.
 
 ## Persisted queries
 
 `main.tsx` persists the queries whose keys are in `PERSISTED` to localStorage `flix.queries`
 (home feed, settings, favourites, playlists, blocklist, session) for up to 7 days: a cold open
-paints at once, then refetches in the background ([[caching]]). Only the current Home seed's
+paints at once, then refetches in the background ([[caching]]). `settings`, `favorite-scenes`
+and `session` are fresh for 5 minutes (`SHARED_STALE`; _`Infinity` until 2026-11-10, so a change
+made on another device never arrived_). Only the current Home seed's
 feed is kept ([[home-feed]]).
 
 Other defaults in `lib/api/client.ts`: stale queries refetch when the app returns to the
-foreground (`refetchOnWindowFocus`; _off until 2026-10-31_); `scenes`, `scene` and `related`
+foreground (`refetchOnWindowFocus`; _off until 2026-10-31_); scene lists are fresh for 5 minutes
+(a refetch re-reads every loaded page; writes patch or invalidate them); `scenes`, `scene` and `related`
 stay 30 min in memory, so Back after watching a video finds the list and its scroll. Every
 `ErrorBox` has **Try again**, which refetches the failed queries on screen (the installed app has
 no reload button). A scene is prefetched on intent by its route's loader, and the page shows the
@@ -92,7 +103,8 @@ What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
 - Station add / update / remove / reorder: `stations` and `station-previews`; remove also
   `station-resume` ([[stations]]).
 - Remove from history: `scenes`, `home` and `scene:<id>` (its view count and resume pill).
-- Title or tag edit: `scene:<id>`, `scenes`, `home` (persisted) and `related`.
+- Title or tag edit: `scene:<id>`, `scenes`, `home` (persisted) and `related`. A tag edit sends
+  `addTagIds` / `removeTagIds`, never the whole list. A marker write: `scene:<id>` only.
 - Identify: the server answers with the finished job; the hook-level `onSuccess` (it runs
   after unmount too) invalidates `scene:<id>`, `scenes`, `home`, `related`. A job still running
   (202) waits in `pendingIdentify` for the next scene-page visit to poll ([[scene-page]]).
@@ -106,23 +118,12 @@ The server side is in [[caching]]; the per-action freshness table from the 2026-
 
 ## Errors
 
-`describeError(error, 'read' | 'write')` in `lib/api/client.ts` is the one place an error
-becomes words, used by `ErrorBox` (`ui.tsx`) and the failed-write toast (since 2026-10-31,
-[[failed-writes-toast-only]]):
-
-| Error | Shown |
-|---|---|
-| `ApiError` 502 whose message starts `Stash:` (the server's `StashError` handler) | "Stash is busy or down (a scan locks it for a few minutes). Cached pages still work." (writes: "… Nothing was saved; try again later."), the raw message in a smaller line under it ([[stash-database-locked]]) |
-| `TypeError` from `fetch` ("Failed to fetch", Safari's "Load failed") or an `AbortError` | "No connection to flix. Check Wi-Fi, then try again." |
-| `TimeoutError` (the client's own abort) | "flix took more than 65 s to answer. Try again in a moment." |
-| any other `ApiError` (401 included; the login sheet opens from the `flix:login-required` event the client raises) | its message |
-
-The client aborts a request after **65 s** (`TIMEOUT`; _45 s until 2026-10-31_), longer than
-the server's 60 s Stash budget, so a slow Stash reaches the page as the server's "Stash: no
-answer in 60 s" 502 and gets the Stash wording rather than a bare timeout.
+How an error becomes words (one function, `describeError`) is in [[web-errors]].
 
 ## Checks
 
-`pnpm --filter @flix/web lint` (oxlint), `pnpm typecheck`, `pnpm --filter @flix/web build`.
-The main chunk was 256 kB + a 124 kB shared UI chunk after Round 4 (2026-10-29); `hls.js`
-(574 kB) loads only for transcoded videos.
+`pnpm --filter @flix/web lint` (oxlint), `npx tsc -b` in `apps/web`, `pnpm --filter @flix/web test`
+(vitest, the pure `lib/` functions; since 2026-11-10), `pnpm --filter @flix/web build`; all run by
+`check.mjs` and the image build. The main chunk is 310 kB (99.7 kB gzipped, and served gzipped
+since 2026-11-10) and the CSS 91 kB (15 kB) on 2026-11-10; `hls.js` (574 kB) loads only for
+transcoded videos.
