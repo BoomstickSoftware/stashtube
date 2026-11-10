@@ -1,6 +1,7 @@
-import { Heart, ListPlus, Plus, Trash2, X } from 'lucide-react'
+import { Heart, ListPlus, Plus, Tags, Trash2, X } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { useBulk, useFeatures, usePlaylists } from '../lib/api'
+import { BulkTagsSheet } from './BulkTags'
 import { DeleteScenesDialog } from './DeleteScenes'
 import { useClickOutside } from '../lib/hooks'
 
@@ -27,6 +28,7 @@ export function BulkBar({
   const bulk = useBulk()
   const { data: features } = useFeatures()
   const [deleting, setDeleting] = useState(false)
+  const [tagging, setTagging] = useState(false)
   const { data: playlists } = usePlaylists()
   const [menu, setMenu] = useState(false)
   const [name, setName] = useState('')
@@ -98,6 +100,9 @@ export function BulkBar({
             </div>
           )}
         </div>
+        <button onClick={() => setTagging(true)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap hover:bg-raised touch:py-3" aria-label="Categories">
+          <Tags size={16} /> <span className="max-sm:hidden">Categories</span>
+        </button>
         {features?.deleteScenes && (
           <button onClick={() => setDeleting(true)} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap text-red-400 hover:bg-red-500/15 touch:py-3" aria-label="Delete">
             <Trash2 size={16} /> <span className="max-sm:hidden">Delete</span>
@@ -107,6 +112,7 @@ export function BulkBar({
           <X size={18} />
         </button>
       </div>
+      {tagging && <BulkTagsSheet target={{ sceneIds: ids }} count={ids.length} onClose={() => setTagging(false)} />}
       {deleting && (
         <DeleteScenesDialog scenes={ids.map((id) => ({ id, ...infoOf(id) }))} onClose={() => setDeleting(false)} onDeleted={onClear} />
       )}

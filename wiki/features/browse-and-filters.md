@@ -7,9 +7,9 @@ status: current
 verified: 2026-10-31
 updated: 2026-11-09
 routes: [/browse, /performer/$id, /studio/$id, /tag/$id, /playlist/$id]
-api: [GET /api/scenes, GET /api/scenes/facets, GET /api/tags/tiles]
-code: [apps/web/src/components/Filters.tsx, apps/web/src/components/SceneBrowser.tsx, apps/web/src/components/AddFilter.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/lib/filters.ts, apps/web/src/lib/describe.ts, apps/server/src/stash.ts]
-related: [stations, search, sqlite-or-chain-overflow, filter-popovers-clipped-in-scroll-row, blocklist-and-exclusions, people-pages]
+api: [GET /api/scenes, GET /api/scenes/facets, GET /api/tags/tiles, POST /api/scenes/tags]
+code: [apps/web/src/components/Filters.tsx, apps/web/src/components/SceneBrowser.tsx, apps/web/src/components/AddFilter.tsx, apps/web/src/components/Bulk.tsx, apps/web/src/components/BulkTags.tsx, apps/web/src/lib/filters.ts, apps/web/src/lib/describe.ts, apps/server/src/stash.ts]
+related: [2026-11-09-bulk-categories, stations, search, sqlite-or-chain-overflow, filter-popovers-clipped-in-scroll-row, blocklist-and-exclusions, people-pages]
 ---
 
 # Browse and filters
@@ -65,7 +65,7 @@ part of the query, so the Filters count and chips never showed why a list was sh
 
 ## Also on the page
 
-Category tiles, multi-select with bulk Favorite, Add to playlist and Delete (icons only below
+Category tiles, multi-select with bulk Favorite, Add to playlist, Categories and Delete (icons only below
 `sm`; a page may put its own action first, as Continue's Remove, `bulkActions`), and the card
 menu (`CardMenu.tsx`, also the scene page's ⋯ since 2026-11-09, [[scene-page]]; right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
 Save to playlist…, Mark as watched (unwatched or with a resume point), Remove from Continue
@@ -76,6 +76,26 @@ lands on it too easily). On a phone the filter bar is one sideways-scrolling row
 sort, the count) with the list's actions (Select, Pin to home; _Station until 2026-11-09_, [[navigation]]) behind a "More"
 sheet; from `sm` it wraps and shows them inline. Sheets are `components/Sheet.tsx`
 ([[mobile-first-ui]]).
+
+## Bulk categories
+
+Since 2026-11-09 ([[2026-11-09-bulk-categories]]) categories can be added to and taken off many
+videos at once, from one sheet (`BulkTagsSheet`, `components/BulkTags.tsx`): search a category,
+**+** adds it, **−** removes it, the picks show as chips, "Apply to N videos" writes them. Each
+video keeps its other categories (Stash's `bulkSceneUpdate` in ADD and REMOVE mode). The Cast
+categories are not offered: flix files them itself and its sync puts a hand edit back ([[cast]]).
+Two ways in:
+
+- **The selected videos**: the select bar's Categories button (a tag icon on phones).
+- **Every video in the list**: "Categories for all N" among the list's actions (in "More" on a
+  phone). The server re-runs the list's own filters fresh, without paging, so N is exactly what
+  the list shows: on a studio page, the studio's whole library including its sub-studios, minus
+  anything the list's filters or your performer defaults leave out.
+
+`POST /api/scenes/tags` takes `{ sceneIds?, add, remove }` and, with no `sceneIds`, the list's
+filters as the query string (the same as `GET /api/scenes`); it answers `{ scenes }`, the count
+changed. Each scene's cache entry is dropped and lists go stale like any tag edit
+([[ratings-expire-lists]]).
 
 Selecting (since 2026-10-31): in select mode a click toggles a card, **Shift+click selects
 from the last card clicked up to this one**, and **Cmd/Ctrl+A selects everything loaded**

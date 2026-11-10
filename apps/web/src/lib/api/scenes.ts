@@ -333,3 +333,21 @@ export function useDeleteScenes() {
     },
   })
 }
+
+// --- bulk categories ---------------------------------------------------------------
+
+// Adds and removes categories on the selected videos, or (`query`) on every video a list's
+// filters match. Answers with how many videos changed.
+export function useBulkTags() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sceneIds, query, add, remove }: { sceneIds?: string[]; query?: SceneQuery; add: string[]; remove: string[] }) => {
+      const { sort: _s, seed: _d, dir: _r, page: _p, perPage: _n, ...filters } = query ?? {}
+      return send<{ scenes: number }>('POST', `/scenes/tags${sceneIds ? '' : qs(filters)}`, { sceneIds, add, remove })
+    },
+    onSuccess: () => {
+      // every card, scene page and category count may show one of these videos
+      for (const key of ['scene', 'scenes', 'home', 'related', 'tags', 'search']) qc.invalidateQueries({ queryKey: [key] })
+    },
+  })
+}

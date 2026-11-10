@@ -1702,10 +1702,26 @@ export async function ensureTags(names: string[], parent: string): Promise<Map<s
 // Adds or removes one category on many scenes, in chunks. Lists go stale like any tag edit
 // (served once more while they refresh) rather than being dropped: the Cast sync runs right after
 // a scan, and dropping every scene query then threw away the warm it had just been given.
-export async function bulkTag(sceneIds: string[], tagId: string, mode: 'ADD' | 'REMOVE') {
+export async function bulkTag(sceneIds: string[], tagIds: string[], mode: 'ADD' | 'REMOVE') {
   for (let i = 0; i < sceneIds.length; i += 500) {
-    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: sceneIds.slice(i, i + 500), tag_ids: { ids: [tagId], mode } } }, [], ['scene', 'tag'])
+    await mutate(`mutation($i: BulkSceneUpdateInput!) { bulkSceneUpdate(input: $i) { id } }`, { i: { ids: sceneIds.slice(i, i + 500), tag_ids: { ids: tagIds, mode } } }, [], ['scene', 'tag'])
   }
+}
+
+// The ids of every scene a list's filter matches, asked fresh (a bulk edit must not act on a
+// cached list from before a scan).
+export async function sceneIdsMatching(sceneFilter: SceneFilterType): Promise<string[]> {
+  const d = await gql<Pick<Query, 'findScenes'>>(`query($s: SceneFilterType) { findScenes(filter: { per_page: -1 }, scene_filter: $s) { scenes { id } } }`, { s: sceneFilter })
+  return d.findScenes.scenes.map((s) => s.id)
+}
+
+// Adds and removes categories on many scenes at once (the bulk Categories sheet). Each scene's
+// own entry is dropped, lists go stale like any tag edit (wiki decisions/ratings-expire-lists).
+export async function bulkSceneTags(sceneIds: string[], add: string[], remove: string[]) {
+  if (add.length) await bulkTag(sceneIds, add, 'ADD')
+  if (remove.length) await bulkTag(sceneIds, remove, 'REMOVE')
+  dataCache.invalidate(...sceneIds.map((id) => `scene:${id}`))
+  await acceptOwnChanges()
 }
 
 // Scene counts of these categories (the Settings Cast list).

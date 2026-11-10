@@ -77,8 +77,8 @@ async function run() {
         if (on && !has) add.push(s.id)
         else if (!on && has) remove.push(s.id)
       }
-      if (add.length) await stash.bulkTag(add, tagId, 'ADD')
-      if (remove.length) await stash.bulkTag(remove, tagId, 'REMOVE')
+      if (add.length) await stash.bulkTag(add, [tagId], 'ADD')
+      if (remove.length) await stash.bulkTag(remove, [tagId], 'REMOVE')
       added += add.length
       removed += remove.length
     }

@@ -2,7 +2,7 @@ import type { SceneCard as SceneCardType, SceneQuery, SceneSort } from '@flix/sh
 import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Shuffle, SlidersHorizontal, Users } from 'lucide-react'
+import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Shuffle, SlidersHorizontal, Tags, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
@@ -14,6 +14,7 @@ import { rememberList } from '../lib/recent'
 import { ActiveFilters, FilterDialog } from './Filters'
 import { clearAll, filterTotal } from '../lib/filters'
 import { BulkBar, type BulkAction } from './Bulk'
+import { BulkTagsSheet } from './BulkTags'
 import { SceneCard, SceneCardSkeleton } from './SceneCard'
 import { Button, Chip, Empty, ErrorBox, Sentinel, Spinner } from './ui'
 import { useClickOutside } from '../lib/hooks'
@@ -200,6 +201,17 @@ function FilterBar({
 }) {
   const [open, setOpen] = useState(false)
   const [more, setMore] = useState(false) // the phone's "More" sheet with the list's actions
+  const [tagging, setTagging] = useState(false) // the Categories sheet for every video in the list
+  const tagAll = total ? (
+    <Chip
+      onClick={() => {
+        setTagging(true)
+        setMore(false)
+      }}
+    >
+      <Tags size={14} /> Categories for all {total.toLocaleString()}
+    </Chip>
+  ) : null
   const sort = query.sort ?? defaultSort
   const n = filterTotal(query)
 
@@ -256,6 +268,7 @@ function FilterBar({
               <CheckCheck size={14} /> Select all loaded
             </Chip>
           )}
+          {tagAll}
           <PinButton query={effective} />
         </span>
       </div>
@@ -291,10 +304,12 @@ function FilterBar({
                 <CheckCheck size={14} /> Select all loaded
               </Chip>
             )}
+            {tagAll}
             <PinButton query={effective} />
           </div>
         </Sheet>
       )}
+      {tagging && total !== undefined && <BulkTagsSheet target={{ query: effective }} count={total} onClose={() => setTagging(false)} />}
 
       {open && <FilterDialog query={query} countQuery={countQuery} onApply={onChange} onClose={() => setOpen(false)} />}
     </div>

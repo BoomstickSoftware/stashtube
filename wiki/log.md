@@ -388,3 +388,6 @@ User report: an exact category was crowded out of the search list. Discover's pi
 
 ## [2026-11-09] correct | Featured 502 after deletes
 The deploy check caught /api/featured 502: Stash's findScenes(ids) fails on one deleted id. findScenesByIds now drops it and retries. integrations/stash-api.
+
+## [2026-11-09] ingest | Bulk categories
+At the user's request: add and remove categories on the selected videos or on every video in a list (a studio page covers the studio's whole library). POST /api/scenes/tags, BulkTagsSheet. Pages: browse-and-filters; history 2026-11-09-bulk-categories.

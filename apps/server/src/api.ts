@@ -507,6 +507,24 @@ api.delete('/scenes/:id/markers/:marker', async (c) => {
   return c.body(null, 204)
 })
 
+// Bulk categories: add and remove tags on the selected videos (`sceneIds`) or, with no ids, on
+// every video the list's filters (the query string, as GET /scenes reads it) match: a studio's
+// whole library from its page. Answers with how many videos were changed.
+const bulkTagsBody = z
+  .object({
+    sceneIds: z.array(z.string().regex(/^\d+$/)).min(1).max(5000).optional(),
+    add: z.array(z.string().regex(/^\d+$/)).max(50).default([]),
+    remove: z.array(z.string().regex(/^\d+$/)).max(50).default([]),
+  })
+  .refine((b) => b.add.length + b.remove.length > 0, { message: 'nothing to add or remove' })
+  .refine((b) => !b.add.some((t) => b.remove.includes(t)), { message: 'a category is both added and removed' })
+api.post('/scenes/tags', async (c) => {
+  const b = parse(bulkTagsBody, await c.req.json())
+  const ids = b.sceneIds ?? (await stash.sceneIdsMatching(stash.sceneFilter(parse(sceneQuery, c.req.query()), await exclusions())))
+  if (ids.length) await stash.bulkSceneTags(ids, b.add, b.remove)
+  return c.json({ scenes: ids.length })
+})
+
 // Deleting removes the file for good, through Whisparr; one scene at a time so a failure
 // stops only that scene.
 api.post('/scenes/delete', async (c) => {
