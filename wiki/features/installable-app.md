@@ -5,7 +5,7 @@ summary: What "Add to Home Screen" gives flix (standalone, no address bar, a Bac
 tags: [pwa, ios, mobile, ui]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-10
 code: [apps/web/public/manifest.json, apps/web/index.html, apps/web/src/components/Layout.tsx, apps/server/src/index.ts, apps/web/src/lib/update.ts]
 related: [player, mobile-first-ui, safari-address-bar-needs-page-scroll, private-session]
 ---
@@ -50,3 +50,11 @@ build; a never-matching `/healthz` stops after 2; a removed route chunk reloads 
 shows the error screen) → [[2026-10-30-app-follows-deploys]].
 
 A full PWA (offline, service worker) is not done; see [[roadmap]].
+
+## Getting a new build onto the phone
+
+The installed app is resumed from memory, so it keeps the code it started with. `lib/update.ts`
+reloads it on returning to the foreground when `/healthz` reports another build, but never while
+a video plays. A pull to refresh checks too: with nothing playing it reloads at once; otherwise
+a toast offers **Update now**. _Until 2026-11-10_ a pull only refetched data, so a phone kept in
+the foreground with a video docked stayed on the old build through a whole test session.

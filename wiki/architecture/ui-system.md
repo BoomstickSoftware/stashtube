@@ -68,6 +68,8 @@ Built 2026-11-10 ([[2026-11-10-ux-revamp]]) against [[ux-delight-principles]]. T
   on the video page it is the slot, which has its size at once, never the host laid over it).
 - A sheet rises above the on-screen keyboard (`useKeyboardInset`): iOS lays the keyboard over
   the page, so a field at the bottom of the screen would sit behind it.
+- A sheet opened by a long press takes no taps until that finger is up (`CardMenu`, `at.held`):
+  it rises under the finger, and the lift would tap whichever item it lands on.
 - A card or row has at most one "⋯"; its less frequent actions live in that sheet.
 - The header slides away on a phone while scrolling down and returns on the first scroll up
   (`useScrolledAway`).

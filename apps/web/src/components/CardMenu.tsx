@@ -25,7 +25,8 @@ export interface PageMenu {
   identify: Identify
   onDeleted: () => void
 }
-export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: number; y: number }; onClose: () => void; page?: PageMenu }) {
+// `at.held`: a long press opened it and the finger is still down.
+export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: number; y: number; held?: boolean }; onClose: () => void; page?: PageMenu }) {
   const navigate = useNavigate()
   const sheet = useMediaQuery('(pointer: coarse)')
   const ref = useRef<HTMLDivElement>(null)
@@ -36,6 +37,22 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
     openedAt.current = performance.now()
   }, [])
   useClickOutside(ref, () => performance.now() - openedAt.current > 600 && onClose())
+  // Opened by a long press, the sheet rises under the finger: lifting it there would tap
+  // whichever item it lands on (seen on the iPhone, 2026-11-10: a video low on the screen played
+  // or queued by itself). The sheet takes no taps until that finger is up and a moment has passed.
+  const [armed, setArmed] = useState(!at.held)
+  useEffect(() => {
+    if (armed) return
+    let t: number | undefined
+    const up = () => (t = window.setTimeout(() => setArmed(true), 350))
+    addEventListener('touchend', up)
+    addEventListener('touchcancel', up)
+    return () => {
+      removeEventListener('touchend', up)
+      removeEventListener('touchcancel', up)
+      clearTimeout(t)
+    }
+  }, [armed])
   useModal(ref, onClose)
   const drag = useSheetDrag(ref, onClose)
   const rate = useRateScene()
@@ -105,6 +122,7 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
         style={style}
         className={clsx(
           'overflow-hidden bg-surface py-1 shadow-2xl ring-1 ring-white/10 outline-none',
+          !armed && 'pointer-events-none',
           sheet ? 'sheet-panel absolute inset-x-0 bottom-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]' : 'absolute w-60 animate-pop-in rounded-xl',
         )}
       >

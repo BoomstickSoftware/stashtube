@@ -3,7 +3,9 @@ import { ArrowDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { queryClient } from '../lib/api/client'
 import { useMediaQuery } from '../lib/hooks'
-import { Spinner } from './ui'
+import { showToast } from '../lib/toast'
+import { checkForUpdate, updateNow } from '../lib/update'
+import { Spinner, UndoButton } from './ui'
 
 const THRESHOLD = 72 // px of pull (after damping) that commits to a refresh
 const MAX = 110
@@ -57,6 +59,11 @@ export function PullToRefresh() {
       setBusy(true)
       setPull(THRESHOLD)
       window.dispatchEvent(new Event(REFRESH_EVENT))
+      // a pull also brings a newer build of the app: at once when nothing plays, else on request
+      // (the automatic check, lib/update, only runs on returning to the app with nothing playing)
+      checkForUpdate().then((u) => {
+        if (u === 'waiting') showToast('A new version of flix is ready', <UndoButton label="Update now" onClick={updateNow} />, 10_000)
+      })
       const onHome = location.pathname === '/'
       const done = () => {
         s.busy = false

@@ -430,3 +430,6 @@ Recents, pull to refresh, Play next, Segmented, "⋯" sheets on station cards an
 
 ## [2026-11-10] correct | iPhone pass: transition target, sheet above the keyboard, Play next always offered
 From the user's phone: the card-to-player growth did not show, the rename sheet was behind the keyboard, Play next was missing with nothing playing. Pages: [[ui-system]], [[mini-player]], [[2026-11-10-polish-pass]].
+
+## [2026-11-10] correct | A pull updates the app; a long press no longer taps a menu item on release
+The phone had stayed on an older build while testing (the update check skips while a video plays), and a long press low on the screen could trigger the item under the finger. Pages: [[installable-app]], [[ui-system]].

@@ -50,6 +50,23 @@ async function check() {
   }
 }
 
+// A deliberate check (pull to refresh): 'current', 'reloading', or 'waiting' when a newer build
+// is on the server but a video is playing, or the reload limits said no. The caller offers
+// `updateNow` then.
+export async function checkForUpdate(): Promise<'current' | 'reloading' | 'waiting'> {
+  if (!BUILD || BUILD === 'dev') return 'current'
+  try {
+    const r = await fetch('/healthz', { cache: 'no-store' })
+    const { version } = (await r.json()) as { version?: unknown }
+    if (typeof version !== 'string' || version === 'dev' || version === BUILD) return 'current'
+    return !playing() && reload(version) ? 'reloading' : 'waiting'
+  } catch {
+    return 'current'
+  }
+}
+// The user asked for it: no limits apply.
+export const updateNow = () => location.reload()
+
 export function keepCurrent() {
   if (!BUILD || BUILD === 'dev') return
   document.addEventListener('visibilitychange', () => {

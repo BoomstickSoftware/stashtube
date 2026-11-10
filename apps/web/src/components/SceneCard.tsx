@@ -54,7 +54,7 @@ export const SceneCard = memo(function SceneCard({
   // convention); once it rests, the preview clip shows again.
   const [sprites, setSprites] = useState<SpriteCue[]>([])
   // Right-click, or a long press on a touch screen, opens the card's menu.
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; held?: boolean } | null>(null)
   const pressTimer = useRef<number>(undefined)
   const [scrub, setScrub] = useState<{ t: number; w: number } | null>(null)
   const restTimer = useRef<number>(undefined)
@@ -143,7 +143,7 @@ export const SceneCard = memo(function SceneCard({
               dragged.current = true // the click that ends this press must not open the video
               touchStart.current = undefined
               leave()
-              setMenu({ x: t.clientX, y: t.clientY })
+              setMenu({ x: t.clientX, y: t.clientY, held: true })
             }, LONG_PRESS)
         }}
         onTouchMove={(e) => {
