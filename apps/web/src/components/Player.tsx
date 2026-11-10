@@ -936,7 +936,7 @@ function Round({ children, onClick, label, big, active }: { children: React.Reac
 
 function Ctl({ children, onClick, label, className }: { children: React.ReactNode; onClick: () => void; label: string; className?: string }) {
   return (
-    <button onClick={onClick} title={label} aria-label={label} className={clsx('flex size-9 items-center justify-center rounded-full text-white hover:bg-white/10', className)}>
+    <button onClick={onClick} title={label} aria-label={label} className={clsx('flex size-9 items-center justify-center rounded-full text-white hover:bg-white/10 touch:size-11', className)}>
       {children}
     </button>
   )

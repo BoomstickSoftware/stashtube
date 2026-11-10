@@ -79,7 +79,7 @@ export function Layout(): JSX.Element {
   return (
     // overflow-x-clip: nothing can widen the page and let it pan sideways (clip, unlike
     // hidden, keeps the sticky header working)
-    <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+    <div ref={root} className="relative min-h-dvh overflow-x-clip pb-(--tabbar-h)">
       <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
         {/* no gap on phones: the 44 px icons carry their own spacing */}
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-0 px-4 sm:gap-4 sm:px-6">
@@ -145,7 +145,7 @@ export function Layout(): JSX.Element {
       </ErrorBoundary>
 
       {/* mobile tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-(--z-tabbar) flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         {nav.map((n) => (
           <Link
             key={n.to}

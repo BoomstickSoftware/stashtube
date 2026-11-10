@@ -4,7 +4,6 @@ import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Shuffle, SlidersHorizontal, Tags, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
 import { Sheet } from './Sheet'
 import { useRowMutations, useScenes, useSettings } from '../lib/api'
@@ -355,6 +354,30 @@ function PinButton({ query }: { query: SceneQuery }) {
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, () => setOpen(false), open)
   const { pin } = useRowMutations()
+  // one form, in a sheet on a phone and a popover with a mouse
+  const form = (className: string) => (
+    <form
+      className={className}
+      onSubmit={(e) => {
+        e.preventDefault()
+        const { seed: _seed, ...q } = query // pinned random rows reshuffle daily
+        pin.mutate({ title: title.trim() || describe(), query: q }, { onSuccess: () => setPinned(true) })
+      }}
+    >
+      <div className="mb-2 text-xs text-muted">Show these filters as a row on the home page</div>
+      <input
+        autoFocus
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        maxLength={80}
+        className="w-full rounded-lg bg-raised px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
+      />
+      <button type="submit" disabled={pinned} className="mt-2 min-h-11 w-full rounded-lg bg-accent py-2 text-sm font-semibold hover:bg-accent-hover disabled:bg-raised">
+        {pinned ? 'Pinned ✓' : 'Pin row'}
+      </button>
+    </form>
+  )
+
   return (
     <div ref={ref} className="relative shrink-0">
       <Chip
@@ -369,59 +392,11 @@ function PinButton({ query }: { query: SceneQuery }) {
       </Chip>
       {open &&
         (sheet ? (
-          createPortal(
-            <>
-              <div className="fixed inset-0 z-[65] bg-black/50" onClick={() => setOpen(false)} />
-        <form
-          className={clsx(
-            'bg-surface shadow-2xl ring-1 ring-line',
-            sheet ? 'fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]' : 'absolute top-10 right-0 z-50 w-80 rounded-2xl p-3',
-          )}
-          onSubmit={(e) => {
-            e.preventDefault()
-            const { seed: _seed, ...q } = query // pinned random rows reshuffle daily
-            pin.mutate({ title: title.trim() || describe(), query: q }, { onSuccess: () => setPinned(true) })
-          }}
-        >
-          <div className="mb-2 text-xs text-muted">Show these filters as a row on the home page</div>
-          <input
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={80}
-            className="w-full rounded-lg bg-raised px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
-          />
-          <button type="submit" disabled={pinned} className="mt-2 w-full rounded-lg bg-accent py-2 text-sm font-semibold hover:bg-accent-hover disabled:bg-raised">
-            {pinned ? 'Pinned ✓' : 'Pin row'}
-          </button>
-        </form>
-            </>,
-            document.body,
-          )
+          <Sheet title="Pin to home" size="form" onClose={() => setOpen(false)}>
+            {form('p-4')}
+          </Sheet>
         ) : (
-        <form
-          className={clsx(
-            'bg-surface shadow-2xl ring-1 ring-line',
-            sheet ? 'fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]' : 'absolute top-10 right-0 z-50 w-80 rounded-2xl p-3',
-          )}
-          onSubmit={(e) => {
-            e.preventDefault()
-            const { seed: _seed, ...q } = query // pinned random rows reshuffle daily
-            pin.mutate({ title: title.trim() || describe(), query: q }, { onSuccess: () => setPinned(true) })
-          }}
-        >
-          <div className="mb-2 text-xs text-muted">Show these filters as a row on the home page</div>
-          <input
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={80}
-            className="w-full rounded-lg bg-raised px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-accent"
-          />
-          <button type="submit" disabled={pinned} className="mt-2 w-full rounded-lg bg-accent py-2 text-sm font-semibold hover:bg-accent-hover disabled:bg-raised">
-            {pinned ? 'Pinned ✓' : 'Pin row'}
-          </button>
-        </form>
+          form('absolute top-10 right-0 z-50 w-80 animate-pop-in rounded-2xl bg-surface p-3 shadow-2xl ring-1 ring-line')
         ))}
     </div>
   )

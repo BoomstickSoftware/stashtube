@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Star } from 'lucide-react'
-import { useToast } from '../lib/toast'
+import { dismissToast, useToasts } from '../lib/toast'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { sized, srcSet } from '@flix/shared'
 import { describeError, queryClient } from '../lib/api/client'
@@ -153,6 +153,53 @@ export function Bone({ className }: { className?: string }) {
   return <div aria-hidden className={clsx(bone, className)} />
 }
 
+// The button in a toast that takes the action back (lib/toast). Reversible actions get this
+// instead of a confirm dialog.
+export function UndoButton({ onClick, label = 'Undo' }: { onClick: () => void; label?: string }) {
+  return (
+    <button onClick={onClick} className="min-h-9 shrink-0 rounded-full bg-raised px-3 text-xs font-semibold hover:bg-line">
+      {label}
+    </button>
+  )
+}
+
+// A round button that is only an icon: 36 px with a mouse, 44 px under a finger. `label` is
+// both its tooltip and its name for a screen reader.
+export function IconButton({
+  label,
+  onClick,
+  children,
+  className,
+  disabled,
+  tone = 'muted',
+}: {
+  label: string
+  onClick?: () => void
+  children: ReactNode
+  className?: string
+  disabled?: boolean
+  tone?: 'muted' | 'fg' | 'danger'
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={clsx(
+        'inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-raised disabled:opacity-30 touch:size-11',
+        tone === 'muted' && 'text-muted hover:text-fg',
+        tone === 'fg' && 'text-fg',
+        tone === 'danger' && 'text-danger hover:bg-red-500/15',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function Spinner({ className }: { className?: string }) {
   return (
     <div className={clsx('size-6 animate-spin rounded-full border-2 border-white/20 border-t-accent', className)} />
@@ -209,20 +256,25 @@ export function Avatar({ src, name, className, sizes }: { src?: string | null; n
   )
 }
 
-// One toast at a time, bottom of the screen (above the tab bar on phones); see lib/toast.
+// Toasts stack at the bottom of the screen, above the tab bar on a phone and above the docked
+// mini-player when there is one (`--dock-h`, set by the dock); a tap on an action dismisses its
+// toast. See lib/toast.
 export function Toaster() {
-  const t = useToast()
-  if (!t) return null
+  const toasts = useToasts()
+  if (!toasts.length) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[70] flex justify-center px-4 md:bottom-6">
-      <div
-        key={t.id}
-        role="status"
-        className="pointer-events-auto flex max-w-md min-w-0 animate-fade-in items-center gap-3 rounded-full bg-surface py-2 pr-2 pl-4 text-sm shadow-2xl ring-1 ring-line"
-      >
-        <span className="min-w-0 truncate">{t.text}</span>
-        {t.action}
-      </div>
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tabbar-h)+var(--dock-h,0px)+0.75rem)] z-(--z-toast) flex flex-col items-center gap-2 px-4 lg:bottom-[calc(var(--dock-h,0px)+1.5rem)]">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          role="status"
+          onClick={(e) => (e.target as HTMLElement).closest('button, a') && dismissToast(t.id)}
+          className="pointer-events-auto flex max-w-md min-w-0 animate-toast-in items-center gap-3 rounded-full bg-raised py-1.5 pr-1.5 pl-4 text-sm shadow-2xl ring-1 ring-white/10"
+        >
+          <span className="min-w-0 truncate py-1">{t.text}</span>
+          {t.action}
+        </div>
+      ))}
     </div>
   )
 }

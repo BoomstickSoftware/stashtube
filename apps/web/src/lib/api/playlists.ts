@@ -39,6 +39,19 @@ export function usePlaylistMutations() {
       mutationFn: (id: number) => send('DELETE', `/playlists/${id}`),
       onSuccess: () => refresh(),
     }),
+    // Delete with an Undo instead of a confirm: the playlist leaves the list now and is deleted
+    // after `ms`, unless the returned function is called first. Closing the app in between keeps
+    // the playlist, which is the safe way to fail.
+    removeLater: (id: number, ms = 6000) => {
+      qc.setQueryData<Playlist[]>(['playlists'], (d) => d?.filter((p) => p.id !== id))
+      const timer = window.setTimeout(() => {
+        send('DELETE', `/playlists/${id}`).finally(() => refresh())
+      }, ms)
+      return () => {
+        clearTimeout(timer)
+        qc.invalidateQueries({ queryKey: ['playlists'] })
+      }
+    },
     add: useMutation({
       mutationFn: ({ id, sceneId }: { id: number; sceneId: string }) => send('POST', `/playlists/${id}/items`, { sceneId }),
       onSuccess: (_r, b) => refresh(b.id, b.sceneId),

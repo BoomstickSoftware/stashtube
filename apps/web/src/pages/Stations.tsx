@@ -264,7 +264,7 @@ function StationCard({
   const { update, remove } = useStationMutations()
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
-  const btn = 'rounded-full p-2 text-muted hover:bg-raised hover:text-fg'
+  const btn = 'rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3.5'
   return (
     <div className="group min-w-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
       <Link to="/station" search={resume ? { id: s.id, start: 'resume' } : { id: s.id }} className="block">
@@ -309,7 +309,7 @@ function StationCard({
           <Pencil size={15} />
         </Link>
         {confirm ? (
-          <button className="rounded-full p-2 text-red-400 hover:bg-red-500/15" title="Confirm delete" onClick={() => remove.mutate(s.id)}>
+          <button className="rounded-full p-2 text-danger hover:bg-red-500/15 touch:p-3.5" title="Confirm delete" onClick={() => remove.mutate(s.id)}>
             <Check size={15} />
           </button>
         ) : (
@@ -324,7 +324,7 @@ function StationCard({
 }
 
 function StartButtons({ search }: { search: { id?: number } & SceneQuery }) {
-  const chip = 'flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-xs font-medium hover:bg-line'
+  const chip = 'flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5 text-xs font-medium hover:bg-line touch:min-h-11 touch:px-4'
   return (
     <div className="flex flex-wrap gap-1.5 px-3 pb-3">
       <Link to="/station" search={search} className={chip} title="A fresh shuffle">

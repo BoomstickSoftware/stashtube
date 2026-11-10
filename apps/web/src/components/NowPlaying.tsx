@@ -58,6 +58,13 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
     }
   }, [slot, root])
 
+  // what floats at the bottom of the screen (toasts, the bulk bar) clears the docked player
+  const isDocked = !!np.scene && !slot
+  useEffect(() => {
+    document.documentElement.classList.toggle('has-dock', isDocked)
+    return () => document.documentElement.classList.remove('has-dock')
+  }, [isDocked])
+
   if (!np.scene) return null
   const docked = !slot
   const scene = np.scene
@@ -85,8 +92,8 @@ export function NowPlayingHost({ root }: { root: RefObject<HTMLElement | null> }
       className={
         docked
           ? clsx(
-              'fixed z-[60] flex overflow-hidden rounded-xl bg-surface shadow-2xl ring-1 ring-white/10',
-              'inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.5rem)]',
+              'fixed z-(--z-dock) flex overflow-hidden rounded-xl bg-surface shadow-2xl ring-1 ring-white/10',
+              'inset-x-2 bottom-[calc(var(--tabbar-h)+0.5rem)]',
               'lg:inset-x-auto lg:right-4 lg:bottom-4 lg:w-80 lg:flex-col',
             )
           : 'absolute'
@@ -129,13 +136,13 @@ function MiniBar({ scene }: { scene: { id: string; title: string } }) {
             {fmt(status.time)} / {fmt(status.dur)}
           </div>
         </Link>
-        <Link to="/scene/$id" params={{ id: scene.id }} onClick={() => log('dock: tap Expand')} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Expand">
+        <Link to="/scene/$id" params={{ id: scene.id }} onClick={() => log('dock: tap Expand')} className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:size-11" aria-label="Expand">
           <Maximize2 size={18} />
         </Link>
-        <button onClick={() => nowPlaying.toggle()} className="rounded-full p-2 hover:bg-raised" aria-label={status.playing ? 'Pause' : 'Play'}>
+        <button onClick={() => nowPlaying.toggle()} className="flex items-center justify-center rounded-full p-2 hover:bg-raised touch:size-11" aria-label={status.playing ? 'Pause' : 'Play'}>
           {status.playing ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white" />}
         </button>
-        <button onClick={() => nowPlaying.close()} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Stop">
+        <button onClick={() => nowPlaying.close()} className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:size-11" aria-label="Stop">
           <X size={20} />
         </button>
       </div>

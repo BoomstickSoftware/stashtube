@@ -673,7 +673,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                   setNow(Date.now())
                 }}
               />
-              <button onClick={() => setMuted((m) => !m)} className="rounded-full bg-white/10 p-1.5 sm:hidden" aria-label={muted ? 'Unmute' : 'Mute'}>
+              <button onClick={() => setMuted((m) => !m)} className="rounded-full bg-white/10 p-1.5 touch:p-3 sm:hidden" aria-label={muted ? 'Unmute' : 'Mute'}>
                 {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
             </div>
@@ -774,7 +774,7 @@ function StationList({
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
         <ListVideo size={16} className="text-accent" />
         <span className="font-semibold">On this station</span>
-        <button onClick={onClose} className="ml-auto rounded-full p-1.5 hover:bg-white/10" aria-label="Close list">
+        <button onClick={onClose} className="ml-auto rounded-full p-1.5 hover:bg-white/10 touch:p-3" aria-label="Close list">
           <X size={18} />
         </button>
       </div>

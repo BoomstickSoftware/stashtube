@@ -74,7 +74,7 @@ export function Home(): JSX.Element {
               title={r.title}
               items={r.items}
               actions={
-                <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
+                <button className="rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg touch:p-3" title="Shuffle" aria-label="Shuffle the featured picks" onClick={() => setSeed(shuffleSeed())}>
                   <Shuffle size={15} />
                 </button>
               }
@@ -297,7 +297,7 @@ function PinnedRow({ row, order }: { row: HomeRow; order: number[] }) {
     next.splice(i + d, 0, next.splice(i, 1)[0])
     m.reorder.mutate(next)
   }
-  const btn = 'rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg disabled:opacity-30'
+  const btn = 'rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3'
   const heading = editing ? (
     <form
       onSubmit={(e) => {

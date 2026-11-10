@@ -45,7 +45,7 @@ export function BulkBar({
   }
   if (!ids.length) return null
   return (
-    <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-6">
+    <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+var(--dock-h))] z-(--z-bulk) flex justify-center px-4 lg:bottom-6">
       <div className="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface py-1.5 pr-1.5 pl-5 shadow-2xl ring-1 ring-line">
         <span className="mr-2 text-sm font-semibold whitespace-nowrap tabular-nums">{done ?? `${ids.length} selected`}</span>
         {actions.map((a) => (
@@ -93,7 +93,7 @@ export function BulkBar({
                   placeholder="New playlist"
                   className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-1 focus:ring-accent"
                 />
-                <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover" aria-label="Create playlist">
+                <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover touch:p-3" aria-label="Create playlist">
                   <Plus size={16} />
                 </button>
               </form>
@@ -108,7 +108,7 @@ export function BulkBar({
             <Trash2 size={16} /> <span className="max-sm:hidden">Delete</span>
           </button>
         )}
-        <button onClick={onClear} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg" aria-label="Clear selection">
+        <button onClick={onClear} className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3" aria-label="Clear selection">
           <X size={18} />
         </button>
       </div>

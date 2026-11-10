@@ -77,8 +77,8 @@ export function ShortcutsOverlay() {
   }, [])
   if (!open) return null
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
-      <div role="dialog" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl rounded-2xl bg-surface p-5 shadow-2xl ring-1 ring-white/10">
+    <div className="sheet-scrim fixed inset-0 z-(--z-dialog) flex items-center justify-center bg-scrim p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
+      <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()} className="animate-pop-in w-full max-w-2xl rounded-2xl bg-surface p-5 shadow-2xl ring-1 ring-white/10">
         <div className="mb-4 flex items-center">
           <h2 className="text-lg font-bold">Keyboard shortcuts</h2>
           <button onClick={() => setOpen(false)} className="ml-auto rounded-full p-1.5 text-muted hover:bg-raised hover:text-fg" aria-label="Close">

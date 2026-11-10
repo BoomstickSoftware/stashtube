@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useCacheStats, useClearCache, useWarmCache } from '../lib/api'
 import { ago, bytes } from '../lib/format'
 import { Button, Spinner } from './ui'
+import { showToast } from '../lib/toast'
 
 const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : '–')
 
@@ -11,9 +12,8 @@ export function CachePanel() {
   const { data: s, error } = useCacheStats()
   const clear = useClearCache()
   const warm = useWarmCache()
-  const run = (scope: CacheScope, what: string) => {
-    if (window.confirm(`Clear ${what}? The next views fetch from Stash again.`)) clear.mutate(scope)
-  }
+  // no confirm: nothing is lost, the next views just fetch from Stash again
+  const run = (scope: CacheScope, what: string) => clear.mutate(scope, { onSuccess: () => showToast(`Cleared ${what}; the next views fetch from Stash again`) })
 
   if (error) return <div className="text-sm text-red-400">Cache stats unavailable</div>
   if (!s) return <Spinner />

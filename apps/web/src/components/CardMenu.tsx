@@ -4,12 +4,14 @@ import clsx from 'clsx'
 import { CheckCheck, Heart, ListPlus, ListX, Play, Sparkles, Trash2, Vault } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useClearContinue, useFavoriteScenes, useFeatures, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
-import { useClickOutside, useMediaQuery } from '../lib/hooks'
+import { useClearContinue, useFavoriteScenes, useFeatures, useMarkWatched, useRateScene, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
+import { useClickOutside, useMediaQuery, useModal, useSheetDrag } from '../lib/hooks'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
 import { DeleteScenesDialog } from './DeleteScenes'
 import { PlaylistSheet } from './PlaylistMenu'
+import { SheetGrabber } from './Sheet'
+import { Stars } from './ui'
 import type { Identify } from '../lib/identify'
 
 // A video's less frequent actions, on right-click (a menu at the pointer), a long press or a card's
@@ -32,6 +34,9 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
     openedAt.current = performance.now()
   }, [])
   useClickOutside(ref, () => performance.now() - openedAt.current > 600 && onClose())
+  useModal(ref, onClose)
+  const drag = useSheetDrag(ref, onClose)
+  const rate = useRateScene()
   const favorites = useFavoriteScenes()
   const toggleFavorite = useToggleFavoriteScene()
   const unlist = useUnlistScene()
@@ -89,20 +94,31 @@ export function CardMenu({ scene, at, onClose, page }: { scene: Scene; at: { x: 
     )
 
   return createPortal(
-    <div className={clsx('fixed inset-0 z-[75]', sheet && 'bg-black/60 backdrop-blur-sm')} onContextMenu={(e) => e.preventDefault()}>
+    <div className={clsx('fixed inset-0 z-(--z-sheet)', sheet && 'sheet-scrim bg-scrim backdrop-blur-sm')} onContextMenu={(e) => e.preventDefault()}>
       <div
         ref={ref}
         role="menu"
+        tabIndex={-1}
         style={style}
         className={clsx(
-          'overflow-hidden bg-surface py-1 shadow-2xl ring-1 ring-white/10',
-          sheet ? 'absolute inset-x-0 bottom-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]' : 'absolute w-60 rounded-xl',
+          'overflow-hidden bg-surface py-1 shadow-2xl ring-1 ring-white/10 outline-none',
+          sheet ? 'sheet-panel absolute inset-x-0 bottom-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)]' : 'absolute w-60 animate-pop-in rounded-xl',
         )}
       >
         {sheet && (
-          <div className="border-b border-white/10 px-4 py-3">
-            <div className="line-clamp-2 text-sm font-semibold">{scene.title}</div>
-            <div className="truncate text-xs text-muted">{[scene.studio?.name, scene.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
+          <>
+            <SheetGrabber {...drag} />
+            <div {...drag} className="px-4 pt-1 pb-2">
+              <div className="line-clamp-2 text-sm font-semibold">{scene.title}</div>
+              <div className="truncate text-xs text-muted">{[scene.studio?.name, scene.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
+            </div>
+          </>
+        )}
+        {/* rate from any list, without opening the video; the sheet stays open so the stars answer */}
+        {!page && (
+          <div className="flex items-center justify-between border-b border-white/10 px-4 pb-1 touch:px-1.5">
+            <Stars value={scene.rating} onChange={(rating) => guardWrite(() => rate.mutate({ id: scene.id, rating }))} size={sheet ? 22 : 18} />
+            <span className="pr-4 text-xs text-muted touch:pr-2.5">{scene.rating ? `${scene.rating} of 5` : 'Not rated'}</span>
           </div>
         )}
         {!page && (

@@ -439,18 +439,18 @@ export function FilterDialog({
   }, [onClose])
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+    <div className="sheet-scrim fixed inset-0 z-(--z-dialog) flex items-end justify-center bg-scrim backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Filters"
         onClick={(e) => e.stopPropagation()}
-        className="flex h-[100dvh] w-full flex-col bg-surface sm:h-auto sm:max-h-[min(52rem,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-2xl sm:ring-1 sm:ring-line"
+        className="sheet-panel flex h-[100dvh] w-full flex-col bg-surface sm:h-auto sm:max-h-[min(52rem,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-2xl sm:ring-1 sm:ring-line"
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
           <SlidersHorizontal size={18} className="text-accent" />
           <h2 className="text-lg font-bold">Filters</h2>
-          <button type="button" onClick={onClose} className="ml-auto rounded-full p-2 hover:bg-raised" aria-label="Close">
+          <button type="button" onClick={onClose} className="ml-auto flex size-11 items-center justify-center rounded-full hover:bg-raised" aria-label="Close">
             <X size={20} />
           </button>
         </div>
@@ -458,7 +458,7 @@ export function FilterDialog({
           <FilterPanel query={draft} scope={countQuery(draft)} onChange={edit} />
         </div>
         <div className="flex items-center gap-3 border-t border-line px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-          <button type="button" onClick={() => setDraft((d) => ({ ...d, ...clearAll }))} className="rounded-full px-3 py-2 text-sm text-muted hover:bg-raised hover:text-fg">
+          <button type="button" onClick={() => setDraft((d) => ({ ...d, ...clearAll }))} className="min-h-11 rounded-full px-3 py-2 text-sm text-muted hover:bg-raised hover:text-fg">
             Clear all
           </button>
           <button

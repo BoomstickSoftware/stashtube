@@ -222,7 +222,7 @@ function Catalog({ search, set }: { search: DiscoverSearch; set: (p: Partial<Dis
       )}
 
       {selecting && (
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-40 flex justify-center px-4 lg:bottom-6">
+        <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+var(--dock-h))] z-(--z-bulk) flex justify-center px-4 lg:bottom-6">
           <div className="flex w-full max-w-md items-center gap-2 rounded-full bg-black/90 p-2 ring-1 ring-white/15 backdrop-blur">
             <button
               type="button"

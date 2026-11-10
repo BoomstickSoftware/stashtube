@@ -118,7 +118,7 @@ export function Duplicates(): JSX.Element {
       )}
 
       {canDelete && selected.length > 0 && (
-        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-6">
+        <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+var(--dock-h))] z-(--z-bulk) flex justify-center px-4 lg:bottom-6">
           <div className="flex items-center gap-3 rounded-full bg-surface px-4 py-2 shadow-2xl ring-1 ring-white/10">
             <span className="text-sm">
               <span className="font-semibold">{selected.length}</span> {selected.length === 1 ? 'video' : 'videos'} · frees {bytes(frees)}

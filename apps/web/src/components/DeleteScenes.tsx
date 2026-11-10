@@ -54,12 +54,12 @@ export function DeleteScenesDialog({
     )
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center" onClick={() => !running && close()}>
+    <div className="sheet-scrim fixed inset-0 z-(--z-dialog) flex items-end justify-center bg-scrim p-4 backdrop-blur-sm sm:items-center" onClick={() => !running && close()}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"
-        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-2xl ring-1 ring-line"
+        className="sheet-panel w-full max-w-md rounded-2xl bg-surface p-5 shadow-2xl ring-1 ring-line"
         onClick={(e) => e.stopPropagation()}
       >
         {results ? (

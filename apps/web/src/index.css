@@ -10,8 +10,30 @@
   --color-accent: #ff3d6e;
   --color-accent-hover: #ff5a85;
   --color-star: #ffc247;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* meaning, not hue: a destructive action, a caution, a private or Vault thing, a success */
+  --color-danger: #f87171;
+  --color-warn: #fbbf24;
+  --color-private: #a78bfa;
+  --color-ok: #34d399;
+  --color-scrim: rgb(0 0 0 / 0.6);
+  /* the two small sizes under text-xs/sm that the cards and badges use */
+  --text-micro: 0.6875rem; /* 11px */
+  --text-micro--line-height: 1rem;
+  --text-meta: 0.8125rem; /* 13px */
+  --text-meta--line-height: 1.125rem;
+  /* the system face on every device: nothing loads a web font */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* motion (wiki/architecture/ux-delight-principles.md): about 100 ms for a press, 200-250 ms for
+     a sheet, exits shorter than entrances, never linear */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
   --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-sheet-up: sheet-up 0.24s var(--ease-emphasized);
+  --animate-pop-in: pop-in 0.16s var(--ease-standard);
+  --animate-scrim-in: scrim-in 0.2s ease-out;
+  --animate-pop: pop 0.3s var(--ease-emphasized);
+  --animate-toast-in: toast-in 0.22s var(--ease-emphasized);
   --animate-shake: shake 0.4s ease-in-out;
 }
 
@@ -30,6 +52,98 @@
   80% {
     transform: translateX(8px);
   }
+}
+
+/* A sheet rises from the bottom edge on a phone and pops in at the centre with a mouse; the scrim
+   fades in behind it (components/Sheet.tsx and the other dialogs use these two classes). */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+/* a control answering a tap that changed something: a heart filling, a star set */
+@keyframes pop {
+  40% {
+    scale: 1.28;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.sheet-scrim {
+  animation: var(--animate-scrim-in);
+}
+.sheet-panel {
+  animation: var(--animate-sheet-up);
+}
+@media (min-width: 40rem) {
+  .sheet-panel {
+    animation: var(--animate-pop-in);
+  }
+}
+
+/* The named layers, lowest first. Anything fixed takes one of these, never a number of its own. */
+:root {
+  --z-header: 40;
+  --z-tabbar: 40;
+  --z-dock: 60; /* the mini-player, the station player */
+  --z-bulk: 65;
+  --z-toast: 70;
+  --z-sheet: 75;
+  --z-dialog: 80;
+  --z-lock: 90;
+  /* the phone tab bar's height (it is gone from `lg` up), and the docked mini-player's when there is
+     one: what floats at the bottom (toasts, the bulk bar, the dock itself) sits above both */
+  --tabbar-h: calc(4.5rem + env(safe-area-inset-bottom));
+  --dock-h: 0px;
+}
+html.has-dock {
+  --dock-h: 5.25rem;
+}
+@media (min-width: 64rem) {
+  :root,
+  html.has-dock {
+    --tabbar-h: 0px;
+    --dock-h: 0px; /* the dock is in the corner there, clear of the centre */
+  }
+}
+
+/* Every control answers a press at once (the tap highlight is off, and :hover does not exist on a
+   phone): it dips while the finger is down. `scale` is its own property, so it never fights a
+   translate. Cards answer with their picture, see SceneCard. */
+:where(button, [role="button"], [role="tab"], [role="switch"], a.press, summary):not(:disabled) {
+  transition:
+    scale 0.1s var(--ease-standard),
+    background-color 0.15s,
+    color 0.15s,
+    opacity 0.15s;
+}
+:where(button, [role="button"], [role="tab"], a.press, summary):not(:disabled):active {
+  scale: 0.96;
+  opacity: 0.85;
+}
+/* a wide row or a big surface dips less, or it reads as a lurch */
+:where(.press-soft):active {
+  scale: 0.985;
+}
+/* keyboard focus is always visible; a finger or a mouse never draws the ring */
+:where(a, button, [role="button"], [role="tab"], [role="switch"], summary):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Touch screens (phones, tablets): `touch:` styles apply where the main pointer is a finger. */

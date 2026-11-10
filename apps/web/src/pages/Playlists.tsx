@@ -3,7 +3,8 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, GripVertical, ListVideo, Play, Plus, Radio, Shuffle, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { HeaderSkeleton } from '../components/EntityHeader'
-import { Bone, Button, Empty, ErrorBox, Spinner } from '../components/ui'
+import { Bone, Button, Empty, ErrorBox, Spinner, UndoButton } from '../components/ui'
+import { showToast } from '../lib/toast'
 import { usePlaylist, usePlaylistMutations, usePlaylists } from '../lib/api'
 import { ago, duration } from '../lib/format'
 import { sized, srcSet } from '@flix/shared'
@@ -172,8 +173,12 @@ export function PlaylistPage(): JSX.Element {
             {!p.favorites && (
               <Button
                 variant="danger"
+                title="Delete playlist"
                 onClick={() => {
-                  if (window.confirm(`Delete “${p.name}”?`)) m.remove.mutate(id, { onSuccess: () => navigate({ to: '/playlists' }) })
+                  // no confirm: it leaves the list at once and is deleted when the toast goes, unless undone
+                  const undo = m.removeLater(id)
+                  navigate({ to: '/playlists' })
+                  showToast('Playlist deleted', <UndoButton onClick={undo} />, 6000)
                 }}
               >
                 <Trash2 size={16} />
@@ -212,13 +217,20 @@ export function PlaylistPage(): JSX.Element {
                 </div>
               </div>
               <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                <button onClick={() => move(i, i - 1)} className="hidden rounded-full p-2 text-muted hover:bg-raised hover:text-fg sm:inline-flex" aria-label="Move up">
+                <button onClick={() => move(i, i - 1)} disabled={i === 0} className="inline-flex rounded-full p-2 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3" aria-label="Move up">
                   <ArrowUp size={16} />
                 </button>
-                <button onClick={() => move(i, i + 1)} className="hidden rounded-full p-2 text-muted hover:bg-raised hover:text-fg sm:inline-flex" aria-label="Move down">
+                <button onClick={() => move(i, i + 1)} disabled={i === p.items.length - 1} className="inline-flex rounded-full p-2 text-muted hover:bg-raised hover:text-fg disabled:opacity-30 touch:p-3" aria-label="Move down">
                   <ArrowDown size={16} />
                 </button>
-                <button onClick={() => m.removeItem.mutate({ id, sceneId: s.id })} className="rounded-full p-2 text-muted hover:bg-raised hover:text-red-400" aria-label="Remove">
+                <button
+                  onClick={() =>
+                    m.removeItem.mutate(
+                      { id, sceneId: s.id },
+                      { onSuccess: () => showToast('Removed from the playlist', <UndoButton onClick={() => m.add.mutate({ id, sceneId: s.id })} />) },
+                    )
+                  }
+                  className="rounded-full p-2 text-muted hover:bg-raised hover:text-danger touch:p-3" aria-label="Remove">
                   <X size={16} />
                 </button>
               </div>

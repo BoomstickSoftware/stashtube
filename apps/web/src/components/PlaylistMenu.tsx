@@ -96,7 +96,7 @@ function PlaylistList({ sceneId }: { sceneId: string }) {
             <button
               key={p.id}
               onClick={() => (has ? m.removeItem : m.add).mutate({ id: p.id, sceneId })}
-              className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/5"
+              className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/5 touch:py-3"
             >
               <span className={`flex size-5 shrink-0 items-center justify-center rounded ${has ? 'bg-accent' : 'ring-1 ring-white/30'}`}>
                 {has && <Check size={14} />}
@@ -122,7 +122,7 @@ function PlaylistList({ sceneId }: { sceneId: string }) {
           placeholder="New playlist"
           className="min-w-0 flex-1 rounded-lg bg-raised px-3 py-2 text-sm outline-none placeholder:text-muted focus:ring-1 focus:ring-accent"
         />
-        <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover" aria-label="Create playlist">
+        <button type="submit" className="rounded-lg bg-accent p-2 hover:bg-accent-hover touch:p-3" aria-label="Create playlist">
           <Plus size={16} />
         </button>
       </form>
@@ -159,7 +159,7 @@ export function FavoriteSceneButton({ sceneId, variant = 'icon' }: { sceneId: st
       title={on ? 'Remove from Favorites' : 'Add to Favorites'}
       aria-label={on ? 'Remove from Favorites' : 'Add to Favorites'}
       aria-pressed={on}
-      className={clsx('rounded-full p-1.5 hover:bg-raised', on ? 'text-accent' : 'text-muted hover:text-fg')}
+      className={clsx('rounded-full p-1.5 hover:bg-raised touch:p-3', on ? 'text-accent' : 'text-muted hover:text-fg')}
     >
       {icon}
     </button>
