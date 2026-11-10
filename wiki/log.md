@@ -379,3 +379,6 @@ History is one row per video per day, paged 40 at a time, with Select and bulk R
 
 ## [2026-11-09] ingest | Five-tab navigation shipped (initiative G)
 Tabs Home, Browse, Stations, Discover, You; header Search, Privacy menu, Settings; Browse strip; /you hub; Station chips replaced by the Stations tab's Start from; Settings › Feed › Home rows. New feature page navigation; history 2026-11-09-navigation. Strategy roadmap A–G complete.
+
+## [2026-11-09] decide | Discover cards: one thing per corner
+At the user's request: the StashDB badge went, ⓘ About moved to top left, ↗ stays top right, Get bottom right, "Deleted before" bottom left ("Deleted" on phones). Tapping the picture to open About was proposed and declined (hides the information behind a tap; hover and the ⓘ allow quick review). Recorded in features/discover.

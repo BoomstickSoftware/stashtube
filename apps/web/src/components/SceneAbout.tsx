@@ -8,7 +8,7 @@ import { useMediaQuery } from '../lib/hooks'
 import { Spinner } from './ui'
 
 // About on a Discover card (wiki features/discover): StashDB's description of the scene in a
-// popover beside the ⓘ, no backdrop. With a mouse it opens on hover (after a short pause, so
+// popover from the ⓘ (top left of the card), no backdrop. With a mouse it opens on hover (after a short pause, so
 // sweeping across cards does not queue StashDB calls) and stays while the pointer is on it; on a
 // phone a tap opens it and a tap outside closes it. Fetched when first opened.
 
@@ -74,7 +74,8 @@ function AboutPopover({
       if (!a) return
       const r = a.getBoundingClientRect()
       if (r.bottom < 0 || r.top > innerHeight) return onClose()
-      const left = Math.min(Math.max(8, r.right - W), innerWidth - W - 8)
+      // the ⓘ sits in the card's top-left corner: open from its left edge, over the card
+      const left = Math.min(Math.max(8, r.left), innerWidth - W - 8)
       const below = innerHeight - r.bottom - 16
       const above = r.top - 16
       setPos(below >= 220 || below >= above ? { top: r.bottom + 6, left, maxH: below } : { bottom: innerHeight - r.top + 6, left, maxH: above })

@@ -125,14 +125,17 @@ export function WantedCard({
             ))}
           </div>
         )}
-        <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
-          {w.state === 'remote' && <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase ring-1 ring-white/10">StashDB</span>}
-          {w.deletedBefore && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-red-300 uppercase ring-1 ring-red-400/30">
-              <Ban size={11} /> Deleted before
-            </span>
-          )}
-        </div>
+        {/* one thing per corner (2026-11-09): ⓘ top left, ↗ top right, Get bottom right, the
+            Deleted-before warning bottom left; the StashDB badge went (every card here is StashDB's) */}
+        {w.deletedBefore && (
+          // "Deleted" alone on a phone: the full label met Get on a 198 px card
+          <span
+            title="Deleted from the library before; discovery skips it, a Get by hand still fetches it"
+            className="absolute bottom-2.5 left-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-red-300 uppercase ring-1 ring-red-400/30"
+          >
+            <Ban size={11} /> Deleted<span className="hidden sm:inline"> before</span>
+          </span>
+        )}
         {stashdbHref && !pickable && (
           <a
             href={stashdbHref}
@@ -149,10 +152,7 @@ export function WantedCard({
         {w.stashdbId && !pickable && (
           <SceneAbout
             scene={w}
-            className={clsx(
-              'absolute top-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white/90 ring-1 ring-white/15 backdrop-blur hover:bg-accent touch:size-11',
-              stashdbHref ? 'right-11 touch:right-14' : 'right-1.5',
-            )}
+            className="absolute top-1.5 left-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white/90 ring-1 ring-white/15 backdrop-blur hover:bg-accent touch:size-11"
           />
         )}
         {pickable && (

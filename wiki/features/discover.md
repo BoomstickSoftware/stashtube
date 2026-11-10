@@ -25,7 +25,14 @@ StashDB work ([[stashdb-mirror]]).
 - One entity selected: a card with its picture, network and StashDB count, and "In library"
   linking to the flix page when Stash has it.
 - Cards carry the scene's state: Get, Queued, Waiting, Downloading, In library (opens the scene).
-  A scene deleted before carries a red "Deleted before" badge and keeps Get
+  **One thing per corner** (since 2026-11-09, the user's layout): ⓘ About top left, ↗ Open on
+  StashDB top right, Get or the state bottom right, and bottom left a red "Deleted before" badge
+  ("Deleted" on a phone, where the full label met Get on a 198 px card) on a scene deleted
+  before, which keeps Get. _Until then_ the top left carried a "StashDB" badge on scenes
+  Whisparr did not know (dropped as meaningless: Get works the same) and the ⓘ sat left of the ↗.
+  The user turned down opening About by tapping the picture: it would put all the information
+  behind a tap and a panel, where hover (desktop) and the ⓘ (phone) let several cards be read
+  quickly
   ([[deleted-scenes-never-refetched-automatically]]). Get on a card fetches that one scene at once. After a Get the card says
   Requested (the server's memory, an hour, lost on restart), then Waiting (monitored, from
   Whisparr) until a download shows; it never offers Get again. A second Get of the same scene
@@ -50,10 +57,11 @@ StashDB work ([[stashdb-mirror]]).
   user, 2026-11-09); phones have no hover. _The studio code and StashDB date shown there for an hour on
   2026-11-09 were dropped as noise (user)._
 - **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
-  a top-right button opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
+  a button in the top-right corner opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is
   the origin of the StashDB endpoint flix uses.
-- **About** (ⓘ beside it, since 2026-11-09): StashDB's description of the scene in a popover
-  beside the button, no backdrop (`SceneAbout.tsx`). With a mouse it opens on hover after 250 ms
+- **About** (ⓘ in the top-left corner, since 2026-11-09): StashDB's description of the scene in
+  a popover from the button's left edge, over its card (_from its right edge while the ⓘ sat top
+  right_), no backdrop (`SceneAbout.tsx`). With a mouse it opens on hover after 250 ms
   (so sweeping across cards does not queue StashDB calls) and stays while the pointer is on it;
   on a phone a tap opens it, a tap outside or Esc closes it. _A click-to-open sheet with a dimmed
   page until the user asked for hover, the same day._ `GET /api/discover/scenes/:id/details` reads
