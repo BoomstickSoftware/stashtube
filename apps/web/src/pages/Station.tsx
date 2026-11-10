@@ -9,7 +9,6 @@ import {
   Heart,
   ListVideo,
   Moon,
-  Pause,
   Play,
   Radio,
   RotateCcw,
@@ -22,7 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { TimeReadout } from '../components/Player'
+import { Flash, PlayPause, TimeReadout } from '../components/PlayerParts'
 import { SeekBar, type SeekPoint } from '../components/SeekBar'
 import { Spinner } from '../components/ui'
 import {
@@ -41,7 +40,20 @@ import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { guardWrite, isPrivate } from '../lib/privacy'
 import { useLongPress } from '../lib/hooks'
-import { attachSource, createClock, MAX_FAILURES_IN_A_ROW, nextMarker, useFlash, usePlayerKeys, useReleaseOnUnmount, useWatchAccounting } from '../lib/playback'
+import {
+  attachSource,
+  createClock,
+  jumpToMarker,
+  MAX_FAILURES_IN_A_ROW,
+  pickSource,
+  syncClock,
+  transportKey,
+  useFlash,
+  useIdle,
+  usePlayerKeys,
+  useReleaseOnUnmount,
+  useWatchAccounting,
+} from '../lib/playback'
 import { showToast } from '../lib/toast'
 import {
   loadPrefs,
@@ -85,7 +97,7 @@ export function Station(): JSX.Element {
   const stations = useStations()
   const resumes = useStationResumes()
   const playlists = usePlaylists()
-  const wait = <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black"><Spinner /></div>
+  const wait = <div className="fixed inset-0 z-(--z-dock) flex items-center justify-center bg-black"><Spinner /></div>
   let config: Omit<Config, 'key'>
   if (id) {
     const saved = stations.data?.find((s) => s.id === id)
@@ -129,7 +141,6 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const [state, setState] = useState<'loading' | 'playing' | 'paused' | 'empty' | 'tap' | 'error'>('loading')
   const [dim, setDim] = useState(true)
   const [muted, setMuted] = useState(false)
-  const [shown, setShown] = useState(true)
   const [segInfo, setSegInfo] = useState<{ i: number; n: number; segs: Segment[] }>({ i: 0, n: 1, segs: [] })
   const [clock] = useState(createClock) // time and buffered live outside state: see useClock
   const [dur, setDur] = useState(0)
@@ -156,7 +167,6 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   const sinceSave = useRef(0) // seconds played since the station's spot was saved
   const lastT = useRef(0)
   const [fallen, setFallen] = useState<string | null>(null) // the scene whose direct play errored: use HLS
-  const hideTimer = useRef<number>(undefined)
   const [queue] = useState(() => new StationQueue(config.query, config.from, config.playlist, config.shuffle))
   useEffect(() => {
     introRef.current = settings?.introSkip ?? {}
@@ -252,7 +262,8 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   useEffect(() => {
     const v = video.current
     if (!scene || !v) return
-    const direct = canDirectPlay(scene.playback) && fallen !== scene.id
+    // a station always plays 'auto': the original where the browser can, else the transcode
+    const { src } = pickSource(scene.playback, { canDirect: canDirectPlay(scene.playback), fallback: fallen === scene.id })
     const start = fallen === scene.id ? lastT.current : (segs.current[0]?.start ?? 0)
     clock.set(start, 0)
     setDur(scene.durationSec)
@@ -262,7 +273,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
       play()
     }
     v.addEventListener('loadedmetadata', onMeta, { once: true })
-    const detach = attachSource(v, direct ? scene.playback.direct : scene.playback.hls, start)
+    const detach = attachSource(v, src, start)
     sinceSave.current = 0
     lastT.current = start
     spot.current = { id: scene.id, t: start }
@@ -315,7 +326,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     const v = video.current!
     const seg = segs.current[segIdx.current]
     const t = v.currentTime
-    clock.set(t, v.buffered.length ? v.buffered.end(v.buffered.length - 1) : undefined)
+    syncClock(clock, v)
     accountTime()
     if (t > lastT.current && t - lastT.current < 2) sinceSave.current += t - lastT.current
     lastT.current = t
@@ -361,13 +372,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   }
   // hold the picture to mark, as in the scene player (touch only; a mouse never starts it)
   const hold = useLongPress(mark)
-  const jumpMarker = (dir: 1 | -1) => {
-    const m = nextMarker(markers, video.current?.currentTime ?? 0, dir)
-    if (m) {
-      seekTo(m.seconds)
-      setFlash(m.title || fmt(m.seconds))
-    }
-  }
+  const jumpMarker = (dir: 1 | -1) => jumpToMarker(markers, video.current?.currentTime ?? 0, dir, seekTo, setFlash)
 
   const setPrefs = (p: StationPrefs) => {
     setPrefsState(p)
@@ -396,12 +401,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
       flush()
     }
   }
-  const poke = () => {
-    setShown(true)
-    clearTimeout(hideTimer.current)
-    hideTimer.current = window.setTimeout(() => setShown(false), HIDE_MS)
-  }
-  useEffect(() => () => clearTimeout(hideTimer.current), [])
+  const { idle, poke } = useIdle(HIDE_MS)
 
   const togglePanel = () => {
     if (!panel) refreshList()
@@ -410,18 +410,11 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
 
   // Keys follow the video page where they overlap (space, arrows, j/l, b, [ ], m).
   usePlayerKeys((e) => {
-    if (e.key === ' ' || e.key === 'k') toggle()
-    else if (e.key === 'ArrowRight') seekBy(5)
-    else if (e.key === 'ArrowLeft') seekBy(-5)
-    else if (e.key === 'l') seekBy(SEEK_STEP)
-    else if (e.key === 'j') seekBy(-SEEK_STEP)
-    else if (e.key === 'n' || e.key === 'N') nextScene()
+    if (transportKey(e, { toggle, seekBy, mark, jumpMarker, toggleMute: () => setMuted((m) => !m) })) {
+      // handled
+    } else if (e.key === 'n' || e.key === 'N') nextScene()
     else if (e.key === 'p' || e.key === 'P') prevScene()
-    else if (e.key === 'b') mark()
-    else if (e.key === ']') jumpMarker(1)
-    else if (e.key === '[') jumpMarker(-1)
     else if (e.key === 'q') togglePanel()
-    else if (e.key === 'm') setMuted((m) => !m)
     else if (e.key === 'Escape') {
       if (panel) setPanel(false)
       else exit()
@@ -430,13 +423,13 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     return true
   })
 
-  const controlsVisible = shown || state !== 'playing' || point !== null
+  const controlsVisible = !idle || state !== 'playing' || point !== null
   const btn = 'flex size-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20 disabled:opacity-40'
   const small = 'flex size-10 items-center justify-center rounded-full text-white hover:bg-white/15 disabled:opacity-40'
   const fav = scene ? favorites.has(scene.id) : false
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black text-white select-none" onPointerMove={poke} onPointerDown={poke}>
+    <div className="fixed inset-0 z-(--z-dock) bg-black text-white select-none" onPointerMove={poke} onPointerDown={poke}>
       <div className={clsx('absolute inset-0 transition-[right] duration-300', panel && 'sm:right-96', !controlsVisible && 'cursor-none')}>
         <video
           ref={video}
@@ -500,11 +493,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
             )}
           </div>
         )}
-        {flash && (
-          <div className="pointer-events-none absolute inset-0 m-auto flex h-12 w-fit items-center justify-center rounded-full bg-black/60 px-5 text-lg font-semibold">
-            {flash}
-          </div>
-        )}
+        <Flash text={flash} />
 
         <div
           className={clsx(
@@ -619,7 +608,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                 <RotateCcw size={20} />
               </button>
               <button onClick={toggle} className={btn} aria-label={state === 'paused' ? 'Play' : 'Pause'}>
-                {state === 'paused' ? <Play size={22} className="fill-current" /> : <Pause size={22} className="fill-current" />}
+                <PlayPause playing={state !== 'paused'} size={22} className="fill-current" />
               </button>
               <button onClick={() => seekBy(SEEK_STEP)} className={btn} aria-label={`Forward ${SEEK_STEP} seconds (l)`} title={`Forward ${SEEK_STEP} s (l)`}>
                 <RotateCw size={20} />

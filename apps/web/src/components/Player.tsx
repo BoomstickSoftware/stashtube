@@ -26,27 +26,32 @@ import { useAddO, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import type { Status } from '../lib/nowPlaying'
-import { At, attachSource, createClock, nextMarker, useClock, useFlash, usePassed, usePlayerKeys, useReleaseOnUnmount, useWatchAccounting, type Clock } from '../lib/playback'
+import {
+  At,
+  attachSource,
+  createClock,
+  jumpToMarker,
+  pickSource,
+  QUALITIES,
+  type Quality,
+  RATES,
+  STASH_RES,
+  syncClock,
+  transportKey,
+  useFlash,
+  useIdle,
+  usePassed,
+  usePlayerKeys,
+  useReleaseOnUnmount,
+  useWatchAccounting,
+} from '../lib/playback'
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekBarHandle, type SeekPoint } from './SeekBar'
+import { Flash, PlayPause, TimeReadout } from './PlayerParts'
 import { Sheet } from './Sheet'
 import { useLongPress, useMediaQuery } from '../lib/hooks'
 
-const RATES = [0.5, 1, 1.25, 1.5, 2]
-
-// Quality: 'auto' plays the original when the browser can and drops to a 720p transcode
-// after repeated stalls; 'original' never drops; the rest force Stash's HLS transcode.
-const QUALITIES = [
-  ['auto', 'Auto'],
-  ['original', 'Original'],
-  ['1080', '1080p'],
-  ['720', '720p'],
-  ['480', '480p'],
-  ['240', '240p'],
-] as const
-type Quality = (typeof QUALITIES)[number][0]
-const STASH_RES: Record<string, string> = { '1080': 'FULL_HD', '720': 'STANDARD_HD', '480': 'STANDARD', '240': 'LOW' }
 const STALLS_TO_DROP = 3 // stalls within STALL_WINDOW in auto mode
 const STALL_WINDOW = 30_000
 const DOUBLE_TAP = 300 // ms between taps that count as a double tap
@@ -101,13 +106,7 @@ export function Player({
   const [attempt, setAttempt] = useState(0) // bumped by "Try again" to reattach the same source
   const [autoRes, setAutoRes] = useState<string | null>(null) // auto mode dropped after stalls
   const canDirect = useMemo(() => canDirectPlay(scene.playback), [scene.playback])
-  const mode: 'direct' | 'hls' = (quality === 'auto' || quality === 'original') && !fallback && !autoRes && canDirect ? 'direct' : 'hls'
-  const res = STASH_RES[quality] ?? autoRes ?? 'ORIGINAL'
-  const src = MISSING_SRC
-    ? `/media/play/missing${mode === 'direct' ? '' : '/stream.m3u8'}`
-    : mode === 'direct'
-      ? scene.playback.direct
-      : scene.playback.hls.replace('resolution=ORIGINAL', `resolution=${res}`)
+  const { mode, res, src } = pickSource(scene.playback, { quality, fallback, autoRes, canDirect, missing: MISSING_SRC })
   // Where to start the next source: resume point or ?t= first, then the current time on a switch.
   const pendingSeek = useRef<number | null>(
     startAt ?? (scene.resumeTime > 5 && scene.resumeTime < scene.durationSec - 30 ? scene.resumeTime : null),
@@ -178,7 +177,6 @@ export function Player({
   const [muted, setMuted] = useState(false)
   const [rate, setRate] = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
-  const [idle, setIdle] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [point, setPoint] = useState<SeekPoint | null>(null) // the seek bar is hovered or dragged
   const touch = useMediaQuery('(pointer: coarse)')
@@ -278,7 +276,7 @@ export function Player({
 
   const onTimeUpdate = () => {
     const v = video.current!
-    clock.set(v.currentTime, v.buffered.length ? v.buffered.end(v.buffered.length - 1) : undefined)
+    syncClock(clock, v)
     accountTime()
     report()
   }
@@ -378,34 +376,27 @@ export function Player({
     return () => clearTimeout(t)
   }, [resumedAt])
 
+  // Hide controls while playing and the mouse is still, or a while after a tap.
+  const { idle, poke, setIdle } = useIdle(touch ? 3500 : 2500)
+
   // Keyboard: YouTube conventions. Docked, the keys belong to the page being browsed.
   usePlayerKeys((e) => {
     const v = video.current!
+    const shared = transportKey(e, {
+      toggle,
+      seekBy,
+      mark: () => markAt(v.currentTime),
+      // straight to the element: a key does not bring the controls up
+      jumpMarker: (dir) => jumpToMarker(scene.markers, v.currentTime, dir, (t) => (v.currentTime = t), setFlash),
+      toggleMute: () => setMuted((m) => !m),
+    })
+    if (shared) return true
     switch (e.key) {
-      case ' ':
-      case 'k':
-        toggle()
-        break
-      case 'ArrowLeft':
-        seekBy(-5)
-        break
-      case 'ArrowRight':
-        seekBy(5)
-        break
-      case 'j':
-        seekBy(-10)
-        break
-      case 'l':
-        seekBy(10)
-        break
       case 'ArrowUp':
         setVolume(Math.min(1, volume + 0.1))
         break
       case 'ArrowDown':
         setVolume(Math.max(0, volume - 0.1))
-        break
-      case 'm':
-        setMuted((m) => !m)
         break
       case 'f':
         toggleFullscreen()
@@ -419,18 +410,6 @@ export function Player({
       case 'N':
         onNext?.()
         break
-      case 'b':
-        markAt(v.currentTime)
-        break
-      case ']':
-      case '[': {
-        const m = nextMarker(scene.markers, v.currentTime, e.key === ']' ? 1 : -1)
-        if (m) {
-          v.currentTime = m.seconds
-          setFlash(m.title || fmt(m.seconds))
-        }
-        break
-      }
       case '>':
       case '<': {
         const i = RATES.indexOf(rate) + (e.key === '>' ? 1 : -1)
@@ -446,14 +425,6 @@ export function Player({
     }
     return true
   }, !mini)
-
-  // Hide controls while playing and the mouse is still, or a while after a tap.
-  const idleTimer = useRef<number>(undefined)
-  const poke = useCallback(() => {
-    setIdle(false)
-    clearTimeout(idleTimer.current)
-    idleTimer.current = window.setTimeout(() => setIdle(true), touch ? 3500 : 2500)
-  }, [touch, setIdle])
 
   // Taps on the picture. Mouse: click plays or pauses, double click is fullscreen. Touch: a
   // tap shows or hides the controls; double taps on the left or right third seek, YouTube
@@ -771,11 +742,7 @@ export function Player({
           </button>
         </div>
       )}
-      {flash && (
-        <div className="pointer-events-none absolute inset-0 m-auto flex size-20 items-center justify-center rounded-full bg-black/60 text-lg font-semibold">
-          {flash}
-        </div>
-      )}
+      <Flash text={flash} />
 
       <div
         className={clsx(
@@ -793,7 +760,7 @@ export function Player({
 
         <div className="mt-1 flex items-center gap-1 sm:gap-2">
           <Ctl onClick={toggle} label={playing ? 'Pause (k)' : 'Play (k)'}>
-            {playing ? <Pause size={22} className="fill-white" /> : <Play size={22} className="fill-white" />}
+            <PlayPause playing={playing} size={22} />
           </Ctl>
           {onNext && (
             <Ctl onClick={onNext} label="Next (Shift+N)">
@@ -939,16 +906,5 @@ function Ctl({ children, onClick, label, className }: { children: React.ReactNod
     <button onClick={onClick} title={label} aria-label={label} className={clsx('flex size-9 items-center justify-center rounded-full text-white hover:bg-white/10 touch:size-11', className)}>
       {children}
     </button>
-  )
-}
-
-// "1:23 / 45:00", following the scrub point while the bar is dragged. Its own component so the
-// clock's ticks re-render only this span.
-export function TimeReadout({ clock, dur, point, className }: { clock: Clock; dur: number; point: SeekPoint | null; className?: string }) {
-  const { time } = useClock(clock)
-  return (
-    <span className={clsx('whitespace-nowrap tabular-nums', className)}>
-      {fmt(point?.scrubbing ? point.t : time)} <span className="text-white/50">/ {fmt(dur)}</span>
-    </span>
   )
 }

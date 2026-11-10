@@ -1,15 +1,54 @@
 // What the video page's Player and the station player share: attaching a source (direct or
 // HLS), telling Stash what was watched, the keyboard guard, marker jumps and the flash label.
-import type { Marker } from '@flix/shared'
+import type { Marker, Playback } from '@flix/shared'
 import type Hls from 'hls.js'
-import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { addPlay, saveActivity } from './api'
+import { duration as fmt } from './format'
 import { isPrivate } from './privacy'
 
 export const COUNT_PLAY_AFTER = 20 // seconds watched before a video counts as played
 const SAVE_EVERY = 15 // seconds of playback between activity saves
 const FINISHED_AT = 0.95 // past this share of the video it counts as finished: no resume point
 const RESUME_AFTER = 30 // seconds in before a resume point is kept
+
+export const RATES = [0.5, 1, 1.25, 1.5, 2]
+
+// Quality: 'auto' plays the original when the browser can and drops to a 720p transcode
+// after repeated stalls; 'original' never drops; the rest force Stash's HLS transcode.
+export const QUALITIES = [
+  ['auto', 'Auto'],
+  ['original', 'Original'],
+  ['1080', '1080p'],
+  ['720', '720p'],
+  ['480', '480p'],
+  ['240', '240p'],
+] as const
+export type Quality = (typeof QUALITIES)[number][0]
+export const STASH_RES: Record<string, string> = { '1080': 'FULL_HD', '720': 'STANDARD_HD', '480': 'STANDARD', '240': 'LOW' }
+
+// Which source a player attaches: the original file when the quality allows it, the browser can
+// play it (`canDirect`, from lib/media.ts) and it has not failed (`fallback`) or stalled
+// (`autoRes`); otherwise Stash's HLS transcode at the chosen resolution. The video page passes
+// the viewer's quality; a station always plays 'auto'. `missing` is the dev-only error hook.
+export interface SourceChoice {
+  mode: 'direct' | 'hls'
+  res: string // Stash's resolution name; 'ORIGINAL' when nothing lower was asked for
+  src: string
+}
+export function pickSource(
+  playback: Pick<Playback, 'direct' | 'hls'>,
+  { quality = 'auto', fallback = false, autoRes = null, canDirect, missing = false }: { quality?: Quality; fallback?: boolean; autoRes?: string | null; canDirect: boolean; missing?: boolean },
+): SourceChoice {
+  const mode = (quality === 'auto' || quality === 'original') && !fallback && !autoRes && canDirect ? 'direct' : 'hls'
+  const res = STASH_RES[quality] ?? autoRes ?? 'ORIGINAL'
+  const src = missing
+    ? `/media/play/missing${mode === 'direct' ? '' : '/stream.m3u8'}`
+    : mode === 'direct'
+      ? playback.direct
+      : playback.hls.replace('resolution=ORIGINAL', `resolution=${res}`)
+  return { mode, res, src }
+}
 
 const isHls = (src: string) => /\.m3u8(\?|$)/.test(src)
 
@@ -65,6 +104,72 @@ export const MAX_FAILURES_IN_A_ROW = 3
 // presses keep moving.
 export function nextMarker(markers: Marker[], t: number, dir: 1 | -1): Marker | undefined {
   return dir > 0 ? markers.find((m) => m.seconds > t + 1) : [...markers].reverse().find((m) => m.seconds < t - 2)
+}
+
+// The keys both players give the same meaning (YouTube's): space/k, the arrows, j/l, b, [ ], m.
+// True when the key was one of them; each player handles its own keys after this.
+export interface Transport {
+  toggle: () => void
+  seekBy: (seconds: number) => void
+  mark: () => void
+  jumpMarker: (dir: 1 | -1) => void
+  toggleMute: () => void
+}
+export function transportKey(e: Pick<KeyboardEvent, 'key'>, t: Transport): boolean {
+  switch (e.key) {
+    case ' ':
+    case 'k':
+      t.toggle()
+      break
+    case 'ArrowLeft':
+      t.seekBy(-5)
+      break
+    case 'ArrowRight':
+      t.seekBy(5)
+      break
+    case 'j':
+      t.seekBy(-10)
+      break
+    case 'l':
+      t.seekBy(10)
+      break
+    case 'b':
+      t.mark()
+      break
+    case ']':
+      t.jumpMarker(1)
+      break
+    case '[':
+      t.jumpMarker(-1)
+      break
+    case 'm':
+      t.toggleMute()
+      break
+    default:
+      return false
+  }
+  return true
+}
+
+// Jump to the marker after or before `t`: `seek` moves there, `flash` names it.
+export function jumpToMarker(markers: Marker[], t: number, dir: 1 | -1, seek: (t: number) => void, flash: (s: string) => void) {
+  const m = nextMarker(markers, t, dir)
+  if (!m) return
+  seek(m.seconds)
+  flash(m.title || fmt(m.seconds))
+}
+
+// Controls that hide after `ms` without a poke. The timer is dropped on unmount.
+export function useIdle(ms: number) {
+  const [idle, setIdle] = useState(false)
+  const timer = useRef<number>(undefined)
+  const poke = useCallback(() => {
+    setIdle(false)
+    clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setIdle(true), ms)
+  }, [ms])
+  useEffect(() => () => clearTimeout(timer.current), [])
+  return { idle, poke, setIdle }
 }
 
 // One tick on the seek bar: the markers within 1% of the duration of each other, so a cluster
@@ -225,6 +330,8 @@ export function createClock(): Clock {
     },
   }
 }
+// The element's time and the end of what it has buffered, into the clock.
+export const syncClock = (clock: Clock, v: HTMLVideoElement) => clock.set(v.currentTime, v.buffered.length ? v.buffered.end(v.buffered.length - 1) : undefined)
 export const useClock = (clock: Clock): ClockValue => useSyncExternalStore(clock.subscribe, clock.get, clock.get)
 // Renders something from the current time, re-rendering only itself as it ticks.
 export function At({ clock, children }: { clock: Clock; children: (time: number) => ReactNode }) {
