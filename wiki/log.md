@@ -376,3 +376,6 @@ The scene page's row is Stars, O, Favorite, Playlist, ⋯; ⋯ opens CardMenu in
 
 ## [2026-11-09] ingest | History rework shipped (initiative F)
 History is one row per video per day, paged 40 at a time, with Select and bulk Remove; removal deletes exactly those plays in Stash (sceneDeletePlay) and Undo re-adds them (sceneAddPlay). History: 2026-11-09-history-rework.
+
+## [2026-11-09] ingest | Five-tab navigation shipped (initiative G)
+Tabs Home, Browse, Stations, Discover, You; header Search, Privacy menu, Settings; Browse strip; /you hub; Station chips replaced by the Stations tab's Start from; Settings › Feed › Home rows. New feature page navigation; history 2026-11-09-navigation. Strategy roadmap A–G complete.

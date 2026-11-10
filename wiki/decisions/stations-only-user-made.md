@@ -34,5 +34,5 @@ still play, but save nothing.
   drops their old rows (`stations.ts`, `forgetAdHoc`) → [[stations]].
 - "Pick up a station" on Home and "Resume" on the Stations page show saved stations and
   playlists only; quick starts no longer offer Resume.
-- The ad-hoc entry points ("Station" by Related, in the filter bar, on entity pages) still exist.
+- The ad-hoc entry points ("Station" by Related, in the filter bar, on entity pages) still exist. _Since 2026-11-09 they are the Stations tab's Start from ([[navigation]])._
   Whether to keep them is open ([[roadmap]]).

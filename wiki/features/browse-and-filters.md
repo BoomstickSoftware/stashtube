@@ -73,7 +73,7 @@ Save to playlist…, Mark as watched (unwatched or with a resume point), Remove 
 phones too since 2026-11-09, [[hide-means-delete-block-or-unlist]]); "Station from
 here" was dropped and Delete left the phone's sheet on 2026-10-31, decision: a long press
 lands on it too easily). On a phone the filter bar is one sideways-scrolling row (Filters,
-sort, the count) with the list's actions (Select, Pin to home, Station) behind a "More"
+sort, the count) with the list's actions (Select, Pin to home; _Station until 2026-11-09_, [[navigation]]) behind a "More"
 sheet; from `sm` it wraps and shows them inline. Sheets are `components/Sheet.tsx`
 ([[mobile-first-ui]]).
 

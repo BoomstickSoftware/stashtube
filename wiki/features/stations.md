@@ -15,9 +15,10 @@ related: [player, seek-bar-markers, moments, browse-and-filters, playlists-and-f
 # Stations
 
 A station plays videos one after another, full screen, with Skip but no ratings: you steer
-with filters. It starts from any list's filters ("Station" in the filter bar, so also
-performer, studio and tag pages), from a scene ("Station" by Related: drifts through related
-videos), or from a playlist (`/station?playlist=`). Order is shuffled with no repeats until all
+with filters. It starts from the Stations tab's **Start from** (the last filtered list
+you were on, or a drift through videos related to the last one you opened; [[navigation]]), from
+a saved station or quick start, or from a playlist (`/station?playlist=`). _Until 2026-11-09_
+lists, the video page's Related and Home rows had their own "Station" chips. Order is shuffled with no repeats until all
 have played: each start draws a fresh seed for Stash's `random_<seed>` sort (checked 2026-11-07:
 three seeds gave unrelated orders, 17–20 studios per 40, rarely one studio twice in a row).
 Home's station row starts with **Shuffle everything**, the whole library shuffled in one tap
@@ -46,7 +47,7 @@ Entering a station stops the [[mini-player]].
 
 - **Save station** (with a name; _"Save" until 2026-10-31_) on a playing station keeps it in the `stations` table: filters or
   starting scene, mode, window. Changing mode or window on a saved station updates it.
-- `/stations` lists them as cards (desktop nav, phone header icon) plus quick starts
+- `/stations` lists them as cards (the Stations tab) plus quick starts
   (Everything, Unwatched, Performers I follow, Top rated). Each card cycles through screenshots
   of what it plays (4 s, crossfade, staggered, still under reduced motion) and shows its count.
   Under the pictures sits a neutral block (`bg-surface`): it pulses until the previews and

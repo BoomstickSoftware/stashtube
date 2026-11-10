@@ -1,7 +1,7 @@
 ---
 title: Private session
 kind: feature
-summary: The ghost in the header that stops flix recording anything watched for the rest of the visit, what it blocks, what it lets through, and the rule for new writes.
+summary: The Private session switch (header Privacy menu) that stops flix recording anything watched for the rest of the visit, what it blocks, what it lets through, and the rule for new writes.
 tags: [privacy, private, accounting, stash]
 status: current
 verified: 2026-10-30
@@ -12,8 +12,8 @@ related: [discreet-mode, pin-lock, player, moments, stations, stash-owns-activit
 
 # Private session
 
-Nothing watched this visit is recorded. Started from the **ghost** in the header or Settings →
-Privacy (`lib/privacy.ts`).
+Nothing watched this visit is recorded. Started from the header's **Privacy** menu (the button turns into a violet ghost while on;
+[[navigation]]) or Settings → Privacy (`lib/privacy.ts`).
 
 ## Behaviour
 

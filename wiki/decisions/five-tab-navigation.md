@@ -13,8 +13,8 @@ related: [mobile-first-ui, iphone-first-polish, stations, stations-only-user-mad
 
 # Five tabs, a You section and one privacy menu
 
-**Decided** 2026-11-09 by the user (strategy review). **Status** current; not built yet
-(initiative G of [[roadmap]]).
+**Decided** 2026-11-09 by the user (strategy review). **Status** current; built the same day
+([[2026-11-09-navigation]], [[navigation]]).
 
 ## Context
 

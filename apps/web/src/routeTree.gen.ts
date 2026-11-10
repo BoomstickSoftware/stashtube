@@ -26,6 +26,7 @@ import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StudiosRouteImport } from './routes/studios'
 import { Route as TagsRouteImport } from './routes/tags'
 import { Route as VaultRouteImport } from './routes/vault'
+import { Route as YouRouteImport } from './routes/you'
 import { Route as PerformerIdRouteImport } from './routes/performer.$id'
 import { Route as PlaylistIdRouteImport } from './routes/playlist.$id'
 import { Route as SceneIdRouteImport } from './routes/scene.$id'
@@ -119,6 +120,11 @@ const VaultRoute = VaultRouteImport.update({
   path: '/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
+const YouRoute = YouRouteImport.update({
+  id: '/you',
+  path: '/you',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerformerIdRoute = PerformerIdRouteImport.update({
   id: '/performer/$id',
   path: '/performer/$id',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/studios': typeof StudiosRoute
   '/tags': typeof TagsRoute
   '/vault': typeof VaultRoute
+  '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
   '/scene/$id': typeof SceneIdRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/studios': typeof StudiosRoute
   '/tags': typeof TagsRoute
   '/vault': typeof VaultRoute
+  '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
   '/scene/$id': typeof SceneIdRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/studios': typeof StudiosRoute
   '/tags': typeof TagsRoute
   '/vault': typeof VaultRoute
+  '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
   '/scene/$id': typeof SceneIdRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/tags'
     | '/vault'
+    | '/you'
     | '/performer/$id'
     | '/playlist/$id'
     | '/scene/$id'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/tags'
     | '/vault'
+    | '/you'
     | '/performer/$id'
     | '/playlist/$id'
     | '/scene/$id'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/studios'
     | '/tags'
     | '/vault'
+    | '/you'
     | '/performer/$id'
     | '/playlist/$id'
     | '/scene/$id'
@@ -333,6 +345,7 @@ export interface RootRouteChildren {
   StudiosRoute: typeof StudiosRoute
   TagsRoute: typeof TagsRoute
   VaultRoute: typeof VaultRoute
+  YouRoute: typeof YouRoute
   PerformerIdRoute: typeof PerformerIdRoute
   PlaylistIdRoute: typeof PlaylistIdRoute
   SceneIdRoute: typeof SceneIdRoute
@@ -463,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/you': {
+      id: '/you'
+      path: '/you'
+      fullPath: '/you'
+      preLoaderRoute: typeof YouRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/performer/$id': {
       id: '/performer/$id'
       path: '/performer/$id'
@@ -533,6 +553,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudiosRoute: StudiosRoute,
   TagsRoute: TagsRoute,
   VaultRoute: VaultRoute,
+  YouRoute: YouRoute,
   PerformerIdRoute: PerformerIdRoute,
   PlaylistIdRoute: PlaylistIdRoute,
   SceneIdRoute: SceneIdRoute,

@@ -1,3 +1,4 @@
+import { BrowseStrip } from '../components/BrowseStrip'
 import type { JSX } from 'react'
 // Index pages: performers, studios, tags.
 import { type Page, performerSorts, type PerformerGender, type PerformerSort, type StudioCard, type TagTile } from '@flix/shared'
@@ -47,8 +48,9 @@ export function Performers(): JSX.Element {
 
   return (
     <div>
+      <BrowseStrip />
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <h1 className="mr-4 text-2xl font-black">Performers</h1>
+        <h1 className="sr-only">Performers</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter performers" />
         <GenderSwitch value={gender} onChange={setGender} />
         <div className="no-scrollbar flex gap-2 overflow-x-auto pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
@@ -205,8 +207,9 @@ export function Studios(): JSX.Element {
 
   return (
     <div>
+      <BrowseStrip />
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="mr-4 text-2xl font-black">Studios</h1>
+        <h1 className="sr-only">Studios</h1>
         <Filter value={q} onChange={setQ} placeholder="Filter studios" />
         <div role="radiogroup" aria-label="View" className="flex rounded-full bg-raised p-0.5 text-[13px]">
           {views.map(([v, label, Icon]) => (
@@ -443,8 +446,9 @@ export function Tags(): JSX.Element {
 
   return (
     <div>
+      <BrowseStrip />
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="mr-4 text-2xl font-black">Categories</h1>
+        <h1 className="sr-only">Categories</h1>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Filter value={q} onChange={setQ} placeholder="Filter categories" />
           <Chip tone={sort === 'popular' ? 'active' : 'default'} onClick={() => setSort('popular')}>

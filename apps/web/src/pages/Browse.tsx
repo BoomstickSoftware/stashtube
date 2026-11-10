@@ -2,6 +2,7 @@ import type { SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
+import { BrowseStrip } from '../components/BrowseStrip'
 import { SceneBrowser } from '../components/SceneBrowser'
 import { getBrowseFilters, setBrowseFilters } from '../lib/filters'
 
@@ -25,10 +26,13 @@ export function Browse(): JSX.Element {
   }, [query, navigate])
 
   return (
-    <SceneBrowser
-      query={query}
-      onChange={(patch) => navigate({ to: '.', search: (prev: SceneQuery) => ({ ...prev, ...patch }), replace: true })}
-      defaultSort="date"
-    />
+    <>
+      <BrowseStrip />
+      <SceneBrowser
+        query={query}
+        onChange={(patch) => navigate({ to: '.', search: (prev: SceneQuery) => ({ ...prev, ...patch }), replace: true })}
+        defaultSort="date"
+      />
+    </>
   )
 }

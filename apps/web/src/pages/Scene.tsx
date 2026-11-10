@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, Ellipsis, ExternalLink, FolderOpen, ListVideo, Radio } from 'lucide-react'
+import { Droplet, Ellipsis, ExternalLink, FolderOpen, ListVideo } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { CastLine } from '../components/CastLine'
@@ -18,6 +18,7 @@ import { cachedCard, useAddO, usePlaylist, useRateScene, useRelated, useScene, u
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
+import { rememberScene } from '../lib/recent'
 import { guardWrite } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
 import { sized, srcSet } from '@flix/shared'
@@ -91,6 +92,10 @@ function SceneView({ id }: { id: string }) {
     if (scene && settings) nowPlaying.open(scene, { startAt: t, autoStart, theater })
   }, [scene, settings, t, autoStart, theater])
   useEffect(() => nowPlaying.setTheater(theater), [theater])
+  // the Stations tab offers "Drift from" the last video opened (lib/recent)
+  useEffect(() => {
+    if (scene) rememberScene({ id: scene.id, title: scene.title })
+  }, [scene])
   useEffect(() => {
     nowPlaying.setHandlers({
       onNext: next ? goNext : undefined,
@@ -283,15 +288,7 @@ function SceneView({ id }: { id: string }) {
         </div>
       )}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-bold">{playlist.data ? 'Up next' : 'Related'}</h2>
-        <Link
-          to="/station"
-          search={{ from: scene.id }}
-          className="mr-auto ml-3 inline-flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs font-medium hover:bg-line"
-          title="Endless play drifting through related videos"
-        >
-          <Radio size={13} /> Station
-        </Link>
+        <h2 className="mr-auto font-bold">{playlist.data ? 'Up next' : 'Related'}</h2>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
           Autoplay
           <Switch size="sm" on={autoplay} onChange={setAutoplay} />

@@ -1,11 +1,11 @@
 ---
 title: Discreet mode
 kind: feature
-summary: The eye in the header that blurs every picture and preview until hovered or focused, kept per browser.
+summary: The Discreet switch (header Privacy menu) that blurs every picture and preview until hovered or focused, kept per browser.
 tags: [privacy, discreet, ui]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 code: [apps/web/src/components/Layout.tsx, apps/web/src/index.css]
 related: [private-session, pin-lock, mobile-first-ui]
 ---
@@ -17,7 +17,8 @@ others); none needs a login.
 
 ## Behaviour
 
-- Toggled by the **eye** in the header or the Discreet switch under Settings → Privacy
+- Toggled in the header's **Privacy** menu ([[navigation]]; _an eye icon of its own until
+  2026-11-09_) or the Discreet switch under Settings → Privacy
   ([[settings-page]], since 2026-10-31). Stored as `flix.discreet` in localStorage through
   `useStored`, so it is per browser and survives reloads; the two switches share the key and
   `useStored` keeps them in step.

@@ -7,6 +7,7 @@ import { Ban, ChevronRight, Copy, EyeOff, Search, Trash2, Users, Vault as VaultI
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
+import { ManageRows } from '../components/ManageRows'
 import { PeopleControls } from '../components/People'
 import { PrivacySetting } from '../components/Privacy'
 import { ShortcutList } from '../components/Shortcuts'
@@ -64,6 +65,7 @@ export function Settings(): JSX.Element {
         <Group id="feed" title="Feed">
           <PeopleSetting />
           <FeaturedDials />
+          <ManageRows />
         </Group>
         <Group id="playback" title="Playback">
           <PlaybackSetting />

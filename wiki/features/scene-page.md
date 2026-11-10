@@ -49,7 +49,7 @@ edits is written to Stash, which owns ratings, plays, O-counts, markers, titles 
   in the row and Remove from Continue, Identify and Delete were buttons in the details card;
   Mark as watched was only on cards.
 - **Playlist** opens the save-to-playlist menu (_the button said "Save" until 2026-10-31_).
-- **Station** by Related starts a drifting station from this scene ([[stations]]).
+- _"Station" by Related_ left on 2026-11-09: the Stations tab offers "Drift from the last video" ([[navigation]]).
 - **+** next to each performer, the studio and each tag adds it to the stacked filters
   ([[browse-and-filters]]). On a touch screen (`pointer: coarse`) the studio's and the
   performers' badges are labelled **Filter** chips (44 px; "In filters" once added), since a

@@ -2,14 +2,16 @@ import type { SavedStation, SceneQuery, StationPreview, StationResume } from '@f
 import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Check, History, Pencil, Play, Plus, Radio, Shuffle, Sparkles, Star, Trash2, Users } from 'lucide-react'
+import { Check, History, ListFilter, Pencil, Play, Plus, Radio, Shuffle, Sparkles, Star, Trash2, Users, Waypoints } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { QuerySummary } from '../components/QuerySummary'
 import { Bone, ErrorBox } from '../components/ui'
 import { useMediaQuery } from '../lib/hooks'
 import { previewFor, useStationMutations, useStationPreviews, useStationResumes, useStations } from '../lib/api'
 import { duration as fmt } from '../lib/format'
-import { stationKey } from '../lib/station'
+import { stationKey, stationQuery } from '../lib/station'
+import { useLastList, useLastScene } from '../lib/recent'
+import { filterTotal } from '../lib/filters'
 import { sized, srcSet } from '@flix/shared'
 import { CARD_SIZES } from '../lib/media'
 
@@ -37,8 +39,8 @@ export function Stations(): JSX.Element {
             <Radio size={22} className="text-accent" /> Stations
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Endless play. Make one here, or start one from any list’s <b>Station</b> button (its filters decide what plays) or a
-            video’s, then Save it to keep it here.
+            Endless play. Start one from the list or the video you were just on, pick a ready-made one, or make your own; Save a
+            station you like to keep it here.
           </p>
         </div>
         <Link
@@ -48,6 +50,8 @@ export function Stations(): JSX.Element {
           <Plus size={16} /> New station
         </Link>
       </section>
+
+      <StartFrom />
 
       <section>
         <h2 className="mb-3 text-lg font-bold">Your stations</h2>
@@ -81,6 +85,50 @@ export function Stations(): JSX.Element {
         </div>
       </section>
     </div>
+  )
+}
+
+// A station from where you just were (lib/recent): the last list, with its filters, and a drift
+// from the last video opened. These replaced the Station chips on lists, the video page's Related
+// and Home's rows (decisions/five-tab-navigation, 2026-11-09).
+function StartFrom() {
+  const last = useLastList()
+  // an unfiltered list is the Everything quick start below
+  const list = last && (filterTotal(last) > 0 || last.vault) ? last : null
+  const scene = useLastScene()
+  if (!list && !scene) return null
+  const card = 'flex min-w-0 items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line hover:bg-raised touch:min-h-14'
+  const icon = 'flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/90 text-white'
+  return (
+    <section>
+      <h2 className="mb-3 text-lg font-bold">Start from</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {list && (
+          <Link to="/station" search={stationQuery(list)} className={card}>
+            <span className={icon}>
+              <ListFilter size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">The list you were on</span>
+              <span className="block truncate text-xs text-muted">
+                <QuerySummary query={list} />
+              </span>
+            </span>
+          </Link>
+        )}
+        {scene && (
+          <Link to="/station" search={{ from: scene.id }} className={card}>
+            <span className={icon}>
+              <Waypoints size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Drift from the last video</span>
+              <span className="block truncate text-xs text-muted">{scene.title}</span>
+            </span>
+          </Link>
+        )}
+      </div>
+    </section>
   )
 }
 

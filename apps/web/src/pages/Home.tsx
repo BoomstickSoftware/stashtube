@@ -82,7 +82,7 @@ export function Home(): JSX.Element {
             <PickUpStations cover={order.at(-1)} />
           </Fragment>
         ) : (
-          <Row key={r.key} title={r.title} browse={r.browse} from={r.from} items={r.items} />
+          <Row key={r.key} title={r.title} browse={r.browse} items={r.items} />
         ),
       )}
       <NotDownloaded />

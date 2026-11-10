@@ -12,8 +12,7 @@ related: [stashdb-mirror, whisparr-shelf, whisparr-sync, mobile-first-ui]
 
 # Discover
 
-Reached from the Compass icon in the phone header (the tab bar is full), "Discover" in the
-desktop nav, and "Filter on StashDB" on an open performer or studio shelf. The server does all
+Reached from the Discover tab ([[navigation]]; _a phone header icon until 2026-11-09_), and "Filter on StashDB" on an open performer or studio shelf. The server does all
 StashDB work ([[stashdb-mirror]]).
 
 ## The StashDB tab

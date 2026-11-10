@@ -48,9 +48,7 @@ From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initi
   [[hide-means-delete-block-or-unlist]]); the Hidden section stays in Settings until G.
 - **E. Scene page "⋯" menu** (S): done, [[2026-11-09-scene-menu]].
 - **F. History** (M): done, [[2026-11-09-history-rework]].
-- **G. Navigation** (M–L), decision [[five-tab-navigation]]: five tabs, a You section, a
-  Browse strip, one privacy menu, Station chips folded into the Stations tab; a "Manage Home
-  rows" list next to the Featured dials.
+- **G. Navigation** (M–L): done, [[2026-11-09-navigation]] ([[navigation]]). The strategy roadmap is complete.
 
 ## UX audit roadmap (2026-10-31)
 

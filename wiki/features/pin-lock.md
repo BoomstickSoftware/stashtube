@@ -31,3 +31,5 @@ the lock screen's copy says so: clearing the site's data removes it.
 
 It is not a login ([[single-user-no-login]]); the optional password is a different thing
 ([[optional-login]]).
+
+- **Lock now** sits in the header's Privacy menu when a PIN is set ([[navigation]], since 2026-11-09).

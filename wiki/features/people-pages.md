@@ -46,8 +46,8 @@ only from their page or the table view.
 - **Rating** (performers), **Block** (never download more of them; their videos you have still show,
   [[blocklist-and-exclusions]]; one tap, then a toast "Blocked: flix won't download more of
   <name> · Undo"; _hid them everywhere until 2026-11-09_), **Add to
-  filters** (stacks it, [[browse-and-filters]]), **Station** from this entity's videos
-  ([[stations]]).
+  filters** (stacks it, [[browse-and-filters]]), _Station_ (gone 2026-11-09; the Stations tab starts one from
+  the last list, [[navigation]]).
 - **About** (performers): a ghost `Button` like its neighbours, with the number of facts and
   `aria-expanded` (_muted text that read as a label until 2026-10-31_). Open, it shows the
   facts grid (born, ethnicity, hair, eyes, height, measurements, breasts, tattoos, piercings),

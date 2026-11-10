@@ -2,33 +2,34 @@ import type { JSX } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { Building2, ChevronLeft, Clapperboard, Compass, Eye, EyeOff, Ghost, History, Home, ListVideo, Radio, Search, Settings, Tags, Users, Vault } from 'lucide-react'
+import { ChevronLeft, Clapperboard, Compass, Home, Radio, Search, Settings, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { authApi, useContinueCount, useSettings } from '../lib/api'
 import { filterCount, useBrowseFilters } from '../lib/filters'
 import { useMediaQuery } from '../lib/hooks'
-import { setPrivate, useIsPrivate } from '../lib/privacy'
+import { useIsPrivate } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
-import { showToast } from '../lib/toast'
 import { Login } from '../pages/Login'
 import { NowPlayingHost } from './NowPlaying'
 import { PinLock } from './PinLock'
+import { PrivacyMenu } from './PrivacyMenu'
 import { SearchBox } from './SearchBox'
 import { ShortcutsOverlay } from './Shortcuts'
 import { Spinner, Toaster } from './ui'
 
+// Five tabs on phone and desktop alike (decisions/five-tab-navigation, 2026-11-09). Each owns the
+// paths under it, so a tab stays lit on its sub-pages: Browse's strip (videos, performers, studios,
+// categories) and their entity pages, You's Continue, History, Stats, playlists and Vault.
+// _Until 2026-11-09_ the phone had seven tabs and Discover, Stations and Vault as header icons.
 const nav = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/browse', label: 'Browse', icon: Clapperboard },
-  { to: '/continue', label: 'Continue', icon: History },
-  { to: '/performers', label: 'Performers', icon: Users },
-  { to: '/studios', label: 'Studios', icon: Building2 },
-  { to: '/tags', label: 'Categories', icon: Tags },
-  { to: '/playlists', label: 'Playlists', icon: ListVideo },
-  { to: '/stations', label: 'Stations', icon: Radio, desktopOnly: true }, // phones: header icon (the tab bar is full)
-  { to: '/discover', label: 'Discover', icon: Compass, desktopOnly: true }, // phones: header icon
-  { to: '/vault', label: 'Vault', icon: Vault, desktopOnly: true }, // phones: header icon
+  { to: '/', label: 'Home', icon: Home, owns: [] as string[] },
+  { to: '/browse', label: 'Browse', icon: Clapperboard, owns: ['/browse', '/performers', '/studios', '/tags', '/performer/', '/studio/', '/tag/'] },
+  { to: '/stations', label: 'Stations', icon: Radio, owns: ['/stations', '/station'] },
+  { to: '/discover', label: 'Discover', icon: Compass, owns: ['/discover'] },
+  { to: '/you', label: 'You', icon: UserRound, owns: ['/you', '/continue', '/history', '/stats', '/playlists', '/playlist/', '/vault'] },
 ] as const
+const tabOf = (path: string) =>
+  path === '/' ? '/' : nav.find((n) => n.owns.some((o) => (o.endsWith('/') ? path.startsWith(o) : path === o || path.startsWith(`${o}/`))))?.to
 
 export function Layout(): JSX.Element {
   const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, staleTime: Infinity })
@@ -36,13 +37,13 @@ export function Layout(): JSX.Element {
   const { data: unfinished = 0 } = useContinueCount()
   const stacked = filterCount(useBrowseFilters()) // performers, studios and tags added with "+"
   const path = useRouterState({ select: (s) => s.location.pathname })
-  const watchSection = ['/continue', '/history', '/stats'].includes(path)
+  const tab = tabOf(path)
   usePanicKey()
   // Installed on a home screen there is no browser chrome, so pages below the top level get
   // a Back button in the header.
   const standalone = useMediaQuery('(display-mode: standalone)')
   // Discreet: pictures blurred until hovered (index.css), remembered per browser.
-  const [discreet, setDiscreet] = useStored('flix.discreet', asBool(false))
+  const [discreet] = useStored('flix.discreet', asBool(false))
   useEffect(() => {
     document.documentElement.classList.toggle('discreet', discreet)
   }, [discreet])
@@ -54,7 +55,7 @@ export function Layout(): JSX.Element {
   const root = useRef<HTMLDivElement>(null) // the now-playing host positions the player within it
   const pill = 'ml-1.5 rounded-full bg-accent px-1.5 text-[11px] leading-[18px] font-semibold text-white tabular-nums'
   const badge = (to: string) =>
-    to === '/continue' && unfinished > 0 ? (
+    to === '/you' && unfinished > 0 ? (
       <span className={pill}>{unfinished}</span>
     ) : to === '/browse' && stacked > 0 ? (
       <span className={pill} title={`${stacked} stacked filter${stacked === 1 ? '' : 's'}`}>
@@ -76,8 +77,7 @@ export function Layout(): JSX.Element {
     // hidden, keeps the sticky header working)
     <div ref={root} className="relative min-h-dvh overflow-x-clip pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
       <header className={clsx('sticky top-0 z-40 h-16 border-b border-white/5 bg-bg/85 backdrop-blur-xl', priv && 'border-t-2 border-t-violet-400')}>
-        {/* no gap on phones: the 44 px icons carry their own spacing, and seven of them plus Back
-            (standalone) fill a 440 px row (wiki features/edu-section) */}
+        {/* no gap on phones: the 44 px icons carry their own spacing */}
         <div className="mx-auto flex h-full max-w-[1920px] items-center gap-0 px-4 sm:gap-4 sm:px-6">
           {canGoBack && (
             <button onClick={() => router.history.back()} className="-ml-2 rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Back">
@@ -98,11 +98,8 @@ export function Layout(): JSX.Element {
               <Link
                 key={n.to}
                 to={n.to}
-                className={clsx(
-                  'rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:text-fg',
-                  n.to === '/continue' && watchSection && '!text-fg bg-raised',
-                )}
-                activeProps={{ className: '!text-fg bg-raised' }}
+                aria-current={tab === n.to ? 'page' : undefined}
+                className={clsx('rounded-full px-3 py-1.5 text-sm text-muted transition-colors hover:text-fg', tab === n.to && '!text-fg bg-raised')}
               >
                 {n.label}
                 {badge(n.to)}
@@ -113,39 +110,7 @@ export function Layout(): JSX.Element {
           <button onClick={() => setMobileSearch((v) => !v)} className="ml-auto rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" aria-label="Search">
             <Search size={20} />
           </button>
-          <Link to="/discover" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Discover on StashDB">
-            <Compass size={20} />
-          </Link>
-          <Link to="/stations" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Stations">
-            <Radio size={20} />
-          </Link>
-          <Link to="/vault" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3 lg:hidden" activeProps={{ className: '!text-accent' }} aria-label="Vault">
-            <Vault size={20} />
-          </Link>
-          <button
-            onClick={() => {
-              setDiscreet(!discreet)
-              if (!discreet) showToast('Discreet: pictures stay blurred until you touch them')
-            }}
-            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', discreet ? 'text-accent' : 'text-muted')}
-            aria-pressed={discreet}
-            aria-label={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
-            title={discreet ? 'Show pictures' : 'Discreet: blur pictures until hovered'}
-          >
-            {discreet ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-          <button
-            onClick={() => {
-              setPrivate(!priv)
-              if (!priv) showToast('Private session: nothing you watch is recorded until you turn it off')
-            }}
-            className={clsx('rounded-full p-2 hover:bg-raised hover:text-fg touch:p-3', priv ? 'text-violet-300' : 'text-muted')}
-            aria-pressed={priv}
-            aria-label={priv ? 'End the private session' : 'Private session: record nothing this visit'}
-            title={priv ? 'Private session on: nothing is recorded. Click to end it' : 'Private session: record nothing this visit'}
-          >
-            <Ghost size={20} />
-          </button>
+          <PrivacyMenu />
           <Link to="/settings" className="rounded-full p-2 text-muted hover:bg-raised hover:text-fg touch:p-3" activeProps={{ className: '!text-fg' }} aria-label="Settings">
             <Settings size={20} />
           </Link>
@@ -167,19 +132,16 @@ export function Layout(): JSX.Element {
 
       {/* mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/5 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-        {nav.filter((n) => !('desktopOnly' in n)).map((n) => (
+        {nav.map((n) => (
           <Link
             key={n.to}
             to={n.to}
-            activeOptions={{ exact: n.to === '/' }}
-            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] text-muted"
-            activeProps={{ className: '!text-accent' }}
+            aria-current={tab === n.to ? 'page' : undefined}
+            className={clsx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] text-muted', tab === n.to && '!text-accent')}
           >
-            {({ isActive }) => (
-              <>
-                <span className="relative">
-                  <n.icon size={20} className={clsx(isActive && 'fill-accent/20')} />
-                  {n.to === '/continue' && unfinished > 0 && <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent" />}
+            <span className="relative">
+                  <n.icon size={22} className={clsx(tab === n.to && 'fill-accent/20')} />
+                  {n.to === '/you' && unfinished > 0 && <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-accent" />}
                   {n.to === '/browse' && stacked > 0 && (
                     <span
                       title={`${stacked} stacked filter${stacked === 1 ? '' : 's'}`}
@@ -188,10 +150,8 @@ export function Layout(): JSX.Element {
                       {stacked}
                     </span>
                   )}
-                </span>
-                {n.label}
-              </>
-            )}
+            </span>
+            {n.label}
           </Link>
         ))}
       </nav>

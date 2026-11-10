@@ -25,7 +25,7 @@ the Edu categories became Unlisted categories, `/edu` redirects to `/vault`._
 
 | Where | Unlisted videos |
 |---|---|
-| **Vault** (`/vault`; desktop nav item, phone header icon) | only them, with Browse's filter panel (title search, performer, studio, category, rating, length), sort and Station; chips narrow to what unlists them, "Unlisted by hand" included; **Manage** opens Settings |
+| **Vault** (`/vault`; under the You tab, [[navigation]]) | only them, with Browse's filter panel (title search, performer, studio, category, rating, length), sort and Station; chips narrow to what unlists them, "Unlisted by hand" included; **Manage** opens Settings |
 | Home: hero, Featured and every row flix fills (For you, Because you watched, More with, New from performers you follow, Recently added, Discover, Top rated, Latest releases, Most watched) | held out; a pinned row that names the Unlisted entity shows that one's videos |
 | Home's not-downloaded shelf (StashDB) | held out, matched through the StashDB mirror (see Limits) |
 | Featured endpoint (hero paging, Settings preview) | held out |

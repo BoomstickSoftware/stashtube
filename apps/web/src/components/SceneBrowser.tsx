@@ -2,7 +2,7 @@ import type { SceneCard as SceneCardType, SceneQuery, SceneSort } from '@flix/sh
 import { sceneSorts } from '@flix/shared'
 import { Link } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Radio, Shuffle, SlidersHorizontal, Users } from 'lucide-react'
+import { MoreHorizontal, ArrowDownWideNarrow, CheckCheck, CheckSquare, Pin, Shuffle, SlidersHorizontal, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaQuery } from '../lib/hooks'
@@ -10,7 +10,7 @@ import { Sheet } from './Sheet'
 import { useRowMutations, useScenes, useSettings } from '../lib/api'
 import { rowTitle, useQueryParts } from '../lib/describe'
 import { ageLabel, withBase } from '../lib/query'
-import { stationQuery } from '../lib/station'
+import { rememberList } from '../lib/recent'
 import { ActiveFilters, FilterDialog } from './Filters'
 import { clearAll, filterTotal } from '../lib/filters'
 import { BulkBar, type BulkAction } from './Bulk'
@@ -44,6 +44,10 @@ export function SceneBrowser({
   bulkActions?: BulkAction[] // the page's own actions for a selection, first in the bar (Continue's Remove)
 }) {
   const effective = useMemo(() => withBase(query, base, defaultSort), [query, base, defaultSort])
+  // the Stations tab offers a station from the last list (lib/recent); Cleanup's is not one to play
+  useEffect(() => {
+    if (!alwaysSelecting) rememberList(effective)
+  }, [effective, alwaysSelecting])
 
   const { data, error, isLoading, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } = useScenes(effective)
   const loadMore = useCallback(() => {
@@ -253,11 +257,6 @@ function FilterBar({
             </Chip>
           )}
           <PinButton query={effective} />
-          <Link to="/station" search={stationQuery(effective)}>
-            <Chip>
-              <Radio size={14} /> Station
-            </Chip>
-          </Link>
         </span>
       </div>
 
@@ -293,11 +292,6 @@ function FilterBar({
               </Chip>
             )}
             <PinButton query={effective} />
-            <Link to="/station" search={stationQuery(effective)}>
-              <Chip>
-                <Radio size={14} /> Station
-              </Chip>
-            </Link>
           </div>
         </Sheet>
       )}
