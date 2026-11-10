@@ -382,3 +382,6 @@ Tabs Home, Browse, Stations, Discover, You; header Search, Privacy menu, Setting
 
 ## [2026-11-09] decide | Discover cards: one thing per corner
 At the user's request: the StashDB badge went, ⓘ About moved to top left, ↗ stays top right, Get bottom right, "Deleted before" bottom left ("Deleted" on phones). Tapping the picture to open About was proposed and declined (hides the information behind a tap; hover and the ⓘ allow quick review). Recorded in features/discover.
+
+## [2026-11-09] ingest | Exact names first in the pickers
+User report: an exact category was crowded out of the search list. Discover's picker took StashDB's first 12 (no "Creampie" for "creampie"); now 30 plus an exact lookup (findTagOrAlias / findStudio by name), ranked by rank.ts. Library /api/search and /api/tags?q rank the same way. Pages: stashdb-mirror, search.

@@ -3,6 +3,7 @@ import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
+import { byNameMatch } from './rank.ts'
 import { castStatus, sceneCast, setOverride, syncCast } from './cast.ts'
 import { expireContinue } from './continue.ts'
 import { curated, dropHiddenWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
@@ -586,7 +587,8 @@ api.get('/tags', async (c) => {
     stash.findFilter({ ...q, sort: q.sort ?? 'scenes_count', dir: q.dir ?? (q.sort === 'name' ? 'asc' : 'desc'), page, perPage }),
     q.unblocked ? { tags: [], performers: [], studios: [] } : await exclusions(),
   )
-  return c.json({ ...r, page, perPage })
+  // a name search: what the term names first (rank.ts); Filters shows the first 10
+  return c.json({ ...r, items: q.q ? byNameMatch(r.items, q.q, (t) => t.name) : r.items, page, perPage })
 })
 
 api.get('/tags/tiles', async (c) => c.json(await stash.tagTiles(await exclusions())))
@@ -605,17 +607,21 @@ api.get('/search', async (c) => {
   if (!q) return c.json({ scenes: [], performers: [], studios: [], tags: [] } satisfies SearchResult)
   const blocked = await exclusions()
   const f = { q, perPage: 6 }
+  // the most-used 30 of each, then what the term names first (rank.ts), so an exact name with few
+  // videos is not crowded out by longer ones with more (_6 by count until 2026-11-09_)
+  const wide = { q, perPage: 30, sort: 'scenes_count' }
+  const top = <T extends { name: string }>(r: { items: T[] }) => byNameMatch(r.items, q, (x) => x.name).slice(0, 6)
   const [scenes, performers, studios, tags] = await Promise.all([
     stash.findScenes(stash.findFilter(f), stash.sceneFilter({}, blocked)),
-    stash.findPerformers(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
-    stash.findStudios(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
-    stash.findTags(stash.findFilter({ ...f, sort: 'scenes_count' }), blocked),
+    stash.findPerformers(stash.findFilter(wide), blocked),
+    stash.findStudios(stash.findFilter(wide), blocked),
+    stash.findTags(stash.findFilter(wide), blocked),
   ])
   return c.json({
     scenes: scenes.items,
-    performers: performers.items,
-    studios: studios.items,
-    tags: tags.items,
+    performers: top(performers),
+    studios: top(studios),
+    tags: top(tags),
   } satisfies SearchResult)
 })
 

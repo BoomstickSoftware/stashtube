@@ -17,6 +17,7 @@ import { remoteImageUrl } from './remote.ts'
 import { getSettings } from './settings.ts'
 import * as stash from './stash.ts'
 import * as stashdb from './stashdb.ts'
+import { byNameMatch } from './rank.ts'
 import type { SdbEntity, SdbSceneFull, SceneSort } from './stashdb.ts'
 import * as whisparr from './whisparr.ts'
 
@@ -356,8 +357,12 @@ export function isVrScene(r: { title: string | null; studioName: string | null; 
 export async function searchNames(kind: DiscoverEntity['kind'], term: string): Promise<DiscoverEntity[]> {
   const t = term.trim().toLowerCase()
   if (t.length < 2) return []
-  const found = await stash.dataCache.get(`sdb-search:${kind}:${t}`, SEARCH_TTL, ['stashdb'], async () => {
-    const es = await stashdb.searchEntities(kind, t)
+  // StashDB answers in its own order and the picker shows 12, so the exact name could miss the cut
+  // ("creampie": 12 longer names, not "Creampie"): ask for more, look the exact one up (a category
+  // by name or alias, a studio by name), and rank (rank.ts). _Until 2026-11-09: 12, StashDB's order._
+  const found = await stash.dataCache.get(`sdb-search2:${kind}:${t}`, SEARCH_TTL, ['stashdb'], async () => {
+    const [hits, exact] = await Promise.all([stashdb.searchEntities(kind, t, 30), stashdb.findByName(kind, t).catch(() => null)])
+    const es = byNameMatch([...(exact ? [exact] : []), ...hits.filter((h) => h.id !== exact?.id)], t, (e) => e.name).slice(0, 12)
     await storeEntities(es)
     return es
   })

@@ -269,6 +269,19 @@ export async function searchEntities(kind: SdbEntity['kind'], term: string, limi
   return (await gql<{ searchTag: RawTag[] }>(`query($t: String!, $l: Int) { searchTag(term: $t, limit: $l) { ${TAG} } }`, { t, l: limit })).searchTag.map(fromTag)
 }
 
+// The one entity a term names exactly, for the pickers: a category by name or alias, a studio by
+// name. Performers have no lookup by name (their search ranks exact names well enough).
+export async function findByName(kind: SdbEntity['kind'], name: string): Promise<SdbEntity | null> {
+  const n = name.trim().slice(0, 100)
+  if (!n || kind === 'performer') return null
+  if (kind === 'studio') {
+    const s = (await gql<{ findStudio: RawStudio | null }>(`query($n: String!) { findStudio(name: $n) { ${STUDIO} } }`, { n })).findStudio
+    return s ? fromStudio(s) : null
+  }
+  const t = (await gql<{ findTagOrAlias: RawTag | null }>(`query($n: String!) { findTagOrAlias(name: $n) { ${TAG} } }`, { n })).findTagOrAlias
+  return t ? fromTag(t) : null
+}
+
 // One scene's description (Discover's About), for a mirror row stored before descriptions were.
 export async function sceneDetails(id: string): Promise<string | null> {
   if (!UUID.test(id)) return null

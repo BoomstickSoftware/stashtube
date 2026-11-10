@@ -63,12 +63,15 @@ scenes reach Whisparr. The UI on top is [[discover]]; the Whisparr side is [[whi
   each pod start, then every 24 h), so every deploy runs it; a follow seen for the first time
   starts its window *now*, so its back catalogue is never queued; `recentOf` reads at most 5 pages
   (500 scenes) per follow; one run queues at most 200 (`MAX_SELECTION`, the rest are dropped,
-  not deferred); only performer and studio blocks apply, not tag blocks.
+  not deferred); performer, studio and (since 2026-11-09) category blocks apply.
 
 ## Endpoints
 
 `GET /api/discover` (q, performers, studios, tags, sort `date|added|trending`, page ≤ 200,
-unblocked), `GET /api/discover/names?kind&q`, `GET /api/discover/entity/:kind/:id`,
+unblocked), `GET /api/discover/names?kind&q` (the pickers: StashDB's search for 30 plus the exact
+entity, a category by name or alias via `findTagOrAlias`, a studio via `findStudio(name)`, ranked
+exact → prefix → word start by `rank.ts` and cut to 12, cached a day as `sdb-search2:`; _until
+2026-11-09 StashDB's first 12 in its order, which left out e.g. "Creampie" for "creampie"_), `GET /api/discover/entity/:kind/:id`,
 `GET /api/discover/from/:kind/:libraryId` (StashDB ids of a library performer or studio),
 `POST /api/discover/run`, `POST /api/whisparr/get-many`, `GET /api/whisparr/waiting`,
 `GET /api/whisparr/queue-status`, `POST /api/whisparr/waiting/:movieId/search`,
