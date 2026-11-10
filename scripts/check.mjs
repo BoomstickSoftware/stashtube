@@ -23,7 +23,8 @@ const steps = [
   ['lint (web)', 'pnpm', ['--filter', '@flix/web', 'lint'], ROOT, lintOk],
   // the server and the shared contract have no accepted warnings: any warning fails
   ['lint (server, shared)', resolve(ROOT, 'apps/web/node_modules/.bin/oxlint'), ['apps/server/src', 'packages/shared/src', '--ignore-pattern', '**/stash.schema.ts', '--deny-warnings']],
-  ['tests (server)', 'pnpm', ['test']],
+  ['tests (server)', 'pnpm', ['--filter', '@flix/server', 'test']],
+  ['tests (web)', 'pnpm', ['--filter', '@flix/web', 'test']],
   ['tests (scripts: neutral redaction)', 'node', ['--test', 'scripts/lib/neutral.test.mjs']],
   ['privacy (no library names in tracked files)', 'node', ['scripts/privacy-check.mjs']],
 ]

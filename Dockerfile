@@ -13,7 +13,7 @@ COPY . .
 # The same gates as scripts/check.mjs, except the privacy check: its deny-list is not in git, so
 # it only runs locally.
 RUN pnpm --filter @flix/server typecheck && pnpm --filter @flix/server test \
- && pnpm --filter @flix/web lint \
+ && pnpm --filter @flix/web lint && pnpm --filter @flix/web test \
  && apps/web/node_modules/.bin/oxlint apps/server/src packages/shared/src --ignore-pattern '**/stash.schema.ts' --deny-warnings \
  && node --test scripts/lib/neutral.test.mjs \
  && pnpm --filter @flix/web build

@@ -44,6 +44,23 @@ export function attachSource(v: HTMLVideoElement, src: string, startAt: number |
   }
 }
 
+// On unmount, let go of the media: WebKit keeps a detached <video> buffering and holding a
+// decoder until its source is cleared (PreviewVideo does the same for the card previews). Declare
+// it after the effect that attaches the source, so that teardown has already run.
+export function useReleaseOnUnmount(video: RefObject<HTMLVideoElement | null>) {
+  useEffect(() => {
+    const v = video.current
+    return () => {
+      if (!v) return
+      v.removeAttribute('src')
+      v.load()
+    }
+  }, [video])
+}
+
+// How many videos in a row may fail to load before a queue stops skipping to the next one.
+export const MAX_FAILURES_IN_A_ROW = 3
+
 // The marker after (dir 1) or before (dir -1) time `t`, with a little slack so repeated
 // presses keep moving.
 export function nextMarker(markers: Marker[], t: number, dir: 1 | -1): Marker | undefined {

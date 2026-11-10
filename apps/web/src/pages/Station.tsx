@@ -41,7 +41,8 @@ import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import { guardWrite, isPrivate } from '../lib/privacy'
 import { useLongPress } from '../lib/hooks'
-import { attachSource, createClock, nextMarker, useFlash, usePlayerKeys, useWatchAccounting } from '../lib/playback'
+import { attachSource, createClock, MAX_FAILURES_IN_A_ROW, nextMarker, useFlash, usePlayerKeys, useReleaseOnUnmount, useWatchAccounting } from '../lib/playback'
+import { showToast } from '../lib/toast'
 import {
   loadPrefs,
   savePrefs,
@@ -270,10 +271,17 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
       v.removeEventListener('loadedmetadata', onMeta)
     }
   }, [scene, fallen, play, clock])
+  useReleaseOnUnmount(video)
+  // A video that cannot load is skipped, but not for ever: with the media down, every one fails
+  // and the station would run through its whole queue.
+  const failures = useRef(0)
   const onError = () => {
     if (scene && canDirectPlay(scene.playback) && fallen !== scene.id) {
       lastT.current = video.current?.currentTime || lastT.current
       setFallen(scene.id)
+    } else if (++failures.current >= MAX_FAILURES_IN_A_ROW) {
+      failures.current = 0
+      showToast(`${MAX_FAILURES_IN_A_ROW} videos in a row would not play; stopped. Tap Next to try again.`)
     } else nextScene()
   }
 
@@ -440,6 +448,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
             nextScene()
           }}
           onPlaying={() => {
+            failures.current = 0
             setState('playing')
             if (busy.current || dim) {
               busy.current = false

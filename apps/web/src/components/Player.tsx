@@ -26,7 +26,7 @@ import { useAddO, useIntroSkip, useSceneEdits, useSettings } from '../lib/api'
 import { duration as fmt } from '../lib/format'
 import { canDirectPlay } from '../lib/media'
 import type { Status } from '../lib/nowPlaying'
-import { At, attachSource, createClock, nextMarker, useClock, useFlash, usePassed, usePlayerKeys, useWatchAccounting, type Clock } from '../lib/playback'
+import { At, attachSource, createClock, nextMarker, useClock, useFlash, usePassed, usePlayerKeys, useReleaseOnUnmount, useWatchAccounting, type Clock } from '../lib/playback'
 import { guardWrite } from '../lib/privacy'
 import { asNumber, oneOf, useStored } from '../lib/storage'
 import { SeekBar, type SeekBarHandle, type SeekPoint } from './SeekBar'
@@ -199,6 +199,7 @@ export function Player({
   // unreadable file; hls.js reports its fatal errors as the element's `error`), the picture
   // says so and offers to try again rather than spinning.
   useEffect(() => attachSource(video.current!, src, pendingSeek.current), [src, attempt])
+  useReleaseOnUnmount(video)
 
   // Keep the position across a source switch.
   const switchSource = (apply: () => void) => {
