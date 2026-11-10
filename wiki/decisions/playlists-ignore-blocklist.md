@@ -3,17 +3,19 @@ title: Playlists ignore the blocklist
 kind: decision
 summary: A playlist shows every video put in it, blocked or "Not interested" ones included, and its cover is its first video whatever that is; the blocklist rule stops at lists flix assembles.
 tags: [playlists, blocklist, data]
-status: current
+status: superseded
+superseded_by: hide-means-delete-block-or-unlist
 decided: 2026-10-31
 by: user
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 related: [playlists-and-favorites, blocklist-and-exclusions]
 ---
 
 # Playlists ignore the blocklist
 
-**Decided** 2026-10-31 by the user. **Status** current.
+**Decided** 2026-10-31 by the user. **Status** superseded on 2026-11-09: Block no longer hides
+owned videos from any list ([[hide-means-delete-block-or-unlist]]), so playlists are no exception.
 
 ## Context
 

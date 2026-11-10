@@ -37,7 +37,7 @@ export function Vault(): JSX.Element {
           <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Vault</h1>
           <Link
             to="/settings"
-            hash="library"
+            hash="hidden"
             className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted hover:bg-raised hover:text-fg touch:min-h-11"
           >
             <Settings2 size={16} /> Manage
@@ -61,7 +61,7 @@ export function Vault(): JSX.Element {
             Tap <b>Unlist</b> on a video, a category, a performer or a studio. Their videos collect here and stay off Home, stations and
             recommendations; Browse and search still find them.
           </p>
-          <Link to="/settings" hash="library" className="mt-4 inline-flex rounded-full bg-raised px-4 py-2 text-sm font-semibold hover:bg-line touch:min-h-11 touch:items-center">
+          <Link to="/settings" hash="hidden" className="mt-4 inline-flex rounded-full bg-raised px-4 py-2 text-sm font-semibold hover:bg-line touch:min-h-11 touch:items-center">
             Open Settings
           </Link>
         </div>

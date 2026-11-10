@@ -137,9 +137,9 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
       <Section title="Cast">
         <CastFilter query={q} onChange={onChange} />
       </Section>
-      <Section title="Blocked">
+      <Section title="Performer defaults">
         <Toggle on={!!q.unblocked} onChange={(v) => onChange({ unblocked: v || undefined })}>
-          <EyeOff size={14} className="inline align-[-2px]" /> Include videos from blocked performers, studios and categories
+          <EyeOff size={14} className="inline align-[-2px]" /> Ignore my performer defaults (Settings › Feed) for this list
         </Toggle>
       </Section>
     </div>

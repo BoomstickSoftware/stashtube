@@ -13,8 +13,8 @@ related: [blocklist-and-exclusions, vault, delete-via-whisparr, discover, whispa
 
 # Not interested deletes, Block stops downloads, Unlist keeps it off the common views
 
-**Decided** 2026-11-09 by the user (strategy review). **Status** current; not built yet
-(initiative D of [[roadmap]]). Until it ships, [[blocklist-and-exclusions]] describes the code.
+**Decided** 2026-11-09 by the user (strategy review). **Status** current; built the same day
+([[2026-11-09-hide-model]]); [[blocklist-and-exclusions]] describes the code.
 
 ## Context
 
@@ -35,10 +35,10 @@ so "not interested" has no audience to tune for.
 
 ## Consequences
 
-- `withExclusions` stops applying blocks to library queries; [[blocklist-and-exclusions]],
-  CLAUDE.md rule 4 and [[playlists-ignore-blocklist]] are rewritten when it ships.
-- The `Cast: M` block the Cast sync set up ([[cast]]) then stops hiding owned videos; it should
-  become an Unlist if they are still to stay out of sight (ask when building).
+- `exclusions()` stops carrying blocks; [[blocklist-and-exclusions]] and CLAUDE.md rule 4 were
+  rewritten, and [[playlists-ignore-blocklist]] is moot (superseded).
+- The `Cast: M` block the Cast sync set up ([[cast]]) stops hiding owned videos. Asked when
+  building: the user has none (the one was a StashDB error), so it was left as is.
 - Videos already tagged "Not interested" in Stash are listed once in Cleanup for deletion,
   then the tag is retired.
 - The Settings sections for the blocklist and "Not interested" move into one Hidden view with

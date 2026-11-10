@@ -114,7 +114,7 @@ export interface SceneDetail extends SceneCard {
   file: SceneFile | null
   playback: Playback
   markers: Marker[]
-  hidden: boolean // "Not interested": kept out of every list (Settings lists them, to undo)
+  hidden: boolean // still tagged "Not interested" from before it meant delete (2026-11-09); Cleanup lists these
   cast: SceneCast
 }
 
@@ -265,7 +265,7 @@ export interface SceneQuery {
   unwatched?: boolean
   inProgress?: boolean // started, not finished (has a resume point)
   favorites?: boolean // only scenes with a favourite performer
-  unblocked?: boolean // ignore the blocklist
+  unblocked?: boolean // ignore the Settings performer defaults (it skipped the blocklist until 2026-11-09, when Block stopped hiding owned videos)
   vault?: boolean // only Unlisted videos (the Vault page)
   noUnlisted?: boolean // hold Unlisted videos out (stations); a named Unlisted entity, or `vault`, lets it in
   // Cleanup filters

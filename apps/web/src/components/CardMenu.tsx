@@ -1,10 +1,10 @@
 import type { SceneCard as Scene } from '@flix/shared'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { CheckCheck, EyeOff, Heart, ListPlus, ListX, Play, Trash2, Vault } from 'lucide-react'
+import { CheckCheck, Heart, ListPlus, ListX, Play, Trash2, Vault } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useClearContinue, useFavoriteScenes, useFeatures, useHideScene, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
+import { useClearContinue, useFavoriteScenes, useFeatures, useMarkWatched, useToggleFavoriteScene, useUnlistScene } from '../lib/api'
 import { useClickOutside, useMediaQuery } from '../lib/hooks'
 import { guardWrite } from '../lib/privacy'
 import { showToast } from '../lib/toast'
@@ -26,7 +26,6 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
   useClickOutside(ref, () => performance.now() - openedAt.current > 600 && onClose())
   const favorites = useFavoriteScenes()
   const toggleFavorite = useToggleFavoriteScene()
-  const hide = useHideScene()
   const unlist = useUnlistScene()
   const watched = useMarkWatched()
   const clear = useClearContinue()
@@ -104,15 +103,6 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
         {item(<ListPlus size={16} />, 'Save to playlist…', () => setSaving(true), { keep: true })}
         {(scene.playCount === 0 || scene.resumeTime > 0) && item(<CheckCheck size={16} />, 'Mark as watched', () => guardWrite(() => watched.mutate(scene.id)))}
         {scene.resumeTime > 0 && item(<ListX size={16} />, 'Remove from Continue', () => clear.mutate([scene.id]))}
-        {item(<EyeOff size={16} />, 'Not interested', () => {
-          hide.mutate({ id: scene.id, hidden: true })
-          showToast(
-            'Marked not interested',
-            <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-              Undo
-            </button>,
-          )
-        })}
         {item(<Vault size={16} />, 'Unlist', () => {
           unlist.mutate({ id: scene.id, unlisted: true })
           showToast(
@@ -122,8 +112,9 @@ export function CardMenu({ scene, at, onClose }: { scene: Scene; at: { x: number
             </button>,
           )
         })}
-        {/* a phone's long press is too easy to land on Delete; it lives on the video's page there */}
-        {features?.deleteScenes && !sheet && item(<Trash2 size={16} />, 'Delete…', () => setDeleting(true), { tone: 'danger', keep: true })}
+        {/* "Not interested" is a delete (decisions/hide-means-delete-block-or-unlist); the dialog
+            confirms, so a long press that lands here on a phone costs a Cancel */}
+        {features?.deleteScenes && item(<Trash2 size={16} />, 'Not interested: delete…', () => setDeleting(true), { tone: 'danger', keep: true })}
       </div>
     </div>,
     document.body,

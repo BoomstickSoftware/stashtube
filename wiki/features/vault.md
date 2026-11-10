@@ -14,10 +14,10 @@ related: [unlisted-and-vault, blocklist-and-exclusions, second-tags-exclusion-ig
 
 # Unlisted and the Vault
 
-Three levels for any video, category, performer or studio: **normal**, **Unlisted**, **blocked**
-([[blocklist-and-exclusions]]). Unlisted means findable when you look, never picked for you. A
+Unlisted is one of the hide marks ([[hide-means-delete-block-or-unlist]]); Block only stops
+downloads and is independent of it ([[blocklist-and-exclusions]]). Unlisted means findable when you look, never picked for you. A
 video is Unlisted when it, any of its categories, any of its performers, its studio or the
-studio's parent is Unlisted (and nothing about it is blocked). The choices behind it are the
+studio's parent is Unlisted. The choices behind it are the
 user's ([[unlisted-and-vault]]). _It replaced the Edu section, shipped earlier on 2026-11-09:
 the Edu categories became Unlisted categories, `/edu` redirects to `/vault`._
 
@@ -38,18 +38,18 @@ the Edu categories became Unlisted categories, `/edu` redirects to `/vault`._
 
 **Managing**: **Unlist / Unlisted** on category, performer and studio pages (with a notice under
 the header) and on the video page ("Unlisted through …" names the entities that unlist it);
-**Unlist** in a card's menu; Settings → Library → **Unlisted**: search to add, chip × to remove,
-and the videos unlisted by hand with "Show again". Each write is one tap with Undo; unlisting
-something blocked unblocks it, blocking something Unlisted relists it.
+**Unlist** in a card's menu; Settings → Library → **Hidden**: search to add, chip × to remove,
+and the videos unlisted by hand with "Show again". Each write is one tap with Undo. _Until
+2026-11-09_ unlisting something blocked unblocked it and the reverse.
 
 ## How
 
 - `unlisted` table (kind, stash_id, name); one video by hand gets the reserved Stash tag
-  **Unlisted** (`reservedTag` in `stash.ts`, like "Not interested"), which counts as an Unlisted
+  **Unlisted** (`reservedTag` in `stash.ts`), which counts as an Unlisted
   category.
 - `exclusions()` carries `unlisted` (the id sets); `curated()` sets `holdUnlisted` for Home and
-  Featured, `noUnlisted` does for stations. `withExclusions` merges the ids into the blocklist's
-  one EXCLUDES criterion per field ([[second-tags-exclusion-ignored]]); `sceneFilter` drops the
+  Featured, `noUnlisted` does for stations. `withExclusions` merges the ids into one EXCLUDES
+  criterion per field ([[second-tags-exclusion-ignored]]); `sceneFilter` drops the
   ids a query names.
 - `vault=1` adds an OR of the Unlisted categories (depth -1), performers and studios (depth -1).
   With an age range it is distributed over the age buckets, fewer buckets so the chain stays at

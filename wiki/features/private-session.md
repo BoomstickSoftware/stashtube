@@ -5,7 +5,7 @@ summary: The ghost in the header that stops flix recording anything watched for 
 tags: [privacy, private, accounting, stash]
 status: current
 verified: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-09
 code: [apps/web/src/lib/privacy.ts, apps/web/src/components/Privacy.tsx, apps/web/src/lib/playback.ts]
 related: [discreet-mode, pin-lock, player, moments, stations, stash-owns-activity]
 ---
@@ -23,7 +23,7 @@ Privacy (`lib/privacy.ts`).
   markers from the player, and where a station is left. `useWatchAccounting` sends nothing;
   `guardWrite()` turns the deliberate actions into the toast "Private session: nothing is
   recorded".
-- **Allowed**: favourites, playlists, Not interested, deletes and metadata edits. They are
+- **Allowed**: favourites, playlists, unlisting, deletes and metadata edits. They are
   curation, not a trace of viewing.
 - Verified headless 2026-10-30: 30 s of playback attempted no write with it on, three (play,
   activity ×2) with it off.

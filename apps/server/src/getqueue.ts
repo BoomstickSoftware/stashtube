@@ -117,7 +117,7 @@ export async function discoverNew(now = Date.now()): Promise<number> {
   ])
   const since = new Map(starts.map((r) => [`${r.kind}:${r.foreignId}`, r.since.getTime()]))
   const blockedIds = async (kind: 'performer' | 'studio') => new Set((await Promise.all(blockRows.filter((r) => r.kind === kind).map((r) => stash.stashIdsOf(kind, r.stashId)))).flat())
-  const blocked = { performer: await blockedIds('performer'), studio: await blockedIds('studio') }
+  const blocked = { performer: await blockedIds('performer'), studio: await blockedIds('studio'), tag: new Set(blockRows.filter((r) => r.kind === 'tag').map((r) => r.name.toLowerCase())) }
   const known = new Set(movies.filter((m) => m.stashId && (m.hasFile || m.monitored)).map((m) => m.stashId!))
   const picked = new Set<string>()
   for (const [kind, favs] of [['performer', fp], ['studio', fs]] as const) {
@@ -128,7 +128,7 @@ export async function discoverNew(now = Date.now()): Promise<number> {
         if (!since.has(`${kind}:${id}`)) await db.insert(whisparrWatch).values({ kind, foreignId: id, since: new Date(now) }).onConflictDoNothing()
         const after = new Date(start - GRACE).toISOString().slice(0, 10)
         for (const r of await catalog.recentOf(kind, id, after))
-          if (!owned.has(r.id) && !known.has(r.id) && !excluded.has(r.id.toLowerCase()) && !r.performerIds.some((p) => blocked.performer.has(p)) && !(r.studioId && blocked.studio.has(r.studioId))) picked.add(r.id)
+          if (!owned.has(r.id) && !known.has(r.id) && !excluded.has(r.id.toLowerCase()) && !r.performerIds.some((p) => blocked.performer.has(p)) && !(r.studioId && blocked.studio.has(r.studioId)) && !(r.tags as { name: string }[]).some((t) => blocked.tag.has(t.name.toLowerCase()))) picked.add(r.id)
       }
     }
   }

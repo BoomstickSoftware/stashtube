@@ -5,7 +5,7 @@ summary: The "Not in your library yet" shelf fed by StashDB and labelled by Whis
 tags: [whisparr, stashdb, downloads, performers, studios, home]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 api: [GET /api/whisparr/performer/:id?page=, GET /api/whisparr/studio/:id?page=, GET /api/whisparr/new, GET /api/whisparr/activity, POST /api/whisparr/get/:id, POST /api/whisparr/get-remote/:stashdbId, GET /api/features]
 code: [apps/server/src/whisparr.ts, apps/server/src/stashdb.ts, apps/server/src/remote.ts, apps/server/src/whisparr.test.ts, apps/server/src/stashdb.test.ts, apps/web/src/components/WantedRow.tsx, apps/web/src/lib/api/whisparr.ts]
 related: [whisparr-nothing-monitored, library-before-wanted-shelf, media-proxy, whisparr-api, stashdb, people-pages, home-feed, prod-checks-read-only]
@@ -56,7 +56,9 @@ reach the browser only through `/media/remote/<token>` with `srcSet`/`sizes` and
 outside the allowlist is dropped (`image: null`, "No cover").
 
 Home gets **"New from your favourites, not downloaded"**: recent releases from favourite
-performers, Whisparr list only, shown from 3 items ([[home-feed]]). A "Coming soon" row was
+performers, Whisparr list only, shown from 3 items ([[home-feed]]). Scenes with an Unlisted or
+blocked performer, studio or category are dropped (`dropHiddenWanted`; blocked ones since
+2026-11-09, [[blocklist-and-exclusions]]). A "Coming soon" row was
 planned but Whisparr's calendar is empty ([[whisparr-calendar-empty]]).
 
 ## Get: one scene per click

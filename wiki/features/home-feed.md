@@ -41,8 +41,8 @@ show, even empty, so they can be managed); the web slots "Pick up a station" in 
 | **Pick up a station** | first a **Shuffle everything** card (the whole library as a station, fresh random order each start; always there, so the row shows with nothing in progress, titled "Stations" then; since 2026-11-07), then stations and playlists with a saved spot, from `/api/stations/resume`; see [[stations]]. Rendered **right after Featured** (since 2026-10-31; _the first row under the hero before_, which put Featured below the fold at 1440×900), or first when there is no Featured row |
 
 Continue watching is no longer a row: it has its own nav item ([[continue-history-stats]]).
-The blocklist and the Settings people defaults apply to every row ([[blocklist-and-exclusions]]),
-and Unlisted videos are held out of every row and the not-downloaded shelf unless a pinned row
+The Settings people defaults apply to every row, the blocklist only to the not-downloaded shelf
+([[blocklist-and-exclusions]]), and Unlisted videos are held out of every row and the not-downloaded shelf unless a pinned row
 names the Unlisted entity ([[vault]]);
 the Performers page's Women / Men / Everyone switch does not (_it steered "For you" and "More
 with" until 2026-10-31_, [[gender-switch-performers-page-only]]).

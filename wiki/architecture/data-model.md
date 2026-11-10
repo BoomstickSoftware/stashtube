@@ -35,8 +35,8 @@ migrations in `apps/server/drizzle/`, applied on boot ([[database-migrations]]).
 
 - **Highlight**: the tag on markers created in flix (Stash requires a primary tag on every
   marker); created on first use ([[moments]]).
-- **Not interested**: added to a video by "Not interested"; `exclusions()` treats it as blocked,
-  so the video leaves every list; Settings lists them to undo ([[blocklist-and-exclusions]]).
+- **Not interested**: retired 2026-11-09 (Not interested deletes now). It hides nothing; Cleanup
+  lists any video still carrying it, to delete or keep ([[blocklist-and-exclusions]]).
 - **Cast** and its children (`Cast: F+M`, `Cast: Women 2+`, …): written to every video by the
   Cast sync from performer genders ([[cast]], since 2026-11-09).
 - **Unlisted**: added to a video by "Unlist"; counts as an Unlisted category, so the video

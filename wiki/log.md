@@ -367,3 +367,6 @@ resume point without a play reaches 30 days on 2026-11-24).
 Production, a new seed: `/api/featured` 122 ms on first call (pool ranked once), hero pages
 (offset 24, 44) 51–54 ms (card fetches for new ids only), the same request again 7 ms; `/api/home`
 for a new seed 21 ms. Before: 31–39 ms of ranking on every call ([[featured-ranking]]).
+
+## [2026-11-09] ingest | One hide model shipped (initiative D)
+Block left the library lists (downloads only: Discover, the not-downloaded shelf, the automatic Gets); Not interested opens the delete; Settings has one Hidden section; Cleanup lists old Not interested videos. Rewrote blocklist-and-exclusions and CLAUDE.md rule 4; playlists-ignore-blocklist superseded; Cast: M block left inert at the user's word. History: 2026-11-09-hide-model.

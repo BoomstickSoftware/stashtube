@@ -5,7 +5,7 @@ summary: stash.ts is the only module that knows Stash's GraphQL schema; its type
 tags: [stash, graphql, codegen, server]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 code: [apps/server/src/stash.ts, apps/server/src/stash.schema.ts, apps/server/stash.schema.graphql, apps/server/codegen.ts, apps/server/src/finders.test.ts]
 related: [stash-api, regenerate-stash-schema, stash-filters-have-no-id-criterion, blocklist-and-exclusions, caching]
 ---
@@ -37,7 +37,7 @@ After a Stash upgrade: [[regenerate-stash-schema]].
 | `computed(key, tags, load)` | a small answer built from cached reads (facets, tiles), cached and snapshotted under its own key with `freshInputs`, so its loader never re-stores a stale read as a fresh answer ([[caching]]) |
 | `mutate(q, vars, invalidates, expires)` | writes, then drops the `invalidates` tags and marks the `expires` tags stale ([[caching]]) |
 | `activityTags()` | the extra tags (`activity:play`, `activity:resume`) a list gets when it filters or sorts by activity |
-| `exclusions()` | the blocklist plus the "Not interested" tag as a scene filter ([[blocklist-and-exclusions]]) |
+| `exclusions()` | the performer defaults and the Unlisted sets for a scene filter; no blocklist since 2026-11-09 ([[blocklist-and-exclusions]]) |
 | `dropBlocked()` | removes blocked performers/studios/tags **after** the query, because those filter types have no `id` criterion ([[stash-filters-have-no-id-criterion]]) |
 | `featuredPool()` | every scene minus exclusions, one cached query (snapshotted, tag `featured-pool`), for [[featured-ranking]] |
 | `affinities()` | what you played, rated and O'd, by performer/tag/studio; shared by Featured and For-you |

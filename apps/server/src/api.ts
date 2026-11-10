@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { block, blocklist, exclusions, unblock } from './blocklist.ts'
 import { castStatus, sceneCast, setOverride, syncCast } from './cast.ts'
 import { expireContinue } from './continue.ts'
-import { curated, dropUnlistedWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
+import { curated, dropHiddenWanted, relatedSide, relist, unlist, unlistedList } from './unlisted.ts'
 import { config } from './config.ts'
 import { deleteScene } from './delete.ts'
 import { toGroup } from './duplicates.ts'
@@ -113,7 +113,7 @@ api.get('/scenes', async (c) => {
 // Counts inside a filtered set, for the filter panel (registered before /scenes/:id).
 api.get('/scenes/facets', async (c) => c.json(await stash.sceneFacets(parse(sceneQuery, c.req.query()), await exclusions())))
 
-// Videos marked "Not interested" (registered before /scenes/:id).
+// Videos still tagged "Not interested" from before 2026-11-09, for Cleanup (registered before /scenes/:id).
 api.get('/scenes/hidden', async (c) => c.json(await stash.hiddenScenes()))
 
 api.get('/home', async (c) => {
@@ -412,10 +412,8 @@ api.delete('/scenes/:id/unlisted', async (c) => {
   return c.body(null, 204)
 })
 
-api.put('/scenes/:id/hidden', async (c) => {
-  await stash.setSceneHidden(sceneId(c.req.param('id')), true)
-  return c.body(null, 204)
-})
+// Retired: "Not interested" now opens the delete (decisions/hide-means-delete-block-or-unlist).
+// Cleanup lists the videos still tagged; Keep takes the tag off.
 api.delete('/scenes/:id/hidden', async (c) => {
   await stash.setSceneHidden(sceneId(c.req.param('id')), false)
   return c.body(null, 204)
@@ -741,7 +739,6 @@ api.put('/blocklist/:kind/:id', async (c) => {
   const name = await stash.namesFor(k, id)
   if (!name) return notFound()
   await block(k, id, name)
-  await relist(k, id) // blocked and Unlisted never at once: blocking wins
   kickSync() // a blocked performer or studio must not stay monitored in Whisparr
   return c.body(null, 204)
 })
@@ -788,7 +785,6 @@ api.put('/unlisted/:kind/:id', async (c) => {
   const name = await stash.namesFor(k, id)
   if (!name) return notFound()
   await unlist(k, id, name)
-  await unblock(k, id) // unlisting something blocked brings it back as Unlisted
   return c.body(null, 204)
 })
 
@@ -807,8 +803,8 @@ const pageOf = (c: Context) => {
 }
 api.get('/whisparr/performer/:id', async (c) => c.json(await whisparr.wanted({ performers: await stash.stashIdsOf('performer', c.req.param('id')) }, pageOf(c))))
 api.get('/whisparr/studio/:id', async (c) => c.json(await whisparr.wanted({ studios: await stash.stashIdsOf('studio', c.req.param('id')) }, pageOf(c))))
-// Home's shelf: Unlisted performers, studios and categories never featured (wiki features/vault)
-api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await dropUnlistedWanted(await whisparr.recentWanted(await stash.favoritePerformerStashIds())) : []))
+// Home's shelf: Unlisted and blocked performers, studios and categories left out (wiki features/vault)
+api.get('/whisparr/new', async (c) => c.json(config.whisparr ? await dropHiddenWanted(await whisparr.recentWanted(await stash.favoritePerformerStashIds())) : []))
 api.get('/whisparr/activity', async (c) => c.json(await whisparr.currentActivity()))
 
 // StashDB maintenance: the rate limiter's counters, and what a schema type looks like

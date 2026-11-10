@@ -24,7 +24,8 @@ chips (excluded tags marked NOT). The bar is sticky from `sm` up only. Lists scr
 One dialog (`components/Filters.tsx`; a full-screen sheet on phones, portalled to `body`): your
 stacked filters; one search box for performers, studios, tags (Require / Exclude) and title
 words, with popular tags before typing; then Watched, Rating, Quality, Length, followed
-performers, age and ethnicity, and Show blocked. It edits a copy and applies on
+performers, age and ethnicity, and Ignore my performer defaults (`unblocked`; _"Show blocked" until
+2026-11-09_, [[blocklist-and-exclusions]]). It edits a copy and applies on
 "Show N videos" (a live count). The station editor shows the same panel inline, applying as you
 go ([[stations]]). It replaced a strip of chip popovers that clipped their results
 ([[filter-popovers-clipped-in-scroll-row]]). In the UI tags are **Categories** (the group,
@@ -56,8 +57,8 @@ own `performer_age` would match any performer, so a 40+ male co-star would count
 age-at-filming field, so scenes are matched in yearly release-date buckets (right to about six
 months), two-year buckets once the library spans more than 16 years
 ([[sqlite-or-chain-overflow]]). Settings › Feed › Performer preferences sets defaults for every
-list, the home feed and related videos; a list's own People filter replaces them, Show blocked
-drops them. When they apply to a list, the filter bar shows a dim chip **"Your performer
+list, the home feed and related videos; a list's own People filter replaces them, Ignore my
+performer defaults drops them. When they apply to a list, the filter bar shows a dim chip **"Your performer
 defaults · Age 25–35 · Latin, Asian"** under the active filters, linking to `/settings#feed`
 (`PeopleDefaultsChip` in `SceneBrowser.tsx`, since 2026-10-31, audit F18): the defaults are not
 part of the query, so the Filters count and chips never showed why a list was short.
@@ -68,7 +69,8 @@ Category tiles, multi-select with bulk Favorite, Add to playlist and Delete (ico
 `sm`; a page may put its own action first, as Continue's Remove, `bulkActions`), and the card
 menu (right-click with a mouse; a long press or the card's "⋯" button on touch: Play, Favorite,
 Save to playlist…, Mark as watched (unwatched or with a resume point), Remove from Continue
-(with a resume point), Not interested, Unlist, and with a mouse Delete…; "Station from
+(with a resume point), Unlist, and **Not interested: delete…** (opens the delete dialog, on
+phones too since 2026-11-09, [[hide-means-delete-block-or-unlist]]); "Station from
 here" was dropped and Delete left the phone's sheet on 2026-10-31, decision: a long press
 lands on it too easily). On a phone the filter bar is one sideways-scrolling row (Filters,
 sort, the count) with the list's actions (Select, Pin to home, Station) behind a "More"

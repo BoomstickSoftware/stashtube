@@ -5,7 +5,7 @@ summary: Layout of apps/web, which is Vite + React 19 + Tailwind 4 + TanStack Ro
 tags: [web, react, vite, tanstack, routing]
 status: current
 verified: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-09
 code: [apps/web/src/routes, apps/web/src/lib/api/index.ts, apps/web/src/main.tsx, apps/web/vite.config.ts]
 related: [shared-contract, mobile-first-ui, coding-conventions, caching, keyboard-shortcuts]
 ---
@@ -87,8 +87,8 @@ only once the delete has succeeded.
 
 What a write invalidates on the client beyond its own query (`lib/api/*.ts`):
 
-- Block and Not interested: every list (`invalidateLists`: blocklist, scenes, home, performers,
-  studios, tags, search, related), plus `hidden` and `scene:<id>`.
+- Block: every list (`invalidateLists`: blocklist, scenes, home, performers, studios, tags,
+  search, related). Keep on Cleanup's Not interested list: the same, plus `hidden` and `scene:<id>`.
 - Station add / update / remove / reorder: `stations` and `station-previews`; remove also
   `station-resume` ([[stations]]).
 - Remove from history: `scenes`, `home` and `scene:<id>` (its view count and resume pill).

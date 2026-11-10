@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import type { BlockKind, Ref } from '@flix/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Ban, ChevronRight, Copy, Search, Trash2, Users, Vault as VaultIcon, X } from 'lucide-react'
+import { Ban, ChevronRight, Copy, EyeOff, Search, Trash2, Users, Vault as VaultIcon, X } from 'lucide-react'
 import { useState } from 'react'
 import { CachePanel } from '../components/CachePanel'
 import { FeaturedDials } from '../components/FeaturedDials'
@@ -14,7 +14,7 @@ import { WhisparrSyncSetting } from '../components/WhisparrSync'
 import { Button, Chip, Switch } from '../components/ui'
 import { clearLog, useDiag } from '../lib/diag'
 import { useDebounced } from '../lib/hooks'
-import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSetSceneCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings, useHiddenScenes, useHideScene } from '../lib/api'
+import { authApi, useBlock, useBlocklist, useCast, useSearch, useSyncCast, useSetSceneCast, useSettings, useUnlist, useUnlisted, useUnlistedScenes, useUnlistScene, useUpdateSettings } from '../lib/api'
 import { castText } from '../lib/cast'
 import { KEEP_PLAYING_KEY } from '../lib/nowPlaying'
 import { asBool, useStored } from '../lib/storage'
@@ -59,8 +59,6 @@ export function Settings(): JSX.Element {
           <WhisparrSyncSetting />
           <HideVrSetting />
           <CastSetting />
-          <UnlistedSetting />
-          <BlocklistSetting />
           <HiddenSetting />
         </Group>
         <Group id="feed" title="Feed">
@@ -159,14 +157,12 @@ function CastSetting() {
   const { data: unl } = useUnlisted()
   const block = useBlock()
   const unlist = useUnlist()
-  const level = (id: string) => (blocked?.tags.some((t) => t.id === id) ? 'blocked' : unl?.tags.some((t) => t.id === id) ? 'unlisted' : 'normal')
-  const setLevel = (id: string, to: 'normal' | 'unlisted' | 'blocked') => {
-    const now = level(id)
-    if (to === now) return
-    if (to === 'blocked') block.mutate({ kind: 'tag', id, blocked: true })
-    else if (to === 'unlisted') unlist.mutate({ kind: 'tag', id, unlisted: true })
-    else if (now === 'blocked') block.mutate({ kind: 'tag', id, blocked: false })
-    else unlist.mutate({ kind: 'tag', id, unlisted: false })
+  // Normal or Unlisted only: Block stops downloads, and the StashDB scenes Discover offers carry no
+  // Cast categories, so a block here would do nothing. Either choice clears an old block.
+  const level = (id: string) => (unl?.tags.some((t) => t.id === id) ? 'unlisted' : 'normal')
+  const setLevel = (id: string, to: 'normal' | 'unlisted') => {
+    if (blocked?.tags.some((t) => t.id === id)) block.mutate({ kind: 'tag', id, blocked: false })
+    if (to !== level(id)) unlist.mutate({ kind: 'tag', id, unlisted: to === 'unlisted' })
   }
   const last = data?.lastSync
   return (
@@ -191,7 +187,7 @@ function CastSetting() {
                 </span>
               </Link>
               <div role="radiogroup" aria-label={`${MIX_LABEL[m.name] ?? m.name}: how it shows`} className="flex shrink-0 rounded-full bg-raised p-0.5 text-[13px]">
-                {(['normal', 'unlisted', 'blocked'] as const).map((l) => (
+                {(['normal', 'unlisted'] as const).map((l) => (
                   <button
                     key={l}
                     type="button"
@@ -200,7 +196,7 @@ function CastSetting() {
                     onClick={() => setLevel(m.id, l)}
                     className={clsx(
                       'rounded-full px-3 py-1 capitalize touch:min-h-11 touch:px-3.5',
-                      now === l ? (l === 'blocked' ? 'bg-red-500/20 text-red-300' : 'bg-white text-black') : 'text-muted hover:text-fg',
+                      now === l ? 'bg-white text-black' : 'text-muted hover:text-fg',
                     )}
                   >
                     {l}
@@ -269,15 +265,24 @@ function HideVrSetting() {
 
 // Unlisted (wiki features/vault): find a category, performer or studio to unlist; remove one with
 // its chip's ×; the videos unlisted by hand below, to undo.
-function UnlistedSetting() {
-  const { data } = useUnlisted()
+type Marks = { tags: Ref[]; performers: Ref[]; studios: Ref[] }
+const idsOf = (m?: Marks) => new Set([...(m?.tags ?? []), ...(m?.performers ?? []), ...(m?.studios ?? [])].map((x) => x.id))
+
+// One place for the two ways to keep something out of sight (decisions/hide-means-delete-block-or-unlist):
+// Unlist keeps what you have off the views flix picks for you, Block stops it being downloaded.
+// They are independent, so one performer can be both. "Not interested" is a delete, not a mark.
+function HiddenSetting() {
+  const { data: u } = useUnlisted()
   const unlist = useUnlist()
+  const { data: b } = useBlocklist()
+  const block = useBlock()
   const { data: scenes } = useUnlistedScenes()
   const unlistScene = useUnlistScene()
   const [q, setQ] = useState('')
   const dq = useDebounced(q.trim(), 150)
   const { data: found } = useSearch(dq)
-  const listed = new Set([...(data?.tags ?? []), ...(data?.performers ?? []), ...(data?.studios ?? [])].map((x) => x.id))
+  const unlisted = idsOf(u)
+  const blocked = idsOf(b)
   const hits: { kind: BlockKind; id: string; name: string; sub: string }[] = found
     ? [
         ...found.tags.map((t) => ({ kind: 'tag' as const, id: t.id, name: t.name, sub: 'Category' })),
@@ -285,171 +290,52 @@ function UnlistedSetting() {
         ...found.studios.map((s) => ({ kind: 'studio' as const, id: s.id, name: s.name, sub: 'Studio' })),
       ]
     : []
+  const mark = 'shrink-0 rounded-full px-3 py-1 text-xs disabled:text-muted disabled:hover:bg-transparent touch:min-h-11'
   return (
-    <section>
+    <section id="hidden" className="scroll-mt-32">
       <h3 className="flex items-center gap-2 text-lg font-bold">
-        <VaultIcon size={20} className="text-accent" /> Unlisted
+        <EyeOff size={20} className="text-accent" /> Hidden
       </h3>
-      <p className="mt-1 text-sm text-muted">
-        Videos in these categories, with these performers or from these studios (and any you unlist one by one) are listed in
-        the <Link to="/vault" className="text-fg underline decoration-line underline-offset-2 hover:text-accent">Vault</Link> and kept off
-        Home, Featured, stations and recommendations; watching them does not steer recommendations. Browse, search and their own pages
-        still show them. Unlisting something blocked unblocks it.
-      </p>
+      <div className="mt-1 max-w-xl space-y-1 text-sm text-muted">
+        <p>
+          <b className="text-fg">Unlist</b> keeps the videos you have off Home, Featured, stations and recommendations. Browse, search
+          and the <Link to="/vault" className="text-fg underline decoration-line underline-offset-2 hover:text-accent">Vault</Link> still
+          show them.
+        </p>
+        <p>
+          <b className="text-fg">Block</b> stops flix downloading more: kept out of Discover, the not-downloaded row on Home and the
+          automatic Gets. Videos you already have show as normal.
+        </p>
+        <p>To be rid of a video, delete it: “Not interested” on its menu.</p>
+      </div>
       <label className="mt-4 flex h-10 items-center gap-2 rounded-full bg-raised px-4 ring-1 ring-white/5 focus-within:ring-accent/60 touch:h-11">
         <Search size={16} className="text-muted" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Find a category, performer or studio to unlist"
+          placeholder="Find a category, performer or studio"
           className="w-full bg-transparent text-base outline-none placeholder:text-muted sm:text-sm"
         />
       </label>
       {dq.length >= 2 && (
         <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
           {hits.map((h) => (
-            <div key={`${h.kind}${h.id}`} className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-white/5">
+            <div key={`${h.kind}${h.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
               <Link to={h.kind === 'tag' ? '/tag/$id' : h.kind === 'performer' ? '/performer/$id' : '/studio/$id'} params={{ id: h.id }} className="min-w-0 truncate hover:text-accent">
                 {h.name}
               </Link>
               <span className="shrink-0 text-xs text-muted">{h.sub}</span>
               <button
                 onClick={() => unlist.mutate({ kind: h.kind, id: h.id, unlisted: true })}
-                disabled={listed.has(h.id)}
-                className="ml-auto shrink-0 rounded-full px-3 py-1 text-xs text-accent hover:bg-accent/15 disabled:text-muted disabled:hover:bg-transparent touch:min-h-11"
+                disabled={unlisted.has(h.id)}
+                className={clsx(mark, 'ml-auto text-accent hover:bg-accent/15')}
               >
-                {listed.has(h.id) ? 'Unlisted' : 'Unlist'}
+                {unlisted.has(h.id) ? 'Unlisted' : 'Unlist'}
               </button>
-            </div>
-          ))}
-          {!hits.length && <div className="px-4 py-3 text-sm text-muted">No matches</div>}
-        </div>
-      )}
-      <div className="mt-6 space-y-5">
-        {(
-          [
-            ['tag', 'Categories', data?.tags],
-            ['performer', 'Performers', data?.performers],
-            ['studio', 'Studios', data?.studios],
-          ] as [BlockKind, string, Ref[] | undefined][]
-        ).map(([kind, label, items]) => (
-          <div key={kind}>
-            <h4 className="mb-2 text-sm font-semibold text-muted">
-              {label} <span className="font-normal">({items?.length ?? 0})</span>
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {items?.map((x) => (
-                <Chip key={x.id} tone="include" onClick={() => unlist.mutate({ kind, id: x.id, unlisted: false })}>
-                  {x.name} <X size={13} aria-label={`Show ${x.name} again`} />
-                </Chip>
-              ))}
-              {!items?.length && <span className="text-sm text-muted/70">None</span>}
-            </div>
-          </div>
-        ))}
-        {!!scenes?.length && (
-          <div>
-            <h4 className="mb-2 text-sm font-semibold text-muted">
-              Videos unlisted one by one <span className="font-normal">({scenes.length})</span>
-            </h4>
-            <ul className="max-w-xl divide-y divide-line rounded-xl bg-surface">
-              {scenes.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 p-2">
-                  <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
-                    <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
-                  </Link>
-                  <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{s.title}</div>
-                    <div className="truncate text-xs text-muted">{[s.studio?.name, s.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
-                  </Link>
-                  <Button onClick={() => unlistScene.mutate({ id: s.id, unlisted: false })}>Show again</Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function BlocklistSetting() {
-  const { data } = useBlocklist()
-  const block = useBlock()
-  return (
-    <section>
-      <h3 className="flex items-center gap-2 text-lg font-bold">
-        <Ban size={20} className="text-accent" /> Blocklist
-      </h3>
-      <p className="mt-1 text-sm text-muted">
-        Anything here is hidden from the home feed, browsing, search and related videos. A blocked performer, studio or
-        category still has its own page, and “Show blocked” on any list brings everything back for that list.
-      </p>
-      <BlockSearch />
-      <div className="mt-6 space-y-5">
-        {(
-          [
-            ['tag', 'Categories', data?.tags],
-            ['performer', 'Performers', data?.performers],
-            ['studio', 'Studios', data?.studios],
-          ] as [BlockKind, string, Ref[] | undefined][]
-        ).map(([kind, label, items]) => (
-          <div key={kind}>
-            <h4 className="mb-2 text-sm font-semibold text-muted">
-              {label} <span className="font-normal">({items?.length ?? 0})</span>
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {items?.map((x) => (
-                <Chip key={x.id} tone="exclude" onClick={() => block.mutate({ kind, id: x.id, blocked: false })}>
-                  {x.name} <X size={13} />
-                </Chip>
-              ))}
-              {!items?.length && <span className="text-sm text-muted/70">None</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function BlockSearch() {
-  const [q, setQ] = useState('')
-  const dq = useDebounced(q.trim(), 150)
-  const { data } = useSearch(dq)
-  const block = useBlock()
-  const { data: list } = useBlocklist()
-  const blocked = new Set([...(list?.tags ?? []), ...(list?.performers ?? []), ...(list?.studios ?? [])].map((x) => x.id))
-  const hits: { kind: BlockKind; id: string; name: string; sub: string }[] = data
-    ? [
-        ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, name: t.name, sub: 'Category' })),
-        ...data.performers.map((p) => ({ kind: 'performer' as const, id: p.id, name: p.name, sub: 'Performer' })),
-        ...data.studios.map((s) => ({ kind: 'studio' as const, id: s.id, name: s.name, sub: 'Studio' })),
-      ]
-    : []
-  return (
-    <div className="mt-4">
-      <label className="flex h-10 items-center gap-2 rounded-full bg-raised px-4 ring-1 ring-white/5 focus-within:ring-accent/60">
-        <Search size={16} className="text-muted" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Find a category, performer or studio to block"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
-        />
-      </label>
-      {dq.length >= 2 && (
-        <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
-          {hits.map((h) => (
-            <div key={`${h.kind}${h.id}`} className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-white/5">
-              <Link to={h.kind === 'tag' ? '/tag/$id' : h.kind === 'performer' ? '/performer/$id' : '/studio/$id'} params={{ id: h.id }} className="hover:text-accent">
-                {h.name}
-              </Link>
-              <span className="text-xs text-muted">{h.sub}</span>
               <button
                 onClick={() => block.mutate({ kind: h.kind, id: h.id, blocked: true })}
                 disabled={blocked.has(h.id)}
-                className="ml-auto rounded-full px-3 py-1 text-xs text-red-400 hover:bg-red-500/15 disabled:text-muted disabled:hover:bg-transparent"
+                className={clsx(mark, 'text-red-400 hover:bg-red-500/15')}
               >
                 {blocked.has(h.id) ? 'Blocked' : 'Block'}
               </button>
@@ -458,38 +344,64 @@ function BlockSearch() {
           {!hits.length && <div className="px-4 py-3 text-sm text-muted">No matches</div>}
         </div>
       )}
-    </div>
+      <h4 className="mt-6 flex items-center gap-2 font-semibold">
+        <VaultIcon size={16} className="text-accent" /> Unlisted
+      </h4>
+      <MarkLists marks={u} tone="include" verb="Show" onRemove={(kind, id) => unlist.mutate({ kind, id, unlisted: false })} />
+      {!!scenes?.length && (
+        <div className="mt-4">
+          <h5 className="mb-2 text-sm font-semibold text-muted">
+            Videos unlisted one by one <span className="font-normal">({scenes.length})</span>
+          </h5>
+          <ul className="max-w-xl divide-y divide-line rounded-xl bg-surface">
+            {scenes.map((s) => (
+              <li key={s.id} className="flex items-center gap-3 p-2">
+                <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
+                  <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
+                </Link>
+                <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{s.title}</div>
+                  <div className="truncate text-xs text-muted">{[s.studio?.name, s.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
+                </Link>
+                <Button onClick={() => unlistScene.mutate({ id: s.id, unlisted: false })}>Show again</Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <h4 className="mt-6 flex items-center gap-2 font-semibold">
+        <Ban size={16} className="text-red-400" /> Blocked from downloading
+      </h4>
+      <MarkLists marks={b} tone="exclude" verb="Unblock" onRemove={(kind, id) => block.mutate({ kind, id, blocked: false })} />
+    </section>
   )
 }
 
-// Videos marked "Not interested", so the mark can be undone.
-function HiddenSetting() {
-  const { data } = useHiddenScenes()
-  const hide = useHideScene()
-  if (!data?.length) return null
+function MarkLists({ marks, tone, verb, onRemove }: { marks?: Marks; tone: 'include' | 'exclude'; verb: string; onRemove: (kind: BlockKind, id: string) => void }) {
   return (
-    <section>
-      <h3 className="text-lg font-bold">Not interested</h3>
-      <p className="mt-1 max-w-xl text-sm text-muted">
-        Videos you marked “Not interested” (the tag <i>Not interested</i> in Stash). They stay out of every list until shown again.
-      </p>
-      <ul className="mt-3 max-w-xl divide-y divide-line rounded-xl bg-surface">
-        {data.map((s) => (
-          <li key={s.id} className="flex items-center gap-3 p-2">
-            <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
-              <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
-            </Link>
-            <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{s.title}</div>
-              <div className="truncate text-xs text-muted">{[s.studio?.name, s.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
-            </Link>
-            <Button onClick={() => hide.mutate({ id: s.id, hidden: false })}>
-              Show again
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div className="mt-2 space-y-4">
+      {(
+        [
+          ['tag', 'Categories', marks?.tags],
+          ['performer', 'Performers', marks?.performers],
+          ['studio', 'Studios', marks?.studios],
+        ] as [BlockKind, string, Ref[] | undefined][]
+      ).map(([kind, label, items]) => (
+        <div key={kind}>
+          <h5 className="mb-2 text-sm font-semibold text-muted">
+            {label} <span className="font-normal">({items?.length ?? 0})</span>
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {items?.map((x) => (
+              <Chip key={x.id} tone={tone} onClick={() => onRemove(kind, x.id)}>
+                {x.name} <X size={13} aria-label={`${verb} ${x.name}`} />
+              </Chip>
+            ))}
+            {!items?.length && <span className="text-sm text-muted/70">None</span>}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 

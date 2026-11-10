@@ -2,6 +2,7 @@ import type { BlockKind, Unlisted, WantedScene } from '@flix/shared'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { sdbScenes, unlisted } from './db/schema.ts'
+import { blocklist } from './blocklist.ts'
 import * as stash from './stash.ts'
 import { dataCache, type Exclusions, HOME, type UnlistedSets } from './stash.ts'
 
@@ -9,8 +10,8 @@ import { dataCache, type Exclusions, HOME, type UnlistedSets } from './stash.ts'
 // Stash tag) whose videos stay out of everything flix picks for you: Home and its rows, Featured,
 // related videos of anything not Unlisted for the same reasons, stations, the not-downloaded
 // shelf, category pictures, and the affinity behind recommendations. Browse, search, entity pages,
-// History and playlists still show them; the Vault lists only them. Never blocked at once: the
-// API clears one when the other is set.
+// History and playlists still show them; the Vault lists only them. Independent of Block, which
+// only stops downloads (decisions/hide-means-delete-block-or-unlist): one entity may be both.
 
 // Read on every listing; cached in memory and dropped on write (single replica).
 let cache: Unlisted | null = null
@@ -54,18 +55,21 @@ export function relatedSide(marks: Parameters<typeof stash.unlistedReasons>[0], 
   return reasons.size ? reasons : null
 }
 
-// The not-downloaded shelf on Home (StashDB scenes): drop those with an Unlisted performer or
-// studio (by their StashDB ids) or an Unlisted category (by name, case-insensitive; StashDB's tag
-// ids are not Stash's). Matched through flix's StashDB mirror, so a scene the mirror has never
-// seen is judged only by the followed performers it came from.
-export async function dropUnlistedWanted(items: WantedScene[]): Promise<WantedScene[]> {
-  const u = await unlistedList()
-  if (!items.length || (!u.tags.length && !u.performers.length && !u.studios.length)) return items
+// The not-downloaded shelf on Home (StashDB scenes): drop those with an Unlisted or blocked
+// performer or studio (by their StashDB ids) or such a category (by name, case-insensitive;
+// StashDB's tag ids are not Stash's). Matched through flix's StashDB mirror, so a scene the mirror
+// has never seen is judged only by the followed performers it came from.
+export async function dropHiddenWanted(items: WantedScene[]): Promise<WantedScene[]> {
+  const [u, b] = await Promise.all([unlistedList(), blocklist()])
+  const tags = [...u.tags, ...b.tags]
+  const performers = [...u.performers, ...b.performers]
+  const studios = [...u.studios, ...b.studios]
+  if (!items.length || (!tags.length && !performers.length && !studios.length)) return items
   const [perfIds, studioIds] = await Promise.all([
-    Promise.all(u.performers.map((p) => stash.stashIdsOf('performer', p.id).catch(() => []))).then((x) => new Set(x.flat())),
-    Promise.all(u.studios.map((s) => stash.stashIdsOf('studio', s.id).catch(() => []))).then((x) => new Set(x.flat())),
+    Promise.all(performers.map((p) => stash.stashIdsOf('performer', p.id).catch(() => []))).then((x) => new Set(x.flat())),
+    Promise.all(studios.map((s) => stash.stashIdsOf('studio', s.id).catch(() => []))).then((x) => new Set(x.flat())),
   ])
-  const tagNames = new Set(u.tags.map((t) => t.name.toLowerCase()))
+  const tagNames = new Set(tags.map((t) => t.name.toLowerCase()))
   const ids = items.map((i) => i.stashdbId).filter((x): x is string => !!x)
   const rows = ids.length ? await db.select({ id: sdbScenes.id, performerIds: sdbScenes.performerIds, studioId: sdbScenes.studioId, tags: sdbScenes.tags }).from(sdbScenes).where(inArray(sdbScenes.id, ids)) : []
   const byId = new Map(rows.map((r) => [r.id, r]))

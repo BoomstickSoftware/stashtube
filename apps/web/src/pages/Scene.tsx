@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, ExternalLink, EyeOff, FolderOpen, ListVideo, ListX, Radio, Trash2, Vault } from 'lucide-react'
+import { Droplet, ExternalLink, FolderOpen, ListVideo, ListX, Radio, Trash2, Vault } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { CastLine } from '../components/CastLine'
@@ -13,7 +13,7 @@ import { EditableTitle, IdentifyButton, TagEditor } from '../components/SceneEdi
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, Spinner, Stars, Switch } from '../components/ui'
-import { cachedCard, useAddO, useClearContinue, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useHideScene, useSceneEdits, useUnlistScene } from '../lib/api'
+import { cachedCard, useAddO, useClearContinue, useFeatures, usePlaylist, useRateScene, useRelated, useScene, useSettings, useSceneEdits, useUnlistScene } from '../lib/api'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { nowPlaying } from '../lib/nowPlaying'
@@ -44,7 +44,6 @@ function SceneView({ id }: { id: string }) {
   const playlist = usePlaylist(playlistId)
   const rate = useRateScene()
   const addO = useAddO()
-  const hide = useHideScene()
   const unlist = useUnlistScene()
   const clearContinue = useClearContinue()
   const edits = useSceneEdits(id)
@@ -167,27 +166,6 @@ function SceneView({ id }: { id: string }) {
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
           <button
             onClick={() => {
-              const hidden = !scene.hidden
-              hide.mutate({ id: scene.id, hidden })
-              if (hidden)
-                showToast(
-                  'Marked not interested',
-                  <button onClick={() => hide.mutate({ id: scene.id, hidden: false })} className="rounded-full bg-raised px-3 py-1 text-xs font-semibold hover:bg-line">
-                    Undo
-                  </button>,
-                )
-            }}
-            title={scene.hidden ? 'Hidden from every list; show it again' : 'Not interested: keep it out of every list'}
-            aria-pressed={scene.hidden}
-            className={clsx(
-              'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm hover:bg-line',
-              scene.hidden ? 'bg-red-500/15 text-red-300' : 'bg-raised',
-            )}
-          >
-            <EyeOff size={17} /> {scene.hidden ? 'Not interested ✓' : 'Not interested'}
-          </button>
-          <button
-            onClick={() => {
               const on = !scene.unlisted
               unlist.mutate({ id: scene.id, unlisted: on })
               if (on)
@@ -299,7 +277,7 @@ function SceneView({ id }: { id: string }) {
           {features?.deleteScenes && (
             <button
               onClick={() => setDeleting(true)}
-              title="Delete video"
+              title="Not interested? Delete the video (it will not be downloaded again)"
               className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm text-red-400 hover:bg-red-500/15"
             >
               <Trash2 size={17} /> Delete

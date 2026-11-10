@@ -4,26 +4,19 @@ import { db } from './db/index.ts'
 import { blocks } from './db/schema.ts'
 import { unlistedSets } from './unlisted.ts'
 import { getSettings } from './settings.ts'
-import { dataCache, type Exclusions, firstSceneYear, hiddenTag, HOME } from './stash.ts'
+import { dataCache, type Exclusions, firstSceneYear, HOME } from './stash.ts'
 
-// Read on every listing; cached in memory and invalidated on write (single replica).
-let cache: Exclusions | null = null
-
-// Also carries the Settings performer defaults (age, ethnicity), which every list applies.
+// What every library list applies: the Settings performer defaults (age, ethnicity) and the
+// Unlisted sets. The blocklist is not in it: since 2026-11-09 Block only stops downloads
+// (Discover, the not-downloaded shelf, the Get queue), and videos you have show as normal
+// (decisions/hide-means-delete-block-or-unlist). tags/performers/studios start empty and carry a
+// query's own excludes.
 export async function exclusions(): Promise<Exclusions> {
-  if (!cache) {
-    const rows = await db.select().from(blocks)
-    cache = {
-      tags: rows.filter((r) => r.kind === 'tag').map((r) => r.stashId),
-      performers: rows.filter((r) => r.kind === 'performer').map((r) => r.stashId),
-      studios: rows.filter((r) => r.kind === 'studio').map((r) => r.stashId),
-    }
-  }
-  // videos marked "Not interested" stay out like a blocked tag
-  const [settings, hidden, firstYear, unlisted] = await Promise.all([getSettings(), hiddenTag(), firstSceneYear(), unlistedSets()])
+  const [settings, firstYear, unlisted] = await Promise.all([getSettings(), firstSceneYear(), unlistedSets()])
   return {
-    ...cache,
-    tags: hidden ? [...cache.tags, hidden] : cache.tags,
+    tags: [],
+    performers: [],
+    studios: [],
     // no gender: the Performers page's switch is that page's alone (gender-switch-performers-page-only)
     people: { firstYear, ...settings.people },
     // known to every query (the Vault asks for them); held out only where curated() says so
@@ -37,15 +30,13 @@ export async function blocklist(): Promise<Blocklist> {
   return { tags: of('tag'), performers: of('performer'), studios: of('studio') }
 }
 
-// Lists are keyed by their exclusions, so they miss on their own; the cached home feed is not.
+// The cached home feed carries the not-downloaded shelf's neighbours; drop it on a change.
 export async function block(kind: BlockKind, stashId: string, name: string) {
   await db.insert(blocks).values({ kind, stashId, name }).onConflictDoNothing()
-  cache = null
   dataCache.invalidate(HOME)
 }
 
 export async function unblock(kind: BlockKind, stashId: string) {
   await db.delete(blocks).where(and(eq(blocks.kind, kind), eq(blocks.stashId, stashId)))
-  cache = null
   dataCache.invalidate(HOME)
 }

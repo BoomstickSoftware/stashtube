@@ -24,7 +24,7 @@ it was eleven untitled sections in one 3,600 px column that opened on the Clean 
 
 | Group | Holds | Stored |
 |---|---|---|
-| **Library** | the Clean up and Duplicates cards (their only entry points, [[cleanup-page]], [[duplicates-workbench]]); the follow sync switch and its last run (shown only with Whisparr, [[whisparr-sync]]); Leave VR scenes out of Discover ([[discover]]); Unlisted (search to unlist, chips to relist, the videos unlisted by hand, [[vault]]); the Blocklist (search to block, chips to unblock, grouped Categories / Performers / Studios, [[blocklist-and-exclusions]]); Not interested (shown only when a video is marked) | Postgres `blocks`, `unlisted`, `settings.whisparrSync` and `settings.hideVr`; the Not interested tag in Stash |
+| **Library** | the Clean up and Duplicates cards (their only entry points, [[cleanup-page]], [[duplicates-workbench]]); the follow sync switch and its last run (shown only with Whisparr, [[whisparr-sync]]); Leave VR scenes out of Discover ([[discover]]); **Hidden** (`#hidden`, since 2026-11-09: one search with Unlist and Block per hit; the Unlisted lists and the videos unlisted by hand, [[vault]]; "Blocked from downloading" grouped Categories / Performers / Studios, [[blocklist-and-exclusions]]; _separate Unlisted, Blocklist and Not interested sections before_) | Postgres `blocks`, `unlisted`, `settings.whisparrSync` and `settings.hideVr` |
 | **Feed** | Performer preferences (age at filming, ethnicity: defaults for every list, the home feed and related videos); Featured dials with a live preview and a Save button that toasts "Saved" ([[featured-ranking]]) | `settings` table (`people`, `featured`) |
 | **Playback** | Start playing when I open a video; Keep playing while browsing ([[mini-player]]). Quality, speed and intro skip are in the player's gear menu | `playOnOpen` shared; Keep playing per browser |
 | **Privacy** | Private session (same switch as the header's ghost, [[private-session]]); Discreet (same switch as the header's eye, [[discreet-mode]]); PIN lock ([[pin-lock]]) | sessionStorage; localStorage `flix.discreet`; localStorage |
@@ -39,8 +39,8 @@ it was eleven untitled sections in one 3,600 px column that opened on the Clean 
 - Two components hold the same localStorage key (the header's eye and the Discreet switch):
   `useStored` announces every write on `window` (`flix:stored`) and every other holder of the
   key re-reads, so both switches move together (`lib/storage.ts`, since 2026-10-31).
-- Headings: `h1` Settings, `h2` per group, `h3` per section, `h4` inside Privacy and the
-  Blocklist; the shortcut groups keep their `h3`s.
+- Headings: `h1` Settings, `h2` per group, `h3` per section, `h4` inside Privacy and
+  Hidden; the shortcut groups keep their `h3`s.
 
 ## Copy rules applied here
 

@@ -4,7 +4,7 @@
 //
 // What it stops: plays and play time, resume points, "Mark as watched", ratings, the O counter
 // and markers dropped from the player, and where a station is left. Deliberate library acts
-// (favourites, playlists, Not interested, deletes, metadata edits) still go through: they are
+// (favourites, playlists, unlisting, deletes, metadata edits) still go through: they are
 // curation, not a trace of this viewing.
 import { useSyncExternalStore } from 'react'
 import { showToast } from './toast'

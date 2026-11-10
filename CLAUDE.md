@@ -104,9 +104,10 @@ Each has a wiki page with the full story; these are the one-line versions.
    (`wiki/architecture/data-model.md`, `wiki/decisions/stash-owns-activity.md`).
 3. **The web app knows only `@flix/shared` types**, never Stash shapes. `stash.ts` is the only file
    that knows Stash's schema (`wiki/architecture/stash-layer.md`).
-4. **The blocklist applies to every list, search, feed and related query** unless `unblocked=1`;
-   playlists, which you fill by hand, are the exception (`wiki/architecture/blocklist-and-exclusions.md`,
-   `wiki/decisions/playlists-ignore-blocklist.md`).
+4. **Block stops downloads, Unlist keeps owned videos off what flix picks, Not interested deletes.**
+   The blocklist applies to Discover, the not-downloaded shelf and the automatic Gets, never to
+   library lists; library finders call `exclusions()` and feeds `curated()`
+   (`wiki/architecture/blocklist-and-exclusions.md`, `wiki/decisions/hide-means-delete-block-or-unlist.md`).
 5. **Server code is erasable TypeScript**; the other coding conventions and their pitfalls are in
    `wiki/architecture/coding-conventions.md` and `wiki/gotchas/`.
 6. **The iPhone (17 Pro Max) is the primary client: polish it over everything else; the desktop

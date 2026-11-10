@@ -42,8 +42,8 @@ day (resume point 0 through `POST /api/scenes/:id/activity`; plays untouched): 4
     after start, daily, and right after the setting changes.
   - **Mark as watched** (`POST /api/scenes/:id/watched`) counts one play and clears the resume
     point; the card menu offers it on unwatched videos and on any with a resume point.
-- History and Stats leave out blocked and "Not interested" videos
-  ([[blocklist-and-exclusions]]).
+- History and Stats show every video (_they left out blocked and "Not interested" ones until
+  2026-11-09_, [[blocklist-and-exclusions]]).
 - One cached query of every touched video feeds History, Stats and "For you"; cold it takes
   ~0.06 s (Stats answered in 0.05–0.15 s cold, 0.5 s before 2026-10-31, when it also asked
   Stash to count each tag's scenes; see [[featured-ranking]]).

@@ -1,10 +1,12 @@
 import type { SceneQuery } from '@flix/shared'
-import type { JSX } from 'react'
+import { useState, type JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { Copy, Trash2 } from 'lucide-react'
+import { Copy, EyeOff, Trash2 } from 'lucide-react'
+import { sized } from '@flix/shared'
+import { DeleteScenesDialog } from '../components/DeleteScenes'
 import { SceneBrowser } from '../components/SceneBrowser'
-import { Chip, Empty } from '../components/ui'
-import { useFeatures } from '../lib/api'
+import { Button, Chip, Empty } from '../components/ui'
+import { useFeatures, useHiddenScenes, useKeepScene } from '../lib/api'
 
 const route = getRouteApi('/cleanup')
 
@@ -32,7 +34,7 @@ export function Cleanup(): JSX.Element {
           <Trash2 size={26} className="text-red-400" /> Clean up
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Pick a list or filter, select videos, then Delete. Blocked videos are included.
+          Pick a list or filter, select videos, then Delete.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {lists.map((l, i) => (
@@ -49,11 +51,52 @@ export function Cleanup(): JSX.Element {
           </Link>
         </div>
       </section>
+      {features?.deleteScenes && <NotInterested />}
       {features && !features.deleteScenes ? (
         <Empty>Deleting needs Whisparr: set WHISPARR_URL and WHISPARR_API_KEY on the server.</Empty>
       ) : (
         <SceneBrowser query={query} onChange={onChange} base={{ unblocked: true }} defaultSort="created_at" alwaysSelecting />
       )}
     </div>
+  )
+}
+
+// Videos marked "Not interested" before it meant delete (2026-11-09,
+// decisions/hide-means-delete-block-or-unlist): delete them, or Keep one to take the mark off.
+// Gone once the list is empty.
+function NotInterested() {
+  const { data } = useHiddenScenes()
+  const keep = useKeepScene()
+  const [deleting, setDeleting] = useState(false)
+  if (!data?.length) return null
+  return (
+    <section className="mb-6 rounded-2xl bg-surface p-4 ring-1 ring-line">
+      <h2 className="flex items-center gap-2 font-bold">
+        <EyeOff size={18} className="text-red-400" /> Marked “Not interested” ({data.length})
+      </h2>
+      <p className="mt-1 max-w-xl text-sm text-muted">
+        Not interested now deletes. These were marked before that and are back in your lists: delete them, or keep the ones you want.
+      </p>
+      <ul className="mt-3 max-w-xl divide-y divide-line">
+        {data.map((s) => (
+          <li key={s.id} className="flex items-center gap-3 py-2">
+            <Link to="/scene/$id" params={{ id: s.id }} className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-raised">
+              <img src={sized(s.screenshot, 320)} alt="" loading="lazy" className="size-full object-cover" />
+            </Link>
+            <Link to="/scene/$id" params={{ id: s.id }} className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{s.title}</div>
+              <div className="truncate text-xs text-muted">{[s.studio?.name, s.performers.map((p) => p.name).join(', ')].filter(Boolean).join(' · ')}</div>
+            </Link>
+            <Button onClick={() => keep.mutate({ id: s.id })} disabled={keep.isPending}>
+              Keep
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <Button variant="danger" onClick={() => setDeleting(true)} className="mt-3">
+        <Trash2 size={16} /> Delete all {data.length}…
+      </Button>
+      {deleting && <DeleteScenesDialog scenes={data.map((s) => ({ id: s.id, title: s.title, size: s.size }))} onClose={() => setDeleting(false)} onDeleted={() => {}} />}
+    </section>
   )
 }

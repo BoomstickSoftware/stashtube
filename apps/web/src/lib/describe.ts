@@ -63,7 +63,7 @@ export function describeQuery(q: SceneQuery, names: Names): QueryPart[] {
   if (q.unmatched) plain('unmatched', 'Not on StashDB', { unmatched: undefined })
   if (q.olderDays) plain('olderDays', `Added ${q.olderDays}+ days ago`, { olderDays: undefined })
   if (q.duplicates) plain('duplicates', 'Possible duplicates', { duplicates: undefined })
-  if (q.unblocked) plain('unblocked', 'Showing blocked', { unblocked: undefined })
+  if (q.unblocked) plain('unblocked', 'Performer defaults off', { unblocked: undefined })
   return out
 }
 

@@ -191,12 +191,13 @@ function noteResume(id: string, resumeTime: number) {
   qc.invalidateQueries({ predicate: inProgressList })
 }
 
-// "Not interested": hides one video from every list; Settings lists them to undo.
+// Videos still tagged "Not interested" from before it meant delete (2026-11-09): Cleanup lists
+// them to delete or keep; Keep takes the tag off.
 export const useHiddenScenes = () => useQuery({ queryKey: ['hidden'], queryFn: () => get<SceneCard[]>('/scenes/hidden') })
-export function useHideScene() {
+export function useKeepScene() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, hidden }: { id: string; hidden: boolean }) => send(hidden ? 'PUT' : 'DELETE', `/scenes/${id}/hidden`),
+    mutationFn: ({ id }: { id: string }) => send('DELETE', `/scenes/${id}/hidden`),
     onSuccess: (_r, { id }) => {
       invalidateLists(qc)
       qc.invalidateQueries({ queryKey: ['hidden'] })

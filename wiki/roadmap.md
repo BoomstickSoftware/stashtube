@@ -44,10 +44,8 @@ From [[2026-11-09-strategy-review]]. One initiative each ([[one-commit-per-initi
 - **A. Cache tags** (S): done, [[2026-11-09-cache-tags-round]].
 - **B. Continue reset** (S–M): done, [[2026-11-09-continue-reset]] ([[continue-history-stats]]).
 - **C. Background load** (S–M): done, [[2026-11-09-background-load]].
-- **D. One "Hide" model** (M), decision [[hide-means-delete-block-or-unlist]]: Not interested
-  opens the delete; Block covers downloads only; Unlist unchanged; one Hidden view (Vault,
-  Blocked) replaces the two Settings sections; the old "Not interested" tag's videos listed once
-  in Cleanup.
+- **D. One "Hide" model** (M): done, [[2026-11-09-hide-model]] (decision
+  [[hide-means-delete-block-or-unlist]]); the Hidden section stays in Settings until G.
 - **E. Scene page "⋯" sheet** (S): Stars, O, Favorite, Playlist stay in the row; the rest
   (Unlist, Mark as watched, Remove from Continue, Identify, Delete) in a sheet shared with
   `CardMenu`.

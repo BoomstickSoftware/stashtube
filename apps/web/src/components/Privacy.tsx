@@ -19,7 +19,7 @@ export function PrivacySetting() {
           <span className="block text-sm font-medium">Record nothing I watch</span>
           <span className="mt-0.5 block text-sm text-muted">
             Nothing you watch is recorded until you close flix: no plays, history or resume points, no station spots, and the
-            rating, O and marker buttons do nothing. Favorites, follows, playlists and Not interested still work. The ghost in the
+            rating, O and marker buttons do nothing. Favorites, follows, playlists and deletes still work. The ghost in the
             header turns it on and off too.
           </span>
         </span>

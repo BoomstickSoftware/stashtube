@@ -26,8 +26,9 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
   `Cast: Unknown` when it has no performers or one without a gender (nothing else is claimed then).
 - **Counts**, cumulative: `Cast: Women 1+`, `2+`, `3+`; `Cast: Men 1+`, `2+`, `3+`;
   `Cast: Other 1+`, `2+`. Two women and a man carry Women 1+, Women 2+ and Men 1+.
-- **Settings → Library → Cast**: each mix with its count and Normal / Unlisted / Blocked (the
-  category's own block and unlist); the last sync; Sync now.
+- **Settings → Library → Cast**: each mix with its count and Normal / Unlisted (the category's
+  unlist; _Blocked too until 2026-11-09_, when Block came to mean downloads only and StashDB
+  scenes carry no Cast categories; either choice clears an old block); the last sync; Sync now.
 - **Browse → Filters → Cast**: Women and Men each Any / None / 1+ / 2+ / 3+ / Exactly 1 / 2,
   Other Any / None / 1+ / 2+ / Exactly 1, and Mix chips (any of, with counts). `CastFilter.tsx`
   writes them as the includes and excludes in the table below into `tags` / `xtags` and reads
@@ -37,7 +38,9 @@ parent **Cast**, which every filter, the blocklist and Unlisted already understa
   ([[data-model]]) and runs the sync, so the categories follow in about 3 s. For a video whose
   performers in Stash miss someone (one not on StashDB). Settings → Cast lists them under "Set
   by hand", each with Use performers. Since 2026-11-09.
-- **`Cast: M` is blocked** by the first sync (once; `settings.castSetup`), as the user chose. A
+- **`Cast: M` was blocked** by the first sync (once; `settings.castSetup`), as the user chose,
+  which hid men-only videos until 2026-11-09; the block now does nothing
+  ([[hide-means-delete-block-or-unlist]]) and was left at the user's word (no such videos). A
   solo male scene is `Cast: M` too (merged, by choice).
 
 | Question | Filter |

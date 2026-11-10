@@ -310,7 +310,7 @@ function FilterBar({
 // Settings › Feed › Performer preferences (age, ethnicity) shorten every list without showing
 // in its filters, so a short list looked unexplained; when they apply to this one, a dim chip
 // says so and leads to the setting. They do not apply when the list has its own People filter
-// or shows blocked videos (the server's rule, blocklist-and-exclusions).
+// or turns the defaults off (`unblocked`, the server's rule, blocklist-and-exclusions).
 function PeopleDefaultsChip({ query, className }: { query: SceneQuery; className?: string }) {
   const { data: settings } = useSettings()
   const p = settings?.people

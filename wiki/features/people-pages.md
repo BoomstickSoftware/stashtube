@@ -5,7 +5,7 @@ summary: The entity pages and directories, what follow, pin and block mean on ea
 tags: [performers, studios, tags, directories, favorites]
 status: current
 verified: 2026-10-31
-updated: 2026-11-02
+updated: 2026-11-09
 routes: [/performers, /performer/$id, /studios, /studio/$id, /tags, /tag/$id]
 api: [GET /api/performers, GET /api/performers/:id, PUT /api/performers/:id/favorite, PUT /api/performers/:id/rating, GET /api/studios, GET /api/studios/:id, PUT /api/studios/:id/favorite, PUT /api/studios/:id/intro, GET /api/tags, GET /api/tags/tiles, GET /api/tags/:id, PUT /api/tags/:id/favorite, PUT /api/blocklist/:kind/:id]
 code: [apps/web/src/pages/Directories.tsx, apps/web/src/pages/Performer.tsx, apps/web/src/pages/Studio.tsx, apps/web/src/pages/Tag.tsx, apps/web/src/components/EntityHeader.tsx, apps/web/src/components/People.tsx, apps/server/src/api.ts]
@@ -43,9 +43,9 @@ only from their page or the table view.
   ([[stash-owns-activity]]). With the follow sync on, a followed performer's new releases are
   monitored in Whisparr and the page shows "Watching for new scenes" ([[whisparr-sync]]). Video hearts are different: a flix playlist
   ([[playlists-and-favorites]]).
-- **Rating** (performers), **Block** (hidden everywhere, [[blocklist-and-exclusions]]; one tap,
-  then a toast "Blocked <name> everywhere · Undo" like Not interested's, _no Undo until
-  2026-10-31_), **Add to
+- **Rating** (performers), **Block** (never download more of them; their videos you have still show,
+  [[blocklist-and-exclusions]]; one tap, then a toast "Blocked: flix won't download more of
+  <name> · Undo"; _hid them everywhere until 2026-11-09_), **Add to
   filters** (stacks it, [[browse-and-filters]]), **Station** from this entity's videos
   ([[stations]]).
 - **About** (performers): a ghost `Button` like its neighbours, with the number of facts and

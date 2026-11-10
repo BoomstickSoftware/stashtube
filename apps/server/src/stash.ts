@@ -1029,11 +1029,10 @@ export async function destroyScene(id: string) {
   }
 }
 
-// "Not interested": a Stash tag flix puts on a video and keeps out of every list (the blocklist
-// machinery excludes it; Settings lists the videos, so it can be undone). Created on first use;
-// its id is looked up once for the exclusions and remembered.
 // A Stash tag flix reserves for a mark on one video, created on first use (`create`) and looked
-// up once. "Not interested" (blocked like a blocked tag) and "Unlisted" (wiki features/vault).
+// up once. "Unlisted" (wiki features/vault) and the retired "Not interested": until 2026-11-09 it
+// hid a video from every list; now Cleanup lists what still carries it, to delete or keep
+// (decisions/hide-means-delete-block-or-unlist).
 function reservedTag(name: string) {
   let id: string | null | undefined
   let lookup: Promise<string | null> | null = null // shared by the requests that arrive before it is known
