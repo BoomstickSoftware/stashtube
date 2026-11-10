@@ -156,6 +156,9 @@ const syncCategories = () => syncCast().then(syncStudioCategories)
 onStashChange(() => void syncCategories().finally(warm))
 onStashChange(scheduleSweep())
 setTimeout(() => void syncCategories(), 90_000).unref() // and are checked once after start
+// and every hour, used or not: change detection polls only while flix is in use, so an import
+// that lands while nobody is looking would otherwise wait for the next visit.
+setInterval(() => void syncCategories(), 60 * 60_000).unref()
 startContinueExpiry() // resume points untouched for 30 days leave Continue (continue.ts)
 startSync() // the Whisparr guard: a few minutes after start, then every 15 minutes (sync.ts)
 startGetQueue() // paced Gets, weekly re-search of waiting scenes, daily discovery (getqueue.ts)

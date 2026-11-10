@@ -4,8 +4,8 @@ kind: feature
 summary: Categories set on a studio's page that flix keeps on every one of its videos; add-only, put back if removed, taken off only where flix added them.
 tags: [studios, tags, stash, sync]
 status: current
-verified: 2026-11-09
-updated: 2026-11-09
+verified: 2026-11-10
+updated: 2026-11-10
 routes: [/studio/$id, /settings]
 api: [GET /api/studios/:id/categories, PUT /api/studios/:id/categories, GET /api/studio-categories, POST /api/studio-categories/sync]
 code: [apps/server/src/studioCategories.ts, apps/server/src/stash.ts, apps/server/src/index.ts, apps/web/src/components/StudioCategories.tsx, apps/web/src/components/CategorySearch.tsx, apps/web/src/lib/api/studioCategories.ts]
@@ -37,9 +37,18 @@ A category deleted in Stash drops out of every studio's list. Stash is written b
 so a failure leaves a category flix will not later remove, never the reverse. Runs one at a
 time; a call during a run waits for one more run.
 
-It runs 90 s after start and after each Stash change, after the Cast sync and before the
-re-warm (`index.ts`); on save; and from **Settings › Library › Studio default categories**
-(each studio and its list, the last sync, Sync now).
+It runs, always after the Cast sync (`index.ts`):
+
+- on save (the studio's existing videos);
+- after Stash changes, before the re-warm. Change detection polls every minute **only while flix
+  is in use** (a request in the last 10 min) and fires once Stash has been quiet for two polls,
+  at most every 5 min ([[caching]]). An import keeps Stash changing, so a new download gets its
+  categories a few minutes after it lands, not at once;
+- 90 s after start, and **every hour whether flix is in use or not**, so an import that lands
+  while nobody is looking is filed within the hour (_until 2026-11-10 it waited for the next
+  visit_);
+- from **Settings › Library › Studio default categories** (each studio and its list, the last
+  sync, Sync now).
 
 Stored in Postgres: `studio_categories` (studio, tag, both names) and `studio_category_adds`
 (scene, tag) ([[data-model]]).

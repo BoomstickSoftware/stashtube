@@ -397,3 +397,6 @@ User decisions: defaults stored in flix (not Stash's studio tags), own videos on
 
 ## [2026-11-09] correct | Performer search 422 after StashDB schema change
 Discover performer search 500'd (StashDB HTTP 422), then tripped the 5-minute pause for all StashDB calls. StashDB's searchPerformers now returns { count performers facets }. Query fixed; gql() keeps the 422 reason. Pages: gotchas/stashdb-http-422-schema-change, stashdb-mirror.
+
+## [2026-11-10] correct | Studio default categories: when they apply, hourly sync
+User saw two new downloads lack a studio's default category until Sync now. Not a fault: the change-triggered sync waits for two quiet polls and at most one run per 5 min, and the user clicked first. Gap found: change detection polls only while flix is in use, so imports while idle waited for the next visit. User asked for an hourly sync regardless of use; added in index.ts. Page: features/studio-default-categories.
