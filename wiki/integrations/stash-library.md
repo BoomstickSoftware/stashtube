@@ -5,7 +5,7 @@ summary: The library flix shows: the two scanned folders, the path-based saved f
 tags: [stash, library, stashdb, media]
 status: current
 verified: 2026-10-30
-updated: 2026-11-04
+updated: 2026-11-10
 sources: [nas:docs/services.md, nas:docs/operations.md, nas:docs/history/2026-10-29-agent-red-girl-import.md]
 related: [stash-api, nfs-media, whisparr-api, stashdb, delete-via-whisparr, duplicates-workbench]
 ---
@@ -33,6 +33,7 @@ flix assumes about the library.
 | Date | Fact |
 |---|---|
 | 2026-10-26 | 477 of 520 files mp4/h264/aac; the other 43 (mkv hevc/h264-ac3, avi mpeg4, wmv vc1, av1) transcode in browsers ([[player]]) |
+| 2026-11-10 | 2,990 scenes. Container: 2,730 mp4, 124 avi, 94 mkv, 42 wmv. Video: 2,748 h264, 124 mpeg4, 73 hevc, 42 vc1, 3 av1. Audio: 2,814 aac, 123 mp3, 42 wmav2, 6 ac3, 2 eac3, 1 opus, 1 flac. 2,730 are h264 in mp4 (91%); no hevc is in mp4. Height: 746 at 4K, 2,055 at 1080p, 189 below (`neutral.mjs stash q`, counts only) |
 | 2026-10-29 | Whisparr files, Stash scene files and the files on disk were the same 1,940 paths |
 | 2026-10-30 | 2,207 scenes, 2,204 with a perceptual hash; no duplicate groups at distance 0, 4 or 8 ([[duplicates-workbench]]) |
 | 2026-10-30 | the library has no user-made markers yet (seek-bar ticks were verified with patched data) |

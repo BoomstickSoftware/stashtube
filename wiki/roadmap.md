@@ -259,6 +259,17 @@ Whisparr responses, a typed route map in `@flix/shared`. The pre-push hook is in
   refresh, the card-to-player transition.
 - About 130 raw buttons onto `Button` / `IconButton`, a screen at a time.
 
+## Reels (agreed 2026-11-10, not started)
+
+Plan and every decision: [[reels-edit-by-reference]]. Phases, each gated on the one before:
+
+- **0. Measure**: encode benchmark on a worker; two-clip playback spike on the iPhone.
+- **1. Reels in the app**: ranges, reels, timeline and trimmer, transitions, live preview.
+- **2. Compatibility badge**: plays everywhere / on this device / transcodes.
+- **3. Build pipeline**: the worker, the reels folder, the job, queue and progress.
+- **4. Review and listing**: the Home strip, proposed details, approval, Browse and search.
+- **5. Refinement**: dissolves in the build, reels proposed from markers, cropping baked-in bars.
+
 ## Stash and Whisparr operations (moved from the nas repo, 2026-11-02)
 
 Stash and Whisparr are run from here now (`private/wiki/integrations/stash-instance.md`, `private/wiki/integrations/whisparr-instance.md`,

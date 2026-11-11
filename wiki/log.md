@@ -433,3 +433,6 @@ From the user's phone: the card-to-player growth did not show, the rename sheet 
 
 ## [2026-11-10] correct | A pull updates the app; a long press no longer taps a menu item on release
 The phone had stayed on an older build while testing (the update check skips while a video plays), and a long press low on the screen could trigger the item under the finger. Pages: [[installable-app]], [[ui-system]].
+
+## [2026-11-10] decide | Reels: edit by reference, build on request, review before listing
+The user agreed the reels plan after three revisions; nothing built. Also recorded: the codec census (2,990 scenes). Pages: [[reels-edit-by-reference]], [[roadmap]], [[stash-library]].
