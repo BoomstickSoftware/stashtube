@@ -451,3 +451,9 @@ The user moved the build from a k8s worker to the NAS after the benchmark: cron 
 
 ## [2026-11-11] correct | Reels builds are orchestrated by flix, not a NAS cron job
 The NAS crontab does not survive a reboot; flix owns the window and pacing, a builder container on the NAS executes. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels: Build now stays, offers stop at 05:00, the builder calls flix by IP
+A build in progress at 05:00 finishes on its own; the builder's call is unauthenticated. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Reels: Quick Sync against x264 on the NAS, speed, size and likeness
+Five settings on two sources; Quick Sync matches x264 slow's likeness at QP 18 for 1.5 to 2 times the bits. Pages: [[reels-engineering-roadmap]].

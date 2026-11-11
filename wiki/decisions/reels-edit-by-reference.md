@@ -43,14 +43,17 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
 - **Transitions**: cut and fade through black ship first; dissolve later. The design stores a
   reel default and a per-join override from day one.
 - **Build**: on the NAS (decided 2026-11-11, after the M0 benchmark: Quick Sync there is 14 to
-  33 times faster than x264 on two cluster CPUs). **flix orchestrates**: from **02:00 US
-  Eastern** it hands out queued reels **one at a time with a 5-minute pause between builds**,
-  until the queue is empty or **06:00**, whichever comes first. Not a NAS cron job: the NAS's
+  33 times faster than x264 on two cluster CPUs). **flix orchestrates**: a builder container on the NAS
+  asks flix for work with a plain unauthenticated API call, to flix's **IP and port, not its
+  hostname**. flix offers a **"Build now"** reel at any hour; otherwise it offers queued reels
+  only from **02:00 US Eastern**, **one at a time with a 5-minute pause between builds**, and
+  **stops offering new ones at 05:00**. A build in progress then finishes on its own; nothing
+  is cut off. Not a NAS cron job: the NAS's
   crontab does not survive a reboot or firmware update without a restore step (the user,
   2026-11-11). The NAS only executes. Each clip and each transition renders to its own intermediate, so a build
   resumes and an edit rebuilds only what changed. Output goes to a new folder; the library
   stays read-only to the build. _Was, until 2026-11-11: a Kubernetes job on a dedicated
-  8-vCPU worker, 01:00 to 06:00, with "Build now" per reel._
+  8-vCPU worker, 01:00 to 06:00. "Build now" per reel was kept._
 - **Skipped**: the AirPlay receiver test. The first real reel is the test.
 
 ## Consequences
@@ -59,9 +62,8 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
   folder);
   the k8s worker, its namespace and the job permissions are no longer needed. flix exposes
   the queue over its API and reads the built files.
-- Open after the move (the user's to settle): whether "Build now" remains; whether the
-  hardware encoder's picture is good enough or the build uses software x264 on the NAS
-  (as slow as the cluster was); what happens to a build still running at 06:00.
+- Open after the move (the user's to settle): the encoder and its quality setting, chosen
+  from a side-by-side demo of Quick Sync and x264 renders of the same footage.
 - Earlier estimates (about real time on 8 vCPUs) are replaced by the measurements below.
 - Phase 0 before any build work: an encode benchmark on a worker and a two-clip playback spike
   on the iPhone (cut, fade, dissolve). Then: reels in the app, a compatibility badge, the build

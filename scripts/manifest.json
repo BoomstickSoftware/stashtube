@@ -470,10 +470,10 @@
       "usage": [
         "node scripts/encode-bench.mjs --pick 1080 --cpus 2",
         "node scripts/encode-bench.mjs --pick 2160 --node talos-eb5-wpp",
-        "node scripts/encode-bench.mjs --scene 3079 --seconds 30 --preset medium --dry-run", "node scripts/encode-bench.mjs --nas --encoder vaapi --scene 3079"
+        "node scripts/encode-bench.mjs --scene 3079 --seconds 30 --preset medium --dry-run", "node scripts/encode-bench.mjs --nas --encoder vaapi|x264|copy [--qp 20] [--crf 18] [--ssim] [--keep <dir outside git>] --scene 3079"
       ],
       "env": [],
-      "writes": "a temporary pod in the flix namespace (pulls mwader/static-ffmpeg from Docker Hub), deleted afterwards; with --nas a temporary file in the Stash container's /tmp on the NAS (over ssh dtr), removed afterwards; nothing in the library",
+      "writes": "a temporary pod in the flix namespace (pulls mwader/static-ffmpeg from Docker Hub), deleted afterwards; with --nas a temporary file in the Stash container's /tmp on the NAS (over ssh dtr), removed afterwards; with --keep the result is copied into the directory given; nothing in the library",
       "tags": [
         "reels",
         "perf",

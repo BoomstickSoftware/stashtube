@@ -88,6 +88,28 @@ On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
 - ffmpeg's progress lines end in a carriage return, so `kubectl logs` shows none of them until
   the encode ends; the script reads the last one after the pod succeeds.
 
+### Encoder comparison on the NAS (2026-11-11, 40 s of each source, output 1080p)
+
+`node scripts/encode-bench.mjs --nas --scene <id> --seconds 40 --ssim --keep <dir>` per
+variant. Likeness is SSIM against the source scaled to 1080p, in dB (higher is closer; a
+number, not a judgement of how it looks).
+
+| Variant | Scene 438 (1080p source, 12.6 Mbit/s) | | | Scene 1783 (4K source, 15.7 Mbit/s) | | |
+|---|---|---|---|---|---|---|
+| | Speed | Mbit/s | Likeness | Speed | Mbit/s | Likeness |
+| Quick Sync QP 18 | 9.2x | 9.7 | 20.6 dB | 3.9x | 17.2 | 20.2 dB |
+| Quick Sync QP 22 | 9.2x | 4.4 | 18.9 dB | 4.0x | 8.3 | 18.5 dB |
+| Quick Sync QP 26 | 9.2x | 2.6 | 17.1 dB | 4.0x | 4.7 | 16.8 dB |
+| x264 `veryfast` CRF 18 | 1.4x | 5.9 | 20.1 dB | 0.74x | 8.5 | 19.5 dB |
+| x264 `slow` CRF 18 | 0.38x | 6.3 | 20.6 dB | 0.26x | 8.9 | 20.0 dB |
+
+- Quick Sync reaches x264 `slow`'s likeness at QP 18, but spends about 1.5 to 2 times the
+  bits to do it (and on the 4K source more than the source itself: the "never above the
+  source" ceiling would have to apply).
+- x264 `veryfast` is a middle road: close to `slow` in likeness and size, about real time.
+- The twelve files and a blind A/B page are in the session scratchpad (library content, not
+  in git) for the user to judge; the choice is the user's and is not made yet.
+
 ### Two-element playback on the iPhone (`/spike/reels.html`, Safari, iPhone 17 Pro Max)
 
 - First version: the first clip froze on a still frame after its seek, with no sound; pressing
@@ -130,8 +152,9 @@ On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
 The build runs on the NAS in a nightly window (decided 2026-11-11, [[reels-edit-by-reference]];
 the k8s render worker and its namespace are dropped).
 
-- [ ] Before anything else: the same 60 seconds rendered by Quick Sync and by x264 CRF 18,
-  compared by the user on the phone and the TV; pick the encoder and its quality setting.
+- [ ] Before anything else: the same footage rendered by Quick Sync and by x264 at several
+  settings (`encode-bench.mjs --nas --keep <dir> --ssim`), compared by the user on the phone
+  and the TV; pick the encoder and its quality setting.
   Also prove bars on the hardware path (`pad_vaapi`, or pad in software before upload).
 - [ ] nas repo: a reels folder and a scratch folder on `/volume1`; how flix reads the built
   files (inside the existing read-only export if the folder sits under it, otherwise a
@@ -139,15 +162,15 @@ the k8s render worker and its namespace are dropped).
   (`nas:docs/adm.md`), which is why flix orchestrates.
 - [ ] flotilla repo: a `reel-builder` service in the stack (the render image, `/dev/dri`, the
   library read-only, the reels and scratch folders writable, `restart: unless-stopped` so
-  Docker brings it back after a reboot, niced). Proposal for how flix reaches it: the
-  builder **asks flix** for work every minute (no port opened on the NAS, no NAS credential
-  in the cluster) and flix answers "nothing" outside the rules below. The alternative is
-  flix calling a small HTTP endpoint on the builder.
-- [ ] flix owns the schedule (`apps/server/src/reelBuilds.ts`, pure and tested): work is
-  handed out only between 02:00 and 06:00 `America/New_York` (computed with the zone, the
-  pod's clock is UTC), one build at a time, the next no sooner than 5 minutes after the last
-  one ended. At 06:00 a progress report is answered with "stop" (proposal: that reel stays
-  queued and resumes from its intermediates the next night).
+  Docker brings it back after a reboot, niced). The builder **asks
+  flix** for work every minute with an unauthenticated API call to flix's load-balancer IP
+  and port (no hosts entry in the container, no port opened on the NAS, no NAS credential in
+  the cluster); flix answers "nothing" outside the rules below.
+- [ ] flix owns the schedule (`apps/server/src/reelBuilds.ts`, pure and tested): a reel
+  marked "Build now" is offered at any hour. Otherwise work is offered only between 02:00 and
+  05:00 `America/New_York` (computed with the zone, the pod's clock is UTC), one build at a
+  time, the next no sooner than 5 minutes after the last one ended. Nothing is stopped: a
+  build claimed before 05:00 runs to its end.
 - [ ] `apps/render/`: a small image (ffmpeg + a Node script) that takes a plan, probes each
   source, renders each clip and each transition to an intermediate keyed by a content hash
   (fit to 1080p with bars, dominant frame rate, loudness, quality-targeted bitrate with both

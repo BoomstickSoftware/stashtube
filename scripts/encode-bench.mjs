@@ -16,11 +16,14 @@
 // --nas runs the encode on the NAS instead, with the ffmpeg already inside the Stash container
 // (ssh dtr, docker exec; no image is pulled), niced; its output goes to the container's /tmp
 // and is removed. --encoder x264 (default, the planned settings) or vaapi (hardware decode,
-// scale and encode at constant QP 20: a speed figure, not the same quality).
+// scale and encode at constant --qp, default 20) or copy (the source's own streams, cut).
+// --crf sets x264's quality (default 18). --ssim adds a similarity score against the source.
+// --keep <dir> copies the result to this machine (library content: a directory outside git).
 // --dry-run resolves the source and stops before creating the pod.
 // --cpus is the pod's CPU limit (default 2); --node pins it (default: the scheduler picks a
 // worker); --seconds of source to encode (default 60); --preset x264 preset (default slow).
 import { spawnSync } from 'node:child_process'
+import { closeSync, mkdirSync, openSync } from 'node:fs'
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`)
@@ -62,30 +65,57 @@ const at = Math.max(0, Math.floor(src.dur * 0.3))
 // On the NAS: Stash's own ffmpeg, the path as Stash knows it.
 if (process.argv.includes('--nas')) {
   const encoder = arg('encoder', 'x264')
+  const crf = arg('crf', '18'), qp = arg('qp', '20'), keep = arg('keep')
   const q = (v) => `'${String(v).replaceAll("'", `'\\''`)}'`
   const out = '/tmp/encode-bench.mp4'
+  const variant = encoder === 'vaapi' ? `vaapi-qp${qp}` : encoder === 'copy' ? 'original' : `x264-${preset}-crf${crf}`
+  const cut = ['-ss', at, '-t', seconds, '-i', src.raw]
   const ff = encoder === 'vaapi'
-    ? ['-hwaccel', 'vaapi', '-hwaccel_device', '/dev/dri/renderD128', '-hwaccel_output_format', 'vaapi', '-ss', at, '-t', seconds, '-i', src.raw,
-       '-vf', 'scale_vaapi=w=1920:h=1080:format=nv12', '-c:v', 'h264_vaapi', '-qp', '20']
-    : ['-ss', at, '-t', seconds, '-i', src.raw,
-       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
-       '-c:v', 'libx264', '-preset', preset, '-crf', '18', '-maxrate', '16M', '-bufsize', '32M', '-pix_fmt', 'yuv420p']
-  const cmd = ['nice', '-n', '10', 'ffmpeg', '-hide_banner', '-nostdin', '-loglevel', 'info', ...ff, '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-movflags', '+faststart', '-y', out].map(q).join(' ')
-  console.log(`encode-bench: scene ${src.id} (${src.h}p ${src.codec}), ${seconds}s from ${at}s, on the NAS, encoder ${encoder}${encoder === 'x264' ? ` preset ${preset}` : ''}`)
+    ? ['-hwaccel', 'vaapi', '-hwaccel_device', '/dev/dri/renderD128', '-hwaccel_output_format', 'vaapi', ...cut,
+       '-vf', 'scale_vaapi=w=1920:h=1080:format=nv12', '-c:v', 'h264_vaapi', '-qp', qp, '-c:a', 'aac', '-b:a', '192k', '-ac', '2']
+    : encoder === 'copy'
+      ? [...cut, '-c', 'copy']
+      : [...cut, '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
+         '-c:v', 'libx264', '-preset', preset, '-crf', crf, '-maxrate', '16M', '-bufsize', '32M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ac', '2']
+  const sh = (words) => ['nice', '-n', '10', 'ffmpeg', '-hide_banner', '-nostdin', '-loglevel', 'info', ...words].map(q).join(' ')
+  const inStash = (script) => spawnSync('ssh', ['dtr', 'docker exec -i stash sh -s'], { input: script + '\n', encoding: 'utf8', maxBuffer: 64 << 20 })
+  console.log(`encode-bench: scene ${src.id} (${src.h}p ${src.codec}), ${seconds}s from ${at}s, on the NAS, ${variant}`)
   if (process.argv.includes('--dry-run')) { console.log('dry run: nothing was started'); process.exit(0) }
-  const t0 = Date.now()
-  const r = spawnSync('ssh', ['dtr', 'docker exec -i stash sh -s'], { input: `${cmd} 2>&1 | tr '\\r' '\\n' | tail -60; rm -f ${out}\n`, encoding: 'utf8', maxBuffer: 64 << 20 })
-  const lines = (r.stdout ?? '').split('\n')
-  const last = lines.filter((l) => /^frame=/.test(l.trim())).at(-1) ?? ''
-  const num = (re) => Number(last.match(re)?.[1])
-  if (!/Lsize=/.test(last)) {
-    const err = lines.filter((l) => /error|invalid|denied|failed|No such/i.test(l)).at(-1) ?? r.stderr ?? ''
-    console.log(`FAILED on the NAS: ${err.replaceAll(src.raw, '<path>').slice(0, 200) || 'no ffmpeg output'}`)
-    process.exit(1)
+  try {
+    const t0 = Date.now()
+    const r = inStash(`${sh([...ff, '-movflags', '+faststart', '-y', out])} 2>&1 | tr '\\r' '\\n' | tail -60`)
+    const lines = (r.stdout ?? '').split('\n')
+    const last = lines.filter((l) => /^frame=/.test(l.trim())).at(-1) ?? ''
+    const num = (re) => Number(last.match(re)?.[1])
+    if (!/Lsize=/.test(last)) {
+      const err = lines.filter((l) => /error|invalid|denied|failed|No such/i.test(l)).at(-1) ?? r.stderr ?? ''
+      console.log(`FAILED on the NAS: ${err.replaceAll(src.raw, '<path>').slice(0, 200) || 'no ffmpeg output'}`)
+      process.exitCode = 1
+    } else {
+      const wall = Math.round((Date.now() - t0) / 1000)
+      const mbps = num(/bitrate=\s*([\d.]+)kbits/) / 1000
+      // --ssim: how close the result is to the source scaled to 1080p (1 is identical); the decibel form reads more easily
+      let ssim = ''
+      if (process.argv.includes('--ssim') && encoder !== 'copy') {
+        const m = inStash(`${sh([...cut, '-i', out, '-lavfi', '[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[ref];[1:v][ref]ssim', '-an', '-f', 'null', '-'])} 2>&1 | tr '\\r' '\\n' | grep 'SSIM' | tail -1`)
+        const all = m.stdout.match(/All:([\d.]+) \(([\d.]+)\)/)
+        ssim = all ? `  ssim ${all[1]} (${all[2]} dB)` : '  ssim ?'
+      }
+      console.log(`NAS (${variant})  fps ${num(/fps=\s*([\d.]+)/)}  speed ${num(/speed=\s*([\d.]+)x/)}x real time  output ${mbps.toFixed(1)} Mbit/s  (${(mbps * 60 * 20 / 8 / 1000).toFixed(2)} GB per 20 min)  wall ${wall}s${ssim}`)
+      // --keep <dir>: bring the result to this machine (library content: keep the directory out of git)
+      if (keep) {
+        mkdirSync(keep, { recursive: true })
+        const file = `${keep}/s${src.id}-${variant}.mp4`
+        const fd = openSync(file, 'w')
+        const c = spawnSync('ssh', ['dtr', `docker exec stash cat ${out}`], { stdio: ['ignore', fd, 'ignore'] })
+        closeSync(fd)
+        console.log(c.status === 0 ? `kept ${file}` : 'copy failed')
+      }
+    }
+  } finally {
+    inStash(`rm -f ${out}`)
   }
-  const mbps = num(/bitrate=\s*([\d.]+)kbits/) / 1000
-  console.log(`NAS (${encoder})  fps ${num(/fps=\s*([\d.]+)/)}  speed ${num(/speed=\s*([\d.]+)x/)}x real time  output ${mbps.toFixed(1)} Mbit/s  (${(mbps * 60 * 20 / 8 / 1000).toFixed(2)} GB per 20 min)  wall ${Math.round((Date.now() - t0) / 1000)}s`)
-  process.exit(0)
+  process.exit()
 }
 
 const name = `encode-bench-${Date.now().toString(36)}`
