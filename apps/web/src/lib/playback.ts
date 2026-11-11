@@ -206,18 +206,29 @@ export function tickLabel({ markers }: Tick): string {
 // SAVE_EVERY seconds, on pause, on leaving and on tab close the time and resume point go to
 // Stash. `resume: false` (a station's Moments mode) records nothing: sampling is not watching,
 // and neither does a private session (lib/privacy.ts).
-export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sceneId: string | undefined, { resume = true } = {}) {
-  const opts = useRef({ sceneId, resume })
+//
+// `defer: true` (a station) writes nothing while the video plays: the play and the resume point
+// go to Stash only on `flush()` (the video ended, the station was left, the app was hidden).
+// `discard()` forgets what was watched instead, so moving on with Next leaves no trace: the
+// video is not counted as played, does not land in Continue watching and stays "unwatched".
+export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sceneId: string | undefined, { resume = true, defer = false } = {}) {
+  const opts = useRef({ sceneId, resume, defer })
   useLayoutEffect(() => {
-    opts.current = { sceneId, resume }
+    opts.current = { sceneId, resume, defer }
   })
   // One set of stable functions over one mutable record; nothing here re-renders anything.
   const [acct] = useState(() => {
-    const s = { id: sceneId, last: null as number | null, watched: 0, unsaved: 0, counted: false }
+    const s = { id: sceneId, last: null as number | null, watched: 0, unsaved: 0, counted: false, saved: false }
     const flush = () => {
       const v = video.current
       if (isPrivate()) s.unsaved = 0 // watched in private: forgotten, not saved later
       if (!v || !s.id || !opts.current.resume || s.unsaved < 1) return
+      // deferred: the play that was not counted while it ran is counted now
+      if (opts.current.defer && !s.counted && s.watched >= COUNT_PLAY_AFTER) {
+        s.counted = true
+        addPlay(s.id).catch(() => {})
+      }
+      s.saved = true
       // No resume point once it is all but over (end credits) or before it has really begun:
       // either way it would only sit in Continue watching.
       const t = v.currentTime
@@ -233,11 +244,11 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
         const d = t - s.last
         s.watched += d
         s.unsaved += d
-        if (opts.current.resume && !s.counted && s.watched >= COUNT_PLAY_AFTER && !isPrivate()) {
+        if (opts.current.resume && !opts.current.defer && !s.counted && s.watched >= COUNT_PLAY_AFTER && !isPrivate()) {
           s.counted = true
           addPlay(s.id).catch(() => {})
         }
-        if (s.unsaved >= SAVE_EVERY) flush()
+        if (!opts.current.defer && s.unsaved >= SAVE_EVERY) flush()
       }
       s.last = t
     }
@@ -245,11 +256,17 @@ export function useWatchAccounting(video: RefObject<HTMLVideoElement | null>, sc
     const reset = (id: string | undefined) => {
       if (s.id === id) return
       flush()
-      Object.assign(s, { id, last: null, watched: 0, unsaved: 0, counted: false })
+      Object.assign(s, { id, last: null, watched: 0, unsaved: 0, counted: false, saved: false })
+    }
+    // Forget this video's watching (Next in a station). A resume point an earlier flush left
+    // (the app was hidden for a moment) is cleared, so it does not sit in Continue watching.
+    const discard = () => {
+      if (s.id && s.saved && opts.current.resume && !isPrivate()) saveActivity(s.id, 0, 0).catch(() => {})
+      Object.assign(s, { watched: 0, unsaved: 0, saved: false })
     }
     // seconds of the current scene watched so far (stall detection waits for a few)
     const watched = () => s.watched
-    return { flush, onTimeUpdate, reset, watched }
+    return { flush, discard, onTimeUpdate, reset, watched }
   })
 
   useEffect(() => acct.reset(sceneId), [acct, sceneId])

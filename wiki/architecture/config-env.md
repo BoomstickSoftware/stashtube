@@ -31,6 +31,8 @@ Deployment and `flix-app-secrets` ([[kubernetes-deployment]]).
 | `WHISPARR_PATH_MAP` | unset | Stash path → Whisparr path, like `MEDIA_PATH_MAP` | `/data/adult=/volume1/Media/adult` |
 | `STASHDB_URL`, `STASHDB_API_KEY` | unset (read from Stash's stash-box config at first use) | override the StashDB endpoint and key ([[stashdb]]) | unset |
 | `WEB_DIST` | unset (Vite serves the web in dev) | directory of the built web app to serve | `/app/web` (image) |
+| `FLIX_REELS` | unset (reels off: `/api/reels…` answers 404, no Clip button, no Reels section) | `1` turns reels on ([[reels]]) | `1` since 2026-11-11 |
+| `FLIX_REELS_DIR` | `/data/adult/reels` | where built reels are, as Stash would name the path; mapped by `MEDIA_PATH_MAP` ([[reel-builds]]) | default |
 | `CACHE_DIR` | `<cwd>/.cache` | asset cache and `data.json` snapshot ([[caching]]) | `/cache` (PVC) |
 | `ASSET_CACHE_MAX_MB` | 5120 | LRU bound of the asset cache | 15360 (20Gi PVC) |
 | `ASSET_CACHE_TTL_HOURS` | 720 | after it, assets are revalidated by ETag | default |
