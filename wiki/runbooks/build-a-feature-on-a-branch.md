@@ -7,7 +7,7 @@ status: current
 verified: 2026-11-10
 updated: 2026-11-10
 code: [.githooks/pre-push, .forgejo/workflows/deploy.yml]
-related: [reels-branch-and-squash-merge, one-commit-per-initiative, deploy-and-verify, run-checks]
+related: [git-mv-k-does-nothing-for-an-untracked-file, reels-branch-and-squash-merge, one-commit-per-initiative, deploy-and-verify, run-checks]
 ---
 
 # Build a feature on a branch and squash-merge it

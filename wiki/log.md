@@ -472,3 +472,6 @@ Behind FLIX_REELS=1. Pages: [[reels]], [[data-model]], [[reels-engineering-roadm
 
 ## [2026-11-11] decide | Built reels live in Media/adult/reels on the NAS
 Stash does not scan it and flix already mounts it read-only, so no new export. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Reels milestone 3: the build queue, the schedule and the NAS builder
+Seven kinds of source rendered and joined on the NAS; the builder itself has not run yet. Pages: [[reel-builds]], [[run-the-reel-builder]], [[data-model]], [[git-mv-k-does-nothing-for-an-untracked-file]].

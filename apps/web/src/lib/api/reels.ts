@@ -10,8 +10,18 @@ export const useReelsEnabled = () => useFeatures().data?.reels === true
 
 export const useReels = (enabled = true) => useQuery({ queryKey: ['reels'], queryFn: () => get<Reel[]>('/reels'), enabled })
 
+// While a build waits for the builder or is being rendered, the reel is asked for again every
+// few seconds so its progress shows; a reel waiting for the night is not polled.
 export const useReel = (id: number | undefined) =>
-  useQuery({ queryKey: ['reel', id], queryFn: () => get<ReelDetail>(`/reels/${id}`), enabled: id !== undefined })
+  useQuery({
+    queryKey: ['reel', id],
+    queryFn: () => get<ReelDetail>(`/reels/${id}`),
+    enabled: id !== undefined,
+    refetchInterval: (q) => {
+      const b = q.state.data?.build
+      return b && (b.status === 'building' || (b.status === 'queued' && b.now)) ? 5000 : false
+    },
+  })
 
 export function useReelMutations() {
   const qc = useQueryClient()
@@ -52,6 +62,15 @@ export function useReelMutations() {
     removeClip: useMutation({
       mutationFn: ({ id, clipId }: { id: number; clipId: number }) => send('DELETE', `/reels/${id}/clips/${clipId}`),
       onSuccess: (_r, b) => refresh(b.id),
+    }),
+    // Queue the reel's build: tonight's window, or `now` for as soon as the builder asks.
+    build: useMutation({
+      mutationFn: ({ id, now }: { id: number; now: boolean }) => send<{ id: number }>('POST', `/reels/${id}/build`, { now }),
+      onSuccess: (_r, b) => refresh(b.id),
+    }),
+    cancelBuild: useMutation({
+      mutationFn: (id: number) => send('DELETE', `/reels/${id}/build`),
+      onSettled: (_r, _e, id) => refresh(id),
     }),
     reorder: useMutation({
       mutationFn: ({ id, clipIds }: { id: number; clipIds: number[] }) => send('PUT', `/reels/${id}/clips/order`, { clipIds }),
