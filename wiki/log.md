@@ -448,3 +448,6 @@ Quick Sync encodes at 3.9x (4K source) to 9.25x (1080p) real time; software x264
 
 ## [2026-11-11] decide | Reels build on the NAS, 02:00 to 06:00 Eastern, one at a time
 The user moved the build from a k8s worker to the NAS after the benchmark: cron at 02:00, 5 minutes between builds, ends at 06:00 or on an empty queue. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] correct | Reels builds are orchestrated by flix, not a NAS cron job
+The NAS crontab does not survive a reboot; flix owns the window and pacing, a builder container on the NAS executes. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].

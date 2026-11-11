@@ -133,17 +133,21 @@ the k8s render worker and its namespace are dropped).
 - [ ] Before anything else: the same 60 seconds rendered by Quick Sync and by x264 CRF 18,
   compared by the user on the phone and the TV; pick the encoder and its quality setting.
   Also prove bars on the hardware path (`pad_vaapi`, or pad in software before upload).
-- [ ] nas repo: a reels folder and a scratch folder on `/volume1`; the root cron line at
-  02:00 (the NAS clock is US Eastern and follows daylight saving; cron lives on `/volume0`
-  and needs the re-arm step after a firmware update, `nas:docs/adm.md`); how flix reads the
-  built files (inside the existing read-only export if the folder sits under it, otherwise
-  a second export).
-- [ ] The runner (a script cron starts; proposal: it runs the render image with `docker run
-  --rm`, `/dev/dri`, the library read-only and the reels folder writable). Loop: ask flix
-  for the next queued build; none, exit; build it; report; wait 5 minutes; repeat. It starts
-  no build at or after 06:00 and stops one still running then (proposal: that reel stays
-  queued and resumes from its intermediates the next night). A lock file keeps a second
-  runner from starting. Niced, so Stash and the downloads keep priority.
+- [ ] nas repo: a reels folder and a scratch folder on `/volume1`; how flix reads the built
+  files (inside the existing read-only export if the folder sits under it, otherwise a
+  second export). No cron line: the NAS crontab is lost on reboot or firmware update
+  (`nas:docs/adm.md`), which is why flix orchestrates.
+- [ ] flotilla repo: a `reel-builder` service in the stack (the render image, `/dev/dri`, the
+  library read-only, the reels and scratch folders writable, `restart: unless-stopped` so
+  Docker brings it back after a reboot, niced). Proposal for how flix reaches it: the
+  builder **asks flix** for work every minute (no port opened on the NAS, no NAS credential
+  in the cluster) and flix answers "nothing" outside the rules below. The alternative is
+  flix calling a small HTTP endpoint on the builder.
+- [ ] flix owns the schedule (`apps/server/src/reelBuilds.ts`, pure and tested): work is
+  handed out only between 02:00 and 06:00 `America/New_York` (computed with the zone, the
+  pod's clock is UTC), one build at a time, the next no sooner than 5 minutes after the last
+  one ended. At 06:00 a progress report is answered with "stop" (proposal: that reel stays
+  queued and resumes from its intermediates the next night).
 - [ ] `apps/render/`: a small image (ffmpeg + a Node script) that takes a plan, probes each
   source, renders each clip and each transition to an intermediate keyed by a content hash
   (fit to 1080p with bars, dominant frame rate, loudness, quality-targeted bitrate with both
@@ -152,7 +156,7 @@ the k8s render worker and its namespace are dropped).
 - [ ] Migration: `reel_builds`. `apps/server/src/reelBuilds.ts` and routes: the queue as an API
   the runner calls (claim the next build with its plan, report progress, finish or fail with
   a reason), one claim at a time, a claim that stops reporting returns to the queue, stale
-  detection by plan hash. flix starts nothing itself.
+  detection by plan hash.
 - [ ] Media proxy: signed playback of a built reel from the reels mount ([[media-proxy]]).
 - **Exit**: two queued reels build in one night with the pause between them, a killed build
   resumes the next night, and the result plays on the TV.

@@ -43,10 +43,11 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
 - **Transitions**: cut and fade through black ship first; dissolve later. The design stores a
   reel default and a per-join override from day one.
 - **Build**: on the NAS (decided 2026-11-11, after the M0 benchmark: Quick Sync there is 14 to
-  33 times faster than x264 on two cluster CPUs). A cron job on the NAS starts at **02:00 US
-  Eastern**, asks flix whether anything is queued, and builds **one reel at a time with a
-  5-minute pause between builds**. It ends when the queue is empty or at **06:00**, whichever
-  comes first. Each clip and each transition renders to its own intermediate, so a build
+  33 times faster than x264 on two cluster CPUs). **flix orchestrates**: from **02:00 US
+  Eastern** it hands out queued reels **one at a time with a 5-minute pause between builds**,
+  until the queue is empty or **06:00**, whichever comes first. Not a NAS cron job: the NAS's
+  crontab does not survive a reboot or firmware update without a restore step (the user,
+  2026-11-11). The NAS only executes. Each clip and each transition renders to its own intermediate, so a build
   resumes and an edit rebuilds only what changed. Output goes to a new folder; the library
   stays read-only to the build. _Was, until 2026-11-11: a Kubernetes job on a dedicated
   8-vCPU worker, 01:00 to 06:00, with "Build now" per reel._
@@ -54,7 +55,8 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
 
 ## Consequences
 
-- New infrastructure is on the NAS only (the cron line, the build runner, a reels folder);
+- New infrastructure is on the NAS only (a builder container in the flotilla stack, a reels
+  folder);
   the k8s worker, its namespace and the job permissions are no longer needed. flix exposes
   the queue over its API and reads the built files.
 - Open after the move (the user's to settle): whether "Build now" remains; whether the
