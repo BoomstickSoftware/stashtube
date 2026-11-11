@@ -16,7 +16,7 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 ## Rules for every milestone
 
-- One branch (`reels/m<n>-<topic>`, the first is `reels`), one pull request, **squash-merged**:
+- One branch (`reels-m<n>-<topic>`, the first is `reels`; a branch named `reels/…` cannot exist beside `reels`), one pull request, **squash-merged**:
   one commit on `main` per milestone, so `git revert <sha>` takes a milestone back out.
 - `main` stays deployable. Everything reels sits behind the server flag `features.reels`
   (`FLIX_REELS=1`, off in production until M1's exit test passes on the phone).

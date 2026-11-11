@@ -14,7 +14,7 @@ export const settings = new Hono()
 
 settings.get('/features', async (c) => {
   const sdb = !!config.whisparr && (await stashdb.available())
-  return c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: sdb, stashdbWeb: sdb ? await stashdb.webUrl() : null } satisfies Features)
+  return c.json({ deleteScenes: !!config.whisparr, whisparr: !!config.whisparr, stashdb: sdb, stashdbWeb: sdb ? await stashdb.webUrl() : null, reels: config.reels } satisfies Features)
 })
 
 settings.get('/settings', async (c) => c.json(await getSettings()))

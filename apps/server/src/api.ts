@@ -10,6 +10,7 @@ import { history } from './routes/history.ts'
 import { home } from './routes/home.ts'
 import { people } from './routes/people.ts'
 import { playlists } from './routes/playlists.ts'
+import { reels } from './routes/reels.ts'
 import { scenes } from './routes/scenes.ts'
 import { settings } from './routes/settings.ts'
 import { stations } from './routes/stations.ts'
@@ -17,4 +18,4 @@ import { whisparrRoutes } from './routes/whisparr.ts'
 
 export const api = new Hono()
 
-for (const routes of [scenes, home, stations, history, people, settings, playlists, curation, whisparrRoutes, discover]) api.route('/', routes)
+for (const routes of [scenes, home, stations, history, people, settings, playlists, curation, whisparrRoutes, discover, reels]) api.route('/', routes)

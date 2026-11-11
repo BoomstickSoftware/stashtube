@@ -506,6 +506,7 @@ export interface Features {
   whisparr: boolean // and scenes it knows but has not downloaded can be listed and fetched one at a time
   stashdb: boolean // StashDB answers too, so the shelf shows a performer's or studio's whole catalogue
   stashdbWeb: string | null // StashDB's site (e.g. https://stashdb.org), for "open on StashDB" links
+  reels: boolean // reels are switched on (FLIX_REELS=1): marking clips, the editor and the preview
 }
 
 // A scene not in the library (yet). `state` follows the download: remote (only StashDB knows
@@ -647,3 +648,5 @@ export interface StudioCategoriesStatus {
   studios: { id: string; name: string; tags: Ref[] }[]
   lastSync: SyncRun | null
 }
+
+export * from './reels.ts'
