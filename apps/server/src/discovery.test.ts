@@ -22,6 +22,13 @@ const blocked = (b: Partial<DiscoveryContext['blocked']>) => ctx({ blocked: { pe
 
 describe('discovery eligibility', () => {
   it('fetches a release nothing has and nothing blocks', () => assert.equal(eligible(scene(), ctx()), true))
+  it('skips a release the studio name filter or the VR switch keeps out', () => {
+    const names = { studioWords: ['example'], hideVr: true }
+    assert.equal(eligible({ ...scene(), studioName: 'An Example Studio' }, { ...ctx(), names }), false)
+    assert.equal(eligible({ ...scene(), studioName: 'Plain Studio', title: 'Morning (VR)' }, { ...ctx(), names }), false)
+    assert.equal(eligible({ ...scene(), studioName: 'Plain Studio', title: 'Morning' }, { ...ctx(), names }), true)
+    assert.equal(eligible({ ...scene(), studioName: 'An Example Studio' }, ctx()), true) // no filters given
+  })
   it('skips a scene the library has', () => assert.equal(eligible(scene(), ctx({ owned: new Map([['AbC', '12']]) })), false))
   it('skips a scene Whisparr holds with a file or monitored', () => assert.equal(eligible(scene(), ctx({ known: new Set(['AbC']) })), false))
   it('never fetches a scene deleted before, whatever the case of its id', () => {

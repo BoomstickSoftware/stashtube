@@ -32,3 +32,27 @@ describe('isVrScene', () => {
     assert.equal(isVrScene(scene({ tags: ['Virtually Anything'], studioName: null })), false)
   })
 })
+
+import { filteredOut, matchesStudioFilter } from './studioFilter.ts'
+
+describe('the studio name filter', () => {
+  it('matches a word anywhere in the name, in any case', () => {
+    assert.equal(matchesStudioFilter('Example Reality Works', ['reality']), true)
+    assert.equal(matchesStudioFilter('EXAMPLEVRX', ['vrx']), true)
+    assert.equal(matchesStudioFilter('Example Studio', ['EXAMPLE']), true)
+  })
+  it('matches nothing without words, without a name, or for an empty word', () => {
+    assert.equal(matchesStudioFilter('Example Studio', []), false)
+    assert.equal(matchesStudioFilter(null, ['example']), false)
+    assert.equal(matchesStudioFilter('Example Studio', ['']), false)
+    assert.equal(matchesStudioFilter('Example Studio', ['other']), false)
+  })
+  it('keeps a scene out by its studio word, and by VR only while that switch is on', () => {
+    const vr = scene({ studioName: 'ExampleVR' })
+    assert.equal(filteredOut(vr, { studioWords: [], hideVr: true }), true)
+    assert.equal(filteredOut(vr, { studioWords: [], hideVr: false }), false)
+    assert.equal(filteredOut(scene({ studioName: 'Plain Studio' }), { studioWords: ['plain'], hideVr: false }), true)
+    assert.equal(filteredOut(scene({}), { studioWords: ['other'], hideVr: true }), false)
+  })
+})
+

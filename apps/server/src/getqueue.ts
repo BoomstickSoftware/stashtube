@@ -14,6 +14,7 @@ import { asc, eq, lt, or } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { getQueue, sdbScenes, whisparrGets, whisparrWatch } from './db/schema.ts'
 import { blockedStashDbIds, type StashDbIdSets } from './blocklist.ts'
+import { filteredOut, type NameFilters, nameFilters } from './studioFilter.ts'
 import { config } from './config.ts'
 import * as catalog from './catalog.ts'
 import * as stash from './stash.ts'
@@ -112,9 +113,11 @@ export interface DiscoveryContext {
   known: Set<string>
   excluded: Set<string>
   blocked: StashDbIdSets
+  names?: NameFilters // the studio name filter and "leave VR out"
 }
-export function eligible(r: { id: string; performerIds: string[]; studioId: string | null; tags: unknown }, c: DiscoveryContext): boolean {
+export function eligible(r: { id: string; performerIds: string[]; studioId: string | null; tags: unknown; title?: string | null; studioName?: string | null }, c: DiscoveryContext): boolean {
   return (
+    !(c.names && filteredOut(r, c.names)) &&
     !c.owned.has(r.id) &&
     !c.known.has(r.id) &&
     !c.excluded.has(r.id.toLowerCase()) &&
@@ -138,7 +141,7 @@ export async function discoverNew(now = Date.now()): Promise<number> {
   ])
   const since = new Map(starts.map((r) => [`${r.kind}:${r.foreignId}`, r.since.getTime()]))
   const known = new Set(movies.filter((m) => m.stashId && (m.hasFile || m.monitored)).map((m) => m.stashId!))
-  const ctx: DiscoveryContext = { owned, known, excluded, blocked }
+  const ctx: DiscoveryContext = { owned, known, excluded, blocked, names: await nameFilters() }
   const picked = new Set<string>()
   for (const [kind, favs] of [['performer', fp], ['studio', fs]] as const) {
     for (const f of favs) {

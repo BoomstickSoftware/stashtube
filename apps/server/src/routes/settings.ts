@@ -22,7 +22,7 @@ settings.get('/settings', async (c) => c.json(await getSettings()))
 settings.put('/settings', async (c) => {
   const b = parse(
     z
-      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean(), hideVr: z.boolean(), continueDays: z.number().int().min(0).max(365) })
+      .object({ performerGender: z.enum(['women', 'men', 'all']), panicUrl: z.url({ protocol: /^https?$/ }), playOnOpen: z.boolean(), people, featured: weightsBody, whisparrSync: z.boolean(), hideVr: z.boolean(), studioFilters: z.array(z.string().trim().min(2).max(40)).max(50), continueDays: z.number().int().min(0).max(365) })
       .partial(),
     await body(c),
   )
@@ -37,6 +37,8 @@ settings.put('/settings', async (c) => {
   }
   if (b.people) await setSetting('people', b.people)
   if (b.hideVr !== undefined) await setSetting('hideVr', b.hideVr)
+  // kept lower-case and once each, so "VR" and "vr" are one filter
+  if (b.studioFilters) await setSetting('studioFilters', [...new Set(b.studioFilters.map((w) => w.toLowerCase()))])
   if (b.continueDays !== undefined) {
     await setSetting('continueDays', b.continueDays)
     void expireContinue().catch((e) => console.error('continue expiry:', e.message))

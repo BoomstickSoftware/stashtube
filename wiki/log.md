@@ -484,3 +484,6 @@ A finished build waits for approval; a published reel has shelves, search, ratin
 
 ## [2026-11-11] decide | A station's Next leaves no trace on the video
 The button reads Next; a play and a resume point are recorded only when a video ends or the station is left. Pages: [[stations]].
+
+## [2026-11-11] decide | Studios can be left out by a word in their name; VR is left out of the shelf and the automatic Gets too
+The VR switch was off in production. Pages: [[studio-name-filter]].

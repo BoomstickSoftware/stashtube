@@ -60,6 +60,7 @@ export function Settings(): JSX.Element {
           <LibraryTools />
           <WhisparrSyncSetting />
           <HideVrSetting />
+          <StudioFilterSetting />
           <CastSetting />
           <StudioCategoriesSetting />
           <HiddenSetting />
@@ -237,6 +238,63 @@ function CastSetting() {
 }
 
 // Discover's VR filter (shared; on by default): a scene whose title, category or studio says VR.
+// Words that keep a studio out of what flix offers to download and what it downloads by
+// itself (wiki features/studio-name-filter). Videos already in the library are not touched.
+function StudioFilterSetting() {
+  const { data: settings } = useSettings()
+  const save = useUpdateSettings()
+  const [word, setWord] = useState('')
+  const words = settings?.studioFilters ?? []
+  const add = () => {
+    const w = word.trim().toLowerCase()
+    if (w.length >= 2 && !words.includes(w)) save.mutate({ studioFilters: [...words, w] })
+    setWord('')
+  }
+  return (
+    <section className="max-w-xl">
+      <span className="block text-sm font-medium">Leave out studios by name</span>
+      <span className="mt-0.5 block text-sm text-muted">
+        A studio whose name contains one of these words is left out of Discover, the not-downloaded shelf and the automatic Gets, in any
+        case (“vr” also matches “ExampleVR”). Videos already in the library stay.
+      </span>
+      {words.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {words.map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => save.mutate({ studioFilters: words.filter((x) => x !== w) })}
+              aria-label={`Remove ${w}`}
+              className="press-soft inline-flex h-11 items-center gap-1.5 rounded-full bg-raised px-4 text-sm hover:bg-line"
+            >
+              {w} <span className="text-muted">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        className="mt-3 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          add()
+        }}
+      >
+        <input
+          value={word}
+          onChange={(e) => setWord(e.target.value)}
+          maxLength={40}
+          placeholder="A word in the studio’s name"
+          aria-label="A word in the studio’s name"
+          className="h-11 min-w-0 flex-1 rounded-full bg-raised px-4 text-base outline-none focus:ring-1 focus:ring-accent sm:text-sm"
+        />
+        <button disabled={!settings || word.trim().length < 2} className="press-soft h-11 shrink-0 rounded-full bg-raised px-5 text-sm font-semibold hover:bg-line disabled:opacity-50">
+          Add
+        </button>
+      </form>
+    </section>
+  )
+}
+
 function HideVrSetting() {
   const { data: settings } = useSettings()
   const save = useUpdateSettings()
@@ -244,10 +302,11 @@ function HideVrSetting() {
     <section>
       <label className="flex max-w-xl cursor-pointer items-start justify-between gap-4">
         <span>
-          <span className="block text-sm font-medium">Leave VR scenes out of Discover</span>
+          <span className="block text-sm font-medium">Leave VR scenes out</span>
           <span className="mt-0.5 block text-sm text-muted">
-            A StashDB scene counts as VR when its title or a category says so ([VR], VR, Virtual Reality, 180°, 360°) or its studio’s
-            name carries VR or starts with “Virtual”. “Show blocked & VR” on Discover brings them back for that view.
+            Out of Discover, the not-downloaded shelf and the automatic Gets. A StashDB scene counts as VR when its title or a category
+            says so ([VR], VR, Virtual Reality, 180°, 360°) or its studio’s name carries VR in capitals or starts with “Virtual”. “Show
+            blocked & VR” on Discover brings them back for that view. For a VR studio whose name says neither, add a word below.
           </span>
         </span>
         <Switch on={settings?.hideVr ?? true} disabled={!settings} onChange={(v) => save.mutate({ hideVr: v })} className="mt-0.5" />

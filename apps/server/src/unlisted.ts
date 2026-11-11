@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { sdbScenes, unlisted } from './db/schema.ts'
 import { blockedStashDbIds, stashDbIdSets } from './blocklist.ts'
+import { filteredOut, nameFilters } from './studioFilter.ts'
 import * as stash from './stash.ts'
 import { dataCache, HOME } from './cache/data.ts'
 import type { Exclusions, UnlistedSets } from './stash.ts'
@@ -71,9 +72,10 @@ export async function dropHiddenWanted(items: WantedScene[]): Promise<WantedScen
   const perfIds = new Set([...hidden.performers, ...blocked.performers])
   const studioIds = new Set([...hidden.studios, ...blocked.studios])
   const tagNames = new Set([...hidden.tagNames, ...blocked.tagNames])
-  if (!perfIds.size && !studioIds.size && !tagNames.size) return items
+  const names = await nameFilters() // the studio name filter and "leave VR out" apply here too
+  if (!perfIds.size && !studioIds.size && !tagNames.size && !names.studioWords.length && !names.hideVr) return items
   const ids = items.map((i) => i.stashdbId).filter((x): x is string => !!x)
-  const rows = ids.length ? await db.select({ id: sdbScenes.id, performerIds: sdbScenes.performerIds, studioId: sdbScenes.studioId, tags: sdbScenes.tags }).from(sdbScenes).where(inArray(sdbScenes.id, ids)) : []
+  const rows = ids.length ? await db.select({ id: sdbScenes.id, title: sdbScenes.title, studioName: sdbScenes.studioName, performerIds: sdbScenes.performerIds, studioId: sdbScenes.studioId, tags: sdbScenes.tags }).from(sdbScenes).where(inArray(sdbScenes.id, ids)) : []
   const byId = new Map(rows.map((r) => [r.id, r]))
   return items.filter((i) => {
     const r = i.stashdbId ? byId.get(i.stashdbId) : undefined
@@ -81,7 +83,8 @@ export async function dropHiddenWanted(items: WantedScene[]): Promise<WantedScen
     return !(
       r.performerIds.some((p) => perfIds.has(p)) ||
       (!!r.studioId && studioIds.has(r.studioId)) ||
-      (r.tags as { name: string }[]).some((t) => tagNames.has(t.name.toLowerCase()))
+      (r.tags as { name: string }[]).some((t) => tagNames.has(t.name.toLowerCase())) ||
+      filteredOut(r, names)
     )
   })
 }

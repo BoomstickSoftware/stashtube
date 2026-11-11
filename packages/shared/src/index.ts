@@ -372,7 +372,8 @@ export interface Settings {
   people: PeopleFilter // performer age and ethnicity defaults for every list
   featured: FeaturedWeights // the Featured row's dials
   whisparrSync: boolean // follow -> Whisparr watches the performer's new releases; off: the sync only plans
-  hideVr: boolean // Discover leaves VR scenes out (title, category or studio says VR); on by default
+  hideVr: boolean // VR scenes (title, category or studio says VR) are left out of Discover, the not-downloaded shelf and the automatic Gets; on by default
+  studioFilters: string[] // words: a studio whose name contains one is left out of the same three places
   castSetup?: boolean // the Cast sync has applied its one-time defaults (Cast: M blocked)
   continueDays: number // a resume point untouched this many days leaves Continue; 0 keeps it forever
 }
