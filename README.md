@@ -3,8 +3,9 @@
 A tube-style web front end for a [Stash](https://github.com/stashapp/stash) library. Stash stays
 the headless backend (scanning, fingerprints, StashDB metadata, sprites and previews,
 transcodes); stashtube adds the parts of a video site Stash does not have: a home feed with
-ranking, playlists, a global blocklist, endless "stations", related videos, and a phone-first
-player with seek thumbnails, moments and a mini-player. It is a small Hono BFF plus a React PWA,
+ranking, playlists, a global blocklist, endless "stations", related videos, reels cut from
+ranges of several videos, and a phone-first player with seek thumbnails, moments and a
+mini-player. It is a small Hono BFF plus a React PWA,
 built for one user on a home LAN and installed to an iPhone home screen.
 
 > The code, the Docker image, the wiki and the UI still call the app **flix**. `stashtube` is
@@ -21,7 +22,15 @@ built for one user on a home LAN and installed to an iPhone home screen.
   and a mini-player that follows you between pages without reloading the video.
 - **Moments**: hold or press `b` to mark a marker in Stash, retitle and retag it under the video.
 - **Playlists and Favorites** (Postgres), **stations** (endless play from a filter, a scene or a
-  playlist, in full or moments mode, with resume), **related videos**.
+  playlist, in full or moments mode, with resume; Next moves on without counting the video as
+  watched), **related videos**.
+- **Reels** (behind `FLIX_REELS=1`): mark ranges of videos, order them into a reel with cuts
+  and fades, and preview it straight from the original files; nothing is re-encoded and no
+  file is touched. A reel can then be built into one 1080p H.264 file, queued for a nightly
+  window or built at once, by a small builder that runs next to the media with ffmpeg and
+  Intel Quick Sync (`wiki/features/reels.md`, `wiki/features/reel-builds.md`).
+- **Compatibility badge**: each video says whether its file plays everywhere or has to be
+  transcoded (anything that is not an MP4), with a Browse filter for the ones that are.
 - **Blocklist** of tags, performers and studios applied to every list, feed and search, plus
   "Not interested" on a video.
 - **Library tools**: a cleanup page of likely deletions, a duplicates workbench over Stash's
@@ -34,7 +43,7 @@ built for one user on a home LAN and installed to an iPhone home screen.
 
 Stash owns ratings, play counts, resume points, O-counts, markers, favourites, titles and tags,
 so its own UI stays consistent. Postgres holds only what Stash cannot: playlists, the blocklist,
-pinned rows, stations and a few settings.
+pinned rows, stations, reels and a few settings.
 
 ## Screenshots
 
@@ -132,6 +141,7 @@ matter first:
 | `WHISPARR_URL`, `WHISPARR_API_KEY`, `WHISPARR_PATH_MAP` | turn on Delete and the Get button |
 | `FLIX_PASSWORD`, `FLIX_SESSION_SECRET` | optional login |
 | `CACHE_DIR`, `ASSET_CACHE_MAX_MB`, `WARM_AT_UTC` | the asset cache on disk and its nightly warm-up |
+| `FLIX_REELS`, `FLIX_REELS_DIR` | `1` turns reels on; where built reels are, as Stash would name the path |
 
 ## Repository layout
 
