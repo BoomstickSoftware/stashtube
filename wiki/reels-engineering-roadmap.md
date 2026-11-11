@@ -32,7 +32,8 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 ## M0. Measure (branch `reels`, no product code)
 
 - [x] `apps/web/public/spike/reels.html` (written 2026-11-10; the user's iPhone runs passed
-  for picture and sound, 2026-11-11: see M0 results): a throwaway page, two `<video>` elements,
+  for picture and sound, 2026-11-11: see M0 results; the page was removed 2026-11-11 and is
+  in the branch history, commit `2a32218`): a throwaway page, two `<video>` elements,
   three clips from three files by scene id, a cut, a fade and a dissolve; prints swap latency
   and whether sound survived. Removed before M1 merges.
 - [x] `scripts/encode-bench.mjs` (registered; run by the user 2026-11-10, results below; a
