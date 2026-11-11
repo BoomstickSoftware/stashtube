@@ -120,6 +120,27 @@
       }
       const playResult = (el) => el.play().then(() => 'ok', (e) => e.name)
 
+      // start an element; if the browser refuses it with sound, say so and try it muted
+      async function begin(el) {
+        const r = await playResult(el)
+        if (r === 'ok') return r
+        el.muted = true
+        return `${r}>muted:${await playResult(el)}`
+      }
+      // let an element play up to a time; a pause nobody asked for is logged and undone, a stall ends the run
+      async function playUntil(el, t) {
+        let last = el.currentTime, since = now(), resumed = 0
+        while (running && el.currentTime < t) {
+          await new Promise(requestAnimationFrame)
+          if (el.paused && !el.ended) {
+            if (++resumed > 3) throw new Error(`video keeps pausing at ${el.currentTime.toFixed(1)}s`)
+            log(`  paused by the browser at ${el.currentTime.toFixed(1)}s, resume:${await playResult(el)}`)
+          }
+          if (el.currentTime !== last) { last = el.currentTime; since = now() }
+          else if (now() - since > 8000) throw new Error(`stalled at ${last.toFixed(1)}s readyState=${el.readyState} networkState=${el.networkState} paused=${el.paused}`)
+        }
+      }
+
       async function run() {
         running = true
         $('start').disabled = true
@@ -145,28 +166,28 @@
         // call, so the browser counts both as started by the user. B is paused again as soon as it runs.
         let cur = 0
         const t0 = now()
-        els.forEach((el, i) => { el.muted = false; el.style.opacity = i === 0 ? 1 : 0; el.src = clips[i].src })
+        els.forEach((el, i) => { el.muted = i === 1; el.style.opacity = i === 0 ? 1 : 0; el.src = clips[i].src })
         setVol(0, 1); setVol(1, 0)
         const pa = playResult(els[0])
-        const pb = playResult(els[1]).then((r) => { els[1].pause(); return r })
+        const pb = playResult(els[1]).then((r) => { els[1].pause(); els[1].muted = false; return r })
         const [r0, r1] = await Promise.all([pa, pb])
         if (els[0].readyState < 1) await once(els[0], 'loadedmetadata')
         els[0].currentTime = clips[0].start
         await once(els[0], 'seeked', 4000)
-        log(`#0 start ${clips[0].id} ready ${Math.round(now() - t0)}ms play:${r0} primeSecond:${r1}`)
+        log(`#0 start ${clips[0].id} ready ${Math.round(now() - t0)}ms play:${r0} primeSecond:${r1} firstPausedByPrime=${els[0].paused}`)
 
         for (let i = 0; i < ORDER.length && running; i++) {
           const kind = ORDER[i], a = els[cur], b = els[1 - cur], next = clips[i + 1]
           const prep = await prepare(b, next) // while A plays
           const lead = kind === 'dissolve' ? DISSOLVE / 1000 : kind === 'fade' ? FADE / 1000 : 0
           $('now').textContent = `clip ${i + 1} of ${ORDER.length + 1}, next: ${kind}`
-          while (running && a.currentTime < clips[i].end - lead) await new Promise(requestAnimationFrame)
+          await playUntil(a, clips[i].end - lead)
           if (!running) break
           const t0 = now()
           let gap = 0, played = '', note = ''
           if (kind === 'cut') {
             setVol(1 - cur, 1)
-            played = await playResult(b)
+            b.muted = false; played = await begin(b)
             const f = await frame(b)
             b.style.opacity = 1; a.style.opacity = 0; a.pause()
             gap = Math.round(now() - t0); note = f
@@ -175,14 +196,14 @@
             a.pause()
             const t1 = now()
             setVol(1 - cur, 0)
-            played = await playResult(b)
+            b.muted = false; played = await begin(b)
             const f = await frame(b)
             gap = Math.round(now() - t1); note = `${f} black`
             await ramp(FADE, (k) => { b.style.opacity = k; setVol(1 - cur, k) })
           } else {
             setVol(1 - cur, 0)
             b.style.zIndex = 2; a.style.zIndex = 1
-            played = await playResult(b)
+            b.muted = false; played = await begin(b)
             const f = await frame(b)
             gap = Math.round(now() - t0)
             const aStopped = a.paused // iOS may pause the first video when a second one starts with sound
@@ -195,7 +216,7 @@
         }
         // let the last clip run out
         const last = els[cur]
-        while (running && last.currentTime < clips.at(-1).end) await new Promise(requestAnimationFrame)
+        await playUntil(last, clips.at(-1).end)
         log(running ? 'done' : 'stopped')
         stop()
       }
