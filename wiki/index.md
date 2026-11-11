@@ -17,7 +17,7 @@ Pages: 197. Last generated 2026-11-11.
 ## Hubs
 
 - [[CONVENTIONS]] — How every page in this wiki is named, structured, tagged, linked, indexed and kept true; read before writing or editing a page. · _wiki, meta_ · verified 2026-10-30
-- [[reels-engineering-roadmap]] — The build order for reels: six milestones, each a branch and one squash-merged pull request, with its work items, tests, exit test and the repos it touches. · _reels, roadmap, planning, architecture_ · verified 2026-11-10
+- [[reels-engineering-roadmap]] — The build order for reels: six milestones, each a branch and one squash-merged pull request, with its work items, tests, exit test and the repos it touches. · _reels, roadmap, planning, architecture_ · verified 2026-11-11
 - [[roadmap]] — Where flix stands, what is left on the backlog, what is deferred, the known gaps and the open questions; done work is linked to its history page rather than listed. · _roadmap, backlog_ · verified 2026-10-30
 
 ## Architecture: how flix is built
@@ -118,7 +118,7 @@ Pages: 197. Last generated 2026-11-11.
 - [[prod-checks-read-only]] — The check scripts block every write that would leave a trace (plays, activity, deletes, Get, marker, O, rating), and pointing Vite at production is allowed only for those scripts, never for clicking through by hand. · _testing, safety, stash, whisparr, workflow_ · verified 2026-10-30
 - [[ratings-expire-lists]] — A rating, O, edit or performer favourite drops only its own entity and marks cached lists stale, so a list sorted by rating may lag one refresh. · _caching, ratings, performance, server_ · verified 2026-10-31
 - [[reels-branch-and-squash-merge]] — Unlike day-to-day work, which commits to main, reels is developed on a branch per milestone and lands as one squashed commit each, so a milestone can be reverted whole. · _reels, git, workflow, process_ · verified 2026-11-10
-- [[reels-edit-by-reference]] — The agreed plan for reels: clip ranges stored in Postgres, live preview from the originals, a queued build to one 1080p H.264 file on a dedicated worker, user approval before listing; not built yet. · _reels, player, architecture, k8s, planning_ · verified 2026-11-10
+- [[reels-edit-by-reference]] — The agreed plan for reels: clip ranges stored in Postgres, live preview from the originals, a queued build to one 1080p H.264 file on the NAS in a nightly window, user approval before listing; not built yet. · _reels, player, architecture, nas, planning_ · verified 2026-11-11
 - [[search-recents]] — The empty search box lists the last eight searches and picks, kept in the browser; the user lifted the Discreet and Private objection, with one guard kept (a private session adds none). · _search, privacy, ux_ · verified 2026-11-10
 - [[settings-next-to-page]] — A setting sits where its effect is seen (intro skip in the player's gear menu, Featured dials in Settings' Home section); only global ones go on the Settings page, device-only ones stay in that browser. · _settings, ui, architecture_ · verified 2026-10-30
 - [[single-user-no-login]] — flix has one user and no multi-user plans; preferences live centrally in the settings table, and auth or per-user scoping is never proposed. · _auth, settings, architecture_ · verified 2026-10-30
@@ -315,7 +315,7 @@ Pages: 197. Last generated 2026-11-11.
 - **incident** (4): [[2026-10-29-typed-stash-layer-and-tag-outage]], [[2026-10-30-featured-ranking]], [[shared-package-missing-from-image]], [[stash-filters-have-no-id-criterion]]
 - **ios** (8): [[2026-10-30-app-follows-deploys]], [[2026-10-31-mini-player-expand]], [[installable-app]], [[iphone-first-polish]], [[mobile-first-ui]], [[next-video-opens-docked-over-its-own-page]], [[safari-address-bar-needs-page-scroll]], [[ux-delight-principles]]
 - **jobs** (1): [[server-bff]]
-- **k8s** (8): [[2026-10-26-deployed-to-k8s]], [[config-env]], [[deploy-and-verify]], [[gather-context]], [[k8s-clone-on-side-branch]], [[kubernetes-deployment]], [[lan-only-no-ingress]], [[reels-edit-by-reference]]
+- **k8s** (7): [[2026-10-26-deployed-to-k8s]], [[config-env]], [[deploy-and-verify]], [[gather-context]], [[k8s-clone-on-side-branch]], [[kubernetes-deployment]], [[lan-only-no-ingress]]
 - **keyboard** (1): [[keyboard-shortcuts]]
 - **layout** (2): [[grid-column-overflow]], [[mini-player]]
 - **library** (4): [[cleanup-page]], [[identify-leaves-linked-scene-bare]], [[library-reconcile]], [[stash-library]]
@@ -334,7 +334,7 @@ Pages: 197. Last generated 2026-11-11.
 - **moments** (2): [[2026-10-30-hold-to-mark-and-moments]], [[moments]]
 - **monitoring** (1): [[whisparr-watch-cascades-to-studios-and-performers]]
 - **mvp** (1): [[2026-10-26-spike-and-mvp]]
-- **nas** (3): [[gather-context]], [[nfs-media]], [[stash-stays-headless]]
+- **nas** (4): [[gather-context]], [[nfs-media]], [[reels-edit-by-reference]], [[stash-stays-headless]]
 - **navigation** (6): [[2026-11-09-navigation]], [[2026-11-09-strategy-review]], [[continue-strip-on-home]], [[five-tab-navigation]], [[library-tools-group-in-settings]], [[navigation]]
 - **network** (1): [[lan-only-no-ingress]]
 - **nfs** (1): [[nfs-media]]

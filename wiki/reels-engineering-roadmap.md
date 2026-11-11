@@ -4,8 +4,8 @@ kind: hub
 summary: The build order for reels: six milestones, each a branch and one squash-merged pull request, with its work items, tests, exit test and the repos it touches.
 tags: [reels, roadmap, planning, architecture]
 status: current
-verified: 2026-11-10
-updated: 2026-11-10
+verified: 2026-11-11
+updated: 2026-11-11
 related: [reels-edit-by-reference, reels-branch-and-squash-merge, build-a-feature-on-a-branch, roadmap, data-model]
 ---
 
@@ -31,8 +31,8 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 ## M0. Measure (branch `reels`, no product code)
 
-- [x] `apps/web/public/spike/reels.html` (written 2026-11-10; first iPhone run done for
-  picture, sound still to judge: see M0 results): a throwaway page, two `<video>` elements,
+- [x] `apps/web/public/spike/reels.html` (written 2026-11-10; the user's iPhone runs passed
+  for picture and sound, 2026-11-11: see M0 results): a throwaway page, two `<video>` elements,
   three clips from three files by scene id, a cut, a fade and a dissolve; prints swap latency
   and whether sound survived. Removed before M1 merges.
 - [x] `scripts/encode-bench.mjs` (registered; run by the user 2026-11-10, results below; a
@@ -71,15 +71,13 @@ On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
   `scale_vaapi`), so the build's fit-with-bars step is untested on this path.
 - Software x264 on the NAS's four cores is no faster than 2 cluster CPUs, and it took the
   NAS's load average from 1 to 7 while it ran.
-- Running the build on the NAS is a change to the agreed plan (a k8s Job on a dedicated
-  worker, [[reels-edit-by-reference]]): the user's to decide.
+- On these numbers the user moved the build to the NAS (2026-11-11, [[reels-edit-by-reference]]).
 
 - A 4K source costs about the same per frame as a 1080p one (decoding and scaling it is not
   the bottleneck; the x264 encode is), so reel length and frame rate set the build time, not
   source resolution.
-- At 2 CPUs a 20-minute reel takes about 70 to 85 minutes: fine overnight, slow for
-  "Build now". The dedicated worker (more CPUs) or a faster preset is what shortens it; neither
-  is measured yet.
+- At 2 CPUs a 20-minute reel takes about 70 to 85 minutes: the reason the build
+  left the cluster.
 - CRF 18 landed just under the source's own bitrate, so the 16 Mbit/s ceiling did not bind.
 - The `flix` namespace has a ResourceQuota (`laravel-tier`: `limits.memory` 4Gi, `requests.cpu`
   1, `limits.cpu` 6, 20 pods) besides the LimitRange (2 CPUs, 2Gi per container). With flix
@@ -100,9 +98,11 @@ On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
   pause it, and unmute it only when its clip begins. All seven clips and six changes then run
   on the first Start. The real player must unlock its second element the same way.
 - Headless Chrome on the Mac (not WebKit): next clip ready in 61-305 ms, swap wait 33-51 ms.
-- **Still open**: sound in every clip, whether a dissolve can sound both videos at once
-  (`firstPausedBySecond`), whether Web Audio routing lets a fade change volume, and the
-  iPhone's own swap timings. The user tests sound next; results get added here.
+- Sound, reported by the user 2026-11-11: good across the scene changes. No log was pasted, so
+  the numbers behind it are not recorded: the iPhone's swap timings, whether a dissolve
+  sounded both videos at once (`firstPausedBySecond`), and whether the Web Audio variant was
+  run. Cut and fade, the two transitions that ship first, are covered by this result;
+  dissolve gets its own check when it is built (M5).
 
 ## M1. Reels in the app (large, flix only)
 
@@ -125,23 +125,37 @@ On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
 - [ ] The badge on cards' meta line and the scene page; a Browse filter.
 - **Exit**: the 260 non-MP4 videos, and only those, read "transcodes".
 
-## M3. Build pipeline (medium to large; flix, k8s and nas repos)
+## M3. Build pipeline (medium to large; flix, nas and flotilla repos)
 
-- [ ] nas repo: a writable export for reels and scratch, read-write to the render worker only.
-- [ ] k8s repo: the render worker VM (8 vCPU, 8 GB, ballooning, low `cpuunits`), its taint, the
-  job's service account, a Role letting flix create and read Jobs in its namespace. The `flix`
-  namespace's LimitRange caps a container at 2 CPUs and 2Gi (found 2026-11-10), so the job
-  needs its own namespace or a raised limit.
+The build runs on the NAS in a nightly window (decided 2026-11-11, [[reels-edit-by-reference]];
+the k8s render worker and its namespace are dropped).
+
+- [ ] Before anything else: the same 60 seconds rendered by Quick Sync and by x264 CRF 18,
+  compared by the user on the phone and the TV; pick the encoder and its quality setting.
+  Also prove bars on the hardware path (`pad_vaapi`, or pad in software before upload).
+- [ ] nas repo: a reels folder and a scratch folder on `/volume1`; the root cron line at
+  02:00 (the NAS clock is US Eastern and follows daylight saving; cron lives on `/volume0`
+  and needs the re-arm step after a firmware update, `nas:docs/adm.md`); how flix reads the
+  built files (inside the existing read-only export if the folder sits under it, otherwise
+  a second export).
+- [ ] The runner (a script cron starts; proposal: it runs the render image with `docker run
+  --rm`, `/dev/dri`, the library read-only and the reels folder writable). Loop: ask flix
+  for the next queued build; none, exit; build it; report; wait 5 minutes; repeat. It starts
+  no build at or after 06:00 and stops one still running then (proposal: that reel stays
+  queued and resumes from its intermediates the next night). A lock file keeps a second
+  runner from starting. Niced, so Stash and the downloads keep priority.
 - [ ] `apps/render/`: a small image (ffmpeg + a Node script) that takes a plan, probes each
   source, renders each clip and each transition to an intermediate keyed by a content hash
   (fit to 1080p with bars, dominant frame rate, loudness, quality-targeted bitrate with both
   ceilings), joins by copy, writes sprites, reports progress. Pure parts tested: the ffmpeg
   argument builder, bar geometry, the bitrate ceiling, the intermediate key.
-- [ ] Migration: `reel_builds`. `apps/server/src/reelBuilds.ts`: the queue, one job at a time,
-  a `jobs.ts` entry gated on "something is queued and it is the window or Build now", progress
-  and failure with a reason, stale detection by plan hash.
+- [ ] Migration: `reel_builds`. `apps/server/src/reelBuilds.ts` and routes: the queue as an API
+  the runner calls (claim the next build with its plan, report progress, finish or fail with
+  a reason), one claim at a time, a claim that stops reporting returns to the queue, stale
+  detection by plan hash. flix starts nothing itself.
 - [ ] Media proxy: signed playback of a built reel from the reels mount ([[media-proxy]]).
-- **Exit**: a queued reel builds overnight, survives a killed job, and plays on the TV.
+- **Exit**: two queued reels build in one night with the pause between them, a killed build
+  resumes the next night, and the result plays on the TV.
 
 ## M4. Review and listing (medium, flix only)
 

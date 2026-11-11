@@ -445,3 +445,6 @@ Six milestones, one pull request each. Pages: [[reels-engineering-roadmap]], [[r
 
 ## [2026-11-10] ingest | Reels M0: encode speed on the NAS, software and Quick Sync
 Quick Sync encodes at 3.9x (4K source) to 9.25x (1080p) real time; software x264 there is 0.28x. `encode-bench.mjs --nas`. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels build on the NAS, 02:00 to 06:00 Eastern, one at a time
+The user moved the build from a k8s worker to the NAS after the benchmark: cron at 02:00, 5 minutes between builds, ends at 06:00 or on an empty queue. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
