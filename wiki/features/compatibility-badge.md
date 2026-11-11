@@ -41,7 +41,8 @@ The container is Stash's `format` (`mp4`, `matroska`, `avi`, `wmv`).
   for paths that do not end in `.mp4`, `.m4v` or `.mov` (`NOT_MATCHES_REGEX`); that query
   returned 258, the same videos the formats count gives.
 
-## Not verified
+## Verified
 
-The badge and the filter have not been seen in the running app: they need the server change
-deployed. The rule and the Stash query were checked against the live library by counts.
+In production after the deploy (2026-11-11): `GET /api/scenes?transcodes=1` returns 258 of
+2,991 videos, each with `compat: transcode`; a page of the default list is all `everywhere`.
+The badge, the video page's line and the filter toggle have not been looked at on the phone.
