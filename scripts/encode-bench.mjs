@@ -96,6 +96,9 @@ if (process.argv.includes('--dry-run')) {
   console.log(`dry run: would start pod ${name} from image ${IMAGE} with ${pod.spec.containers[0].args.length} ffmpeg arguments; nothing was created`)
   process.exit(0)
 }
+// Ctrl-C must not leave the pod behind: it would keep encoding and hold the namespace's quota
+const remove = () => spawnSync('kubectl', ['-n', NS, 'delete', 'pod', name, '--wait=false'], { encoding: 'utf8' })
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { remove(); process.exit(130) })
 kubectl(['apply', '-f', '-'], JSON.stringify(pod))
 let phase = 'Pending'
 try {
@@ -122,5 +125,5 @@ try {
     console.log(`node ${where}  fps ${fps}  speed ${speed}x real time  output ${mbps.toFixed(1)} Mbit/s  (${(mbps * 60 * 20 / 8 / 1000).toFixed(2)} GB per 20 min)  wall ${Math.round((Date.now() - t0) / 1000)}s incl. image pull`)
   }
 } finally {
-  spawnSync('kubectl', ['-n', NS, 'delete', 'pod', name, '--wait=false'], { encoding: 'utf8' })
+  remove()
 }

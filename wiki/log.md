@@ -439,3 +439,6 @@ The user agreed the reels plan after three revisions; nothing built. Also record
 
 ## [2026-11-10] decide | Reels is built on branches and squash-merged; engineering roadmap written
 Six milestones, one pull request each. Pages: [[reels-engineering-roadmap]], [[reels-branch-and-squash-merge]], [[build-a-feature-on-a-branch]].
+
+## [2026-11-10] ingest | Reels M0 results: first encode speed and the iPhone two-video finding
+1080p encodes at 6.6 fps (0.28x) on 2 CPUs; the second video must be unlocked muted on iOS; the namespace quota and the leftover-pod failure. Pages: [[reels-engineering-roadmap]].

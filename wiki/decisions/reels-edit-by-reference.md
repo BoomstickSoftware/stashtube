@@ -58,5 +58,9 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
 - Phase 0 before any build work: an encode benchmark on a worker and a two-clip playback spike
   on the iPhone (cut, fade, dissolve). Then: reels in the app, a compatibility badge, the build
   pipeline, review and listing, refinement ([[roadmap]]).
+- Measured 2026-11-10 (the numbers and method are in [[reels-engineering-roadmap]], M0
+  results): the planned settings encode at 6.6 to 7.1 fps on 2 CPUs, about a quarter of real
+  time, from 1080p and 4K sources alike; on the iPhone the second video element must be
+  unlocked muted.
 - Facts it rests on: the codec census in [[stash-library]] (91% H.264 in MP4, 25% 4K); the
   cluster is six VMs of 2 to 3 vCPUs on one 12-thread host with no GPU.

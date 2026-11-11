@@ -31,17 +31,59 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 ## M0. Measure (branch `reels`, no product code)
 
-- [x] `apps/web/public/spike/reels.html` (written 2026-11-10; the user's iPhone run is pending): a throwaway page, two `<video>` elements, three clips
-  from three files by scene id, a cut, a fade and a dissolve; prints swap latency and whether
-  sound survived. Removed before M1 merges.
-- [ ] `scripts/encode-bench.mjs` (registered; written and validated with `--dry-run` 2026-11-10,
-  **not yet run**: the session was not allowed to start a pod from a Docker Hub image, the user
-  runs it): one minute of 1080p through the planned ffmpeg settings in a pod on a named node,
-  prints fps and output bitrate. Read-only on the library.
+- [x] `apps/web/public/spike/reels.html` (written 2026-11-10; first iPhone run done for
+  picture, sound still to judge: see M0 results): a throwaway page, two `<video>` elements,
+  three clips from three files by scene id, a cut, a fade and a dissolve; prints swap latency
+  and whether sound survived. Removed before M1 merges.
+- [x] `scripts/encode-bench.mjs` (registered; run by the user 2026-11-10, results below; a
+  session may not start it, because the pod pulls a Docker Hub image): one minute of video
+  through the planned ffmpeg settings in a throwaway pod, prints fps and output bitrate.
+  Read-only on the library.
 - [x] A pull-request check (`.forgejo/workflows/pr.yml`, unproven until the first pull request): a Forgejo workflow that builds the image's `build` stage (lint,
   tests) on pull requests, without deploying. Today only `main` is built.
 - **Exit**: swap latency and sound judged acceptable by the user on the iPhone; fps recorded in
   [[reels-edit-by-reference]]; a red pull request cannot be merged unnoticed.
+
+## M0 results
+
+Measured 2026-11-10. Scene ids only.
+
+### Encode speed (`scripts/encode-bench.mjs`, x264 `slow`, CRF 18, ceiling 16 Mbit/s, 2 CPUs)
+
+| Source | Node | fps | Speed | Output | Wall for 60 s |
+|---|---|---|---|---|---|
+| 1080p h264, 23.98 fps, 11.9 Mbit/s | talos-eb5-wpp | 6.6 | 0.28x real time | 11.1 Mbit/s | 3 min 37 s |
+| 2160p h264, about 30 fps (scaled down to 1080p) | talos-eb5-wpp | 7.1 | 0.24x real time | 9.3 Mbit/s | 4 min 28 s incl. start |
+
+- A 4K source costs about the same per frame as a 1080p one (decoding and scaling it is not
+  the bottleneck; the x264 encode is), so reel length and frame rate set the build time, not
+  source resolution.
+- At 2 CPUs a 20-minute reel takes about 70 to 85 minutes: fine overnight, slow for
+  "Build now". The dedicated worker (more CPUs) or a faster preset is what shortens it; neither
+  is measured yet.
+- CRF 18 landed just under the source's own bitrate, so the 16 Mbit/s ceiling did not bind.
+- The `flix` namespace has a ResourceQuota (`laravel-tier`: `limits.memory` 4Gi, `requests.cpu`
+  1, `limits.cpu` 6, 20 pods) besides the LimitRange (2 CPUs, 2Gi per container). With flix
+  running, one 2Gi bench pod fits and a second does not: "exceeded quota: laravel-tier" means
+  an earlier pod is still there (`kubectl -n flix get pods -l app=encode-bench`).
+- An interrupted run used to leave its pod encoding and holding the quota; the script now
+  deletes it on Ctrl-C. A run moved to the background by a 120 s timeout keeps going.
+- ffmpeg's progress lines end in a carriage return, so `kubectl logs` shows none of them until
+  the encode ends; the script reads the last one after the pod succeeds.
+
+### Two-element playback on the iPhone (`/spike/reels.html`, Safari, iPhone 17 Pro Max)
+
+- First version: the first clip froze on a still frame after its seek, with no sound; pressing
+  Stop then Start made the whole run work, cuts included. Likely cause (not seen in a log): the
+  second element was started **with sound** inside the tap to unlock it, and iOS paused the
+  first when a second audible video began.
+- Fix, confirmed by the user for picture: start the second element **muted** inside the tap,
+  pause it, and unmute it only when its clip begins. All seven clips and six changes then run
+  on the first Start. The real player must unlock its second element the same way.
+- Headless Chrome on the Mac (not WebKit): next clip ready in 61-305 ms, swap wait 33-51 ms.
+- **Still open**: sound in every clip, whether a dissolve can sound both videos at once
+  (`firstPausedBySecond`), whether Web Audio routing lets a fade change volume, and the
+  iPhone's own swap timings. The user tests sound next; results get added here.
 
 ## M1. Reels in the app (large, flix only)
 
