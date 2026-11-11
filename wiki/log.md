@@ -436,3 +436,6 @@ The phone had stayed on an older build while testing (the update check skips whi
 
 ## [2026-11-10] decide | Reels: edit by reference, build on request, review before listing
 The user agreed the reels plan after three revisions; nothing built. Also recorded: the codec census (2,990 scenes). Pages: [[reels-edit-by-reference]], [[roadmap]], [[stash-library]].
+
+## [2026-11-10] decide | Reels is built on branches and squash-merged; engineering roadmap written
+Six milestones, one pull request each. Pages: [[reels-engineering-roadmap]], [[reels-branch-and-squash-merge]], [[build-a-feature-on-a-branch]].
