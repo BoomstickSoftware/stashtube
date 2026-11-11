@@ -62,8 +62,11 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
   folder);
   the k8s worker, its namespace and the job permissions are no longer needed. flix exposes
   the queue over its API and reads the built files.
-- Open after the move (the user's to settle): the encoder and its quality setting, chosen
-  from a side-by-side demo of Quick Sync and x264 renders of the same footage.
+- **Encoder** (decided 2026-11-11, by the user from a blind side-by-side of five settings on
+  two sources): **Quick Sync (`h264_vaapi`) at constant QP 18**. A good speed-up that keeps
+  the picture best; its files are 1.5 to 2 times the size of x264's at the same likeness,
+  which the user accepted. The ceiling "never above what the source justifies" still
+  applies: at QP 18 a 4K source came out above its own bitrate.
 - Earlier estimates (about real time on 8 vCPUs) are replaced by the measurements below.
 - Phase 0 before any build work: an encode benchmark on a worker and a two-clip playback spike
   on the iPhone (cut, fade, dissolve). Then: reels in the app, a compatibility badge, the build

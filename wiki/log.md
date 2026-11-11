@@ -457,3 +457,6 @@ A build in progress at 05:00 finishes on its own; the builder's call is unauthen
 
 ## [2026-11-11] ingest | Reels: Quick Sync against x264 on the NAS, speed, size and likeness
 Five settings on two sources; Quick Sync matches x264 slow's likeness at QP 18 for 1.5 to 2 times the bits. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels are encoded with Quick Sync at QP 18
+Chosen by the user from a blind comparison on two sources. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].

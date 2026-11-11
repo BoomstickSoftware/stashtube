@@ -107,8 +107,8 @@ number, not a judgement of how it looks).
   bits to do it (and on the 4K source more than the source itself: the "never above the
   source" ceiling would have to apply).
 - x264 `veryfast` is a middle road: close to `slow` in likeness and size, about real time.
-- The twelve files and a blind A/B page are in the session scratchpad (library content, not
-  in git) for the user to judge; the choice is the user's and is not made yet.
+- **Chosen by the user 2026-11-11, from a blind A/B page of these files: Quick Sync QP 18**
+  ([[reels-edit-by-reference]]).
 
 ### Two-element playback on the iPhone (`/spike/reels.html`, Safari, iPhone 17 Pro Max)
 
@@ -152,10 +152,12 @@ number, not a judgement of how it looks).
 The build runs on the NAS in a nightly window (decided 2026-11-11, [[reels-edit-by-reference]];
 the k8s render worker and its namespace are dropped).
 
-- [ ] Before anything else: the same footage rendered by Quick Sync and by x264 at several
-  settings (`encode-bench.mjs --nas --keep <dir> --ssim`), compared by the user on the phone
-  and the TV; pick the encoder and its quality setting.
-  Also prove bars on the hardware path (`pad_vaapi`, or pad in software before upload).
+- [x] The encoder: Quick Sync (`h264_vaapi`) at QP 18, chosen by the user 2026-11-11 (M0
+  results).
+- [ ] Prove on the hardware path what the benchmark did not exercise: bars for sources that
+  are not 16:9 (`pad_vaapi`, or pad in software before upload), a bitrate ceiling at the
+  source's own rate (QP 18 exceeded it on a 4K source), the dominant frame rate, and the
+  sources that are not H.264 (hardware decode may not cover them all).
 - [ ] nas repo: a reels folder and a scratch folder on `/volume1`; how flix reads the built
   files (inside the existing read-only export if the folder sits under it, otherwise a
   second export). No cron line: the NAS crontab is lost on reboot or firmware update
