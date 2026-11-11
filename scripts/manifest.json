@@ -462,6 +462,25 @@
         "context"
       ],
       "wiki": "neutral-observability"
+    },
+    {
+      "name": "encode-bench",
+      "file": "scripts/encode-bench.mjs",
+      "does": "Reels M0: encodes a short piece of one library video with the planned build settings (fit to 1080p with bars, x264, quality-targeted with a ceiling, AAC) in a throwaway pod on a chosen node and prints fps, speed against real time and output bitrate. The library is mounted read-only; the source path is resolved inside the flix pod and never printed. --dry-run validates the pod against the cluster and creates nothing.",
+      "usage": [
+        "node scripts/encode-bench.mjs --pick 1080 --cpus 2",
+        "node scripts/encode-bench.mjs --pick 2160 --node talos-eb5-wpp",
+        "node scripts/encode-bench.mjs --scene 3079 --seconds 30 --preset medium --dry-run"
+      ],
+      "env": [],
+      "writes": "a temporary pod in the flix namespace (pulls mwader/static-ffmpeg from Docker Hub), deleted afterwards; nothing in the library",
+      "tags": [
+        "reels",
+        "perf",
+        "k8s",
+        "ffmpeg"
+      ],
+      "wiki": "reels-engineering-roadmap"
     }
   ],
   "external": []

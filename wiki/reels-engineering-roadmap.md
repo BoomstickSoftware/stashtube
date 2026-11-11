@@ -34,9 +34,10 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 - [x] `apps/web/public/spike/reels.html` (written 2026-11-10; the user's iPhone run is pending): a throwaway page, two `<video>` elements, three clips
   from three files by scene id, a cut, a fade and a dissolve; prints swap latency and whether
   sound survived. Removed before M1 merges.
-- [ ] `scripts/encode-bench.mjs` (registered): runs one minute of 1080p through the planned
-  ffmpeg settings in a pod on a named node, prints fps and output bitrate. Read-only on the
-  library.
+- [ ] `scripts/encode-bench.mjs` (registered; written and validated with `--dry-run` 2026-11-10,
+  **not yet run**: the session was not allowed to start a pod from a Docker Hub image, the user
+  runs it): one minute of 1080p through the planned ffmpeg settings in a pod on a named node,
+  prints fps and output bitrate. Read-only on the library.
 - [x] A pull-request check (`.forgejo/workflows/pr.yml`, unproven until the first pull request): a Forgejo workflow that builds the image's `build` stage (lint,
   tests) on pull requests, without deploying. Today only `main` is built.
 - **Exit**: swap latency and sound judged acceptable by the user on the iPhone; fps recorded in
@@ -67,7 +68,9 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 - [ ] nas repo: a writable export for reels and scratch, read-write to the render worker only.
 - [ ] k8s repo: the render worker VM (8 vCPU, 8 GB, ballooning, low `cpuunits`), its taint, the
-  job's service account, a Role letting flix create and read Jobs in its namespace.
+  job's service account, a Role letting flix create and read Jobs in its namespace. The `flix`
+  namespace's LimitRange caps a container at 2 CPUs and 2Gi (found 2026-11-10), so the job
+  needs its own namespace or a raised limit.
 - [ ] `apps/render/`: a small image (ffmpeg + a Node script) that takes a plan, probes each
   source, renders each clip and each transition to an intermediate keyed by a content hash
   (fit to 1080p with bars, dominant frame rate, loudness, quality-targeted bitrate with both
