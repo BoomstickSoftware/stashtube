@@ -17,7 +17,7 @@ Pages: 197. Last generated 2026-11-11.
 ## Hubs
 
 - [[CONVENTIONS]] — How every page in this wiki is named, structured, tagged, linked, indexed and kept true; read before writing or editing a page. · _wiki, meta_ · verified 2026-10-30
-- [[reels-roadmap]] — The build order for reels: six milestones, each a branch and one squash-merged pull request, with its work items, tests, exit test and the repos it touches. · _reels, roadmap, planning, architecture_ · verified 2026-11-10
+- [[reels-engineering-roadmap]] — The build order for reels: six milestones, each a branch and one squash-merged pull request, with its work items, tests, exit test and the repos it touches. · _reels, roadmap, planning, architecture_ · verified 2026-11-10
 - [[roadmap]] — Where flix stands, what is left on the backlog, what is deferred, the known gaps and the open questions; done work is linked to its history page rather than listed. · _roadmap, backlog_ · verified 2026-10-30
 
 ## Architecture: how flix is built
@@ -241,7 +241,7 @@ Pages: 197. Last generated 2026-11-11.
 - **admin** (1): [[cache-admin]]
 - **airplay** (2): [[airplay-not-chromecast]], [[media-proxy]]
 - **api** (4): [[stash-api]], [[stashdb]], [[whisparr-api]], [[whisparr-calendar-empty]]
-- **architecture** (12): [[2026-11-10-architecture-and-ux-review]], [[2026-11-10-hardening]], [[overview]], [[postgres-not-sqlite]], [[reels-edit-by-reference]], [[reels-roadmap]], [[settings-next-to-page]], [[single-user-no-login]], [[stash-owns-activity]], [[stash-stays-headless]], [[stashdb-mirror]], [[whisparr-sync]]
+- **architecture** (12): [[2026-11-10-architecture-and-ux-review]], [[2026-11-10-hardening]], [[overview]], [[postgres-not-sqlite]], [[reels-edit-by-reference]], [[reels-engineering-roadmap]], [[settings-next-to-page]], [[single-user-no-login]], [[stash-owns-activity]], [[stash-stays-headless]], [[stashdb-mirror]], [[whisparr-sync]]
 - **argocd** (1): [[kubernetes-deployment]]
 - **assets** (1): [[stash-api]]
 - **audit** (8): [[2026-10-31-ux-audit]], [[2026-10-31-ux-copy-settings-errors]], [[2026-10-31-ux-phase0-web]], [[2026-10-31-ux-phase2-3-web]], [[2026-10-31-ux-phase4-desktop-polish]], [[2026-10-31-ux-phase5-freshness]], [[2026-11-10-architecture-and-ux-review]], [[ux-delight-principles]]
@@ -348,7 +348,7 @@ Pages: 197. Last generated 2026-11-11.
 - **phash** (1): [[duplicates-workbench]]
 - **phone-flow** (1): [[readme-screenshots]]
 - **pin** (1): [[pin-lock]]
-- **planning** (2): [[reels-edit-by-reference]], [[reels-roadmap]]
+- **planning** (2): [[reels-edit-by-reference]], [[reels-engineering-roadmap]]
 - **playback** (2): [[airplay-not-chromecast]], [[player]]
 - **player** (19): [[2026-10-27-mobile-and-speed-round]], [[2026-10-30-markers-previews-api-split]], [[2026-10-30-mini-player]], [[2026-10-30-relative-scrubbing]], [[2026-10-31-mini-player-expand]], [[2026-10-31-ux-phase5-freshness]], [[2026-11-10-polish-pass]], [[diagnostics]], [[keyboard-shortcuts]], [[long-press-to-mark]], [[mini-player]], [[moments]], [[next-video-opens-docked-over-its-own-page]], [[player]], [[reels-edit-by-reference]], [[safari-address-bar-needs-page-scroll]], [[scene-page]], [[seek-bar-markers]], [[stations]]
 - **playlists** (4): [[playlist-shuffle-plays-shuffled]], [[playlists-and-favorites]], [[playlists-ignore-blocklist]], [[stations]]
@@ -370,7 +370,7 @@ Pages: 197. Last generated 2026-11-11.
 - **react-query** (1): [[vite-duplicate-react-query]]
 - **readme** (1): [[readme-screenshots]]
 - **recommendations** (8): [[2026-11-09-edu-section]], [[2026-11-09-unlisted-and-vault]], [[edu-section-held-out-of-curated-views]], [[featured-ranking]], [[home-feed]], [[related-videos]], [[unlisted-and-vault]], [[vault]]
-- **reels** (3): [[reels-branch-and-squash-merge]], [[reels-edit-by-reference]], [[reels-roadmap]]
+- **reels** (3): [[reels-branch-and-squash-merge]], [[reels-edit-by-reference]], [[reels-engineering-roadmap]]
 - **refactor** (2): [[2026-10-29-round-4-review]], [[2026-10-30-markers-previews-api-split]]
 - **refresh** (1): [[whisparr-unwatched-studios-stop-learning-scenes]]
 - **related** (1): [[related-videos]]
@@ -379,7 +379,7 @@ Pages: 197. Last generated 2026-11-11.
 - **resilience** (2): [[stash-database-locked]], [[stashdb-http-422-schema-change]]
 - **resume** (7): [[2026-11-09-continue-reset]], [[continue-clears-and-expires]], [[continue-history-stats]], [[continue-strip-on-home]], [[player]], [[stations]], [[stations-only-user-made]]
 - **review** (1): [[2026-10-29-round-4-review]]
-- **roadmap** (3): [[2026-11-09-strategy-review]], [[reels-roadmap]], [[roadmap]]
+- **roadmap** (3): [[2026-11-09-strategy-review]], [[reels-engineering-roadmap]], [[roadmap]]
 - **rollback** (1): [[deploy-and-verify]]
 - **routing** (1): [[web-app]]
 - **rows** (1): [[home-feed]]
