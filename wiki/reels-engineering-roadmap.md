@@ -149,10 +149,12 @@ Built 2026-11-11 on branch `reels-m1-app`; what exists is in [[reels]].
 
 ## M2. Compatibility badge (small, flix only)
 
-- [ ] `packages/shared`: `compatibility(playback) → 'everywhere' | 'device' | 'transcode'` from
-  container and codecs, unit-tested against the census in [[stash-library]].
-- [ ] The badge on cards' meta line and the scene page; a Browse filter.
-- **Exit**: the 260 non-MP4 videos, and only those, read "transcodes".
+Built 2026-11-11 on branch `reels-m2-badge`; what exists is in [[compatibility-badge]].
+
+- [x] `packages/shared/src/compat.ts`: `compatibility(file)`, tested; `compat` on every card.
+- [x] The badge on cards (only "Transcodes") and the video page; the Browse filter.
+- **Exit**: the non-MP4 videos, and only those, read "transcodes". By counts against the live
+  library: 258 of 2,985, matching the formats exactly. Seeing it in the app waits for the merge.
 
 ## M3. Build pipeline (medium to large; flix, nas and flotilla repos)
 

@@ -1,6 +1,6 @@
 // Stash's shapes as the flix API contract (@flix/shared), and the GraphQL fragments that select
 // what each mapper reads.
-import type { Marker, PerformerCard, Ref, SceneCard, SceneDetail, StudioCard, TagCard } from '@flix/shared'
+import { compatibility, type Marker, type PerformerCard, type Ref, type SceneCard, type SceneDetail, type StudioCard, type TagCard } from '@flix/shared'
 import { config } from '../config.ts'
 import { signScene } from '../signing.ts'
 import type { Performer, Scene, SceneMarker, Studio, Tag, VideoFile } from '../stash.schema.ts'
@@ -23,7 +23,7 @@ export const rating100 = (s: number | null) => (s == null || s <= 0 ? null : Mat
 // 2026-10-31); the scene page's avatars come from SCENE_DETAIL, which selects it.
 export const SCENE_CARD = `
   id title date created_at rating100 play_count o_counter resume_time last_played_at
-  files { path duration width height size }
+  files { path duration width height size format video_codec audio_codec }
   paths { screenshot preview vtt }
   studio { id name image_path }
   performers { id name }
@@ -84,6 +84,7 @@ export function toSceneCard(s: Scene): SceneCard {
     screenshot: mediaUrl(s.paths?.screenshot)!,
     preview: mediaUrl(s.paths?.preview),
     vtt: mediaUrl(s.paths?.vtt),
+    compat: compatibility({ container: f?.format ?? '', videoCodec: f?.video_codec ?? '', audioCodec: f?.audio_codec ?? '' }),
   }
 }
 

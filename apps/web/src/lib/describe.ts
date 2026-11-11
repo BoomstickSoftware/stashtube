@@ -61,6 +61,7 @@ export function describeQuery(q: SceneQuery, names: Names): QueryPart[] {
   if (q.maxHeight) plain('maxHeight', `Below ${height(q.maxHeight)}`, { maxHeight: undefined })
   if (q.maxRating) plain('maxRating', `Rated ★${q.maxRating} or less`, { maxRating: undefined })
   if (q.unmatched) plain('unmatched', 'Not on StashDB', { unmatched: undefined })
+  if (q.transcodes) plain('transcodes', 'Transcodes', { transcodes: undefined })
   if (q.olderDays) plain('olderDays', `Added ${q.olderDays}+ days ago`, { olderDays: undefined })
   if (q.duplicates) plain('duplicates', 'Possible duplicates', { duplicates: undefined })
   if (q.unblocked) plain('unblocked', 'Performer defaults off', { unblocked: undefined })

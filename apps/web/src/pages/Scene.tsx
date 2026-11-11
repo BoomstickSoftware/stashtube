@@ -23,7 +23,7 @@ import { nowPlaying } from '../lib/nowPlaying'
 import { rememberScene } from '../lib/recent'
 import { guardWrite } from '../lib/privacy'
 import { asBool, useStored } from '../lib/storage'
-import { sized, srcSet } from '@flix/shared'
+import { compatibilityLabel, sized, srcSet } from '@flix/shared'
 
 const route = getRouteApi('/scene/$id')
 
@@ -244,6 +244,7 @@ function SceneView({ id }: { id: string }) {
           {date(scene.date) && <span>{date(scene.date)}</span>}
           <span>{duration(scene.durationSec)}</span>
           {res && <span>{res}</span>}
+          {scene.compat && <span className={scene.compat === 'everywhere' ? 'text-muted' : 'text-amber-300'}>{compatibilityLabel[scene.compat]}</span>}
           {scene.playCount > 0 && <span>{scene.playCount} views</span>}
           {scene.code && <span className="text-muted">{scene.code}</span>}
         </div>

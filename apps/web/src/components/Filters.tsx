@@ -120,6 +120,11 @@ export function FilterPanel({ query: q, scope, onChange }: { query: SceneQuery; 
         />
       </div>
       <FinderSection query={q} onChange={onChange} facets={facets} />
+      <Section title="Playback">
+        <Toggle on={!!q.transcodes} onChange={(v) => onChange({ transcodes: v || undefined })}>
+          Only videos that are transcoded (not MP4)
+        </Toggle>
+      </Section>
       <Section title="Performers">
         <Toggle on={!!q.favorites} onChange={(v) => onChange({ favorites: v || undefined })}>
           Only videos with a performer I follow

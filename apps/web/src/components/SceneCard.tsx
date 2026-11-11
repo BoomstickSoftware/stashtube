@@ -215,6 +215,11 @@ export const SceneCard = memo(function SceneCard({
           </>
         )}
         <div className="absolute right-1.5 bottom-1.5 flex gap-1">
+          {scene.compat === 'transcode' && (
+            <span title="Not an MP4: transcoded for Apple devices" className="rounded bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-amber-300 backdrop-blur">
+              Transcodes
+            </span>
+          )}
           {res && (
             <span
               className={clsx(

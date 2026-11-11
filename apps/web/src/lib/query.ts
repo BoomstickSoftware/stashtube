@@ -36,6 +36,7 @@ export function parseSceneQuery(s: Record<string, unknown>): SceneQuery {
     maxHeight: num(s.maxHeight),
     maxRating: num(s.maxRating),
     unmatched: bool(s.unmatched),
+    transcodes: bool(s.transcodes),
     olderDays: num(s.olderDays),
     duplicates: bool(s.duplicates),
     minAge: num(s.minAge),

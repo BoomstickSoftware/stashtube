@@ -37,6 +37,7 @@ export const sceneQuery = z.object({
   maxHeight: num,
   maxRating: z.coerce.number().min(1).max(5).optional(),
   unmatched: flag,
+  transcodes: flag,
   olderDays: num,
   duplicates: flag,
   minAge: z.coerce.number().int().min(18).max(99).optional(),

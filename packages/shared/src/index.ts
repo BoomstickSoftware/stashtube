@@ -1,3 +1,5 @@
+import type { Compatibility } from './compat.ts'
+
 // API contract between the flix BFF and the web app. The web app never sees Stash's
 // schema; every shape here is ours, so the backend behind the BFF can change.
 
@@ -26,6 +28,7 @@ export interface SceneCard {
   screenshot: string
   preview: string | null
   vtt: string | null
+  compat: Compatibility // where the file plays without a transcode (compat.ts)
   why?: string // Featured only: the signals that put it there, in words ("A performer you follow · not seen in 7 months")
 }
 
@@ -272,6 +275,7 @@ export interface SceneQuery {
   maxHeight?: number // below this: 720, 1080, 2160
   maxRating?: number // rated, at most this many stars
   unmatched?: boolean // no StashDB link
+  transcodes?: boolean // not an MP4-family file: transcoded for Apple devices
   olderDays?: number // added to the library more than this many days ago
   duplicates?: boolean // looks like another scene (perceptual hash)
   // Performer attributes: one performer of the Settings gender must match them all
@@ -650,3 +654,4 @@ export interface StudioCategoriesStatus {
 }
 
 export * from './reels.ts'
+export * from './compat.ts'
