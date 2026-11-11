@@ -469,3 +469,12 @@ Behind FLIX_REELS=1. Pages: [[reels]], [[data-model]], [[reels-engineering-roadm
 
 ## [2026-11-11] ingest | Compatibility badge: where a video plays without a transcode
 258 of 2,985 videos transcode (AVI, Matroska, WMV); every MP4 is H.264 with AAC. Pages: [[compatibility-badge]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Built reels live in Media/adult/reels on the NAS
+Stash does not scan it and flix already mounts it read-only, so no new export. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Reels milestone 3: the build queue, the schedule and the NAS builder
+Seven kinds of source rendered and joined on the NAS; the builder itself has not run yet. Pages: [[reel-builds]], [[run-the-reel-builder]], [[data-model]], [[git-mv-k-does-nothing-for-an-untracked-file]].
+
+## [2026-11-11] ingest | The reel builder ran end to end on the NAS
+A 42 s, seven-clip reel built in 35 s; apk's trigger failures in the Alpine container are ignored on purpose. Pages: [[reel-builds]], [[run-the-reel-builder]].

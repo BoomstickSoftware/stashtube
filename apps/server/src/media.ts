@@ -8,6 +8,7 @@ import { stat } from 'node:fs/promises'
 import { AssetCache } from './cache/assets.ts'
 import { config } from './config.ts'
 import { serveFile } from './files.ts'
+import { builtFilePath } from './reelBuilds.ts'
 import { fetchRemote, remoteUpstream } from './remote.ts'
 import { sceneFilePath, stashFetch } from './stash.ts'
 
@@ -107,6 +108,17 @@ export function localPath(stashPath: string): string | null {
   }
   return null
 }
+
+// A built reel (wiki features/reel-builds), with byte ranges, from the media mount only.
+media.get('/reel/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!config.reels || !Number.isInteger(id) || id <= 0) return c.notFound()
+  const path = await builtFilePath(id)
+  const file = path ? localPath(path) : null
+  const info = file ? await stat(file).catch(() => null) : null
+  if (!file || !info?.isFile()) return c.notFound()
+  return serveFile(file, info.size, c.req.raw, { 'content-type': 'video/mp4', 'cache-control': 'no-store' })
+})
 
 // Original file, with byte ranges. NFS mount first, Stash's direct stream otherwise.
 media.get('/play/:id', async (c) => {

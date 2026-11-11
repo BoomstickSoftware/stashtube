@@ -156,42 +156,34 @@ Built 2026-11-11 on branch `reels-m2-badge`; what exists is in [[compatibility-b
 - **Exit**: the non-MP4 videos, and only those, read "transcodes". By counts against the live
   library: 258 of 2,985, matching the formats exactly. Seeing it in the app waits for the merge.
 
-## M3. Build pipeline (medium to large; flix, nas and flotilla repos)
+## M3. Build pipeline (medium to large; flix and flotilla repos, one folder on the NAS)
 
 The build runs on the NAS in a nightly window (decided 2026-11-11, [[reels-edit-by-reference]];
 the k8s render worker and its namespace are dropped).
 
+Built 2026-11-11 on branch `reels-m3-build`; what exists is in [[reel-builds]], operating it
+in [[run-the-reel-builder]].
+
 - [x] The encoder: Quick Sync (`h264_vaapi`) at QP 18, chosen by the user 2026-11-11 (M0
   results).
-- [ ] Prove on the hardware path what the benchmark did not exercise: bars for sources that
-  are not 16:9 (`pad_vaapi`, or pad in software before upload), a bitrate ceiling at the
-  source's own rate (QP 18 exceeded it on a 4K source), the dominant frame rate, and the
-  sources that are not H.264 (hardware decode may not cover them all).
-- [ ] nas repo: a reels folder and a scratch folder on `/volume1`; how flix reads the built
-  files (inside the existing read-only export if the folder sits under it, otherwise a
-  second export). No cron line: the NAS crontab is lost on reboot or firmware update
-  (`nas:docs/adm.md`), which is why flix orchestrates.
-- [ ] flotilla repo: a `reel-builder` service in the stack (the render image, `/dev/dri`, the
-  library read-only, the reels and scratch folders writable, `restart: unless-stopped` so
-  Docker brings it back after a reboot, niced). The builder **asks
-  flix** for work every minute with an unauthenticated API call to flix's load-balancer IP
-  and port (no hosts entry in the container, no port opened on the NAS, no NAS credential in
-  the cluster); flix answers "nothing" outside the rules below.
-- [ ] flix owns the schedule (`apps/server/src/reelBuilds.ts`, pure and tested): a reel
-  marked "Build now" is offered at any hour. Otherwise work is offered only between 02:00 and
-  05:00 `America/New_York` (computed with the zone, the pod's clock is UTC), one build at a
-  time, the next no sooner than 5 minutes after the last one ended. Nothing is stopped: a
-  build claimed before 05:00 runs to its end.
-- [ ] `apps/render/`: a small image (ffmpeg + a Node script) that takes a plan, probes each
-  source, renders each clip and each transition to an intermediate keyed by a content hash
-  (fit to 1080p with bars, dominant frame rate, loudness, quality-targeted bitrate with both
-  ceilings), joins by copy, writes sprites, reports progress. Pure parts tested: the ffmpeg
-  argument builder, bar geometry, the bitrate ceiling, the intermediate key.
-- [ ] Migration: `reel_builds`. `apps/server/src/reelBuilds.ts` and routes: the queue as an API
-  the runner calls (claim the next build with its plan, report progress, finish or fail with
-  a reason), one claim at a time, a claim that stops reporting returns to the queue, stale
-  detection by plan hash.
-- [ ] Media proxy: signed playback of a built reel from the reels mount ([[media-proxy]]).
+- [x] The hardware path proven on the NAS for bars (`pad_vaapi`), fades (down to software and
+  back), the reel's frame rate, and sources that are not H.264 (software decode): seven kinds
+  of clip rendered and joined by copy.
+- [x] NAS: `/volume1/Media/adult/reels` with `.work` inside it (made 2026-11-11). Stash does
+  not scan it; flix reads it through its existing mount; no export, no k8s change.
+- [x] The builder (`apps/server/src/reelBuilder.ts`, copied to the NAS by
+  `scripts/reel-builder.mjs deploy`): asks flix every minute by IP, renders each clip to a
+  hashed intermediate, joins by copy, reports progress, tidies up. No separate image: an
+  `alpine:3.24` container that installs Node, ffmpeg and the driver at start.
+- [x] flix owns the schedule: `nextBuild`, pure and tested (Build now at any hour; the window
+  02:00 to 05:00 `America/New_York`; one at a time; 5 minutes between window builds).
+- [x] Migration `0014_reel_builds`; the queue as an API (claim, progress, done, fail), a
+  silent claim returned after 10 minutes, the reel marked changed by plan hash.
+- [x] `/media/reel/<build>` serves the built file; the reel page's "Built file" panel.
+- [ ] flotilla repo: the `reel-builder` service ([[run-the-reel-builder]], step 3).
+- [x] One build by hand on the NAS (`scripts/reel-builder.mjs once`, run by the user
+  2026-11-11): seven clips, a 42 s reel in 35 s, the file checked ([[reel-builds]]).
+- [ ] Not built: sprites for the built file; a signed link for AirPlay behind a password.
 - **Exit**: two queued reels build in one night with the pause between them, a killed build
   resumes the next night, and the result plays on the TV.
 

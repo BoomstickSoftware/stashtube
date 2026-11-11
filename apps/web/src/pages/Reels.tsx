@@ -1,5 +1,5 @@
 // Reels (wiki features/reels): the list, and one reel's editor with its preview on top.
-import { FADE_SEC, type ReelClip, type ReelDetail, type ReelTransition } from '@flix/shared'
+import { FADE_SEC, type ReelBuild, type ReelClip, type ReelDetail, type ReelTransition } from '@flix/shared'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, Ellipsis, Pencil, Plus, Scissors, Trash2 } from 'lucide-react'
@@ -10,7 +10,7 @@ import { ActionSheet, RenameSheet, Sheet } from '../components/Sheet'
 import { SpriteThumb } from '../components/SpriteThumb'
 import { Empty, ErrorBox, IconButton, ListSkeleton, Segmented, UndoButton } from '../components/ui'
 import { useReel, useReelMutations, useReels, useReelsEnabled } from '../lib/api'
-import { duration as fmt } from '../lib/format'
+import { ago, bytes, duration as fmt } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
 import { tenths } from '../lib/reels'
 import { showToast } from '../lib/toast'
@@ -143,6 +143,80 @@ export function ReelPage() {
   return <ReelEditor reel={reel} />
 }
 
+// The reel as one real file (wiki features/reel-builds): queue it, watch it, play it. The file
+// plays with the browser's own controls, so AirPlay and fullscreen work as for any video.
+function BuildPanel({ reel, clips }: { reel: ReelDetail; clips: number }) {
+  const m = useReelMutations()
+  const b: ReelBuild | null = reel.build
+  const [open, setOpen] = useState(false)
+  const busy = m.build.isPending || m.cancelBuild.isPending
+  const queue = (now: boolean) => m.build.mutate({ id: reel.id, now })
+  const buttons = (again: boolean) => (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={busy || !clips} onClick={() => queue(false)} className="press-soft h-11 rounded-full bg-raised px-4 text-sm font-semibold hover:bg-line disabled:opacity-50">
+        {again ? 'Rebuild tonight' : 'Build tonight'}
+      </button>
+      <button type="button" disabled={busy || !clips} onClick={() => queue(true)} className="press-soft h-11 rounded-full bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
+        {again ? 'Rebuild now' : 'Build now'}
+      </button>
+    </div>
+  )
+  return (
+    <section aria-label="Built file" className="my-4 rounded-2xl bg-surface p-4 text-sm">
+      {!b ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-muted">Build the reel into one video file to AirPlay it or play it like any other video. The originals are not changed.</p>
+          {buttons(false)}
+        </div>
+      ) : b.status === 'queued' ? (
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 flex-1">{b.now ? 'Queued: starts within a minute or two.' : 'Queued for tonight, between 2 and 5 am.'}</p>
+          <button type="button" disabled={busy} onClick={() => m.cancelBuild.mutate(reel.id)} className="press-soft h-11 shrink-0 rounded-full bg-raised px-4 text-sm font-semibold hover:bg-line">
+            Cancel
+          </button>
+        </div>
+      ) : b.status === 'building' ? (
+        <div>
+          <p className="mb-2">Building{b.message ? `: ${b.message}` : ''}</p>
+          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(b.progress * 100)} className="h-1.5 overflow-hidden rounded-full bg-raised">
+            <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${Math.max(3, b.progress * 100)}%` }} />
+          </div>
+        </div>
+      ) : b.status === 'failed' ? (
+        <div className="flex flex-col gap-3">
+          <p>
+            <span className="font-semibold text-danger">The build failed.</span> <span className="break-words text-muted">{b.error}</span>
+          </p>
+          {buttons(true)}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <p className="min-w-0 flex-1">
+              <span className="font-semibold">Built</span>{' '}
+              <span className="text-muted">
+                {b.durationSec != null && fmt(b.durationSec)}
+                {b.sizeBytes != null && ` · ${bytes(b.sizeBytes)}`}
+                {b.finishedAt && ` · ${ago(b.finishedAt)}`}
+              </span>
+            </p>
+            <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="press-soft h-11 shrink-0 rounded-full bg-raised px-4 text-sm font-semibold hover:bg-line">
+              {open ? 'Hide' : 'Play built file'}
+            </button>
+          </div>
+          {open && b.url && <video src={b.url} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />}
+          {b.stale && (
+            <>
+              <p className="text-amber-300">The reel changed since this file was built.</p>
+              {buttons(true)}
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ReelEditor({ reel }: { reel: ReelDetail }) {
   const m = useReelMutations()
   const navigate = useNavigate()
@@ -213,6 +287,8 @@ function ReelEditor({ reel }: { reel: ReelDetail }) {
         <Segmented label="Transition between clips" value={reel.transition} onChange={(transition) => m.update.mutate({ id: reel.id, transition })} options={TRANSITIONS} />
         {reel.transition === 'fade' && <span className="text-xs text-muted">{FADE_SEC * 2}s through black</span>}
       </div>
+
+      <BuildPanel reel={reel} clips={playable.length} />
 
       {!shown.clips.length ? (
         <Empty>No clips yet. Open a video, tap Clip, and add a range to this reel.</Empty>

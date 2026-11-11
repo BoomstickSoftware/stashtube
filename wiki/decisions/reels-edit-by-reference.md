@@ -51,8 +51,9 @@ sequence stitched in the app cannot be cast: a real file is needed for that.
   is cut off. Not a NAS cron job: the NAS's
   crontab does not survive a reboot or firmware update without a restore step (the user,
   2026-11-11). The NAS only executes. Each clip and each transition renders to its own intermediate, so a build
-  resumes and an edit rebuilds only what changed. Output goes to a new folder; the library
-  stays read-only to the build. _Was, until 2026-11-11: a Kubernetes job on a dedicated
+  resumes and an edit rebuilds only what changed. Output goes to **`/volume1/Media/adult/reels`** (the user,
+  2026-11-11: a subfolder of `adult`, so this content stays apart from the general-audience
+  library); the rest of the library stays read-only to the build. _Was, until 2026-11-11: a Kubernetes job on a dedicated
   8-vCPU worker, 01:00 to 06:00. "Build now" per reel was kept._
 - **Skipped**: the AirPlay receiver test. The first real reel is the test.
 

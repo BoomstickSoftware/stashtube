@@ -32,6 +32,8 @@ export const config = {
   // Reels are being built behind a switch (wiki reels-engineering-roadmap): FLIX_REELS=1 turns on
   // their API and screens.
   reels: process.env.FLIX_REELS === '1',
+  // Where built reels are, as Stash would name the path (MEDIA_PATH_MAP maps it to the mount).
+  reelsDir: (process.env.FLIX_REELS_DIR || '/data/adult/reels').replace(/\/+$/, ''),
   // Built web app to serve; unset in dev, where Vite serves it.
   webDist: process.env.WEB_DIST || null,
   // Whisparr owns the library files (Stash mounts them read-only), so deleting a scene goes

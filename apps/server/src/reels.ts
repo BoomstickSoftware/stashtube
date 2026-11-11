@@ -5,6 +5,7 @@ import { clampClip, planReel, type Reel, type ReelClip, type ReelClipStatus, typ
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from './db/index.ts'
 import { reelItems, reels } from './db/schema.ts'
+import { buildPlan, hashPlan, latestBuilds, toReelBuild } from './reelBuilds.ts'
 import { getScene } from './stash.ts'
 
 type ItemRow = typeof reelItems.$inferSelect
@@ -16,7 +17,7 @@ const SAME_LENGTH_SEC = 0.5
 export const clipStatus = (markedDuration: number, nowDuration: number | null): ReelClipStatus =>
   nowDuration == null ? 'missing' : Math.abs(nowDuration - markedDuration) > SAME_LENGTH_SEC ? 'shifted' : 'ok'
 
-const summary = (r: typeof reels.$inferSelect, clips: Pick<ItemRow, 'id' | 'sceneId' | 'startSec' | 'endSec' | 'transition'>[]): Reel => ({
+const summary = (r: typeof reels.$inferSelect, clips: Pick<ItemRow, 'id' | 'sceneId' | 'startSec' | 'endSec' | 'transition'>[], build: Reel['build'] = null): Reel => ({
   id: r.id,
   name: r.name,
   transition: r.transition,
@@ -24,6 +25,7 @@ const summary = (r: typeof reels.$inferSelect, clips: Pick<ItemRow, 'id' | 'scen
   durationSec: planReel({ transition: r.transition, clips: clips.map((c) => ({ id: c.id, sceneId: c.sceneId, start: c.startSec, end: c.endSec, transition: c.transition })) }).duration,
   cover: clips[0] ? `/media/stash/scene/${clips[0].sceneId}/screenshot` : null,
   updatedAt: r.updatedAt.toISOString(),
+  build,
 })
 
 const itemsOf = (reelId: number) => db.select().from(reelItems).where(eq(reelItems.reelId, reelId)).orderBy(asc(reelItems.position), asc(reelItems.id))
@@ -31,7 +33,11 @@ const itemsOf = (reelId: number) => db.select().from(reelItems).where(eq(reelIte
 export async function listReels(): Promise<Reel[]> {
   const rows = await db.select().from(reels).orderBy(desc(reels.updatedAt))
   const items = await db.select().from(reelItems).orderBy(asc(reelItems.position), asc(reelItems.id))
-  return rows.map((r) => summary(r, items.filter((i) => i.reelId === r.id)))
+  const builds = await latestBuilds(rows.map((r) => r.id))
+  return rows.map((r) => {
+    const b = builds.get(r.id)
+    return summary(r, items.filter((i) => i.reelId === r.id), b ? toReelBuild(b, null) : null)
+  })
 }
 
 export async function getReel(id: number): Promise<ReelDetail | null> {
@@ -64,7 +70,11 @@ export async function getReel(id: number): Promise<ReelDetail | null> {
       },
     }
   })
-  return { ...summary(r, items), clips }
+  // has the design changed since the latest build was queued?
+  const b = (await latestBuilds([id])).get(id)
+  const plan = b ? await buildPlan(id) : null
+  const build = b ? toReelBuild(b, plan ? hashPlan(plan) !== b.planHash : null) : null
+  return { ...summary(r, items, build), clips }
 }
 
 export async function createReel(name: string, transition: ReelTransition = 'cut') {

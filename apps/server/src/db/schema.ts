@@ -260,3 +260,31 @@ export const reelItems = pgTable(
   (t) => [index('reel_items_reel').on(t.reelId, t.position)],
 )
 
+// A reel's render to one file (wiki features/reel-builds). The builder on the NAS claims a
+// queued row, renders the `plan` snapshot it carries and reports back; flix decides when a row
+// may be claimed. Only the newest row of a reel is kept once a build is done.
+export const reelBuilds = pgTable(
+  'reel_builds',
+  {
+    id: serial('id').primaryKey(),
+    reelId: integer('reel_id')
+      .notNull()
+      .references(() => reels.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['queued', 'building', 'done', 'failed'] }).notNull().default('queued'),
+    now: boolean('now').notNull().default(false), // "Build now": offered at any hour
+    planHash: text('plan_hash').notNull(), // the design it was queued from; another hash now means the reel changed
+    plan: jsonb('plan').notNull(), // BuildPlan: what the builder renders
+    progress: doublePrecision('progress').notNull().default(0), // 0 to 1
+    message: text('message'),
+    error: text('error'),
+    file: text('file'), // the built file's name inside the reels folder
+    durationSec: doublePrecision('duration_sec'),
+    sizeBytes: doublePrecision('size_bytes'),
+    queuedAt: timestamp('queued_at', { withTimezone: true }).notNull().defaultNow(),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [index('reel_builds_reel').on(t.reelId), index('reel_builds_status').on(t.status)],
+)
+
