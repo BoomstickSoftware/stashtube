@@ -29,7 +29,7 @@ import { IconButton, Spinner, Toaster } from './ui'
 // _Until 2026-11-09_ the phone had seven tabs and Discover, Stations and Vault as header icons.
 const nav = [
   { to: '/', label: 'Home', icon: Home, owns: [] as string[] },
-  { to: '/browse', label: 'Browse', icon: Clapperboard, owns: ['/browse', '/performers', '/studios', '/tags', '/performer/', '/studio/', '/tag/'] },
+  { to: '/browse', label: 'Browse', icon: Clapperboard, owns: ['/browse', '/performers', '/studios', '/tags', '/reels', '/performer/', '/studio/', '/tag/', '/reel/'] },
   { to: '/stations', label: 'Stations', icon: Radio, owns: ['/stations', '/station'] },
   { to: '/discover', label: 'Discover', icon: Compass, owns: ['/discover'] },
   { to: '/you', label: 'You', icon: UserRound, owns: ['/you', '/continue', '/history', '/stats', '/playlists', '/playlist/', '/vault'] },

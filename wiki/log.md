@@ -463,3 +463,6 @@ Five settings on two sources; Quick Sync matches x264 slow's likeness at QP 18 f
 
 ## [2026-11-11] decide | Reels are encoded with Quick Sync at QP 18
 Chosen by the user from a blind comparison on two sources. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Reels milestone 1: clips, the editor and the two-element preview
+Behind FLIX_REELS=1. Pages: [[reels]], [[data-model]], [[reels-engineering-roadmap]].

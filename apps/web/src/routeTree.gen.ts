@@ -19,6 +19,7 @@ import { Route as EduRouteImport } from './routes/edu'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as PerformersRouteImport } from './routes/performers'
 import { Route as PlaylistsRouteImport } from './routes/playlists'
+import { Route as ReelsRouteImport } from './routes/reels'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StationRouteImport } from './routes/station'
 import { Route as StationsRouteImport } from './routes/stations'
@@ -29,6 +30,7 @@ import { Route as VaultRouteImport } from './routes/vault'
 import { Route as YouRouteImport } from './routes/you'
 import { Route as PerformerIdRouteImport } from './routes/performer.$id'
 import { Route as PlaylistIdRouteImport } from './routes/playlist.$id'
+import { Route as ReelIdRouteImport } from './routes/reel.$id'
 import { Route as SceneIdRouteImport } from './routes/scene.$id'
 import { Route as StationsNewRouteImport } from './routes/stations_.new'
 import { Route as StudioIdRouteImport } from './routes/studio.$id'
@@ -85,6 +87,11 @@ const PlaylistsRoute = PlaylistsRouteImport.update({
   path: '/playlists',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReelsRoute = ReelsRouteImport.update({
+  id: '/reels',
+  path: '/reels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -135,6 +142,11 @@ const PlaylistIdRoute = PlaylistIdRouteImport.update({
   path: '/playlist/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReelIdRoute = ReelIdRouteImport.update({
+  id: '/reel/$id',
+  path: '/reel/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SceneIdRoute = SceneIdRouteImport.update({
   id: '/scene/$id',
   path: '/scene/$id',
@@ -172,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
+  '/reels': typeof ReelsRoute
   '/settings': typeof SettingsRoute
   '/station': typeof StationRoute
   '/stations': typeof StationsRoute
@@ -182,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
+  '/reel/$id': typeof ReelIdRoute
   '/scene/$id': typeof SceneIdRoute
   '/stations/new': typeof StationsNewRoute
   '/studio/$id': typeof StudioIdRoute
@@ -199,6 +213,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
+  '/reels': typeof ReelsRoute
   '/settings': typeof SettingsRoute
   '/station': typeof StationRoute
   '/stations': typeof StationsRoute
@@ -209,6 +224,7 @@ export interface FileRoutesByTo {
   '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
+  '/reel/$id': typeof ReelIdRoute
   '/scene/$id': typeof SceneIdRoute
   '/stations/new': typeof StationsNewRoute
   '/studio/$id': typeof StudioIdRoute
@@ -227,6 +243,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/performers': typeof PerformersRoute
   '/playlists': typeof PlaylistsRoute
+  '/reels': typeof ReelsRoute
   '/settings': typeof SettingsRoute
   '/station': typeof StationRoute
   '/stations': typeof StationsRoute
@@ -237,6 +254,7 @@ export interface FileRoutesById {
   '/you': typeof YouRoute
   '/performer/$id': typeof PerformerIdRoute
   '/playlist/$id': typeof PlaylistIdRoute
+  '/reel/$id': typeof ReelIdRoute
   '/scene/$id': typeof SceneIdRoute
   '/stations_/new': typeof StationsNewRoute
   '/studio/$id': typeof StudioIdRoute
@@ -256,6 +274,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/performers'
     | '/playlists'
+    | '/reels'
     | '/settings'
     | '/station'
     | '/stations'
@@ -266,6 +285,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/performer/$id'
     | '/playlist/$id'
+    | '/reel/$id'
     | '/scene/$id'
     | '/stations/new'
     | '/studio/$id'
@@ -283,6 +303,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/performers'
     | '/playlists'
+    | '/reels'
     | '/settings'
     | '/station'
     | '/stations'
@@ -293,6 +314,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/performer/$id'
     | '/playlist/$id'
+    | '/reel/$id'
     | '/scene/$id'
     | '/stations/new'
     | '/studio/$id'
@@ -310,6 +332,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/performers'
     | '/playlists'
+    | '/reels'
     | '/settings'
     | '/station'
     | '/stations'
@@ -320,6 +343,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/performer/$id'
     | '/playlist/$id'
+    | '/reel/$id'
     | '/scene/$id'
     | '/stations_/new'
     | '/studio/$id'
@@ -338,6 +362,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   PerformersRoute: typeof PerformersRoute
   PlaylistsRoute: typeof PlaylistsRoute
+  ReelsRoute: typeof ReelsRoute
   SettingsRoute: typeof SettingsRoute
   StationRoute: typeof StationRoute
   StationsRoute: typeof StationsRoute
@@ -348,6 +373,7 @@ export interface RootRouteChildren {
   YouRoute: typeof YouRoute
   PerformerIdRoute: typeof PerformerIdRoute
   PlaylistIdRoute: typeof PlaylistIdRoute
+  ReelIdRoute: typeof ReelIdRoute
   SceneIdRoute: typeof SceneIdRoute
   StationsNewRoute: typeof StationsNewRoute
   StudioIdRoute: typeof StudioIdRoute
@@ -427,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaylistsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reels': {
+      id: '/reels'
+      path: '/reels'
+      fullPath: '/reels'
+      preLoaderRoute: typeof ReelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -497,6 +530,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaylistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reel/$id': {
+      id: '/reel/$id'
+      path: '/reel/$id'
+      fullPath: '/reel/$id'
+      preLoaderRoute: typeof ReelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scene/$id': {
       id: '/scene/$id'
       path: '/scene/$id'
@@ -546,6 +586,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   PerformersRoute: PerformersRoute,
   PlaylistsRoute: PlaylistsRoute,
+  ReelsRoute: ReelsRoute,
   SettingsRoute: SettingsRoute,
   StationRoute: StationRoute,
   StationsRoute: StationsRoute,
@@ -556,6 +597,7 @@ const rootRouteChildren: RootRouteChildren = {
   YouRoute: YouRoute,
   PerformerIdRoute: PerformerIdRoute,
   PlaylistIdRoute: PlaylistIdRoute,
+  ReelIdRoute: ReelIdRoute,
   SceneIdRoute: SceneIdRoute,
   StationsNewRoute: StationsNewRoute,
   StudioIdRoute: StudioIdRoute,

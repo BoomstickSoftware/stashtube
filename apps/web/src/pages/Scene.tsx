@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import clsx from 'clsx'
 import type { SceneCard as Scene } from '@flix/shared'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Droplet, Ellipsis, ExternalLink, FolderOpen, ListVideo } from 'lucide-react'
+import { Droplet, Ellipsis, ExternalLink, FolderOpen, ListVideo, Scissors } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddFilterButton } from '../components/AddFilter'
 import { CastLine } from '../components/CastLine'
@@ -14,7 +14,8 @@ import { useIdentify } from '../lib/identify'
 import { FavoriteSceneButton, PlaylistMenu } from '../components/PlaylistMenu'
 import { SceneCard } from '../components/SceneCard'
 import { Avatar, ErrorBox, ListSkeleton, Spinner, Stars, Switch } from '../components/ui'
-import { cachedCard, useAddO, usePlaylist, useRateScene, useRelated, useScene, useSettings, useSceneEdits } from '../lib/api'
+import { cachedCard, useAddO, usePlaylist, useRateScene, useReelsEnabled, useRelated, useScene, useSettings, useSceneEdits } from '../lib/api'
+import { ClipSheet } from '../components/ClipSheet'
 import { bytes, date, duration, resolution } from '../lib/format'
 import { useMediaQuery } from '../lib/hooks'
 import { upNext, useUpNext, withQueued } from '../lib/upNext'
@@ -50,6 +51,8 @@ function SceneView({ id }: { id: string }) {
   const edits = useSceneEdits(id)
   const identify = useIdentify(id)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [clipping, setClipping] = useState(false)
+  const reelsOn = useReelsEnabled()
   const [theater, setTheater] = useStored('flix.theater', asBool(false))
   const [autoplay, setAutoplay] = useStored('flix.autoplay', asBool(true))
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -178,6 +181,11 @@ function SceneView({ id }: { id: string }) {
           </button>
           <FavoriteSceneButton sceneId={scene.id} variant="button" />
           <PlaylistMenu sceneId={scene.id} />
+          {reelsOn && (
+            <button onClick={() => setClipping(true)} title="Mark a range and add it to a reel" className="inline-flex items-center gap-1.5 rounded-full bg-raised px-4 py-2 text-sm hover:bg-line">
+              <Scissors size={17} /> Clip
+            </button>
+          )}
           {/* the rest (Mark as watched, Remove from Continue, Unlist, Identify, Delete) in the
               same menu a card's "⋯" opens */}
           <button
@@ -272,7 +280,8 @@ function SceneView({ id }: { id: string }) {
           </>
         )}
         <IdentifyStatus identify={identify} />
-        {menu && (
+        {clipping && <ClipSheet scene={scene} onClose={() => setClipping(false)} />}
+      {menu && (
           <CardMenu
             scene={scene}
             at={menu}
