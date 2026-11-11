@@ -127,7 +127,7 @@ export function Station(): JSX.Element {
   )
 }
 
-// Full-screen endless play: Skip moves to the next video. In Moments mode it fades between
+// Full-screen endless play: Next moves to the next video. In Moments mode it fades between
 // windows of each video, then on to the next. The seek bar, ±10 s and the markers work as on a
 // video page; seeking in Moments mode plays a moment from there. The list shows what has played
 // and what is coming, and jumps to any of it.
@@ -175,9 +175,11 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   // The scene as the rest of the app sees it, so a marker added here shows on the bar.
   const live = useQuery({ queryKey: ['scene', scene?.id], queryFn: () => get<SceneDetail>(`/scenes/${scene!.id}`), enabled: !!scene, staleTime: 60_000 })
   const markers = (live.data ?? scene)?.markers ?? []
-  // Full videos count as watched in Stash (plays, history, resume point) as on the video page;
-  // Moments only sample, so they leave no trace.
-  const { onTimeUpdate: accountTime, flush } = useWatchAccounting(video, scene?.id, { resume: prefs.mode === 'full' })
+  // A full video counts as watched in Stash (a play, history, a resume point) once it has
+  // played to its end, or when the station is left part-way through it. Moving on with Next,
+  // Previous or a pick from the list leaves no trace: it is not a play, not in Continue
+  // watching, and an Unwatched station will offer it again. Moments only sample: no trace either.
+  const { onTimeUpdate: accountTime, flush, discard } = useWatchAccounting(video, scene?.id, { resume: prefs.mode === 'full', defer: true })
   const edits = useSceneEdits(scene?.id ?? '')
   const favorites = useFavoriteScenes()
   const toggleFavorite = useToggleFavoriteScene()
@@ -254,8 +256,20 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     [refreshList],
   )
   const nextScene = useCallback(() => load(() => queue.next()), [load, queue])
-  const prevScene = () => list.canBack && load(() => queue.back())
-  const pick = (id: string) => load(() => queue.jump(id))
+  // the viewer moving on by hand: what was watched of this video is forgotten first
+  const moveOn = () => {
+    discard()
+    nextScene()
+  }
+  const prevScene = () => {
+    if (!list.canBack) return
+    discard()
+    load(() => queue.back())
+  }
+  const pick = (id: string) => {
+    discard()
+    load(() => queue.jump(id))
+  }
 
   // Load each scene's source and seek to its first segment. A direct file that errors is
   // retried through Stash's HLS transcode from the same point (`fallen`).
@@ -398,7 +412,8 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
     else {
       v.pause()
       setState('paused')
-      flush()
+      // nothing is saved on pause: Next after a pause must still leave no trace, and leaving
+      // the station or hiding the app saves by itself
     }
   }
   const { idle, poke } = useIdle(HIDE_MS)
@@ -412,7 +427,7 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
   usePlayerKeys((e) => {
     if (transportKey(e, { toggle, seekBy, mark, jumpMarker, toggleMute: () => setMuted((m) => !m) })) {
       // handled
-    } else if (e.key === 'n' || e.key === 'N') nextScene()
+    } else if (e.key === 'n' || e.key === 'N') moveOn()
     else if (e.key === 'p' || e.key === 'P') prevScene()
     else if (e.key === 'q') togglePanel()
     else if (e.key === 'Escape') {
@@ -614,11 +629,11 @@ function StationPlayer({ config }: { config: Config }): JSX.Element {
                 <RotateCw size={20} />
               </button>
               <button
-                onClick={() => nextScene()}
+                onClick={moveOn}
                 className="flex h-12 items-center gap-2 rounded-full bg-white px-5 font-semibold text-black hover:bg-accent hover:text-white"
-                title="Next video (n)"
+                title="Next video (n): this one is not counted as watched"
               >
-                <SkipForward size={20} className="fill-current" /> Skip
+                <SkipForward size={20} className="fill-current" /> Next
               </button>
               <button onClick={() => setMuted((m) => !m)} className={clsx(btn, 'max-sm:hidden')} aria-label={muted ? 'Unmute' : 'Mute'}>
                 {muted ? <VolumeX size={22} /> : <Volume2 size={22} />}

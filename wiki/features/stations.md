@@ -14,7 +14,7 @@ related: [player, seek-bar-markers, moments, browse-and-filters, playlists-and-f
 
 # Stations
 
-A station plays videos one after another, full screen, with Skip but no ratings: you steer
+A station plays videos one after another, full screen, with Next but no ratings: you steer
 with filters. It starts from the Stations tab's **Quick start** (a ready-made station, the last filtered list
 you were on, or a drift through videos related to the last one you opened; [[navigation]]), from
 a saved station or quick start, or from a playlist (`/station?playlist=`). _Until 2026-11-09_
@@ -27,8 +27,16 @@ the Unlisted entity or it starts from the Vault ([[vault]]).
 
 ## Modes
 
-- **Full**: whole videos after any intro skip. Plays and resume points are recorded in Stash as
-  on the video page, so Continue, History and Most played see them.
+- **Full**: whole videos after any intro skip. A video is recorded in Stash (a play, its
+  time, a resume point, so Continue, History and Most played see it) **when it plays to its
+  end, or when the station is left or the app hidden part-way through it**. **Next, Previous
+  and a pick from the list leave no trace** (the user, 2026-11-11: Next must not penalise a
+  video): no play, no resume point, so the video is not "recently seen" to Featured, does not
+  sit in Continue watching, and an Unwatched station offers it again. Nothing is saved on
+  pause. `useWatchAccounting(…, { defer: true })` and its `discard()`. If the app was hidden
+  and reopened during a video, that visit was saved as a play; Next then only clears its
+  resume point. _Until 2026-11-11 the button read "Skip", a play was counted after 20 s and
+  the position saved every 15 s, as on the video page._
 - **Moments**: a 30 / 60 / 90 s window around each marker, or at 20 / 40 / 60 / 80 % when a
   video has none, fading out and in between them (`FADE_MS` 700). Records nothing.
 - **Unwatched** (`unwatched=1`) plays only never-watched videos, also when drifting.
