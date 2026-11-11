@@ -16,7 +16,7 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 ## Rules for every milestone
 
-- One branch (`reels/m<n>-<topic>`, the first is `reels`), one pull request, **squash-merged**:
+- One branch (`reels-m<n>-<topic>`, the first is `reels`; a branch named `reels/…` cannot exist beside `reels`), one pull request, **squash-merged**:
   one commit on `main` per milestone, so `git revert <sha>` takes a milestone back out.
 - `main` stays deployable. Everything reels sits behind the server flag `features.reels`
   (`FLIX_REELS=1`, off in production until M1's exit test passes on the phone).
@@ -129,15 +129,21 @@ number, not a judgement of how it looks).
 
 ## M1. Reels in the app (large, flix only)
 
-- [ ] Migration: `clips`, `reels`, `reel_items` (drizzle; [[database-migrations]]).
-- [ ] `packages/shared/src/reels.ts`: types and the pure `planReel(reel) → Segment[]` (clips,
-  transitions, overlaps, total length, virtual-time ↔ clip-time mapping). Fully unit-tested;
-  both players and the build consume it.
-- [ ] `apps/server/src/reels.ts` + `routes/reels.ts`: CRUD, reorder, `idParam` validation, a
-  source check (duration and fingerprint against Stash) that marks a clip shifted or missing.
-- [ ] Web: In/Out marking in the Player; "Add to reel" sheet; the reel editor (timeline,
-  filmstrip trimmer from sprites, transition per join and reel default); `ReelPlayer` built on
-  `lib/playback.ts` with two elements and the `planReel` timeline in the shared `SeekBar`.
+Built 2026-11-11 on branch `reels-m1-app`; what exists is in [[reels]].
+
+- [x] Migration `0013_reels`: `reels`, `reel_items`. No separate `clips` table: a clip exists
+  only inside a reel (the Clip sheet picks or creates the reel as it saves).
+- [x] `packages/shared/src/reels.ts`: types, `planReel`, `locate`, `reelTime`, `fadeLevel`,
+  `clampClip`; tested in `apps/server/src/reels.test.ts`.
+- [x] `apps/server/src/reels.ts` + `routes/reels.ts`: CRUD, reorder, validation, the source
+  check. The check compares the video's length only, not a fingerprint.
+- [x] Web: the Clip sheet on the video page (In and Out with steppers, not buttons inside the
+  player's controls); the reel editor (order, transition per join and reel default, trim with
+  sprite frames and steppers in place of a draggable filmstrip); `ReelPlayer` with two
+  elements and the `planReel` timeline in the shared `SeekBar`.
+- [ ] Still to do before the exit test: switch `FLIX_REELS=1` on in the k8s repo's flix
+  deployment, then add a clip and open a reel against the live library (those two paths read
+  Stash and have not run end to end).
 - **Exit**: the user builds a reel of five clips from three videos on the phone and previews it
   with cuts and fades.
 

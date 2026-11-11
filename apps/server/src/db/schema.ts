@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, primaryKey, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 // Only what Stash cannot hold. Ratings, play counts, resume points and favourites
 // live in Stash so its own UI stays consistent.
@@ -229,3 +229,34 @@ export const studioCategoryAdds = pgTable(
   },
   (t) => [primaryKey({ columns: [t.sceneId, t.tagId] })],
 )
+
+// Reels (wiki decisions/reels-edit-by-reference): a reel is an ordered list of ranges of
+// library videos. The rows are the design; no video file is touched.
+export const reels = pgTable('reels', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  transition: text('transition', { enum: ['cut', 'fade'] }).notNull().default('cut'), // the default between clips
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const reelItems = pgTable(
+  'reel_items',
+  {
+    id: serial('id').primaryKey(),
+    reelId: integer('reel_id')
+      .notNull()
+      .references(() => reels.id, { onDelete: 'cascade' }),
+    sceneId: text('scene_id').notNull(), // Stash scene id
+    startSec: doublePrecision('start_sec').notNull(),
+    endSec: doublePrecision('end_sec').notNull(),
+    position: integer('position').notNull(),
+    transition: text('transition', { enum: ['cut', 'fade'] }), // into the next clip; null follows the reel
+    // the video's length when the clip was marked: another length now means the file changed
+    // and the range may show something else
+    sourceDurationSec: doublePrecision('source_duration_sec').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('reel_items_reel').on(t.reelId, t.position)],
+)
+

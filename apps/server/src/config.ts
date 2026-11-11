@@ -29,6 +29,9 @@ export const config = {
   // the video themselves and cannot resolve hosts-file names like flix.lan; an IP always
   // works. Unset: links stay relative to whatever host the page came from.
   mediaOrigin: (process.env.MEDIA_ORIGIN || '').replace(/\/$/, ''),
+  // Reels are being built behind a switch (wiki reels-engineering-roadmap): FLIX_REELS=1 turns on
+  // their API and screens.
+  reels: process.env.FLIX_REELS === '1',
   // Built web app to serve; unset in dev, where Vite serves it.
   webDist: process.env.WEB_DIST || null,
   // Whisparr owns the library files (Stash mounts them read-only), so deleting a scene goes
