@@ -55,6 +55,25 @@ Measured 2026-11-10. Scene ids only.
 | 1080p h264, 23.98 fps, 11.9 Mbit/s | talos-eb5-wpp | 6.6 | 0.28x real time | 11.1 Mbit/s | 3 min 37 s |
 | 2160p h264, about 30 fps (scaled down to 1080p) | talos-eb5-wpp | 7.1 | 0.24x real time | 9.3 Mbit/s | 4 min 28 s incl. start |
 
+On the NAS (N5105, 4 cores), with the ffmpeg inside the Stash container
+(`node scripts/encode-bench.mjs --nas [--encoder vaapi]`, niced, nothing pulled):
+
+| Source | Encoder | fps | Speed | Output |
+|---|---|---|---|---|
+| 2160p h264, about 30 fps (scene 1783, the same as above) | x264 `slow`, CRF 18 (30 s) | 8.4 | 0.28x real time | 8.6 Mbit/s |
+| 2160p h264, about 30 fps (scene 1783) | VAAPI, QP 20 (60 s) | 117 | 3.9x real time | 13.4 Mbit/s |
+| 1080p h264 (scene 438) | VAAPI, QP 20 (60 s) | 222 | 9.25x real time | 6.9 Mbit/s |
+
+- Quick Sync on the NAS (hardware decode, scale and encode) is 14 to 33 times faster than
+  software x264 on 2 cluster CPUs: a 20-minute reel in about 2 to 5 minutes. Its picture
+  quality at these settings has **not** been compared with x264 CRF 18; hardware H.264 usually
+  needs more bits for the same quality. The VAAPI run does not add bars (plain
+  `scale_vaapi`), so the build's fit-with-bars step is untested on this path.
+- Software x264 on the NAS's four cores is no faster than 2 cluster CPUs, and it took the
+  NAS's load average from 1 to 7 while it ran.
+- Running the build on the NAS is a change to the agreed plan (a k8s Job on a dedicated
+  worker, [[reels-edit-by-reference]]): the user's to decide.
+
 - A 4K source costs about the same per frame as a 1080p one (decoding and scaling it is not
   the bottleneck; the x264 encode is), so reel length and frame rate set the build time, not
   source resolution.

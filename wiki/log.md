@@ -442,3 +442,6 @@ Six milestones, one pull request each. Pages: [[reels-engineering-roadmap]], [[r
 
 ## [2026-11-10] ingest | Reels M0 results: first encode speed and the iPhone two-video finding
 1080p encodes at 6.6 fps (0.28x) on 2 CPUs; the second video must be unlocked muted on iOS; the namespace quota and the leftover-pod failure. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-10] ingest | Reels M0: encode speed on the NAS, software and Quick Sync
+Quick Sync encodes at 3.9x (4K source) to 9.25x (1080p) real time; software x264 there is 0.28x. `encode-bench.mjs --nas`. Pages: [[reels-engineering-roadmap]].
