@@ -1,5 +1,5 @@
 // Reels (wiki features/reels): the list, and one reel's editor with its preview on top.
-import { FADE_SEC, type ReelBuild, type ReelClip, type ReelDetail, type ReelTransition } from '@flix/shared'
+import { FADE_SEC, type ReelBuild, type ReelClip, type ReelDetail, type ReelProposed, type ReelRef, type ReelTransition } from '@flix/shared'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, Ellipsis, Pencil, Plus, Scissors, Trash2 } from 'lucide-react'
@@ -8,8 +8,11 @@ import { EdgeRow } from '../components/ClipSheet'
 import { ReelPlayer, type ReelPlayerHandle } from '../components/ReelPlayer'
 import { ActionSheet, RenameSheet, Sheet } from '../components/Sheet'
 import { SpriteThumb } from '../components/SpriteThumb'
-import { Empty, ErrorBox, IconButton, ListSkeleton, Segmented, UndoButton } from '../components/ui'
-import { useReel, useReelMutations, useReels, useReelsEnabled } from '../lib/api'
+import { ReelStateBadge } from '../components/ReelShelf'
+import { Empty, ErrorBox, IconButton, ListSkeleton, Segmented, Stars, UndoButton } from '../components/ui'
+import { saveReelActivity, useReel, useReelMutations, useReelProposal, useReels, useReelsEnabled } from '../lib/api'
+import { COUNT_PLAY_AFTER } from '../lib/playback'
+import { guardWrite, isPrivate } from '../lib/privacy'
 import { ago, bytes, duration as fmt } from '../lib/format'
 import { loadSprites, type SpriteCue } from '../lib/media'
 import { tenths } from '../lib/reels'
@@ -56,6 +59,7 @@ export function ReelsPage() {
                   <span className="block text-sm text-muted">
                     {r.clipCount} {r.clipCount === 1 ? 'clip' : 'clips'} · {fmt(r.durationSec)}
                   </span>
+                  <ReelStateBadge state={r.state} className="mt-1 inline-block !bg-raised" />
                 </span>
               </Link>
             </li>
@@ -148,7 +152,6 @@ export function ReelPage() {
 function BuildPanel({ reel, clips }: { reel: ReelDetail; clips: number }) {
   const m = useReelMutations()
   const b: ReelBuild | null = reel.build
-  const [open, setOpen] = useState(false)
   const busy = m.build.isPending || m.cancelBuild.isPending
   const queue = (now: boolean) => m.build.mutate({ id: reel.id, now })
   const buttons = (again: boolean) => (
@@ -189,22 +192,18 @@ function BuildPanel({ reel, clips }: { reel: ReelDetail; clips: number }) {
           </p>
           {buttons(true)}
         </div>
+      ) : reel.state === 'review' ? (
+        <ReviewPanel reel={reel} build={b} />
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <p className="min-w-0 flex-1">
-              <span className="font-semibold">Built</span>{' '}
-              <span className="text-muted">
-                {b.durationSec != null && fmt(b.durationSec)}
-                {b.sizeBytes != null && ` · ${bytes(b.sizeBytes)}`}
-                {b.finishedAt && ` · ${ago(b.finishedAt)}`}
-              </span>
-            </p>
-            <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="press-soft h-11 shrink-0 rounded-full bg-raised px-4 text-sm font-semibold hover:bg-line">
-              {open ? 'Hide' : 'Play built file'}
-            </button>
-          </div>
-          {open && b.url && <video src={b.url} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" />}
+          <p>
+            <span className="font-semibold">Published</span>{' '}
+            <span className="text-muted">
+              {b.durationSec != null && fmt(b.durationSec)}
+              {b.sizeBytes != null && ` · ${bytes(b.sizeBytes)}`}
+              {b.finishedAt && ` · built ${ago(b.finishedAt)}`}
+            </span>
+          </p>
           {b.stale && (
             <>
               <p className="text-amber-300">The reel changed since this file was built.</p>
@@ -214,6 +213,164 @@ function BuildPanel({ reel, clips }: { reel: ReelDetail; clips: number }) {
         </div>
       )}
     </section>
+  )
+}
+
+// A built reel, played like a video: the browser's own controls (AirPlay, fullscreen), a resume
+// point and a play count kept by flix, since a reel is not a Stash scene. Nothing is recorded
+// in a private session.
+function ReelFilePlayer({ reel, url, record }: { reel: ReelDetail; url: string; record: boolean }) {
+  const video = useRef<HTMLVideoElement>(null)
+  const saved = useRef(0) // the position last sent
+  const watched = useRef(0) // seconds played in this visit
+  const last = useRef<number | null>(null)
+  const counted = useRef(false)
+  const save = (t: number, force = false) => {
+    if (!record || isPrivate() || (!force && Math.abs(t - saved.current) < 15)) return
+    saved.current = t
+    const v = video.current
+    // near the end there is nothing to resume
+    void saveReelActivity(reel.id, { resumeSec: v && v.duration && t > v.duration * 0.95 ? 0 : t })
+  }
+  return (
+    <video
+      ref={video}
+      src={url}
+      controls
+      playsInline
+      preload="metadata"
+      className="aspect-video w-full rounded-xl bg-black"
+      onLoadedMetadata={(e) => {
+        const v = e.currentTarget
+        if (record && reel.resumeSec > 30 && reel.resumeSec < v.duration * 0.95) v.currentTime = reel.resumeSec
+      }}
+      onTimeUpdate={(e) => {
+        const t = e.currentTarget.currentTime
+        // only time that passed while playing counts, not a seek
+        if (last.current != null && t > last.current && t - last.current < 2) watched.current += t - last.current
+        last.current = t
+        if (record && !counted.current && watched.current >= COUNT_PLAY_AFTER && !isPrivate()) {
+          counted.current = true
+          void saveReelActivity(reel.id, { played: true })
+        }
+        save(t)
+      }}
+      onPause={(e) => save(e.currentTarget.currentTime, true)}
+      onEnded={() => record && !isPrivate() && void saveReelActivity(reel.id, { resumeSec: 0 })}
+    />
+  )
+}
+
+// The published reel on top of its page: the file, its rating and what it is filed under.
+function WatchCard({ reel }: { reel: ReelDetail }) {
+  const m = useReelMutations()
+  if (!reel.published) return null
+  const chips = (kind: 'performer' | 'tag' | 'studio', list: ReelRef[]) =>
+    list.map((r) => (
+      <Link
+        key={`${kind}-${r.id}`}
+        to={kind === 'performer' ? '/performer/$id' : kind === 'tag' ? '/tag/$id' : '/studio/$id'}
+        params={{ id: r.id }}
+        className="press-soft rounded-full bg-raised px-3 py-1.5 text-sm hover:bg-line touch:min-h-11 touch:content-center"
+      >
+        {r.name}
+      </Link>
+    ))
+  return (
+    <section aria-label="Watch" className="mb-4">
+      <ReelFilePlayer reel={reel} url={reel.published.url} record />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center rounded-full bg-raised px-2 py-1">
+          <Stars value={reel.rating} onChange={(rating) => guardWrite(() => m.rate.mutate({ id: reel.id, rating }))} />
+        </div>
+        <span className="text-sm text-muted">
+          {fmt(reel.published.durationSec)} · {bytes(reel.published.sizeBytes)}
+          {reel.playCount > 0 && ` · ${reel.playCount} ${reel.playCount === 1 ? 'view' : 'views'}`}
+        </span>
+      </div>
+      {(reel.performers.length > 0 || reel.tags.length > 0 || reel.studios.length > 0) && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {chips('performer', reel.performers)}
+          {chips('studio', reel.studios)}
+          {chips('tag', reel.tags)}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// A finished build waiting for approval: watch it, confirm its name and who and what it is
+// filed under (offered from the videos its clips come from), then approve it or send it back.
+function ReviewPanel({ reel, build }: { reel: ReelDetail; build: ReelBuild }) {
+  const m = useReelMutations()
+  const { data: proposal, error } = useReelProposal(reel.id, true)
+  const [name, setName] = useState(reel.name)
+  // ticked by hand; until then an entry follows the suggestion, or what the reel is filed
+  // under already when it was published before
+  const [picked, setPicked] = useState<Record<string, boolean>>({})
+  const filed = { performer: reel.performers, tag: reel.tags, studio: reel.studios }
+  const was = reel.published != null
+  const on = (kind: 'performer' | 'tag' | 'studio', p: ReelProposed) => picked[`${kind}:${p.id}`] ?? (was ? filed[kind].some((r) => r.id === p.id) : p.suggested)
+  const group = (kind: 'performer' | 'tag' | 'studio', title: string, list: ReelProposed[]) =>
+    list.length > 0 && (
+      <div>
+        <div className="mb-1.5 text-sm font-semibold">{title}</div>
+        <div className="flex flex-wrap gap-1.5">
+          {list.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-pressed={on(kind, p)}
+              onClick={() => setPicked((s) => ({ ...s, [`${kind}:${p.id}`]: !on(kind, p) }))}
+              className={clsx('press-soft h-11 max-w-full truncate rounded-full px-4 text-sm', on(kind, p) ? 'bg-white font-semibold text-black' : 'bg-raised text-muted hover:bg-line')}
+            >
+              {p.name}
+              <span className={clsx('ml-1.5 text-xs tabular-nums', on(kind, p) ? 'text-black/60' : 'text-muted')}>{Math.round(p.share * 100)}%</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  const chosen = (kind: 'performer' | 'tag' | 'studio', list: ReelProposed[]) => list.filter((p) => on(kind, p)).map((p) => ({ id: p.id, name: p.name }))
+  const busy = m.approve.isPending || m.sendBack.isPending
+  return (
+    <div className="flex flex-col gap-4">
+      <p>
+        <span className="font-semibold text-amber-300">Ready for review.</span>{' '}
+        <span className="text-muted">
+          {build.durationSec != null && fmt(build.durationSec)}
+          {build.sizeBytes != null && ` · ${bytes(build.sizeBytes)}`}. Watch it, then approve it to list it{was ? ' in place of the published file' : ''}.
+        </span>
+      </p>
+      {build.url && <ReelFilePlayer reel={reel} url={build.url} record={false} />}
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-semibold">Title</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className="h-11 w-full rounded-full bg-raised px-4 text-base outline-none focus:ring-1 focus:ring-accent sm:text-sm" />
+      </label>
+      {error ? <ErrorBox error={error} /> : !proposal ? <ListSkeleton rows={2} /> : (
+        <>
+          {group('performer', 'Performers', proposal.performers)}
+          {group('studio', 'Studios', proposal.studios)}
+          {group('tag', 'Categories', proposal.tags)}
+        </>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" disabled={busy} onClick={() => m.sendBack.mutate(reel.id)} className="press-soft h-12 rounded-full bg-raised text-sm font-semibold hover:bg-line disabled:opacity-50">
+          Send back
+        </button>
+        <button
+          type="button"
+          disabled={busy || !proposal}
+          onClick={() =>
+            proposal &&
+            m.approve.mutate({ id: reel.id, name: name.trim() || undefined, performers: chosen('performer', proposal.performers), tags: chosen('tag', proposal.tags), studios: chosen('studio', proposal.studios) })
+          }
+          className="press-soft h-12 rounded-full bg-accent text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+        >
+          Approve
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -280,6 +437,8 @@ function ReelEditor({ reel }: { reel: ReelDetail }) {
         </IconButton>
       </div>
 
+      <WatchCard reel={reel} />
+      {reel.published && <h2 className="mb-2 text-sm font-semibold text-muted">Edit: preview from the original videos</h2>}
       <ReelPlayer ref={player} reel={shown} onSegment={setCurrent} />
 
       <div className="my-4 flex items-center gap-3">

@@ -2,6 +2,8 @@ import type { SearchResult } from '@flix/shared'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { exclusions } from '../blocklist.ts'
+import { config } from '../config.ts'
+import { listReels } from '../reels.ts'
 import { byNameMatch } from '../rank.ts'
 import * as stash from '../stash.ts'
 import { kickSync } from '../sync.ts'
@@ -81,7 +83,7 @@ people.put('/tags/:id/favorite', async (c) => {
 // Typeahead: a few of each kind; the scenes with the list defaults applied.
 people.get('/search', async (c) => {
   const q = (c.req.query('q') ?? '').trim().slice(0, 200)
-  if (!q) return c.json({ scenes: [], performers: [], studios: [], tags: [] } satisfies SearchResult)
+  if (!q) return c.json({ scenes: [], performers: [], studios: [], tags: [], reels: [] } satisfies SearchResult)
   const blocked = await exclusions()
   const f = { q, perPage: 6 }
   // the most-used 30 of each, then what the term names first (rank.ts), so an exact name with few
@@ -99,5 +101,6 @@ people.get('/search', async (c) => {
     performers: top(performers),
     studios: top(studios),
     tags: top(tags),
+    reels: config.reels ? (await listReels({ q })).slice(0, 6) : [],
   } satisfies SearchResult)
 })

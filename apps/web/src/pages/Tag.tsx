@@ -1,3 +1,4 @@
+import { ReelShelf } from '../components/ReelShelf'
 import type { SceneQuery, TagDetail } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
@@ -24,6 +25,7 @@ export function TagPage(): JSX.Element {
       {t ? <TagHeader id={id} t={t} /> : <HeaderSkeleton shape="tag" />}
       <BlockedNotice kind="tag" id={id} />
       <UnlistedNotice kind="tag" id={id} />
+      <ReelShelf title="Reels" filter={{ tag: id, state: 'published' }} className="mb-6" />
       <SceneBrowser
         query={query}
         base={{ tags: id }}

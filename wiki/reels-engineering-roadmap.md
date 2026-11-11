@@ -189,10 +189,16 @@ in [[run-the-reel-builder]].
 
 ## M4. Review and listing (medium, flix only)
 
-- [ ] Migration: `reel_people`, `reel_tags`, and rating, resume, plays on `reels`.
-- [ ] Proposed details from the contributing scenes (screen-time weighting, pure and tested).
-- [ ] "Ready for review" strip on Home; the review page; approve and send back.
-- [ ] Reels in the Browse strip, in search, and as shelves on performer and category pages.
+Built 2026-11-11 on branch `reels-m4-review`; what exists is in [[reel-review]].
+
+- [x] Migration `0015_reel_review`: one table `reel_refs` (performers, categories and studios
+  by kind) in place of `reel_people` and `reel_tags`; the approved build, rating, resume and
+  plays on `reels`.
+- [x] Proposed details from the contributing videos by share of running time
+  (`proposeDetails`, pure and tested).
+- [x] "Reels ready for review" on Home; review on the reel's page; approve and send back.
+- [x] Reels in the Browse strip, in search, and as shelves on performer, category and studio
+  pages. The built file's own rating, resume point and plays.
 - **Exit**: an approved reel is found by search and from a performer's page, and resumes.
 
 ## M5. Refinement (by appetite)

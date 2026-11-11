@@ -1,3 +1,4 @@
+import { ReelShelf } from '../components/ReelShelf'
 import type { PerformerDetail, SceneQuery } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi } from '@tanstack/react-router'
@@ -31,6 +32,7 @@ export function PerformerPage(): JSX.Element {
       {p ? <PerformerHeader id={id} p={p} /> : <HeaderSkeleton shape="performer" />}
       <BlockedNotice kind="performer" id={id} />
       <UnlistedNotice kind="performer" id={id} />
+      <ReelShelf title="Reels" filter={{ performer: id, state: 'published' }} className="mb-6" />
       <SceneBrowser
         omitPerformer={id}
         query={query}

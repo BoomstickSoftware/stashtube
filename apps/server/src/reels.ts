@@ -1,11 +1,11 @@
 // Reels: ordered ranges of library videos (wiki decisions/reels-edit-by-reference). Postgres
 // holds the design; the videos' facts come from Stash at read time, so a clip whose video
 // changed or left the library says so instead of playing something else.
-import { clampClip, planReel, type Reel, type ReelClip, type ReelClipStatus, type ReelDetail, type ReelTransition } from '@flix/shared'
+import { clampClip, planReel, proposeDetails, type Reel, type ReelClip, type ReelClipStatus, type ReelDetail, type ReelProposal, type ReelRef, reelState, type ReelTransition } from '@flix/shared'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from './db/index.ts'
-import { reelItems, reels } from './db/schema.ts'
-import { buildPlan, hashPlan, latestBuilds, toReelBuild } from './reelBuilds.ts'
+import { reelItems, reelRefs, reels } from './db/schema.ts'
+import { buildPlan, buildsById, dropBuild, hashPlan, latestBuilds, toReelBuild } from './reelBuilds.ts'
 import { getScene } from './stash.ts'
 
 type ItemRow = typeof reelItems.$inferSelect
@@ -17,27 +17,76 @@ const SAME_LENGTH_SEC = 0.5
 export const clipStatus = (markedDuration: number, nowDuration: number | null): ReelClipStatus =>
   nowDuration == null ? 'missing' : Math.abs(nowDuration - markedDuration) > SAME_LENGTH_SEC ? 'shifted' : 'ok'
 
-const summary = (r: typeof reels.$inferSelect, clips: Pick<ItemRow, 'id' | 'sceneId' | 'startSec' | 'endSec' | 'transition'>[], build: Reel['build'] = null): Reel => ({
-  id: r.id,
-  name: r.name,
-  transition: r.transition,
-  clipCount: clips.length,
-  durationSec: planReel({ transition: r.transition, clips: clips.map((c) => ({ id: c.id, sceneId: c.sceneId, start: c.startSec, end: c.endSec, transition: c.transition })) }).duration,
-  cover: clips[0] ? `/media/stash/scene/${clips[0].sceneId}/screenshot` : null,
-  updatedAt: r.updatedAt.toISOString(),
-  build,
-})
+type ReelRow = typeof reels.$inferSelect
+type RefRow = typeof reelRefs.$inferSelect
+type BuildRow = Awaited<ReturnType<typeof latestBuilds>> extends Map<number, infer B> ? B : never
+
+// What a list shows of a reel. `latest` is its newest build, `published` the approved one
+// (they are the same row when nothing newer was built).
+function summary(
+  r: ReelRow,
+  clips: Pick<ItemRow, 'id' | 'sceneId' | 'startSec' | 'endSec' | 'transition'>[],
+  refs: RefRow[],
+  latest: BuildRow | undefined,
+  published: BuildRow | undefined,
+  stale: boolean | null = null,
+): Reel {
+  const of = (kind: RefRow['kind']) => refs.filter((x) => x.kind === kind).map((x) => ({ id: x.stashId, name: x.name }))
+  return {
+    id: r.id,
+    name: r.name,
+    transition: r.transition,
+    clipCount: clips.length,
+    durationSec: planReel({ transition: r.transition, clips: clips.map((c) => ({ id: c.id, sceneId: c.sceneId, start: c.startSec, end: c.endSec, transition: c.transition })) }).duration,
+    cover: clips[0] ? `/media/stash/scene/${clips[0].sceneId}/screenshot` : null,
+    updatedAt: r.updatedAt.toISOString(),
+    build: latest ? toReelBuild(latest, stale) : null,
+    state: reelState(latest ?? null, r.publishedBuildId),
+    published:
+      published?.file && published.durationSec != null && published.sizeBytes != null
+        ? { buildId: published.id, url: `/media/reel/${published.id}`, durationSec: published.durationSec, sizeBytes: published.sizeBytes }
+        : null,
+    rating: r.rating,
+    resumeSec: r.resumeSec,
+    playCount: r.playCount,
+    performers: of('performer'),
+    tags: of('tag'),
+    studios: of('studio'),
+  }
+}
 
 const itemsOf = (reelId: number) => db.select().from(reelItems).where(eq(reelItems.reelId, reelId)).orderBy(asc(reelItems.position), asc(reelItems.id))
 
-export async function listReels(): Promise<Reel[]> {
+export interface ReelFilter {
+  q?: string // in the name, or the name of a performer, category or studio it is filed under
+  performer?: string
+  tag?: string
+  studio?: string
+  state?: 'review' | 'published'
+}
+
+// Every reel, newest first; a filter by name or by who or what it is filed under returns
+// published reels only (those are the ones listed beside videos).
+export async function listReels(f: ReelFilter = {}): Promise<Reel[]> {
   const rows = await db.select().from(reels).orderBy(desc(reels.updatedAt))
   const items = await db.select().from(reelItems).orderBy(asc(reelItems.position), asc(reelItems.id))
-  const builds = await latestBuilds(rows.map((r) => r.id))
-  return rows.map((r) => {
-    const b = builds.get(r.id)
-    return summary(r, items.filter((i) => i.reelId === r.id), b ? toReelBuild(b, null) : null)
-  })
+  const refs = await db.select().from(reelRefs)
+  const latest = await latestBuilds(rows.map((r) => r.id))
+  const published = await buildsById(rows.map((r) => r.publishedBuildId).filter((x): x is number => x != null))
+  const all = rows.map((r) =>
+    summary(r, items.filter((i) => i.reelId === r.id), refs.filter((x) => x.reelId === r.id), latest.get(r.id), r.publishedBuildId != null ? published.get(r.publishedBuildId) : undefined),
+  )
+  const q = f.q?.trim().toLowerCase()
+  const listed = f.performer || f.tag || f.studio || q
+  return all.filter(
+    (r) =>
+      (!listed || r.published) &&
+      (!f.state || (f.state === 'published' ? !!r.published : r.state === 'review')) &&
+      (!f.performer || r.performers.some((x) => x.id === f.performer)) &&
+      (!f.tag || r.tags.some((x) => x.id === f.tag)) &&
+      (!f.studio || r.studios.some((x) => x.id === f.studio)) &&
+      (!q || r.name.toLowerCase().includes(q) || [...r.performers, ...r.tags, ...r.studios].some((x) => x.name.toLowerCase().includes(q))),
+  )
 }
 
 export async function getReel(id: number): Promise<ReelDetail | null> {
@@ -73,8 +122,9 @@ export async function getReel(id: number): Promise<ReelDetail | null> {
   // has the design changed since the latest build was queued?
   const b = (await latestBuilds([id])).get(id)
   const plan = b ? await buildPlan(id) : null
-  const build = b ? toReelBuild(b, plan ? hashPlan(plan) !== b.planHash : null) : null
-  return { ...summary(r, items, build), clips }
+  const published = r.publishedBuildId != null ? (await buildsById([r.publishedBuildId])).get(r.publishedBuildId) : undefined
+  const refs = await db.select().from(reelRefs).where(eq(reelRefs.reelId, id))
+  return { ...summary(r, items, refs, b, published, b && plan ? hashPlan(plan) !== b.planHash : null), clips }
 }
 
 export async function createReel(name: string, transition: ReelTransition = 'cut') {
@@ -145,3 +195,79 @@ export async function reorderClips(reelId: number, clipIds: number[]) {
   })
   await touch(reelId)
 }
+
+// --- review, publishing and what is recorded of watching (wiki features/reel-review) ---------
+
+// What the review page offers: who and what the reel's clips show, by share of its running time.
+export async function proposal(reelId: number): Promise<ReelProposal | null> {
+  const [r] = await db.select({ id: reels.id }).from(reels).where(eq(reels.id, reelId))
+  if (!r) return null
+  const items = await itemsOf(reelId)
+  const ids = [...new Set(items.map((i) => i.sceneId))]
+  const found = await Promise.all(ids.map((sid) => getScene(sid).then((s) => s?.scene ?? null)))
+  const scenes = new Map(ids.map((sid, i) => [sid, found[i]]))
+  return proposeDetails(
+    items.flatMap((i) => {
+      const s = scenes.get(i.sceneId)
+      const pick = (x: { id: string; name: string }) => ({ id: x.id, name: x.name })
+      return s ? [{ length: i.endSec - i.startSec, performers: s.performers.map(pick), tags: s.tags.map(pick), studio: s.studio ? pick(s.studio) : null }] : []
+    }),
+  )
+}
+
+export interface Approval {
+  name?: string
+  performers: ReelRef[]
+  tags: ReelRef[]
+  studios: ReelRef[]
+}
+
+// Approve the reel's latest finished build: it becomes the file that is listed and played,
+// filed under what the user confirmed. RangeError when there is no finished build to approve.
+export async function approve(reelId: number, a: Approval): Promise<void> {
+  const [r] = await db.select().from(reels).where(eq(reels.id, reelId))
+  if (!r) throw new RangeError('no such reel')
+  const b = (await latestBuilds([reelId])).get(reelId)
+  if (!b || b.status !== 'done') throw new RangeError('the reel has no finished build to approve')
+  const rows = (['performer', 'tag', 'studio'] as const).flatMap((kind) =>
+    [...new Map((kind === 'performer' ? a.performers : kind === 'tag' ? a.tags : a.studios).map((x) => [x.id, x])).values()].map((x) => ({ reelId, kind, stashId: x.id, name: x.name })),
+  )
+  await db.transaction(async (tx) => {
+    await tx.delete(reelRefs).where(eq(reelRefs.reelId, reelId))
+    if (rows.length) await tx.insert(reelRefs).values(rows)
+    // a new file starts unwatched; the rating stays with the reel
+    const fresh = r.publishedBuildId !== b.id
+    await tx
+      .update(reels)
+      .set({ ...(a.name ? { name: a.name } : {}), publishedBuildId: b.id, publishedAt: new Date(), updatedAt: new Date(), ...(fresh ? { resumeSec: 0 } : {}) })
+      .where(eq(reels.id, reelId))
+  })
+  if (r.publishedBuildId != null && r.publishedBuildId !== b.id) await dropBuild(r.publishedBuildId) // the builder removes its file
+}
+
+// Send a finished build back: it is dropped and the reel is a draft again (or stays published
+// with its earlier file). False when there is nothing waiting for review.
+export async function sendBack(reelId: number): Promise<boolean> {
+  const [r] = await db.select({ published: reels.publishedBuildId }).from(reels).where(eq(reels.id, reelId))
+  const b = (await latestBuilds([reelId])).get(reelId)
+  if (!r || !b || b.status !== 'done' || b.id === r.published) return false
+  await dropBuild(b.id)
+  return true
+}
+
+// Where the viewer stopped, and a play once enough was watched. The web app does not call
+// this in a private session.
+export async function recordActivity(reelId: number, a: { resumeSec?: number; played?: boolean }): Promise<boolean> {
+  const set: Partial<typeof reels.$inferInsert> = {}
+  if (a.resumeSec !== undefined) set.resumeSec = Math.max(0, a.resumeSec)
+  if (a.played) Object.assign(set, { playCount: sql`${reels.playCount} + 1`, lastPlayedAt: new Date() })
+  if (!Object.keys(set).length) return true
+  const rows = await db.update(reels).set(set).where(eq(reels.id, reelId)).returning({ id: reels.id })
+  return rows.length > 0
+}
+
+export async function rateReel(reelId: number, rating: number | null): Promise<boolean> {
+  const rows = await db.update(reels).set({ rating }).where(eq(reels.id, reelId)).returning({ id: reels.id })
+  return rows.length > 0
+}
+

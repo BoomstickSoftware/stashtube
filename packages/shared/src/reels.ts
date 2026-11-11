@@ -51,6 +51,76 @@ export interface Reel {
   cover: string | null // the first clip's video still
   updatedAt: string
   build: ReelBuild | null // its latest build, if one was ever queued
+  state: ReelState
+  published: ReelFile | null // the approved file, listed and played like a video
+  rating: number | null // 0-5 stars, half steps
+  resumeSec: number
+  playCount: number
+  performers: ReelRef[]
+  tags: ReelRef[]
+  studios: ReelRef[]
+}
+
+// draft: no build. queued, building, failed: its latest build. review: a finished build the
+// user has not approved yet. published: the approved file is the latest.
+export type ReelState = 'draft' | 'queued' | 'building' | 'failed' | 'review' | 'published'
+
+export interface ReelFile {
+  buildId: number
+  url: string
+  durationSec: number
+  sizeBytes: number
+}
+
+export interface ReelRef {
+  id: string // Stash id
+  name: string
+}
+
+// What the review page offers for a reel, from the videos its clips come from. `share` is the
+// part of the reel's running time the entry appears in; `suggested` is ticked to begin with.
+export interface ReelProposed extends ReelRef {
+  share: number
+  suggested: boolean
+}
+export interface ReelProposal {
+  performers: ReelProposed[]
+  tags: ReelProposed[]
+  studios: ReelProposed[]
+}
+
+// A category is suggested when it covers at least this share of the reel; performers and
+// studios always are (a reel is about who is in it).
+export const TAG_SHARE = 0.5
+
+export function proposeDetails(clips: { length: number; performers: ReelRef[]; tags: ReelRef[]; studio: ReelRef | null }[]): ReelProposal {
+  const total = clips.reduce((n, c) => n + Math.max(0, c.length), 0)
+  const rank = (pick: (c: (typeof clips)[number]) => ReelRef[], suggest: (share: number) => boolean): ReelProposed[] => {
+    const by = new Map<string, { name: string; length: number }>()
+    for (const c of clips) {
+      for (const r of new Map(pick(c).map((x) => [x.id, x])).values()) {
+        const e = by.get(r.id) ?? { name: r.name, length: 0 }
+        e.length += Math.max(0, c.length)
+        by.set(r.id, e)
+      }
+    }
+    return [...by]
+      .map(([id, e]) => ({ id, name: e.name, share: total > 0 ? e.length / total : 0 }))
+      .sort((a, b) => b.share - a.share || a.name.localeCompare(b.name))
+      .map((p) => ({ ...p, suggested: suggest(p.share) }))
+  }
+  return {
+    performers: rank((c) => c.performers, () => true),
+    tags: rank((c) => c.tags, (share) => share >= TAG_SHARE),
+    studios: rank((c) => (c.studio ? [c.studio] : []), () => true),
+  }
+}
+
+// Where a reel stands, from its latest build and the build that was approved.
+export function reelState(latest: { id: number; status: ReelBuild['status'] } | null, publishedBuildId: number | null): ReelState {
+  if (!latest) return 'draft'
+  if (latest.status === 'done') return latest.id === publishedBuildId ? 'published' : 'review'
+  return latest.status
 }
 
 export interface ReelDetail extends Reel {
