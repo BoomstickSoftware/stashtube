@@ -31,13 +31,13 @@ reverted: [[build-a-feature-on-a-branch]]. Status lives here; tick an item when 
 
 ## M0. Measure (branch `reels`, no product code)
 
-- [ ] `apps/web/public/spike/reels.html`: a throwaway page, two `<video>` elements, three clips
+- [x] `apps/web/public/spike/reels.html` (written 2026-11-10; the user's iPhone run is pending): a throwaway page, two `<video>` elements, three clips
   from three files by scene id, a cut, a fade and a dissolve; prints swap latency and whether
   sound survived. Removed before M1 merges.
 - [ ] `scripts/encode-bench.mjs` (registered): runs one minute of 1080p through the planned
   ffmpeg settings in a pod on a named node, prints fps and output bitrate. Read-only on the
   library.
-- [ ] A pull-request check: a Forgejo workflow that builds the image's `build` stage (lint,
+- [x] A pull-request check (`.forgejo/workflows/pr.yml`, unproven until the first pull request): a Forgejo workflow that builds the image's `build` stage (lint,
   tests) on pull requests, without deploying. Today only `main` is built.
 - **Exit**: swap latency and sound judged acceptable by the user on the iPhone; fps recorded in
   [[reels-edit-by-reference]]; a red pull request cannot be merged unnoticed.
