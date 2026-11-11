@@ -4,8 +4,8 @@ kind: runbook
 summary: One script, run inside the flix pod, lists every difference between the files on disk, Stash and Whisparr and can scan, link and identify what Stash is missing.
 tags: [stash, whisparr, library, operations, scripts]
 status: current
-verified: 2026-11-04
-updated: 2026-11-04
+verified: 2026-11-11
+updated: 2026-11-11
 code: [scripts/library-reconcile.mjs]
 related: [stash-and-whisparr-clients, scripts-library, nfs-media, stash-layer, whisparr-nothing-monitored, identify-leaves-linked-scene-bare, delete-via-whisparr, stash-library]
 ---
@@ -40,7 +40,7 @@ kubectl -n flix exec -i deploy/flix -- node - --link < scripts/library-reconcile
 
 Identify matches StashDB by fingerprint only: a scene whose phash StashDB knows gets title,
 date, studio, performers, tags and cover; one it does not know stays bare even with the id set
-(_2026-11-04: 3 of 104 identified, 101 stayed bare_, [[identify-leaves-linked-scene-bare]]).
+(_2026-11-04: 3 of 104 identified, 101 stayed bare_, [[identify-leaves-linked-scene-bare]]); _2026-11-11: 4 of 20 identified, `--fill` did the other 16_).
 Run step 3 again after step 2's scan, for the newly scanned scenes, then:
 
 ```sh
@@ -57,6 +57,12 @@ kubectl -n flix exec -i deploy/flix -- node - --fill < scripts/library-reconcile
   ([[stash-and-whisparr-clients]]).
 - A scene with no id anywhere: scrape by text instead of by id
   (`private/wiki/runbooks/whisparr-import-into-chosen-scene.md`, step 5).
+- A scene that shows its filename in flix has an empty title (the web app falls back to the
+  file name); it is almost always an unlinked scene in the report's `--link` list. Look for it
+  that way, not by dots in the title: titles with three or more periods are real ellipses
+  (_2026-11-11: 47 such titles, all linked and correct_).
+- `--fill` prints ids and counts per scene; titles, studios and performers only with `--names`
+  (_until 2026-11-11 it printed them always_).
 - Specific runs, with names and numbers: `private/wiki/history/`.
 
 ## When Stash and Whisparr disagree on the StashDB id
