@@ -19,7 +19,10 @@ const name = z.string().trim().min(1).max(120)
 const seconds = z.number().finite().min(0).max(86_400)
 const sceneIdBody = z.string().regex(/^\d+$/)
 
-reels.get('/reels', async (c) => c.json(await r.listReels()))
+const digits = z.string().regex(/^\d+$/).optional()
+const listQuery = z.object({ q: z.string().max(200).optional(), performer: digits, tag: digits, studio: digits, state: z.enum(['review', 'published']).optional() })
+
+reels.get('/reels', async (c) => c.json(await r.listReels(parse(listQuery, c.req.query()))))
 
 reels.post('/reels', async (c) => {
   const b = parse(z.object({ name, transition: transition.optional() }), await body(c))
@@ -101,6 +104,36 @@ reels.post('/reel-builds/:id/done', async (c) => {
 reels.post('/reel-builds/:id/fail', async (c) => {
   const b = parse(z.object({ error: z.string().max(2000) }), await body(c))
   if (!(await builds.failBuild(rowId(c.req.param('id')), b.error))) notFound()
+  return c.body(null, 204)
+})
+
+// --- review and what is recorded of watching (wiki features/reel-review) ------------
+
+const ref = z.object({ id: z.string().regex(/^\d+$/), name: z.string().trim().min(1).max(200) })
+const refs = z.array(ref).max(200)
+
+reels.get('/reels/:id/proposal', async (c) => c.json((await r.proposal(rowId(c.req.param('id')))) ?? notFound()))
+
+reels.post('/reels/:id/approve', async (c) => {
+  const b = parse(z.object({ name: name.optional(), performers: refs, tags: refs, studios: refs }), await body(c))
+  await refused(409, () => r.approve(rowId(c.req.param('id')), b))
+  return c.body(null, 204)
+})
+
+reels.post('/reels/:id/send-back', async (c) => {
+  if (!(await r.sendBack(rowId(c.req.param('id'))))) notFound()
+  return c.body(null, 204)
+})
+
+reels.put('/reels/:id/activity', async (c) => {
+  const b = parse(z.object({ resumeSec: seconds.optional(), played: z.boolean().optional() }), await body(c))
+  if (!(await r.recordActivity(rowId(c.req.param('id')), b))) notFound()
+  return c.body(null, 204)
+})
+
+reels.put('/reels/:id/rating', async (c) => {
+  const b = parse(z.object({ rating: z.number().min(0).max(5).multipleOf(0.5).nullable() }), await body(c))
+  if (!(await r.rateReel(rowId(c.req.param('id')), b.rating))) notFound()
   return c.body(null, 204)
 })
 

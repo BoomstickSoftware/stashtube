@@ -71,3 +71,36 @@ test('a clip is shifted when its video changed length and missing when the video
   assert.equal(clipStatus(600, 601), 'shifted')
   assert.equal(clipStatus(600, null), 'missing')
 })
+
+import { proposeDetails, reelState } from '@flix/shared'
+
+const ref = (id: string, name = `n${id}`) => ({ id, name })
+
+test('a proposal ranks by share of the running time; performers and studios are always suggested', () => {
+  const p = proposeDetails([
+    { length: 30, performers: [ref('1'), ref('2')], tags: [ref('10'), ref('11')], studio: ref('100') },
+    { length: 10, performers: [ref('2')], tags: [ref('11')], studio: ref('101') },
+  ])
+  assert.deepEqual(p.performers.map((x) => [x.id, x.share, x.suggested]), [['2', 1, true], ['1', 0.75, true]])
+  assert.deepEqual(p.studios.map((x) => [x.id, x.share]), [['100', 0.75], ['101', 0.25]])
+  assert.deepEqual(p.tags.map((x) => [x.id, x.share, x.suggested]), [['11', 1, true], ['10', 0.75, true]])
+})
+
+test('a category in under half of the reel is offered but not suggested; a repeat in one clip counts once', () => {
+  const p = proposeDetails([
+    { length: 10, performers: [], tags: [ref('10'), ref('10')], studio: null },
+    { length: 30, performers: [], tags: [ref('11')], studio: null },
+  ])
+  assert.deepEqual(p.tags.map((x) => [x.id, x.share, x.suggested]), [['11', 0.75, true], ['10', 0.25, false]])
+  assert.deepEqual(proposeDetails([]), { performers: [], tags: [], studios: [] })
+})
+
+test('a reel is in review until its latest finished build is the approved one', () => {
+  assert.equal(reelState(null, null), 'draft')
+  assert.equal(reelState({ id: 3, status: 'queued' }, null), 'queued')
+  assert.equal(reelState({ id: 3, status: 'building' }, 2), 'building')
+  assert.equal(reelState({ id: 3, status: 'failed' }, 2), 'failed')
+  assert.equal(reelState({ id: 3, status: 'done' }, null), 'review')
+  assert.equal(reelState({ id: 3, status: 'done' }, 2), 'review') // a newer build beside the approved one
+  assert.equal(reelState({ id: 3, status: 'done' }, 3), 'published')
+})

@@ -1,6 +1,6 @@
-import type { Reel, ReelDetail, ReelTransition } from '@flix/shared'
+import type { Reel, ReelDetail, ReelProposal, ReelRef, ReelTransition } from '@flix/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, send } from './client'
+import { get, qs, send } from './client'
 import { useFeatures } from './settings'
 
 // Reels (wiki features/reels): ordered ranges of library videos, played as one sequence.
@@ -9,6 +9,27 @@ import { useFeatures } from './settings'
 export const useReelsEnabled = () => useFeatures().data?.reels === true
 
 export const useReels = (enabled = true) => useQuery({ queryKey: ['reels'], queryFn: () => get<Reel[]>('/reels'), enabled })
+
+// Published reels filed under a performer, category or studio, or the ones waiting for review:
+// the shelves beside videos. Nothing is asked while reels are switched off.
+export interface ReelFilter {
+  performer?: string
+  tag?: string
+  studio?: string
+  state?: 'review' | 'published'
+}
+export function useReelShelf(filter: ReelFilter) {
+  const on = useReelsEnabled()
+  return useQuery({ queryKey: ['reels', filter], queryFn: () => get<Reel[]>(`/reels${qs(filter)}`), enabled: on })
+}
+
+// What the review page offers to file the reel under.
+export const useReelProposal = (id: number, enabled: boolean) =>
+  useQuery({ queryKey: ['reel', id, 'proposal'], queryFn: () => get<ReelProposal>(`/reels/${id}/proposal`), enabled })
+
+// Where the viewer stopped and whether it counts as a play: sent on its own while a built reel
+// plays, so the caller checks isPrivate() first. Not a mutation: nothing on screen depends on it.
+export const saveReelActivity = (id: number, a: { resumeSec?: number; played?: boolean }) => send('PUT', `/reels/${id}/activity`, a).catch(() => {})
 
 // While a build waits for the builder or is being rendered, the reel is asked for again every
 // few seconds so its progress shows; a reel waiting for the night is not polled.
@@ -71,6 +92,18 @@ export function useReelMutations() {
     cancelBuild: useMutation({
       mutationFn: (id: number) => send('DELETE', `/reels/${id}/build`),
       onSettled: (_r, _e, id) => refresh(id),
+    }),
+    approve: useMutation({
+      mutationFn: ({ id, ...b }: { id: number; name?: string; performers: ReelRef[]; tags: ReelRef[]; studios: ReelRef[] }) => send('POST', `/reels/${id}/approve`, b),
+      onSuccess: (_r, b) => refresh(b.id),
+    }),
+    sendBack: useMutation({
+      mutationFn: (id: number) => send('POST', `/reels/${id}/send-back`),
+      onSuccess: (_r, id) => refresh(id),
+    }),
+    rate: useMutation({
+      mutationFn: ({ id, rating }: { id: number; rating: number | null }) => send('PUT', `/reels/${id}/rating`, { rating }),
+      onSuccess: (_r, b) => refresh(b.id),
     }),
     reorder: useMutation({
       mutationFn: ({ id, clipIds }: { id: number; clipIds: number[] }) => send('PUT', `/reels/${id}/clips/order`, { clipIds }),

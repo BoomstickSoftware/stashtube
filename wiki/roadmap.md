@@ -259,7 +259,7 @@ Whisparr responses, a typed route map in `@flix/shared`. The pre-push hook is in
   refresh, the card-to-player transition.
 - About 130 raw buttons onto `Button` / `IconButton`, a screen at a time.
 
-## Reels (agreed 2026-11-10, not started)
+## Reels (agreed 2026-11-10; milestones 0 to 3 merged and switched on 2026-11-11, 4 in review)
 
 Design: [[reels-edit-by-reference]]. Milestones, work items and exit tests:
 [[reels-engineering-roadmap]]. Branch and merge: [[reels-branch-and-squash-merge]].

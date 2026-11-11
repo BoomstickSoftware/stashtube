@@ -1,3 +1,4 @@
+import { ReelShelf } from '../components/ReelShelf'
 import type { JSX } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { HomeRow, SceneCard, StationResume } from '@flix/shared'
@@ -90,6 +91,7 @@ export function Home(): JSX.Element {
     <div className="space-y-10">
       <Hero order={order} seed={seed} more={!!featuredRow} />
       <ContinueStrip />
+      <ReelShelf title="Reels ready for review" filter={{ state: 'review' }} className="mb-8" />
       {!featuredRow && <PickUpStations cover={order.at(-1)} />}
       {data.map((r) =>
         r.savedId ? (

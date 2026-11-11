@@ -479,5 +479,8 @@ Seven kinds of source rendered and joined on the NAS; the builder itself has not
 ## [2026-11-11] ingest | The reel builder ran end to end on the NAS
 A 42 s, seven-clip reel built in 35 s; apk's trigger failures in the Alpine container are ignored on purpose. Pages: [[reel-builds]], [[run-the-reel-builder]].
 
+## [2026-11-11] ingest | Reels milestone 4: review, publishing and listing
+A finished build waits for approval; a published reel has shelves, search, rating and resume. Pages: [[reel-review]], [[data-model]], [[reels-engineering-roadmap]].
+
 ## [2026-11-11] decide | A station's Next leaves no trace on the video
 The button reads Next; a play and a resume point are recorded only when a video ends or the station is left. Pages: [[stations]].

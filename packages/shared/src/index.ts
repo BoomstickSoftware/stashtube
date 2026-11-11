@@ -1,4 +1,5 @@
 import type { Compatibility } from './compat.ts'
+import type { Reel } from './reels.ts'
 
 // API contract between the flix BFF and the web app. The web app never sees Stash's
 // schema; every shape here is ours, so the backend behind the BFF can change.
@@ -192,6 +193,7 @@ export interface SearchResult {
   performers: PerformerCard[]
   studios: StudioCard[]
   tags: TagCard[]
+  reels: Reel[] // published reels whose name or filing matches; empty while reels are switched off
 }
 
 export interface HomeRow {

@@ -238,7 +238,31 @@ export const reels = pgTable('reels', {
   transition: text('transition', { enum: ['cut', 'fade'] }).notNull().default('cut'), // the default between clips
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  // The build the user approved: the file that is listed and played. A newer finished build
+  // waits for review beside it. Reels are not Stash scenes, so what Stash holds for a video
+  // (rating, resume point, plays) lives here for a reel.
+  publishedBuildId: integer('published_build_id'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  rating: doublePrecision('rating'), // 0-5 stars, half steps
+  resumeSec: doublePrecision('resume_sec').notNull().default(0),
+  playCount: integer('play_count').notNull().default(0),
+  lastPlayedAt: timestamp('last_played_at', { withTimezone: true }),
 })
+
+// Who and what a published reel is filed under: performers, categories and studios by their
+// Stash ids, confirmed by the user at review. Names are kept so lists render without Stash.
+export const reelRefs = pgTable(
+  'reel_refs',
+  {
+    reelId: integer('reel_id')
+      .notNull()
+      .references(() => reels.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['performer', 'tag', 'studio'] }).notNull(),
+    stashId: text('stash_id').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.reelId, t.kind, t.stashId] }), index('reel_refs_ref').on(t.kind, t.stashId)],
+)
 
 export const reelItems = pgTable(
   'reel_items',

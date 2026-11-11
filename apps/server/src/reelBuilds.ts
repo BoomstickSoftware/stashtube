@@ -8,7 +8,7 @@
 // - A builder that stops reporting loses its claim after 10 minutes and the reel is queued again.
 import { createHash } from 'node:crypto'
 import { type BuildPlan, dominantFps, planReel, type ReelBuild, type ReelTransition, RENDER_QP, type RenderClip } from '@flix/shared'
-import { and, asc, desc, eq, inArray, lt, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, lt, ne, sql } from 'drizzle-orm'
 import { config } from './config.ts'
 import { db } from './db/index.ts'
 import { reelBuilds, reelItems, reels } from './db/schema.ts'
@@ -168,8 +168,12 @@ export async function finishBuild(id: number, r: { file: string; durationSec: nu
     .where(and(eq(reelBuilds.id, id), eq(reelBuilds.status, 'building')))
     .returning({ reelId: reelBuilds.reelId })
   if (!row) return false
-  // the reel's earlier builds are replaced by this one; the builder removes their files
-  await db.delete(reelBuilds).where(and(eq(reelBuilds.reelId, row.reelId), ne(reelBuilds.id, id), inArray(reelBuilds.status, ['done', 'failed'])))
+  // the reel's earlier builds are replaced by this one, except the approved one, which keeps
+  // playing until this one is approved; the builder removes the files of the rows that go
+  const [reel] = await db.select({ published: reels.publishedBuildId }).from(reels).where(eq(reels.id, row.reelId))
+  await db
+    .delete(reelBuilds)
+    .where(and(eq(reelBuilds.reelId, row.reelId), ne(reelBuilds.id, id), ne(reelBuilds.id, reel?.published ?? 0), inArray(reelBuilds.status, ['done', 'failed'])))
   return true
 }
 
@@ -194,4 +198,12 @@ export async function builtFilePath(id: number): Promise<string | null> {
   return b?.status === 'done' && b.file && FILE_NAME.test(b.file) ? `${config.reelsDir}/${b.file}` : null
 }
 
-export const newestBuildFirst = desc(reelBuilds.id)
+// The finished builds asked for, by id (the approved files of a list of reels).
+export async function buildsById(ids: number[]): Promise<Map<number, BuildRow>> {
+  if (!ids.length) return new Map()
+  const rows = await db.select().from(reelBuilds).where(and(inArray(reelBuilds.id, ids), eq(reelBuilds.status, 'done')))
+  return new Map(rows.map((b) => [b.id, b]))
+}
+
+// Drop a finished build (sent back at review, or replaced by a newer approved one).
+export const dropBuild = (id: number) => db.delete(reelBuilds).where(and(eq(reelBuilds.id, id), eq(reelBuilds.status, 'done')))

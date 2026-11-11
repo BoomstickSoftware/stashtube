@@ -14,6 +14,7 @@ type Hit =
   | { kind: 'performer' | 'studio'; id: string; label: string; sub: string; image: string | null }
   | { kind: 'tag'; id: string; label: string; sub: string; image: null }
   | { kind: 'query'; id: string; label: string; sub: string; image: null }
+  | { kind: 'reel'; id: string; label: string; sub: string; image: string | null }
 const KIND_LABEL: Record<Recent['kind'], string> = { query: 'Search', scene: 'Video', performer: 'Performer', studio: 'Studio', tag: 'Category' }
 
 export function SearchBox({ className, onDone, autoFocus }: { className?: string; onDone?: () => void; autoFocus?: boolean }) {
@@ -46,6 +47,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
     if (!dq || dq.length < 2 || !data) return []
     return [
       { kind: 'query', id: dq, label: `Search “${dq}”`, sub: 'All videos', image: null },
+      ...(data.reels ?? []).map((r) => ({ kind: 'reel' as const, id: String(r.id), label: r.name, sub: `Reel · ${duration(r.published?.durationSec ?? r.durationSec)}`, image: r.cover })),
       ...data.performers.map((p) => ({ kind: 'performer' as const, id: p.id, label: p.name, sub: `Performer · ${p.sceneCount} videos`, image: p.image })),
       ...data.studios.map((s) => ({ kind: 'studio' as const, id: s.id, label: s.name, sub: `Studio · ${s.sceneCount} videos`, image: s.image })),
       ...data.tags.map((t) => ({ kind: 'tag' as const, id: t.id, label: t.name, sub: `Category · ${t.sceneCount} videos`, image: null })),
@@ -65,8 +67,10 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
       navigate({ to: '/browse', search: { q: text } })
       return
     }
-    add({ kind: h.kind, id: h.id, label: h.label })
     setQ('')
+    // a reel is opened, not remembered: recent searches know videos, people and categories
+    if (h.kind === 'reel') return void navigate({ to: '/reel/$id', params: { id: h.id } })
+    add({ kind: h.kind, id: h.id, label: h.label })
     if (h.kind === 'scene') navigate({ to: '/scene/$id', params: { id: h.id } })
     if (h.kind === 'performer') navigate({ to: '/performer/$id', params: { id: h.id } })
     if (h.kind === 'studio') navigate({ to: '/studio/$id', params: { id: h.id } })
@@ -148,7 +152,7 @@ export function SearchBox({ className, onDone, autoFocus }: { className?: string
               onClick={() => go(h)}
               className={clsx('flex w-full items-center gap-3 px-3 py-2 text-left', i === active && 'bg-white/5')}
             >
-              {h.kind === 'scene' ? (
+              {h.kind === 'scene' || h.kind === 'reel' ? (
                 <span className="aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-raised">
                   {h.image && <img src={sized(h.image, 320)} alt="" className="size-full object-cover" />}
                 </span>

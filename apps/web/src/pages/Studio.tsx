@@ -1,3 +1,4 @@
+import { ReelShelf } from '../components/ReelShelf'
 import type { SceneQuery, StudioDetail } from '@flix/shared'
 import type { JSX } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
@@ -27,6 +28,7 @@ export function StudioPage(): JSX.Element {
       {s ? <StudioHeader id={id} s={s} /> : <HeaderSkeleton shape="studio" />}
       <BlockedNotice kind="studio" id={id} />
       <UnlistedNotice kind="studio" id={id} />
+      <ReelShelf title="Reels" filter={{ studio: id, state: 'published' }} className="mb-6" />
       <SceneBrowser
         query={query}
         base={{ studios: id }}
