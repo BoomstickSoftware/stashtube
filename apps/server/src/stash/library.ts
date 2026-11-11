@@ -96,6 +96,14 @@ const tagLookupOf = memoBy((d: Pick<Query, 'findTags'>) => {
   return m
 })
 
+// The ids of the categories pinned on the Categories page (Stash's tag favourite): a wanted card
+// lists those first. Cached until a category changes (a pin drops `tag`).
+export async function favoriteTagIds(): Promise<Set<string>> {
+  const d = await query<Pick<Query, 'findTags'>>(`{ findTags(filter: { per_page: -1 }, tag_filter: { favorite: true }) { tags { id } } }`, {}, ['tag'])
+  return favoriteTagSet(d)
+}
+const favoriteTagSet = memoBy((d: Pick<Query, 'findTags'>) => new Set(d.findTags.tags.map((t) => t.id)))
+
 // Stash's stash-box endpoints with their keys: StashDB's catalogue is queried with Stash's own
 // credentials unless flix has its own (config.stashdb). Uncached and never logged.
 export const stashBoxes = async () => (await gql<Pick<Query, 'configuration'>>('{ configuration { general { stashBoxes { name endpoint api_key } } } }')).configuration.general.stashBoxes

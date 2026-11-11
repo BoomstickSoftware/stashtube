@@ -487,3 +487,6 @@ The button reads Next; a play and a resume point are recorded only when a video 
 
 ## [2026-11-11] decide | Studios can be left out by a word in their name; VR is left out of the shelf and the automatic Gets too
 The VR switch was off in production. Pages: [[studio-name-filter]].
+
+## [2026-11-11] ingest | A wanted card lists followed categories first and Details folds the rest
+Two-pass sort on the server (followed by name, then the rest by name); Details shows the followed ones and a "+N more" pill. Verified at phone size with a stubbed Discover page (no local `.env`, so no local BFF). Pages: [[discover]].

@@ -4,9 +4,9 @@ kind: feature
 summary: /discover browses StashDB through flix's mirror by performer, studio, category and words; Select picks up to 200 scenes for the paced Get queue; the Waiting tab lists fetched scenes still without a file.
 tags: [stashdb, whisparr, discover, ui]
 status: current
-verified: 2026-11-09
+verified: 2026-11-11
 updated: 2026-11-11
-code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx, apps/web/src/components/SceneAbout.tsx]
+code: [apps/web/src/pages/Discover.tsx, apps/web/src/routes/discover.tsx, apps/web/src/lib/api/discover.ts, apps/web/src/components/WantedRow.tsx, apps/web/src/components/SceneAbout.tsx, apps/server/src/catalog.ts]
 related: [stashdb-mirror, whisparr-shelf, whisparr-sync, mobile-first-ui]
 ---
 
@@ -54,7 +54,14 @@ StashDB work ([[stashdb-mirror]]).
   everywhere); a pill links to the library's category when one matches by StashDB id or by name
   or alias (`stash.tagLookup`, one cached query). Off, a mouse hovering the picture shows the pills
   over it, with a stronger background there (alpha 0.36 against 0.16, `categoryStyle(name, bg)`;
-  user, 2026-11-09); phones have no hover. _The studio code and StashDB date shown there for an hour on
+  user, 2026-11-09); phones have no hover. **Order** (user, 2026-11-11): the server sorts every
+  card's categories in two passes, the followed ones (Stash's tag favourite on the matching
+  library category) by name, then the rest by name (`sortCategories` in `catalog.ts`, fed by
+  `stash.favoriteTagIds`, cached under `tag`; each carries `favorite`), so the same order holds on
+  the not-downloaded shelves of performer and studio pages and Home's row. Details shows only the
+  followed ones and folds the rest behind a "+N more" pill that opens them for that card (a card
+  with none followed shows "N categories"); the hover overlay keeps its first 10, followed first.
+  _Until then StashDB's order, all shown._ _The studio code and StashDB date shown there for an hour on
   2026-11-09 were dropped as noise (user)._
 - **Open on StashDB**: every card with a StashDB id (Discover and the not-downloaded shelves) has
   a button in the top-right corner opening `<stashdbWeb>/scenes/<id>` in a new tab; `Features.stashdbWeb` is

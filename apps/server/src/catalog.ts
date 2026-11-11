@@ -236,16 +236,21 @@ export async function pruneQueries(): Promise<number> {
 // Whisparr's ~13k movies by StashDB id, built once per fetched (or patched) list, not per page.
 const moviesByStashId = stash.memoBy((movies: Awaited<ReturnType<typeof whisparr.movies>>) => new Map(movies.filter((m) => m.stashId).map((m) => [m.stashId!, m])))
 
+// A card's categories in two passes: the pinned ones by name, then the rest by name.
+export const sortCategories = <T extends { name: string; favorite: boolean }>(tags: T[]): T[] =>
+  [...tags].sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+
 // Each scene as a card: owned (in Stash), what Whisparr is doing with it, or queued here; one
 // deleted before (an import exclusion) is marked, and a Get by hand may still fetch it.
 export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
-  const [owned, movies, a, excluded, queued, tagIds] = await Promise.all([
+  const [owned, movies, a, excluded, queued, tagIds, pinned] = await Promise.all([
     stash.sceneStashIdMap(),
     config.whisparr ? whisparr.movies() : Promise.resolve([]),
     config.whisparr ? whisparr.activity() : Promise.resolve(null),
     config.whisparr ? whisparr.exclusionIds().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
     db.select({ id: getQueue.stashdbId }).from(getQueue),
     stash.tagLookup().catch(() => new Map<string, string>()),
+    stash.favoriteTagIds().catch(() => new Set<string>()),
   ])
   const libraryTag = (t: { id: string; name: string }) => tagIds.get(`sid:${t.id}`) ?? tagIds.get(`name:${t.name.toLowerCase()}`) ?? null
   const byStash = moviesByStashId(movies)
@@ -262,7 +267,12 @@ export async function label(rows: SceneRow[]): Promise<WantedScene[]> {
       runtime: r.duration ? Math.round(r.duration / 60) : null,
       state: 'remote',
       ...(excluded.has(r.id.toLowerCase()) ? { deletedBefore: true } : {}),
-      tags: (r.tags as { id: string; name: string }[]).map((t) => ({ name: t.name, libraryId: libraryTag(t) })),
+      tags: sortCategories(
+        (r.tags as { id: string; name: string }[]).map((t) => {
+          const libraryId = libraryTag(t)
+          return { name: t.name, libraryId, favorite: !!libraryId && pinned.has(libraryId) }
+        }),
+      ),
     }
     const sceneId = owned.get(r.id)
     if (sceneId) return { ...base, state: 'owned', sceneId }

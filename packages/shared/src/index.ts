@@ -542,8 +542,9 @@ export interface WantedScene {
   sceneId?: string | null // the Stash scene, when owned
   deletedBefore?: boolean // deleted from the library before (Whisparr's import exclusion): discovery skips it, a Get by hand still fetches it
   // StashDB's categories from flix's mirror, for Discover's details (absent on Whisparr-only
-  // cards); `libraryId` is the same category in the library, when it has one
-  tags?: { name: string; libraryId: string | null }[]
+  // cards); `libraryId` is the same category in the library, when it has one, and `favorite` says
+  // that one is pinned on the Categories page. Ordered pinned first, each group by name.
+  tags?: { name: string; libraryId: string | null; favorite: boolean }[]
 }
 // A page of a performer's or studio's missing scenes: StashDB's catalogue when it answers,
 // otherwise only what Whisparr lists.

@@ -3,7 +3,7 @@ import { sized, srcSet } from '@flix/shared'
 import clsx from 'clsx'
 import { Ban, Check, ChevronLeft, ChevronRight, CircleCheck, Clock, Download, ExternalLink, GalleryHorizontalEnd, Hourglass, LayoutGrid, ListPlus, Loader2, Play } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useCallback, useRef, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { useFeatures, useGetScene, useStashDbIds, useWanted } from '../lib/api'
 import { asBool, oneOf, useStored } from '../lib/storage'
 import { Button, Segmented, Sentinel, Spinner } from './ui'
@@ -105,6 +105,10 @@ export function WantedCard({
   const { data: features } = useFeatures()
   const stashdbHref = features?.stashdbWeb && w.stashdbId ? `${features.stashdbWeb}/scenes/${w.stashdbId}` : null
   const tags = w.tags ?? []
+  // Details lists the pinned categories (they come first) and folds the rest behind "+N more"
+  const [allTags, setAllTags] = useState(false)
+  const pinned = tags.filter((t) => t.favorite)
+  const shownTags = allTags ? tags : pinned
   const meta = [fmtDate(w.date), w.studio, w.runtime ? `${w.runtime} min` : null].filter(Boolean).join(' · ')
   const busy = getScene.isPending
   const state = busy ? 'requested' : w.state
@@ -198,9 +202,19 @@ export function WantedCard({
         {w.performers.length > 0 && <div className={clsx('text-xs text-muted', details ? 'line-clamp-3' : 'truncate')}>{w.performers.join(', ')}</div>}
         {details && tags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
-            {tags.map((t) => (
+            {shownTags.map((t) => (
               <CategoryPill key={t.name} name={t.name} libraryId={t.libraryId} />
             ))}
+            {shownTags.length < tags.length && (
+              <button
+                type="button"
+                onClick={() => setAllTags(true)}
+                aria-label={`Show ${tags.length - shownTags.length} more categories`}
+                className="inline-flex items-center rounded-full bg-raised px-2 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-muted hover:text-fg touch:min-h-11 touch:px-3"
+              >
+                {pinned.length ? `+${tags.length - shownTags.length} more` : `${tags.length} ${tags.length === 1 ? 'category' : 'categories'}`}
+              </button>
+            )}
           </div>
         )}
       </div>

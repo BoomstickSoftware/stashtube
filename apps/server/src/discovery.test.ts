@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { PgDialect } from 'drizzle-orm/pg-core'
-import { copyWhole, FULL_SCOPE, mirrorWhere, refreshDone } from './catalog.ts'
+import { copyWhole, FULL_SCOPE, mirrorWhere, refreshDone, sortCategories } from './catalog.ts'
 import { db } from './db/index.ts'
 import { sdbScenes } from './db/schema.ts'
 import { type DiscoveryContext, eligible } from './getqueue.ts'
@@ -58,6 +58,15 @@ describe('catalogue refresh', () => {
   it('copies a catalogue whole only up to FULL_SCOPE scenes', () => {
     assert.equal(copyWhole(FULL_SCOPE), true)
     assert.equal(copyWhole(FULL_SCOPE + 1), false)
+  })
+})
+
+describe('a card\'s categories', () => {
+  it('lists the pinned ones by name, then the rest by name', () => {
+    const t = (name: string, favorite = false) => ({ name, favorite })
+    const input = [t('delta'), t('Bravo', true), t('alpha'), t('Echo'), t('charlie', true), t('Alpha2', true)]
+    assert.deepEqual(sortCategories(input).map((x) => x.name), ['Alpha2', 'Bravo', 'charlie', 'alpha', 'delta', 'Echo'])
+    assert.equal(input[0].name, 'delta') // the input is left as it was
   })
 })
 
