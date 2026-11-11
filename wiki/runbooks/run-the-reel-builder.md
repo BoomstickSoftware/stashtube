@@ -11,8 +11,8 @@ related: [reel-builds, reels-engineering-roadmap, scripts-library]
 
 # Run the reel builder on the NAS
 
-What it is and why: [[reel-builds]]. Not yet done end to end (2026-11-11): step 2 and step 3
-are waiting for the user.
+What it is and why: [[reel-builds]]. Steps 1 and 2 were done on 2026-11-11 (step 2 by the
+user, against a flix on the dev database); step 3 is not.
 
 ## 1. Copy the code (done 2026-11-11)
 
@@ -54,10 +54,18 @@ Portainer from GitHub). The command is the `START` constant in `scripts/reel-bui
       - /volume1/Flotilla/.flotilla/reel-builder/app:/app:ro
       - /volume1/Media/adult:/data/adult:ro
       - /volume1/Media/adult/reels:/reels
-    command: sh -c "apk add --no-cache --quiet nodejs ffmpeg intel-media-driver && exec node /app/apps/server/src/reelBuilder.ts"
+    command:
+      - sh
+      - -c
+      - apk add --no-cache --quiet nodejs ffmpeg intel-media-driver >/dev/null 2>&1; command -v node >/dev/null && command -v ffmpeg >/dev/null || { echo "node or ffmpeg did not install"; exit 1; }; exec node /app/apps/server/src/reelBuilder.ts
 ```
 
 The library mount must be at `/data/adult`: the plan carries paths as Stash names them.
+
+apk's exit status is ignored on purpose: in an `alpine:3.24` container on this NAS its
+post-install triggers end with "killed by signal 9" and apk reports failure, although the
+packages are installed (first run by hand, 2026-11-11; the cause is not known). The command
+checks that `node` and `ffmpeg` exist instead.
 
 ## Looking at it
 

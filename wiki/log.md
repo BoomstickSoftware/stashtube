@@ -475,3 +475,6 @@ Stash does not scan it and flix already mounts it read-only, so no new export. P
 
 ## [2026-11-11] ingest | Reels milestone 3: the build queue, the schedule and the NAS builder
 Seven kinds of source rendered and joined on the NAS; the builder itself has not run yet. Pages: [[reel-builds]], [[run-the-reel-builder]], [[data-model]], [[git-mv-k-does-nothing-for-an-untracked-file]].
+
+## [2026-11-11] ingest | The reel builder ran end to end on the NAS
+A 42 s, seven-clip reel built in 35 s; apk's trigger failures in the Alpine container are ignored on purpose. Pages: [[reel-builds]], [[run-the-reel-builder]].

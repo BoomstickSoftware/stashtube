@@ -21,7 +21,10 @@ const REELS = '/volume1/Media/adult/reels'
 const FILES = ['apps/server/src/reelBuilder.ts', 'packages/shared/src/render.ts', 'packages/shared/src/reels.ts']
 // What the container runs: Alpine with Node, ffmpeg and Intel's VAAPI driver added at start
 // (the Stash container gets its driver the same way).
-export const START = 'apk add --no-cache --quiet nodejs ffmpeg intel-media-driver && exec node /app/apps/server/src/reelBuilder.ts'
+// apk's exit status is not trusted: on this NAS its post-install triggers (busybox, glib,
+// ca-certificates) are killed with signal 9 and apk reports failure although every package is
+// installed. What matters is checked instead: node and ffmpeg are there.
+export const START = 'apk add --no-cache --quiet nodejs ffmpeg intel-media-driver >/dev/null 2>&1; command -v node >/dev/null && command -v ffmpeg >/dev/null || { echo "node or ffmpeg did not install"; exit 1; }; exec node /app/apps/server/src/reelBuilder.ts'
 
 const ssh = (cmd, opts = {}) => spawnSync('ssh', [HOST, cmd], { encoding: 'utf8', maxBuffer: 64 << 20, ...opts })
 const must = (r, what) => {

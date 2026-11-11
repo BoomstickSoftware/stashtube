@@ -1,7 +1,7 @@
 ---
 title: Reel builds
 kind: feature
-summary: A reel rendered to one 1080p H.264 file by a builder container on the NAS; flix holds the queue and decides when work is offered; the builder has not yet run end to end.
+summary: A reel rendered to one 1080p H.264 file by a builder container on the NAS; flix holds the queue and decides when work is offered; one test build has run end to end.
 tags: [reels, nas, ffmpeg, queue, schedule]
 status: current
 verified: 2026-11-11
@@ -79,11 +79,17 @@ identical stream parameters and joined into one 42.0 s file. Each took 1.1 to 3.
 5.5 times real time) with fades and loudness levelling. The join logs "Non-monotonic DTS" on
 the sound at each seam (a few milliseconds of AAC priming); the result's length is right.
 
+The builder end to end (2026-11-11, `scripts/reel-builder.mjs once` against a flix on the
+dev database, the same seven clips): claimed, rendered, joined and reported in 35 s for a 42 s
+reel; the file is 38 MB (7.2 Mbit/s), H.264 High 1920x1080 at 30 fps with AAC stereo, 42.0 s
+long, and decodes from end to end without an error. Three clips whose sources are 1.2 to 2.5
+Mbit/s were rendered a second time at their source's rate, as designed.
+
 ## Not verified
 
-- **The builder has never run.** A session may not start its container (it installs Alpine
-  packages at start); `node scripts/reel-builder.mjs once <flix-url>` is the user's to run.
-  The claim, report, done and file-serving paths have run only as far as the dev database.
-- The capped second pass, a killed build resuming, tidy-up, and the built file on the TV.
+- Against production: queueing from the app (the plan built from Stash), `/media/reel/<id>`
+  serving from the cluster's mount, and the built file on the phone and the TV.
+- A rebuild reusing intermediates, a killed build resuming, the tidy-up, and the container
+  running in the flotilla stack across a NAS reboot.
 - `/media/reel/<id>` has no signed link: with a flix password set, AirPlay could not fetch it
   (production has no password).

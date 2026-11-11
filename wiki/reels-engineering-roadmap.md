@@ -181,7 +181,8 @@ in [[run-the-reel-builder]].
   silent claim returned after 10 minutes, the reel marked changed by plan hash.
 - [x] `/media/reel/<build>` serves the built file; the reel page's "Built file" panel.
 - [ ] flotilla repo: the `reel-builder` service ([[run-the-reel-builder]], step 3).
-- [ ] One build by hand on the NAS (`scripts/reel-builder.mjs once`): the builder has not run.
+- [x] One build by hand on the NAS (`scripts/reel-builder.mjs once`, run by the user
+  2026-11-11): seven clips, a 42 s reel in 35 s, the file checked ([[reel-builds]]).
 - [ ] Not built: sprites for the built file; a signed link for AirPlay behind a password.
 - **Exit**: two queued reels build in one night with the pause between them, a killed build
   resumes the next night, and the result plays on the TV.
