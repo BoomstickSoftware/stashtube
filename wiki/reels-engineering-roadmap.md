@@ -156,7 +156,7 @@ Built 2026-11-11 on branch `reels-m2-badge`; what exists is in [[compatibility-b
 - **Exit**: the non-MP4 videos, and only those, read "transcodes". By counts against the live
   library: 258 of 2,985, matching the formats exactly. Seeing it in the app waits for the merge.
 
-## M3. Build pipeline (medium to large; flix, nas and flotilla repos)
+## M3. Build pipeline (medium to large; flix and flotilla repos, one folder on the NAS)
 
 The build runs on the NAS in a nightly window (decided 2026-11-11, [[reels-edit-by-reference]];
 the k8s render worker and its namespace are dropped).
@@ -167,10 +167,12 @@ the k8s render worker and its namespace are dropped).
   are not 16:9 (`pad_vaapi`, or pad in software before upload), a bitrate ceiling at the
   source's own rate (QP 18 exceeded it on a 4K source), the dominant frame rate, and the
   sources that are not H.264 (hardware decode may not cover them all).
-- [ ] nas repo: a reels folder and a scratch folder on `/volume1`; how flix reads the built
-  files (inside the existing read-only export if the folder sits under it, otherwise a
-  second export). No cron line: the NAS crontab is lost on reboot or firmware update
-  (`nas:docs/adm.md`), which is why flix orchestrates.
+- [ ] NAS: `/volume1/Media/adult/reels` (built files) with a `.work` folder inside it
+  (intermediates). Decided by the user 2026-11-11. Checked the same day: Stash's libraries are
+  only `adult/movies` and `adult/scenes`, so Stash does not scan it; and flix already mounts
+  `Media/adult` read-only at `/media/adult`, so it reads built reels at `/media/adult/reels`
+  with no new export and no k8s change. No cron line: the NAS crontab is lost on reboot or
+  firmware update (`nas:docs/adm.md`), which is why flix orchestrates.
 - [ ] flotilla repo: a `reel-builder` service in the stack (the render image, `/dev/dri`, the
   library read-only, the reels and scratch folders writable, `restart: unless-stopped` so
   Docker brings it back after a reboot, niced). The builder **asks

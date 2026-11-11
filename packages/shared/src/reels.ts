@@ -1,6 +1,7 @@
 // Reels (wiki decisions/reels-edit-by-reference): a reel is a list of clips, each a range of a
 // library video, with a transition into the next. This file is the contract and the one pure
 // timeline function that the preview player and the build both follow.
+import type { ReelBuild } from './render.ts'
 
 // How one clip gives way to the next. Dissolve comes later (it overlaps two clips).
 export const reelTransitions = ['cut', 'fade'] as const
@@ -49,6 +50,7 @@ export interface Reel {
   durationSec: number
   cover: string | null // the first clip's video still
   updatedAt: string
+  build: ReelBuild | null // its latest build, if one was ever queued
 }
 
 export interface ReelDetail extends Reel {

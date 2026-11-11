@@ -655,3 +655,4 @@ export interface StudioCategoriesStatus {
 
 export * from './reels.ts'
 export * from './compat.ts'
+export * from './render.ts'

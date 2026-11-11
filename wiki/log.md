@@ -469,3 +469,6 @@ Behind FLIX_REELS=1. Pages: [[reels]], [[data-model]], [[reels-engineering-roadm
 
 ## [2026-11-11] ingest | Compatibility badge: where a video plays without a transcode
 258 of 2,985 videos transcode (AVI, Matroska, WMV); every MP4 is H.264 with AAC. Pages: [[compatibility-badge]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Built reels live in Media/adult/reels on the NAS
+Stash does not scan it and flix already mounts it read-only, so no new export. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
