@@ -1,0 +1,29 @@
+# Checks a pull request before it can be squash-merged into main: builds the image's `build`
+# stage, which runs the typecheck, lint, every test and the web build (Dockerfile). Nothing is
+# pushed or deployed; only a push to main does that (deploy.yml). The privacy check is not here:
+# its deny-list is not in git, so the pre-push hook runs it (wiki/runbooks/run-checks.md).
+name: pull request
+on:
+  pull_request:
+    branches: [main]
+concurrency:
+  group: flix-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: docker-build
+    steps:
+      - name: build stage (typecheck, lint, tests, web build)
+        shell: sh
+        env:
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN || secrets.CI_TOKEN }}
+          DOCKER_BUILDKIT: '1'
+        run: |
+          set -e
+          apk add --no-cache git
+          rm -rf src
+          git clone "http://oauth2:${REGISTRY_TOKEN}@git.lan:3000/zbmowrey/flix.git" src
+          cd src && git checkout "$SHA"
+          docker build --pull --target build --build-arg "GIT_SHA=$SHA" -t "flix-pr:$SHA" .
+          docker image rm "flix-pr:$SHA" >/dev/null 2>&1 || true

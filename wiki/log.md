@@ -439,3 +439,27 @@ The user agreed the reels plan after three revisions; nothing built. Also record
 
 ## [2026-11-11] correct | Filename titles were 20 unlinked scenes; --fill output made neutral
 20 scenes showing a filename had empty titles and no StashDB id; `--link` then `--fill` titled all 20. `library-reconcile.mjs --fill` no longer prints names without `--names`. Pages: [[library-reconcile]].
+
+## [2026-11-10] decide | Reels is built on branches and squash-merged; engineering roadmap written
+Six milestones, one pull request each. Pages: [[reels-engineering-roadmap]], [[reels-branch-and-squash-merge]], [[build-a-feature-on-a-branch]].
+
+## [2026-11-10] ingest | Reels M0 results: first encode speed and the iPhone two-video finding
+1080p encodes at 6.6 fps (0.28x) on 2 CPUs; the second video must be unlocked muted on iOS; the namespace quota and the leftover-pod failure. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-10] ingest | Reels M0: encode speed on the NAS, software and Quick Sync
+Quick Sync encodes at 3.9x (4K source) to 9.25x (1080p) real time; software x264 there is 0.28x. `encode-bench.mjs --nas`. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels build on the NAS, 02:00 to 06:00 Eastern, one at a time
+The user moved the build from a k8s worker to the NAS after the benchmark: cron at 02:00, 5 minutes between builds, ends at 06:00 or on an empty queue. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] correct | Reels builds are orchestrated by flix, not a NAS cron job
+The NAS crontab does not survive a reboot; flix owns the window and pacing, a builder container on the NAS executes. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels: Build now stays, offers stop at 05:00, the builder calls flix by IP
+A build in progress at 05:00 finishes on its own; the builder's call is unauthenticated. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Reels: Quick Sync against x264 on the NAS, speed, size and likeness
+Five settings on two sources; Quick Sync matches x264 slow's likeness at QP 18 for 1.5 to 2 times the bits. Pages: [[reels-engineering-roadmap]].
+
+## [2026-11-11] decide | Reels are encoded with Quick Sync at QP 18
+Chosen by the user from a blind comparison on two sources. Pages: [[reels-edit-by-reference]], [[reels-engineering-roadmap]].
