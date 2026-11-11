@@ -466,3 +466,6 @@ Chosen by the user from a blind comparison on two sources. Pages: [[reels-edit-b
 
 ## [2026-11-11] ingest | Reels milestone 1: clips, the editor and the two-element preview
 Behind FLIX_REELS=1. Pages: [[reels]], [[data-model]], [[reels-engineering-roadmap]].
+
+## [2026-11-11] ingest | Compatibility badge: where a video plays without a transcode
+258 of 2,985 videos transcode (AVI, Matroska, WMV); every MP4 is H.264 with AAC. Pages: [[compatibility-badge]], [[reels-engineering-roadmap]].

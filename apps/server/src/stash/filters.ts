@@ -2,7 +2,7 @@
 // to scenes Stash cannot filter.
 // Generated from stash.schema.graphql (Stash's own schema; see codegen.ts). Filter inputs are
 // exact: a criterion Stash does not have is a type error here instead of a 400 from Stash.
-import type { PerformerGender, SceneQuery } from '@flix/shared'
+import { NOT_MP4_PATH, type PerformerGender, type SceneQuery } from '@flix/shared'
 import type { DateCriterionInput, FindFilterType, GenderCriterionInput, PerformerFilterType, ResolutionEnum, Scene, SceneFilterType } from '../stash.schema.ts'
 
 // --- filters --------------------------------------------------------------------
@@ -148,6 +148,7 @@ export function sceneFilter(q: SceneQuery, blocked: Exclusions): SceneFilterType
   }
   if (q.maxRating) extra.push({ rating100: { value: q.maxRating * 20 + 1, modifier: 'LESS_THAN' } })
   if (q.unmatched) extra.push({ stash_id_count: { value: 0, modifier: 'EQUALS' } })
+  if (q.transcodes) extra.push({ path: { value: NOT_MP4_PATH, modifier: 'NOT_MATCHES_REGEX' } })
   if (q.olderDays) {
     // day granularity keeps the filter, and so the query cache key, stable through the day
     const before = new Date(Date.now() - q.olderDays * 86_400_000).toISOString().slice(0, 10)

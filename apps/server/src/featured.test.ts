@@ -20,6 +20,7 @@ function cand(id: string, o: Partial<SceneCard> & Partial<Omit<Candidate, 'card'
       durationSec: 600,
       width: 1920,
       height: 1080,
+      compat: 'everywhere',
       size: 1,
       rating: null,
       playCount: 0,

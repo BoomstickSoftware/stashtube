@@ -9,6 +9,7 @@ const scene = (id: string, o: Partial<DuplicateScene> & { bitrate?: number } = {
   title: `s${id}`,
   date: null,
   durationSec: 600,
+  compat: 'everywhere',
   width: o.width ?? 1920,
   height: o.height ?? 1080,
   size: o.size ?? 1_000,
