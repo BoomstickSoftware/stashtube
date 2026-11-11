@@ -140,7 +140,7 @@ if (doFill && bare.length) {
       }
       await gql(`mutation($input:SceneUpdateInput!) { sceneUpdate(input:$input) { id } }`, { input: { id: s.id, title: r.title, code: r.code, date: r.date, details: r.details, director: r.director, urls: r.urls ?? [], studio_id: studioId, performer_ids: performerIds, tag_ids: tagIds, cover_image: r.image ?? undefined } })
       done++
-      console.log(`  filled ${s.id}: ${r.title?.slice(0, 50)} | ${r.studio?.name ?? '-'} | ${(r.performers ?? []).map((p) => p.name).join(', ').slice(0, 60)}`)
+      console.log(NAMES ? `  filled ${s.id}: ${r.title?.slice(0, 50)} | ${r.studio?.name ?? '-'} | ${(r.performers ?? []).map((p) => p.name).join(', ').slice(0, 60)}` : `  filled ${s.id}: studio ${r.studio ? 'yes' : 'no'}, ${(r.performers ?? []).length} performers, ${(r.tags ?? []).length} tags`)
     } catch (e) {
       failed++
       console.log(`  FAILED ${s.id} ${id}: ${e.message.slice(0, 200)}`)
